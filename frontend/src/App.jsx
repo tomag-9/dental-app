@@ -1,8 +1,28 @@
 import React, { useState, useEffect, Component } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Login from './components/Login';
+import {
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Box,
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+  Typography,
+  Button,
+  Toolbar, // Added Toolbar import
+} from '@mui/material';
+import PeopleIcon from '@mui/icons-material/People';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import EngineeringIcon from '@mui/icons-material/Engineering';
+import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import WorkIcon from '@mui/icons-material/Work';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import NavBar from './components/NavBar';
+import Login from './components/Login';
 import PatientForm from './components/PatientForm';
 import JobForm from './components/JobForm';
 import PatientList from './components/PatientList';
@@ -19,24 +39,39 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
-          <div className="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-lg text-white">
-            <h1 className="text-3xl font-bold mb-4">Niečo sa pokazilo</h1>
-            <p className="text-red-400 mb-4">{this.state.errorMessage}</p>
-            <p>Prosím, obnovte stránku alebo kontaktujte podporu.</p>
-            <button
+        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+          <Box sx={{ maxWidth: 400, bgcolor: 'background.paper', p: 4, borderRadius: 2, textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ mb: 2 }}>
+              Niečo sa pokazilo
+            </Typography>
+            <Typography color="error" sx={{ mb: 2 }}>
+              {this.state.errorMessage}
+            </Typography>
+            <Typography sx={{ mb: 2 }}>
+              Prosím, obnovte stránku alebo kontaktujte podporu.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
               onClick={() => window.location.reload()}
-              className="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold"
             >
               Obnoviť stránku
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Box>
       );
     }
     return this.props.children;
   }
 }
+
+const theme = createTheme({
+  palette: {
+    primary: { main: '#45ac8b' }, // Doctors green
+    secondary: { main: '#2e7d32' }, // Darker green
+    background: { default: '#f5f5f5', paper: '#fff' },
+  },
+});
 
 function App() {
   const [patients, setPatients] = useState([]);
@@ -165,47 +200,61 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-900">
-      <div
-        className={`fixed inset-y-0 left-0 w-64 bg-gray-900/95 text-white p-4 transform ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-50`}
-      >
-        <h2 className="text-2xl font-bold mb-6 flex items-center">
-          <span className="text-green-500">🦷</span>
-          <span className="ml-2">DentalApp</span>
-        </h2>
-        <ul className="space-y-2">
-          {['Pacienti', 'Lekári', 'Technici', 'Kliniky', 'Práce', 'Cenník'].map((tab, index) => (
-            <li key={tab}>
-              <Link
-                to={['/patients', '/doctors', '/technicians', '/clinics', '/jobs', '/price-list'][index]}
-                className="text-white block p-3 hover:bg-gray-700 rounded transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                {tab}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <button
-          onClick={handleLogout}
-          className="mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold transition duration-300"
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <NavBar
+          handleLogout={handleLogout}
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+        />
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: 240,
+            flexShrink: 0,
+            [`& .MuiDrawer-paper`]: {
+              width: 240,
+              boxSizing: 'border-box',
+              bgcolor: 'primary.main',
+              color: 'white',
+              display: { xs: sidebarOpen ? 'block' : 'none', sm: 'block' },
+            },
+          }}
         >
-          Odhlásiť sa
-        </button>
-      </div>
-
-      <div className="flex-1">
-        <NavBar handleLogout={handleLogout} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        <main className="p-6 md:p-10 bg-gray-900">
+          <Toolbar sx={{ minHeight: 48 }} />
+          <List>
+            {[
+              { text: 'Pacienti', icon: <PeopleIcon />, path: '/patients' },
+              { text: 'Lekári', icon: <MedicalServicesIcon />, path: '/doctors' },
+              { text: 'Technici', icon: <EngineeringIcon />, path: '/technicians' },
+              { text: 'Kliniky', icon: <LocalHospitalIcon />, path: '/clinics' },
+              { text: 'Práce', icon: <WorkIcon />, path: '/jobs' },
+              { text: 'Cenník', icon: <AttachMoneyIcon />, path: '/price-list' },
+            ].map(({ text, icon, path }) => (
+              <ListItem
+                key={text}
+                component={Link}
+                to={path}
+                onClick={() => setSidebarOpen(false)}
+                sx={{ '&:hover': { bgcolor: 'primary.dark' } }}
+              >
+                <ListItemIcon sx={{ color: 'white' }}>{icon}</ListItemIcon>
+                <ListItemText primary={text} />
+              </ListItem>
+            ))}
+          </List>
+        </Drawer>
+        <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 6, bgcolor: 'background.default' }}>
           <ErrorBoundary>
             <Routes>
               <Route
                 path="/patients"
                 element={
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    <h1 className="text-3xl font-bold text-white mb-6">Pacienti</h1>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Pacienti
+                    </Typography>
                     <PatientForm
                       formData={formData}
                       handleChange={handleChange}
@@ -219,14 +268,16 @@ function App() {
                       token={token}
                       setError={setError}
                     />
-                  </div>
+                  </Box>
                 }
               />
               <Route
                 path="/jobs"
                 element={
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    <h1 className="text-3xl font-bold text-white mb-6">Práce</h1>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Práce
+                    </Typography>
                     <JobForm
                       jobFormData={jobFormData}
                       setJobFormData={setJobFormData}
@@ -235,68 +286,100 @@ function App() {
                       error={error}
                     />
                     <JobList token={token} setError={setError} />
-                  </div>
+                  </Box>
                 }
               />
               <Route
                 path="/jobs/:jobId"
                 element={
-                  <div className="max-w-4xl mx-auto space-y-6">
-                    <h1 className="text-3xl font-bold text-white mb-6">Detail práce</h1>
-                    <p className="text-gray-400">Táto sekcia bude čoskoro implementovaná</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Detail práce
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Táto sekcia bude čoskoro implementovaná
+                    </Typography>
+                  </Box>
                 }
               />
               <Route
                 path="/doctors"
                 element={
-                  <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-6">Lekári</h1>
-                    <p className="text-gray-400">Táto sekcia bude čoskoro implementovaná</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Lekári
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Táto sekcia bude čoskoro implementovaná
+                    </Typography>
+                  </Box>
                 }
               />
               <Route
                 path="/technicians"
                 element={
-                  <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-6">Technici</h1>
-                    <p className="text-gray-400">Táto sekcia bude čoskoro implementovaná</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Technici
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Táto sekcia bude čoskoro implementovaná
+                    </Typography>
+                  </Box>
                 }
               />
               <Route
                 path="/clinics"
                 element={
-                  <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-6">Kliniky</h1>
-                    <p className="text-gray-400">Táto sekcia bude čoskoro implementovaná</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Kliniky
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Táto sekcia bude čoskoro implementovaná
+                    </Typography>
+                  </Box>
                 }
               />
               <Route
                 path="/price-list"
                 element={
-                  <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-6">Cenník</h1>
-                    <p className="text-gray-400">Táto sekcia bude čoskoro implementovaná</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Cenník
+                    </Typography>
+                    <Typography color="text.secondary">
+                      Táto sekcia bude čoskoro implementovaná
+                    </Typography>
+                  </Box>
                 }
               />
               <Route
                 path="/"
                 element={
-                  <div className="max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-bold text-white mb-6">Vitajte</h1>
-                    <p className="text-gray-400">Vyberte sekciu zo sidebaru</p>
-                  </div>
+                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Typography variant="h4" sx={{ mb: 3 }}>
+                      Vitajte v DentalApp
+                    </Typography>
+                    <Typography color="text.secondary" paragraph>
+                      DentalApp je moderná aplikácia na správu zubných techník, ktorá vám umožňuje efektívne spravovať pacientov, lekárov, technikov, kliniky a práce.
+                    </Typography>
+                    <Typography color="text.secondary" paragraph>
+                      <strong>Rýchle štatistiky:</strong>
+                    </Typography>
+                    <Typography color="text.secondary">
+                      - Počet pacientov: {patients.length}<br />
+                      - Aktívne práce: Čoskoro dostupné<br />
+                      - Prihlásený používateľ: admin
+                    </Typography>
+                  </Box>
                 }
               />
             </Routes>
           </ErrorBoundary>
-        </main>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </ThemeProvider>
   );
 }
 

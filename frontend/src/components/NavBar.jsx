@@ -1,44 +1,50 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import {
+  AppBar,
+  Toolbar,
+  IconButton,
+  Box,
+} from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
+import LogoutIcon from '@mui/icons-material/Logout';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 
 const NavBar = ({ handleLogout, sidebarOpen, setSidebarOpen }) => {
-  const tabs = ['Pacienti', 'Lekári', 'Technici', 'Kliniky', 'Práce', 'Cenník'];
-  const routes = ['/patients', '/doctors', '/technicians', '/clinics', '/jobs', '/price-list'];
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
-    <nav className="bg-black text-gray-200 shadow-xl border-b-2 border-gray-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-green-500">🦷</span>
-            <span className="text-xl font-bold">DentalApp</span>
-            <button
-              className="md:hidden text-white p-2"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+    <AppBar
+      position="fixed"
+      sx={{
+        zIndex: (theme) => theme.zIndex.drawer + 1,
+        bgcolor: 'primary.main',
+        minHeight: 48,
+      }}
+    >
+      <Toolbar sx={{ minHeight: 48, px: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              color="inherit"
+              edge="start"
+              onClick={toggleSidebar}
+              sx={{ mr: 1, display: { sm: 'none' } }}
             >
-              {sidebarOpen ? '✕' : '☰'}
-            </button>
-          </div>
-          <div className="hidden md:flex items-center space-x-4">
-            {tabs.map((tab, index) => (
-              <Link
-                key={tab}
-                to={routes[index]}
-                className="px-3 py-2 rounded-none font-semibold border-b-4 border-transparent hover:border-green-500 hover:text-green-300 transition"
-              >
-                {tab}
-              </Link>
-            ))}
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-red-600 hover:text-white transition font-semibold"
-            >
-              Odhlásiť sa
-            </button>
-          </div>
-        </div>
-      </div>
-    </nav>
+              <MenuIcon />
+            </IconButton>
+            <IconButton component={Link} to="/" color="inherit">
+              <HealthAndSafetyIcon />
+            </IconButton>
+          </Box>
+          <IconButton color="inherit" onClick={handleLogout}>
+            <LogoutIcon />
+          </IconButton>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 };
 

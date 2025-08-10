@@ -1,82 +1,101 @@
 import React from 'react';
+import { Grid, TextField, Button, Typography } from '@mui/material';
 
 const PatientForm = ({ formData, handleChange, handleSubmit, error, isEditMode = false }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded-xl shadow-md">
-      <h2 className="text-lg font-semibold mb-3 text-white">{isEditMode ? 'Upraviť pacienta' : 'Pridať pacienta'}</h2>
-      {error && <p className="text-red-400 mb-3 text-sm">{error}</p>}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Meno</label>
-          <input
-            type="text"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Priezvisko</label>
-          <input
-            type="text"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Rodné číslo</label>
-          <input
-            type="text"
-            name="birth_number"
-            value={formData.birth_number}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Adresa</label>
-          <input
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Telefón</label>
-          <input
-            type="text"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-300">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none text-sm"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            className="mt-3 w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md font-semibold text-sm"
-          >
-            {isEditMode ? 'Uložiť zmeny' : 'Pridať pacienta'}
-          </button>
-        </div>
+    <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '8px' }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        {isEditMode ? 'Upraviť pacienta' : 'Pridať pacienta'}
+      </Typography>
+      {error && (
+        <Typography color="error" sx={{ mb: 2, fontSize: '0.875rem' }}>
+          {error}
+        </Typography>
+      )}
+      <form onSubmit={handleSubmit}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Meno"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Priezvisko"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Rodné číslo"
+              name="birth_number"
+              value={formData.birth_number}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+              required
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Adresa"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Telefón"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              variant="outlined"
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+            >
+              {isEditMode ? 'Uložiť zmeny' : 'Pridať pacienta'}
+            </Button>
+          </Grid>
+        </Grid>
       </form>
     </div>
   );

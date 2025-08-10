@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Typography,
+} from '@mui/material';
 
 const JobList = ({ token, setError }) => {
   const [jobs, setJobs] = useState([]);
@@ -19,31 +29,39 @@ const JobList = ({ token, setError }) => {
   }, [token, setError]);
 
   return (
-    <div className="bg-gray-800 p-6 rounded-xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-white">Zoznam prác</h2>
+    <Paper sx={{ p: 2, mt: 3, bgcolor: 'background.paper' }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        Zoznam prác
+      </Typography>
       {jobs.length === 0 ? (
-        <p className="text-gray-400">Žiadne práce</p>
+        <Typography color="text.secondary">Žiadne práce</Typography>
       ) : (
-        <ul className="divide-y divide-gray-700">
-          {jobs.map(job => (
-            <li key={job.id} className="py-4">
-              <div className="flex justify-between">
-                <div>
-                  <p className="text-lg font-medium text-white">Práca #{job.id}</p>
-                  <p className="text-sm text-gray-400">Pacient ID: {job.patient_id}</p>
-                  <p className="text-sm text-gray-400">Klinika ID: {job.clinic_id}</p>
-                  <p className="text-sm text-gray-400">Lekár ID: {job.doctor_id}</p>
-                  <p className="text-sm text-gray-400">Technik ID: {job.technician_id}</p>
-                  <p className="text-sm text-gray-400">Kódy procedúr: {job.procedure_codes?.join(', ') || 'Žiadne'}</p>
-                  {job.due_date && <p className="text-sm text-gray-400">Dátum splatnosti: {new Date(job.due_date).toLocaleDateString('sk-SK')}</p>}
-                  {job.status && <p className="text-sm text-gray-400">Stav: {job.status === 'pending' ? 'Čakajúce' : job.status === 'in_progress' ? 'V priebehu' : 'Dokončené'}</p>}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Pacient</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Kódy procedúr</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Stav</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {jobs.map((job) => (
+                <TableRow key={job.id} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
+                  <TableCell>{job.id}</TableCell>
+                  <TableCell>{job.patient_id}</TableCell>
+                  <TableCell>{job.procedure_codes?.join(', ') || 'Žiadne'}</TableCell>
+                  <TableCell>
+                    {job.status === 'pending' ? 'Čakajúce' : job.status === 'in_progress' ? 'V priebehu' : 'Dokončené'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
-    </div>
+    </Paper>
   );
 };
 

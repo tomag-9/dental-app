@@ -1,5 +1,6 @@
 import React from 'react';
 import axios from 'axios';
+import { Box, TextField, Button, Typography, Paper } from '@mui/material';
 
 const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, error }) => {
   const handleLoginChange = (e) => {
@@ -33,42 +34,50 @@ const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, err
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold mb-6 text-center text-white">Zubná technika - Prihlásenie</h1>
-        <form onSubmit={handleLogin} className="space-y-6">
-          {error && <p className="text-red-400 text-center">{error}</p>}
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Používateľské meno</label>
-            <input
-              type="text"
-              name="username"
-              value={loginData.username}
-              onChange={handleLoginChange}
-              className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300">Heslo</label>
-            <input
-              type="password"
-              name="password"
-              value={loginData.password}
-              onChange={handleLoginChange}
-              className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-              required
-            />
-          </div>
-          <button
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+      <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
+        <Typography variant="h5" sx={{ mb: 3, textAlign: 'center' }}>
+          Zubná technika - Prihlásenie
+        </Typography>
+        {error && (
+          <Typography color="error" sx={{ mb: 2, textAlign: 'center' }}>
+            {error}
+          </Typography>
+        )}
+        <form onSubmit={handleLogin}>
+          <TextField
+            fullWidth
+            label="Používateľské meno"
+            name="username"
+            value={loginData.username}
+            onChange={handleLoginChange}
+            variant="outlined"
+            margin="normal"
+            required
+          />
+          <TextField
+            fullWidth
+            label="Heslo"
+            name="password"
+            type="password"
+            value={loginData.password}
+            onChange={handleLoginChange}
+            variant="outlined"
+            margin="normal"
+            required
+          />
+          <Button
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold transition"
+            fullWidth
+            variant="contained"
+            color="primary"
+            sx={{ mt: 2 }}
           >
             Prihlásiť sa
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </Paper>
+    </Box>
   );
 };
 

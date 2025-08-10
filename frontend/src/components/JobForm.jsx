@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  Paper,
+  Typography,
+  Grid,
+  TextField,
+  MenuItem,
+  Button,
+} from '@mui/material';
 
 const JobForm = ({ jobFormData, setJobFormData, token, setError, error }) => {
   const [patients, setPatients] = useState([]);
@@ -64,121 +72,151 @@ const JobForm = ({ jobFormData, setJobFormData, token, setError, error }) => {
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-white">Pridať prácu</h2>
-      {error && <p className="text-red-400 mb-4">{error}</p>}
-      <form onSubmit={handleJobSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Pacient</label>
-          <select
-            name="patient_id"
-            value={jobFormData.patient_id}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-            required
-          >
-            <option value="">Vyberte pacienta</option>
-            {patients.map(patient => (
-              <option key={patient.id} value={patient.id}>
-                {patient.first_name} {patient.last_name} ({patient.birth_number})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Klinika</label>
-          <select
-            name="clinic_id"
-            value={jobFormData.clinic_id}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-            required
-          >
-            <option value="">Vyberte kliniku</option>
-            {clinics.map(clinic => (
-              <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Lekár</label>
-          <select
-            name="doctor_id"
-            value={jobFormData.doctor_id}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-            required
-          >
-            <option value="">Vyberte lekára</option>
-            {doctors.map(doctor => (
-              <option key={doctor.id} value={doctor.id}>
-                {doctor.first_name} {doctor.last_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Technik</label>
-          <select
-            name="technician_id"
-            value={jobFormData.technician_id}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-            required
-          >
-            <option value="">Vyberte technika</option>
-            {technicians.map(technician => (
-              <option key={technician.id} value={technician.id}>
-                {technician.first_name} {technician.last_name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Kódy procedúr (oddelené čiarkou)</label>
-          <input
-            type="text"
-            name="procedure_codes"
-            value={jobFormData.procedure_codes}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-            placeholder="P001, P002"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Dátum splatnosti</label>
-          <input
-            type="date"
-            name="due_date"
-            value={jobFormData.due_date}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-300">Stav</label>
-          <select
-            name="status"
-            value={jobFormData.status}
-            onChange={handleJobChange}
-            className="mt-1 p-2 w-full rounded-md bg-gray-700 text-white border border-gray-600 focus:ring-2 focus:ring-green-500 focus:outline-none"
-          >
-            <option value="">Vyberte stav</option>
-            <option value="pending">Čakajúce</option>
-            <option value="in_progress">V priebehu</option>
-            <option value="completed">Dokončené</option>
-          </select>
-        </div>
-        <div className="md:col-span-2">
-          <button
-            type="submit"
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold w-full"
-          >
-            Pridať prácu
-          </button>
-        </div>
+    <Paper sx={{ p: 2, bgcolor: 'background.paper' }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        Pridať prácu
+      </Typography>
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+      <form onSubmit={handleJobSubmit}>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Pacient"
+              name="patient_id"
+              value={jobFormData.patient_id}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              required
+            >
+              <MenuItem value="">Vyberte pacienta</MenuItem>
+              {patients.map(patient => (
+                <MenuItem key={patient.id} value={patient.id}>
+                  {patient.first_name} {patient.last_name} ({patient.birth_number})
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Klinika"
+              name="clinic_id"
+              value={jobFormData.clinic_id}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              required
+            >
+              <MenuItem value="">Vyberte kliniku</MenuItem>
+              {clinics.map(clinic => (
+                <MenuItem key={clinic.id} value={clinic.id}>{clinic.name}</MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Lekár"
+              name="doctor_id"
+              value={jobFormData.doctor_id}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              required
+            >
+              <MenuItem value="">Vyberte lekára</MenuItem>
+              {doctors.map(doctor => (
+                <MenuItem key={doctor.id} value={doctor.id}>
+                  {doctor.first_name} {doctor.last_name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Technik"
+              name="technician_id"
+              value={jobFormData.technician_id}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              required
+            >
+              <MenuItem value="">Vyberte technika</MenuItem>
+              {technicians.map(technician => (
+                <MenuItem key={technician.id} value={technician.id}>
+                  {technician.first_name} {technician.last_name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Kódy procedúr (oddelené čiarkou)"
+              name="procedure_codes"
+              value={jobFormData.procedure_codes}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              placeholder="P001, P002"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="Dátum splatnosti"
+              name="due_date"
+              type="date"
+              value={jobFormData.due_date}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              select
+              fullWidth
+              label="Stav"
+              name="status"
+              value={jobFormData.status}
+              onChange={handleJobChange}
+              variant="outlined"
+              size="small"
+            >
+              <MenuItem value="">Vyberte stav</MenuItem>
+              <MenuItem value="pending">Čakajúce</MenuItem>
+              <MenuItem value="in_progress">V priebehu</MenuItem>
+              <MenuItem value="completed">Dokončené</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12}>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+            >
+              Pridať prácu
+            </Button>
+          </Grid>
+        </Grid>
       </form>
-    </div>
+    </Paper>
   );
 };
 
