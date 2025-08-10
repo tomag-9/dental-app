@@ -1,31 +1,19 @@
 import React, { useState, useEffect, Component } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Box,
   CssBaseline,
   ThemeProvider,
   createTheme,
   Typography,
   Button,
-  Toolbar, // Added Toolbar import
 } from '@mui/material';
-import PeopleIcon from '@mui/icons-material/People';
-import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
-import EngineeringIcon from '@mui/icons-material/Engineering';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-import WorkIcon from '@mui/icons-material/Work';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import NavBar from './components/NavBar';
+import DrawerComponent from './components/Drawer';
 import Login from './components/Login';
-import PatientForm from './components/PatientForm';
+import Patient from './components/Patient';
 import JobForm from './components/JobForm';
-import PatientList from './components/PatientList';
 import JobList from './components/JobList';
 import './index.css';
 
@@ -74,17 +62,6 @@ const theme = createTheme({
 });
 
 function App() {
-  const [patients, setPatients] = useState([]);
-  const [filteredPatients, setFilteredPatients] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    birth_number: '',
-    address: '',
-    phone: '',
-    email: ''
-  });
   const [jobFormData, setJobFormData] = useState({
     patient_id: '',
     clinic_id: '',
@@ -102,73 +79,13 @@ function App() {
   const [error, setError] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(!!token);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDrawerExpanded, setIsDrawerExpanded] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchPatients();
-    }
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    const filtered = patients.filter(patient =>
-      `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.birth_number.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredPatients(filtered);
-  }, [searchTerm, patients]);
-
-  const fetchPatients = async () => {
-    try {
-      const response = await axios.get('http://localhost:8000/patients/', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPatients(response.data);
-      setFilteredPatients(response.data);
-    } catch (err) {
-      setError('Nepodarilo sa načítať pacientov: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post('http://localhost:8000/patients/', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setFormData({
-        first_name: '',
-        last_name: '',
-        birth_number: '',
-        address: '',
-        phone: '',
-        email: ''
-      });
-      fetchPatients();
-      setError('');
-    } catch (err) {
-      setError('Nepodarilo sa pridať pacienta: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
-  };
 
   const handleLogout = () => {
     setToken('');
     localStorage.removeItem('token');
     setIsLoggedIn(false);
-    setPatients([]);
-    setFilteredPatients([]);
-    setFormData({
-      first_name: '',
-      last_name: '',
-      birth_number: '',
-      address: '',
-      phone: '',
-      email: ''
-    });
     setJobFormData({
       patient_id: '',
       clinic_id: '',
@@ -181,6 +98,7 @@ function App() {
     setLoginData({ username: '', password: '' });
     setError('');
     setSidebarOpen(false);
+    setIsDrawerExpanded(false);
     navigate('/');
   };
 
@@ -208,67 +126,19 @@ function App() {
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
         />
-        <Drawer
-          variant="permanent"
-          sx={{
-            width: 240,
-            flexShrink: 0,
-            [`& .MuiDrawer-paper`]: {
-              width: 240,
-              boxSizing: 'border-box',
-              bgcolor: 'primary.main',
-              color: 'white',
-              display: { xs: sidebarOpen ? 'block' : 'none', sm: 'block' },
-            },
-          }}
-        >
-          <Toolbar sx={{ minHeight: 48 }} />
-          <List>
-            {[
-              { text: 'Pacienti', icon: <PeopleIcon />, path: '/patients' },
-              { text: 'Lekári', icon: <MedicalServicesIcon />, path: '/doctors' },
-              { text: 'Technici', icon: <EngineeringIcon />, path: '/technicians' },
-              { text: 'Kliniky', icon: <LocalHospitalIcon />, path: '/clinics' },
-              { text: 'Práce', icon: <WorkIcon />, path: '/jobs' },
-              { text: 'Cenník', icon: <AttachMoneyIcon />, path: '/price-list' },
-            ].map(({ text, icon, path }) => (
-              <ListItem
-                key={text}
-                component={Link}
-                to={path}
-                onClick={() => setSidebarOpen(false)}
-                sx={{ '&:hover': { bgcolor: 'primary.dark' } }}
-              >
-                <ListItemIcon sx={{ color: 'white' }}>{icon}</ListItemIcon>
-                <ListItemText primary={text} />
-              </ListItem>
-            ))}
-          </List>
-        </Drawer>
+        <DrawerComponent
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          isDrawerExpanded={isDrawerExpanded}
+          setIsDrawerExpanded={setIsDrawerExpanded}
+        />
         <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 6, bgcolor: 'background.default' }}>
           <ErrorBoundary>
             <Routes>
               <Route
                 path="/patients"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Pacienti
-                    </Typography>
-                    <PatientForm
-                      formData={formData}
-                      handleChange={handleChange}
-                      handleSubmit={handleSubmit}
-                      error={error}
-                    />
-                    <PatientList
-                      filteredPatients={filteredPatients}
-                      searchTerm={searchTerm}
-                      handleSearchChange={(e) => setSearchTerm(e.target.value)}
-                      token={token}
-                      setError={setError}
-                    />
-                  </Box>
+                  <Patient token={token} setError={setError} />
                 }
               />
               <Route
@@ -368,7 +238,7 @@ function App() {
                       <strong>Rýchle štatistiky:</strong>
                     </Typography>
                     <Typography color="text.secondary">
-                      - Počet pacientov: {patients.length}<br />
+                      - Počet pacientov: Čoskoro dostupné<br />
                       - Aktívne práce: Čoskoro dostupné<br />
                       - Prihlásený používateľ: admin
                     </Typography>

@@ -21,7 +21,7 @@ const NavBar = ({ handleLogout, sidebarOpen, setSidebarOpen }) => {
       sx={{
         zIndex: (theme) => theme.zIndex.drawer + 1,
         bgcolor: 'primary.main',
-        minHeight: 48,
+        minHeight: 30,
       }}
     >
       <Toolbar sx={{ minHeight: 48, px: 2 }}>
