@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.models import Job, PriceList
@@ -42,7 +42,12 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Database integrity error")
 
 @router.get("/", response_model=list[JobResponse], dependencies=[Depends(get_current_user)])
-def get_jobs(db: Session = Depends(get_db)):
+def get_jobs(patient_id: int = Query(None, description="Filter by patient ID"), db: Session = Depends(get_db)):
+    if patient_id:
+        jobs = db.query(Job).filter(Job.patient_id == patient_id).all()
+        if not jobs:
+            raise HTTPException(status_code=404, detail=f"No jobs found for patient_id: {patient_id}")
+        return jobs
     return db.query(Job).all()
 
 @router.get("/{job_id}", response_model=JobResponse, dependencies=[Depends(get_current_user)])

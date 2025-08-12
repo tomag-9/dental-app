@@ -75,15 +75,34 @@ const Patient = ({ token, setError }) => {
   }, [token, setError]);
 
   useEffect(() => {
-    const filtered = patients.filter(patient =>
-      `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.birth_number?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = patients.filter(patient => {
+      const fullName = `${patient.first_name} ${patient.last_name}`.toLowerCase();
+      const birthNum = patient.birth_number?.toLowerCase() || '';
+      const searchLower = searchTerm.toLowerCase();
+
+      // Extract year from birth_number (first 2 or 4 digits)
+      let birthYear = '';
+      if (birthNum.length >= 2) {
+        birthYear = birthNum.substring(0, 2); // Two-digit year (e.g., "95")
+        if (birthNum.length >= 4 && !isNaN(birthNum.substring(0, 4))) {
+          birthYear = birthNum.substring(0, 4); // Four-digit year (e.g., "1995")
+        }
+
+        // Check if searchTerm is a year (2 or 4 digits)
+        const isYearSearch = !isNaN(searchLower) && (searchLower.length === 2 || searchLower.length === 4);
+        if (isYearSearch && birthYear.startsWith(searchLower)) {
+          return true;
+        }
+      }
+
+      // Fallback to existing name and birth number search
+      return fullName.includes(searchLower) || birthNum.includes(searchLower);
+    });
     setFilteredPatients(filtered);
   }, [searchTerm, patients]);
 
   const ongoingPatients = patients.filter(patient =>
-    jobs.some(job => job.patient_id === patient.id && job.status === 'ongoing')
+    jobs.some(job => job.patient_id === patient.id && job.status !== 'finished')
   );
 
   return (
@@ -178,7 +197,7 @@ const Patient = ({ token, setError }) => {
         </Typography>
         <TextField
           fullWidth
-          label="Hľadať pacientov"
+          label="Hľadať pacientov (meno, rodné číslo, rok narodenia)"
           variant="outlined"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
