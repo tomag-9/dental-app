@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Component } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Box,
@@ -13,8 +13,12 @@ import NavBar from './components/NavBar';
 import DrawerComponent from './components/Drawer';
 import Login from './components/Login';
 import Patient from './components/Patient';
-import JobForm from './components/JobForm';
-import JobList from './components/JobList';
+import Jobs from './components/Jobs';
+import Doctors from './components/Doctors';
+import Clinics from './components/Clinics';
+import Technicians from './components/Technicians';
+import PriceList from './components/PriceList';
+import Invoices from './components/Invoices';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -61,16 +65,34 @@ const theme = createTheme({
   },
 });
 
+const ProtectedRoute = ({ children, token, setError }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+      try {
+        await axios.get('http://localhost:8000/jobs/', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        if (err.response?.status === 401) {
+          navigate('/login');
+        } else {
+          setError('Chyba pri overení autorizácie: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+        }
+      }
+    };
+    checkAuth();
+  }, [token, navigate, setError]);
+
+  return token ? children : null;
+};
+
 function App() {
-  const [jobFormData, setJobFormData] = useState({
-    patient_id: '',
-    clinic_id: '',
-    doctor_id: '',
-    technician_id: '',
-    procedure_codes: '',
-    due_date: '',
-    status: ''
-  });
   const [loginData, setLoginData] = useState({
     username: '',
     password: ''
@@ -86,20 +108,11 @@ function App() {
     setToken('');
     localStorage.removeItem('token');
     setIsLoggedIn(false);
-    setJobFormData({
-      patient_id: '',
-      clinic_id: '',
-      doctor_id: '',
-      technician_id: '',
-      procedure_codes: '',
-      due_date: '',
-      status: ''
-    });
     setLoginData({ username: '', password: '' });
     setError('');
     setSidebarOpen(false);
     setIsDrawerExpanded(false);
-    navigate('/');
+    navigate('/login');
   };
 
   if (!isLoggedIn) {
@@ -138,111 +151,101 @@ function App() {
               <Route
                 path="/patients"
                 element={
-                  <Patient token={token} setError={setError} />
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Patient token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/jobs"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Práce
-                    </Typography>
-                    <JobForm
-                      jobFormData={jobFormData}
-                      setJobFormData={setJobFormData}
-                      token={token}
-                      setError={setError}
-                      error={error}
-                    />
-                    <JobList token={token} setError={setError} />
-                  </Box>
-                }
-              />
-              <Route
-                path="/jobs/:jobId"
-                element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Detail práce
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Táto sekcia bude čoskoro implementovaná
-                    </Typography>
-                  </Box>
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Jobs token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/doctors"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Lekári
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Táto sekcia bude čoskoro implementovaná
-                    </Typography>
-                  </Box>
-                }
-              />
-              <Route
-                path="/technicians"
-                element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Technici
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Táto sekcia bude čoskoro implementovaná
-                    </Typography>
-                  </Box>
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Doctors token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/clinics"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Kliniky
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Táto sekcia bude čoskoro implementovaná
-                    </Typography>
-                  </Box>
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Clinics token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
               />
               <Route
-                path="/price-list"
+                path="/technicians"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Cenník
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Táto sekcia bude čoskoro implementovaná
-                    </Typography>
-                  </Box>
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Technicians token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
+              />
+              <Route path="/finance/*" element={<ProtectedRoute token={token} setError={setError}>
+                <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                  <Routes>
+                    <Route
+                      path="price-list"
+                      element={<PriceList token={token} setError={setError} />}
+                    />
+                    <Route
+                      path="invoices"
+                      element={<Invoices token={token} setError={setError} />}
+                    />
+                    <Route
+                      path="analytics"
+                      element={
+                        <Typography variant="h4">Analytika (placeholder)</Typography>
+                      }
+                    />
+                    <Route
+                      path="overview"
+                      element={
+                        <Typography variant="h4">Financie - Prehľad (placeholder)</Typography>
+                      }
+                    />
+                    <Route
+                      path="*"
+                      element={<Navigate to="/finance/price-list" />}
+                    />
+                  </Routes>
+                </Box>
+              </ProtectedRoute>}
               />
               <Route
                 path="/"
                 element={
-                  <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                    <Typography variant="h4" sx={{ mb: 3 }}>
-                      Vitajte v DentalApp
-                    </Typography>
-                    <Typography color="text.secondary" paragraph>
-                      DentalApp je moderná aplikácia na správu zubných techník, ktorá vám umožňuje efektívne spravovať pacientov, lekárov, technikov, kliniky a práce.
-                    </Typography>
-                    <Typography color="text.secondary" paragraph>
-                      <strong>Rýchle štatistiky:</strong>
-                    </Typography>
-                    <Typography color="text.secondary">
-                      - Počet pacientov: Čoskoro dostupné<br />
-                      - Aktívne práce: Čoskoro dostupné<br />
-                      - Prihlásený používateľ: admin
-                    </Typography>
-                  </Box>
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                      <Typography variant="h4" sx={{ mb: 3 }}>
+                        Vitajte v DentalApp
+                      </Typography>
+                      <Typography color="text.secondary" paragraph>
+                        DentalApp je moderná aplikácia na správu zubných techník, ktorá vám umožňuje efektívne spravovať pacientov, lekárov, technikov, kliniky a práce.
+                      </Typography>
+                      <Typography color="text.secondary" paragraph>
+                        <strong>Rýchle štatistiky:</strong>
+                      </Typography>
+                      <Typography color="text.secondary">
+                        - Počet pacientov: Čoskoro dostupné<br />
+                        - Aktívne práce: Čoskoro dostupné<br />
+                        - Prihlásený používateľ: admin
+                      </Typography>
+                    </Box>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  <Navigate to="/" />
                 }
               />
             </Routes>

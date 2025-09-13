@@ -3,6 +3,31 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.1",
-    "@mui/material": "^7.3.1"
-  }
+    "@mui/material": "^7.3.1",
+    "bcrypt": "^6.0.0",
+    "dayjs": "^1.11.13",
+    "esbuild": "^0.25.9"
+  },
+  "name": "dental-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magula12/dental-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/magula12/dental-app/issues"
+  },
+  "homepage": "https://github.com/magula12/dental-app#readme"
 }

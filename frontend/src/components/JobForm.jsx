@@ -1,222 +1,388 @@
+// JobForm.jsx
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Paper,
-  Typography,
-  Grid,
-  TextField,
-  MenuItem,
-  Button,
+  Dialog, DialogTitle, DialogContent, DialogActions, Typography, Grid,
+  TextField, MenuItem, Button, Autocomplete, Table, TableHead, TableBody,
+  TableRow, TableCell, IconButton, Box
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 
-const JobForm = ({ jobFormData, setJobFormData, token, setError, error }) => {
+const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null }) => {
+  const [formData, setFormData] = useState({
+    patient_id: '',
+    clinic_id: '',
+    doctor_id: '',
+    technician_id: '',
+    procedure_codes: [],
+    due_date: '',
+    status: '',
+    procedure_quantities: {}
+  });
+
   const [patients, setPatients] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [procedureOptions, setProcedureOptions] = useState([]);
+  const [selectedProcedure, setSelectedProcedure] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+
+
+const totalCost = formData.procedure_codes.reduce((sum, code) => {
+  const proc = procedureOptions.find(p => p.value === code);
+  const quantity = formData.procedure_quantities[code] || 1;
+  const price = proc?.price || 0; // make sure your procedureOptions includes `price`
+  return sum + quantity * price;
+}, 0);
 
   useEffect(() => {
+    if (!open) return;
+
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [patientsRes, clinicsRes, doctorsRes, techniciansRes] = await Promise.all([
+        const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes] = await Promise.all([
           axios.get('http://localhost:8000/patients/', { headers }),
           axios.get('http://localhost:8000/clinics/', { headers }),
           axios.get('http://localhost:8000/doctors/', { headers }),
           axios.get('http://localhost:8000/technicians/', { headers }),
+          axios.get('http://localhost:8000/price_list/', { headers }),
         ]);
+
         setPatients(patientsRes.data);
         setClinics(clinicsRes.data);
         setDoctors(doctorsRes.data);
         setTechnicians(techniciansRes.data);
+        setProcedureOptions(
+          proceduresRes.data.map(p => ({
+            value: p.code,
+            label: `${p.code} - ${p.description}`,
+            description: p.description
+          }))
+        );
       } catch (err) {
         setError('Nepodarilo sa načítať údaje: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
     };
-    if (token) fetchData();
-  }, [token, setError]);
 
-  const handleJobChange = (e) => {
-    setJobFormData({ ...jobFormData, [e.target.name]: e.target.value });
-  };
+    fetchData();
 
-  const handleJobSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const jobData = {
-        ...jobFormData,
-        patient_id: parseInt(jobFormData.patient_id) || null,
-        clinic_id: parseInt(jobFormData.clinic_id) || null,
-        doctor_id: parseInt(jobFormData.doctor_id) || null,
-        technician_id: parseInt(jobFormData.technician_id) || null,
-        procedure_codes: jobFormData.procedure_codes ? jobFormData.procedure_codes.split(',').map(code => code.trim()) : [],
-        due_date: jobFormData.due_date || null,
-        status: jobFormData.status || 'pending'
-      };
-      await axios.post('http://localhost:8000/jobs/', jobData, {
-        headers: { Authorization: `Bearer ${token}` }
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        procedure_quantities: initialData.procedure_quantities || {},
+        procedure_codes: Object.keys(initialData.procedure_quantities || {})
       });
-      setJobFormData({
+    } else {
+      setFormData({
         patient_id: '',
         clinic_id: '',
         doctor_id: '',
         technician_id: '',
-        procedure_codes: '',
+        procedure_codes: [],
         due_date: '',
-        status: ''
+        status: '',
+        procedure_quantities: {}
       });
-      setError('');
+    }
+  }, [open, token, setError, initialData]);
+
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleAddProcedure = () => {
+    if (selectedProcedure && quantity > 0) {
+      setFormData(prev => {
+        const updatedCodes = new Set([...prev.procedure_codes, selectedProcedure.value]);
+        return {
+          ...prev,
+          procedure_codes: Array.from(updatedCodes),
+          procedure_quantities: { ...prev.procedure_quantities, [selectedProcedure.value]: quantity }
+        };
+      });
+      setSelectedProcedure(null);
+      setQuantity(1);
+    }
+  };
+
+  const handleRemoveProcedure = (code) => {
+    setFormData(prev => ({
+      ...prev,
+      procedure_codes: prev.procedure_codes.filter(c => c !== code),
+      procedure_quantities: Object.fromEntries(
+        Object.entries(prev.procedure_quantities).filter(([k]) => k !== code)
+      )
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const jobData = {
+        ...formData,
+        patient_id: parseInt(formData.patient_id) || null,
+        clinic_id: parseInt(formData.clinic_id) || null,
+        doctor_id: parseInt(formData.doctor_id) || null,
+        technician_id: parseInt(formData.technician_id) || null,
+        due_date: formData.due_date || null,
+        status: formData.status || 'pending',
+        procedure_quantities: formData.procedure_quantities
+      };
+
+      if (initialData) {
+        await axios.put(`http://localhost:8000/jobs/${initialData.id}`, jobData, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        await axios.post('http://localhost:8000/jobs/', jobData, { headers: { Authorization: `Bearer ${token}` } });
+      }
+
+      onSuccess();
     } catch (err) {
-      setError('Nepodarilo sa pridať prácu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      setError('Nepodarilo sa pridať/upraviť prácu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     }
   };
 
   return (
-    <Paper sx={{ p: 2, bgcolor: 'background.paper' }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Pridať prácu
-      </Typography>
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-      <form onSubmit={handleJobSubmit}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              fullWidth
-              label="Pacient"
-              name="patient_id"
-              value={jobFormData.patient_id}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              required
-            >
-              <MenuItem value="">Vyberte pacienta</MenuItem>
-              {patients.map(patient => (
-                <MenuItem key={patient.id} value={patient.id}>
-                  {patient.first_name} {patient.last_name} ({patient.birth_number})
-                </MenuItem>
-              ))}
-            </TextField>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ fontSize: '1.8rem' }}>
+        {initialData ? 'Upraviť prácu' : 'Pridať prácu'}
+      </DialogTitle>
+
+      {/* DialogContent without scroll */}
+      <DialogContent sx={{ height: '550px', overflow: 'hidden', paddingRight: 0, position: 'relative' }}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 16,
+            border: '1px solid #ddd',
+            borderRadius: 1,
+            p: 2,
+            backgroundColor: '#f9f9f9',
+            textAlign: 'center',
+            zIndex: 10
+          }}
+        >
+          <Typography variant="subtitle2">Celková cena</Typography>
+          <Typography variant="h6">{totalCost.toFixed(2)} €</Typography>
+        </Box>
+        <Grid container spacing={3}>
+          {/* First row */}
+          <Grid container item spacing={3}>
+            <Grid item xs={4}>
+              <TextField
+                select
+                fullWidth
+                label="Pacient"
+                name="patient_id"
+                value={formData.patient_id}
+                onChange={handleChange}
+                variant="outlined"
+                required
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              >
+                <MenuItem value="">Vyberte pacienta</MenuItem>
+                {patients.map(patient => (
+                  <MenuItem key={patient.id} value={patient.id}>
+                    {patient.first_name} {patient.last_name} ({patient.birth_number})
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={4}>
+              <TextField
+                select
+                fullWidth
+                label="Klinika"
+                name="clinic_id"
+                value={formData.clinic_id}
+                onChange={handleChange}
+                variant="outlined"
+                required
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              >
+                <MenuItem value="">Vyberte kliniku</MenuItem>
+                {clinics.map(clinic => (
+                  <MenuItem key={clinic.id} value={clinic.id}>{clinic.name}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={4}>
+              <TextField
+                select
+                fullWidth
+                label="Lekár"
+                name="doctor_id"
+                value={formData.doctor_id}
+                onChange={handleChange}
+                variant="outlined"
+                required
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              >
+                <MenuItem value="">Vyberte lekára</MenuItem>
+                {doctors.map(doctor => (
+                  <MenuItem key={doctor.id} value={doctor.id}>
+                    {doctor.first_name} {doctor.last_name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              fullWidth
-              label="Klinika"
-              name="clinic_id"
-              value={jobFormData.clinic_id}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              required
-            >
-              <MenuItem value="">Vyberte kliniku</MenuItem>
-              {clinics.map(clinic => (
-                <MenuItem key={clinic.id} value={clinic.id}>{clinic.name}</MenuItem>
-              ))}
-            </TextField>
+
+          {/* Second row */}
+          <Grid container item spacing={3}>
+            <Grid item xs={4}>
+              <TextField
+                select
+                fullWidth
+                label="Technik"
+                name="technician_id"
+                value={formData.technician_id}
+                onChange={handleChange}
+                variant="outlined"
+                required
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              >
+                <MenuItem value="">Vyberte technika</MenuItem>
+                {technicians.map(technician => (
+                  <MenuItem key={technician.id} value={technician.id}>
+                    {technician.first_name} {technician.last_name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+
+            <Grid item xs={4}>
+              <TextField
+                select
+                fullWidth
+                label="Stav"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                variant="outlined"
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              >
+                <MenuItem value="">Vyberte stav</MenuItem>
+                <MenuItem value="pending">Čakajúce</MenuItem>
+                <MenuItem value="in_progress">V priebehu</MenuItem>
+                <MenuItem value="completed">Dokončené</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid item xs={4}>
+              <TextField
+                fullWidth
+                label="Dátum splatnosti"
+                name="due_date"
+                type="date"
+                value={formData.due_date}
+                onChange={handleChange}
+                variant="outlined"
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+              />
+            </Grid>
           </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              fullWidth
-              label="Lekár"
-              name="doctor_id"
-              value={jobFormData.doctor_id}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              required
-            >
-              <MenuItem value="">Vyberte lekára</MenuItem>
-              {doctors.map(doctor => (
-                <MenuItem key={doctor.id} value={doctor.id}>
-                  {doctor.first_name} {doctor.last_name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              fullWidth
-              label="Technik"
-              name="technician_id"
-              value={jobFormData.technician_id}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              required
-            >
-              <MenuItem value="">Vyberte technika</MenuItem>
-              {technicians.map(technician => (
-                <MenuItem key={technician.id} value={technician.id}>
-                  {technician.first_name} {technician.last_name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Kódy procedúr (oddelené čiarkou)"
-              name="procedure_codes"
-              value={jobFormData.procedure_codes}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              placeholder="P001, P002"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              fullWidth
-              label="Dátum splatnosti"
-              name="due_date"
-              type="date"
-              value={jobFormData.due_date}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              select
-              fullWidth
-              label="Stav"
-              name="status"
-              value={jobFormData.status}
-              onChange={handleJobChange}
-              variant="outlined"
-              size="small"
-            >
-              <MenuItem value="">Vyberte stav</MenuItem>
-              <MenuItem value="pending">Čakajúce</MenuItem>
-              <MenuItem value="in_progress">V priebehu</MenuItem>
-              <MenuItem value="completed">Dokončené</MenuItem>
-            </TextField>
-          </Grid>
+
+          {/* Third row: procedures */}
           <Grid item xs={12}>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              sx={{ mt: 2 }}
-            >
-              Pridať prácu
-            </Button>
+            <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
+              Procedúry
+            </Typography>
+
+            <Grid container spacing={2} alignItems="center">
+              {/* Search bar much longer */}
+              <Grid item xs={15}>
+                <Autocomplete
+                  options={procedureOptions}
+                  value={selectedProcedure}
+                  onChange={(e, value) => setSelectedProcedure(value)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Vyhľadať procedúru (kód/názov)"
+                      variant="outlined"
+                      sx={{ minWidth: 350, mt: 1,'& .MuiInputBase-root': { height: 40 } }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              <Grid item xs={1}>
+                <TextField
+                  fullWidth
+                  label="Počet"
+                  type="number"
+                  value={quantity}
+                  onChange={e => setQuantity(parseInt(e.target.value) || 1)}
+                  variant="outlined"
+                  inputProps={{ min: 1 }}
+                  sx={{width: 100,  '& .MuiInputBase-root': { height: 40 } }}
+                />
+              </Grid>
+
+              <Grid item xs={1}>
+                <Button variant="contained" size="large" onClick={handleAddProcedure} fullWidth>
+                  Pridať
+                </Button>
+              </Grid>
+            </Grid>
+
+            {/* Scrollable procedure list only */}
+              <Box
+                sx={{
+                  mt: 2,
+                  maxHeight: 210,      // max height of table container
+                  overflowY: 'auto',   // enable vertical scrolling
+                  border: '1px solid #ddd',
+                  borderRadius: 1,
+                  display: 'block',    // ensure proper scroll
+                }}
+              >
+                <Table stickyHeader size="small"> {/* stickyHeader helps table header stay visible */}
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Kód</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Názov</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Počet</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold' }}>Akcia</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {formData.procedure_codes.map((code) => {
+                      const proc = procedureOptions.find(p => p.value === code);
+                      return (
+                        <TableRow key={code} sx={{ height: 40 }}>
+                          <TableCell>{code}</TableCell>
+                          <TableCell>{proc?.description || ''}</TableCell>
+                          <TableCell>{formData.procedure_quantities[code] || 1}</TableCell>
+                          <TableCell>
+                            <IconButton onClick={() => handleRemoveProcedure(code)} size="small">
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Box>
+
           </Grid>
         </Grid>
-      </form>
-    </Paper>
+      </DialogContent>
+
+      <DialogActions sx={{ justifyContent: 'flex-end', p: 3 }}>
+        <Button onClick={onClose} size="large" sx={{ mr: 1 }}>Zrušiť</Button>
+        <Button onClick={handleSubmit} variant="contained" size="large">Uložiť</Button>
+      </DialogActions>
+
+    </Dialog>
   );
 };
 

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, Float, JSON, ForeignKey, ARRAY, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql.sqltypes import DateTime
+from sqlalchemy.orm import relationship
 from datetime import datetime
 
 Base = declarative_base()
@@ -34,6 +35,7 @@ class Patient(Base):
     phone = Column(String)
     email = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    jobs = relationship("Job", back_populates="patient")
 
 class Clinic(Base):
     __tablename__ = "clinics"
@@ -45,6 +47,7 @@ class Clinic(Base):
     bank_details = Column(String)
     contact_info = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
+    jobs = relationship("Job", back_populates="clinic")
 
 class Doctor(Base):
     __tablename__ = "doctors"
@@ -56,6 +59,7 @@ class Doctor(Base):
     contact_info = Column(JSON)
     clinic_id = Column(Integer, ForeignKey("clinics.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+    jobs = relationship("Job", back_populates="doctor")
 
 class Technician(Base):
     __tablename__ = "technicians"
@@ -66,6 +70,7 @@ class Technician(Base):
     title_after = Column(String)
     contact_info = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
+    jobs = relationship("Job", back_populates="technician")
 
 class PriceList(Base):
     __tablename__ = "price_list"
@@ -79,13 +84,19 @@ class PriceList(Base):
 
 class Job(Base):
     __tablename__ = "jobs"
-    id = Column(Integer, primary_key=True)
-    patient_id = Column(Integer, ForeignKey("patients.id"))
-    clinic_id = Column(Integer, ForeignKey("clinics.id"))
-    doctor_id = Column(Integer, ForeignKey("doctors.id"))
-    technician_id = Column(Integer, ForeignKey("technicians.id"))
-    price = Column(Float)
-    due_date = Column(Date)
-    status = Column(String)
-    procedure_codes = Column(ARRAY(String))
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False)
+    technician_id = Column(Integer, ForeignKey("technicians.id"), nullable=False)
+    price = Column(Float, nullable=True)
+    due_date = Column(Date, nullable=True)
+    status = Column(String, nullable=True)
+    procedure_codes = Column(JSON, nullable=True)  # Store as JSON list
+    procedure_quantities = Column(JSON, nullable=True)  # Store as JSON dict
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    patient = relationship("Patient", back_populates="jobs")
+    clinic = relationship("Clinic", back_populates="jobs")
+    doctor = relationship("Doctor", back_populates="jobs")
+    technician = relationship("Technician", back_populates="jobs")

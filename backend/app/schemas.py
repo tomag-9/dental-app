@@ -95,6 +95,7 @@ class JobCreate(BaseModel):
     due_date: Optional[date] = None
     status: Optional[str] = None
     procedure_codes: Optional[List[str]] = None
+    procedure_quantities: Optional[Dict[str, int]] = None  # New field for quantities
 
 class JobResponse(JobCreate):
     id: int

@@ -14,7 +14,7 @@ const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, err
         username: loginData.username,
         password: loginData.password,
       }).toString();
-      console.log('Login payload:', payload);
+      //console.log('Login payload:', payload);
       const response = await axios.post(
         'http://localhost:8000/users/token',
         payload,

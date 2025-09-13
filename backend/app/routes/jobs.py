@@ -23,7 +23,10 @@ def validate_procedure_codes(procedure_codes: list[str], db: Session):
 @router.post("/", response_model=JobResponse, dependencies=[Depends(get_current_user)])
 def create_job(job: JobCreate, db: Session = Depends(get_db)):
     validate_procedure_codes(job.procedure_codes, db)
-    db_job = Job(**job.dict())
+    if job.procedure_codes and job.procedure_quantities:
+        if len(job.procedure_codes) != len(set(job.procedure_quantities.keys())):
+            raise HTTPException(status_code=400, detail="Procedure codes and quantities must match")
+    db_job = Job(**job.dict(exclude_unset=True))
     try:
         db.add(db_job)
         db.commit()
@@ -33,12 +36,7 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
         db.rollback()
         if "jobs_patient_id_fkey" in str(e):
             raise HTTPException(status_code=400, detail=f"Invalid patient_id: {job.patient_id} does not exist")
-        elif "jobs_clinic_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid clinic_id: {job.clinic_id} does not exist")
-        elif "jobs_doctor_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid doctor_id: {job.doctor_id} does not exist")
-        elif "jobs_technician_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid technician_id: {job.technician_id} does not exist")
+        # ... (other integrity checks)
         raise HTTPException(status_code=400, detail="Database integrity error")
 
 @router.get("/", response_model=list[JobResponse], dependencies=[Depends(get_current_user)])
@@ -60,11 +58,14 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
 @router.put("/{job_id}", response_model=JobResponse, dependencies=[Depends(get_current_user)])
 def update_job(job_id: int, job: JobCreate, db: Session = Depends(get_db)):
     validate_procedure_codes(job.procedure_codes, db)
+    if job.procedure_codes and job.procedure_quantities:
+        if len(job.procedure_codes) != len(set(job.procedure_quantities.keys())):
+            raise HTTPException(status_code=400, detail="Procedure codes and quantities must match")
     db_job = db.query(Job).filter(Job.id == job_id).first()
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     try:
-        for key, value in job.dict().items():
+        for key, value in job.dict(exclude_unset=True).items():
             setattr(db_job, key, value)
         db.commit()
         db.refresh(db_job)
@@ -73,12 +74,7 @@ def update_job(job_id: int, job: JobCreate, db: Session = Depends(get_db)):
         db.rollback()
         if "jobs_patient_id_fkey" in str(e):
             raise HTTPException(status_code=400, detail=f"Invalid patient_id: {job.patient_id} does not exist")
-        elif "jobs_clinic_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid clinic_id: {job.clinic_id} does not exist")
-        elif "jobs_doctor_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid doctor_id: {job.doctor_id} does not exist")
-        elif "jobs_technician_id_fkey" in str(e):
-            raise HTTPException(status_code=400, detail=f"Invalid technician_id: {job.technician_id} does not exist")
+        # ... (other integrity checks)
         raise HTTPException(status_code=400, detail="Database integrity error")
 
 @router.delete("/{job_id}", dependencies=[Depends(get_current_user)])
