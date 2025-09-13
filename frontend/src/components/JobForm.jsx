@@ -1,5 +1,5 @@
 // JobForm.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Grid,
@@ -29,12 +29,14 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
   const [quantity, setQuantity] = useState(1);
 
 
-const totalCost = formData.procedure_codes.reduce((sum, code) => {
-  const proc = procedureOptions.find(p => p.value === code);
-  const quantity = formData.procedure_quantities[code] || 1;
-  const price = proc?.price || 0; // make sure your procedureOptions includes `price`
-  return sum + quantity * price;
-}, 0);
+const totalCost = useMemo(() => {
+    return formData.procedure_codes.reduce((sum, code) => {
+      const proc = procedureOptions.find(p => p.value === code);
+      const qty = formData.procedure_quantities[code] || 1;
+      const price = proc?.price || 0; // make sure `price` exists in procedureOptions
+      return sum + qty * price;
+    }, 0);
+  }, [formData.procedure_codes, formData.procedure_quantities, procedureOptions]);
 
   useEffect(() => {
     if (!open) return;
@@ -58,7 +60,8 @@ const totalCost = formData.procedure_codes.reduce((sum, code) => {
           proceduresRes.data.map(p => ({
             value: p.code,
             label: `${p.code} - ${p.description}`,
-            description: p.description
+            description: p.description,
+            price: p.price  // ensure price is included
           }))
         );
       } catch (err) {
