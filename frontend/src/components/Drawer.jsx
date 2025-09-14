@@ -66,6 +66,7 @@ const menuItems = [
     path: '/settings',
     subItems: [
       { text: 'Používatelia', path: '/settings/users' },
+      { text: 'Môj profil', path: '/settings/edit-profile' },
       { text: 'Oprávnenia', path: '/settings/permissions' },
     ],
   },

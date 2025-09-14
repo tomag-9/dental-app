@@ -4,13 +4,18 @@ from typing import Optional, List, Dict
 
 class UserCreate(BaseModel):
     username: str
-    password: str
+    password: Optional[str] = None
+    role: Optional[str] = "user"  # Allow role to be set
 
 class UserResponse(BaseModel):
     id: int
     username: str
+    role: str  # Add this line
     is_active: bool
     created_at: datetime
+
+    class Config:
+        orm_mode = True
 
 class Token(BaseModel):
     access_token: str

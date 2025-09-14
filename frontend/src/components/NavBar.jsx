@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle'; // Profile icon
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 
 const NavBar = ({ handleLogout, sidebarOpen, setSidebarOpen }) => {
@@ -39,9 +40,14 @@ const NavBar = ({ handleLogout, sidebarOpen, setSidebarOpen }) => {
               <HealthAndSafetyIcon />
             </IconButton>
           </Box>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton component={Link} to="/settings/edit-profile" color="inherit">
+              <AccountCircleIcon />
+            </IconButton>
+            <IconButton color="inherit" onClick={handleLogout}>
+              <LogoutIcon />
+            </IconButton>
+          </Box>
         </Box>
       </Toolbar>
     </AppBar>

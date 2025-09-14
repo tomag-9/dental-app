@@ -11,8 +11,9 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    role = Column(String, nullable=False, default="user")  # Updated
+    is_active = Column(Boolean, nullable=False, default=True)  # Updated
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)  # Updated
 
 class DentalPractice(Base):
     __tablename__ = "dental_practice"

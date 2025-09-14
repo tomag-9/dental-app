@@ -19,6 +19,8 @@ import Clinics from './components/Clinics';
 import Technicians from './components/Technicians';
 import PriceList from './components/PriceList';
 import Invoices from './components/Invoices';
+import Users from './components/Users';
+import EditProfile from './components/EditProfile';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -218,6 +220,29 @@ function App() {
                   </Routes>
                 </Box>
               </ProtectedRoute>}
+              />
+              <Route
+                path="/settings/*"
+                element={
+                  <ProtectedRoute token={token} setError={setError}>
+                    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                      <Routes>
+                        <Route
+                          path="users"
+                          element={<Users token={token} setError={setError} />}
+                        />
+                        <Route
+                          path="edit-profile"
+                          element={<EditProfile token={token} setError={setError} />}
+                        />
+                        <Route
+                          path="*"
+                          element={<Navigate to="/settings/users" />}
+                        />
+                      </Routes>
+                    </Box>
+                  </ProtectedRoute>
+                }
               />
               <Route
                 path="/"
