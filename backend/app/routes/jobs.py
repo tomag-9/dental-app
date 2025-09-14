@@ -36,7 +36,6 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
         db.rollback()
         if "jobs_patient_id_fkey" in str(e):
             raise HTTPException(status_code=400, detail=f"Invalid patient_id: {job.patient_id} does not exist")
-        # ... (other integrity checks)
         raise HTTPException(status_code=400, detail="Database integrity error")
 
 @router.get("/", response_model=list[JobResponse], dependencies=[Depends(get_current_user)])

@@ -95,6 +95,7 @@ class Job(Base):
     status = Column(String, nullable=True)
     procedure_codes = Column(JSON, nullable=True)  # Store as JSON list
     procedure_quantities = Column(JSON, nullable=True)  # Store as JSON dict
+    description = Column(String, nullable=True)  # New field for description
     created_at = Column(DateTime, default=datetime.utcnow)
 
     patient = relationship("Patient", back_populates="jobs")

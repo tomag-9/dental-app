@@ -1,4 +1,3 @@
-// JobForm.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import {
@@ -17,7 +16,8 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     procedure_codes: [],
     due_date: '',
     status: '',
-    procedure_quantities: {}
+    procedure_quantities: {},
+    description: ''
   });
 
   const [patients, setPatients] = useState([]);
@@ -28,12 +28,11 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [quantity, setQuantity] = useState(1);
 
-
-const totalCost = useMemo(() => {
+  const totalCost = useMemo(() => {
     return formData.procedure_codes.reduce((sum, code) => {
       const proc = procedureOptions.find(p => p.value === code);
       const qty = formData.procedure_quantities[code] || 1;
-      const price = proc?.price || 0; // make sure `price` exists in procedureOptions
+      const price = proc?.price || 0;
       return sum + qty * price;
     }, 0);
   }, [formData.procedure_codes, formData.procedure_quantities, procedureOptions]);
@@ -61,7 +60,7 @@ const totalCost = useMemo(() => {
             value: p.code,
             label: `${p.code} - ${p.description}`,
             description: p.description,
-            price: p.price  // ensure price is included
+            price: p.price
           }))
         );
       } catch (err) {
@@ -75,7 +74,8 @@ const totalCost = useMemo(() => {
       setFormData({
         ...initialData,
         procedure_quantities: initialData.procedure_quantities || {},
-        procedure_codes: Object.keys(initialData.procedure_quantities || {})
+        procedure_codes: Object.keys(initialData.procedure_quantities || {}),
+        description: initialData.description || ''
       });
     } else {
       setFormData({
@@ -86,7 +86,8 @@ const totalCost = useMemo(() => {
         procedure_codes: [],
         due_date: '',
         status: '',
-        procedure_quantities: {}
+        procedure_quantities: {},
+        description: ''
       });
     }
   }, [open, token, setError, initialData]);
@@ -130,8 +131,9 @@ const totalCost = useMemo(() => {
         doctor_id: parseInt(formData.doctor_id) || null,
         technician_id: parseInt(formData.technician_id) || null,
         due_date: formData.due_date || null,
-        status: formData.status || 'pending',
-        procedure_quantities: formData.procedure_quantities
+        status: formData.status || 'in_progress',
+        procedure_quantities: formData.procedure_quantities,
+        description: formData.description
       };
 
       if (initialData) {
@@ -151,9 +153,7 @@ const totalCost = useMemo(() => {
       <DialogTitle sx={{ fontSize: '1.8rem' }}>
         {initialData ? 'Upraviť prácu' : 'Pridať prácu'}
       </DialogTitle>
-
-      {/* DialogContent without scroll */}
-      <DialogContent sx={{ height: '550px', overflow: 'hidden', paddingRight: 0, position: 'relative' }}>
+      <DialogContent sx={{ height: '600px', overflow: 'hidden', paddingRight: 0, position: 'relative' }}>
         <Box
           sx={{
             position: 'absolute',
@@ -170,8 +170,32 @@ const totalCost = useMemo(() => {
           <Typography variant="subtitle2">Celková cena</Typography>
           <Typography variant="h6">{totalCost.toFixed(2)} €</Typography>
         </Box>
+        <Box
+          sx={{
+              position: 'absolute',
+              top: 120,
+              right: 15,
+              border: '1px solid #ddd',
+              borderRadius: 1,
+              p: 2,
+              backgroundColor: '#f9f9f9',
+              textAlign: 'center',
+              zIndex: 10
+            }}
+          >
+            <TextField
+              fullWidth
+              label="Popis (technické poznámky)"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              variant="outlined"
+              multiline
+              rows={3}
+              sx={{ width: 300, mt: 2, '& .MuiInputBase-root': { height: 'auto' } }}
+            />
+          </Box>
         <Grid container spacing={3}>
-          {/* First row */}
           <Grid container item spacing={3}>
             <Grid item xs={4}>
               <TextField
@@ -193,7 +217,6 @@ const totalCost = useMemo(() => {
                 ))}
               </TextField>
             </Grid>
-
             <Grid item xs={4}>
               <TextField
                 select
@@ -212,7 +235,6 @@ const totalCost = useMemo(() => {
                 ))}
               </TextField>
             </Grid>
-
             <Grid item xs={4}>
               <TextField
                 select
@@ -234,8 +256,6 @@ const totalCost = useMemo(() => {
               </TextField>
             </Grid>
           </Grid>
-
-          {/* Second row */}
           <Grid container item spacing={3}>
             <Grid item xs={4}>
               <TextField
@@ -257,7 +277,6 @@ const totalCost = useMemo(() => {
                 ))}
               </TextField>
             </Grid>
-
             <Grid item xs={4}>
               <TextField
                 select
@@ -270,12 +289,12 @@ const totalCost = useMemo(() => {
                 sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
               >
                 <MenuItem value="">Vyberte stav</MenuItem>
-                <MenuItem value="pending">Čakajúce</MenuItem>
                 <MenuItem value="in_progress">V priebehu</MenuItem>
-                <MenuItem value="completed">Dokončené</MenuItem>
+                <MenuItem value="finished_unfactured">Dokončené - Nezafakturované</MenuItem>
+                <MenuItem value="finished_factured">Dokončené - Zafakturované</MenuItem>
+                <MenuItem value="closed">Zatvorené</MenuItem>
               </TextField>
             </Grid>
-
             <Grid item xs={4}>
               <TextField
                 fullWidth
@@ -290,16 +309,12 @@ const totalCost = useMemo(() => {
               />
             </Grid>
           </Grid>
-
-          {/* Third row: procedures */}
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
               Procedúry
             </Typography>
-
             <Grid container spacing={2} alignItems="center">
-              {/* Search bar much longer */}
-              <Grid item xs={15}>
+              <Grid item xs={5}>
                 <Autocomplete
                   options={procedureOptions}
                   value={selectedProcedure}
@@ -309,13 +324,12 @@ const totalCost = useMemo(() => {
                       {...params}
                       label="Vyhľadať procedúru (kód/názov)"
                       variant="outlined"
-                      sx={{ minWidth: 350, mt: 1,'& .MuiInputBase-root': { height: 40 } }}
+                      sx={{ minWidth: 350, mt: 1, '& .MuiInputBase-root': { height: 40 } }}
                     />
                   )}
                 />
               </Grid>
-
-              <Grid item xs={1}>
+              <Grid item xs={2}>
                 <TextField
                   fullWidth
                   label="Počet"
@@ -324,67 +338,60 @@ const totalCost = useMemo(() => {
                   onChange={e => setQuantity(parseInt(e.target.value) || 1)}
                   variant="outlined"
                   inputProps={{ min: 1 }}
-                  sx={{width: 100,  '& .MuiInputBase-root': { height: 40 } }}
+                  sx={{ width: 100, '& .MuiInputBase-root': { height: 40 } }}
                 />
               </Grid>
-
-              <Grid item xs={1}>
+              <Grid item xs={2}>
                 <Button variant="contained" size="large" onClick={handleAddProcedure} fullWidth>
                   Pridať
                 </Button>
               </Grid>
             </Grid>
-
-            {/* Scrollable procedure list only */}
-              <Box
-                sx={{
-                  mt: 2,
-                  maxHeight: 210,      // max height of table container
-                  overflowY: 'auto',   // enable vertical scrolling
-                  border: '1px solid #ddd',
-                  borderRadius: 1,
-                  display: 'block',    // ensure proper scroll
-                }}
-              >
-                <Table stickyHeader size="small"> {/* stickyHeader helps table header stay visible */}
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Kód</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Názov</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Počet</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Akcia</TableCell>
-                    </TableRow>
-                  </TableHead>
-
-                  <TableBody>
-                    {formData.procedure_codes.map((code) => {
-                      const proc = procedureOptions.find(p => p.value === code);
-                      return (
-                        <TableRow key={code} sx={{ height: 40 }}>
-                          <TableCell>{code}</TableCell>
-                          <TableCell>{proc?.description || ''}</TableCell>
-                          <TableCell>{formData.procedure_quantities[code] || 1}</TableCell>
-                          <TableCell>
-                            <IconButton onClick={() => handleRemoveProcedure(code)} size="small">
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </Box>
-
+            <Box
+              sx={{
+                mt: 2,
+                maxHeight: 210,
+                overflowY: 'auto',
+                border: '1px solid #ddd',
+                borderRadius: 1,
+                display: 'block',
+              }}
+            >
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Kód</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Názov</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Počet</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Akcia</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {formData.procedure_codes.map((code) => {
+                    const proc = procedureOptions.find(p => p.value === code);
+                    return (
+                      <TableRow key={code} sx={{ height: 40 }}>
+                        <TableCell>{code}</TableCell>
+                        <TableCell>{proc?.description || ''}</TableCell>
+                        <TableCell>{formData.procedure_quantities[code] || 1}</TableCell>
+                        <TableCell>
+                          <IconButton onClick={() => handleRemoveProcedure(code)} size="small">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Box>
           </Grid>
         </Grid>
       </DialogContent>
-
       <DialogActions sx={{ justifyContent: 'flex-end', p: 3 }}>
         <Button onClick={onClose} size="large" sx={{ mr: 1 }}>Zrušiť</Button>
         <Button onClick={handleSubmit} variant="contained" size="large">Uložiť</Button>
       </DialogActions>
-
     </Dialog>
   );
 };

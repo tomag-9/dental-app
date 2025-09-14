@@ -101,7 +101,11 @@ class JobCreate(BaseModel):
     status: Optional[str] = None
     procedure_codes: Optional[List[str]] = None
     procedure_quantities: Optional[Dict[str, int]] = None  # New field for quantities
+    description: Optional[str] = None  # New field for description
 
 class JobResponse(JobCreate):
     id: int
     created_at: datetime
+
+    class Config:
+        orm_mode = True

@@ -1,20 +1,23 @@
 import React from 'react';
 import axios from 'axios';
 import { Box, TextField, Button, Typography, Paper } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, error }) => {
-  const handleLoginChange = (e) => {
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(''); // Clear previous errors
     try {
       const payload = new URLSearchParams({
         username: loginData.username,
         password: loginData.password,
       }).toString();
-      //console.log('Login payload:', payload);
       const response = await axios.post(
         'http://localhost:8000/users/token',
         payload,
@@ -26,9 +29,10 @@ const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, err
       localStorage.setItem('token', newToken);
       setIsLoggedIn(true);
       setLoginData({ username: '', password: '' });
-      setError('');
+      navigate('/'); // Redirect to home page after login
     } catch (err) {
-      setError('Prihlásenie zlyhalo: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      const errorMessage = 'Prihlásenie zlyhalo: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie');
+      setError(errorMessage);
       console.error('Login error:', err);
     }
   };
@@ -50,7 +54,7 @@ const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, err
             label="Používateľské meno"
             name="username"
             value={loginData.username}
-            onChange={handleLoginChange}
+            onChange={handleChange}
             variant="outlined"
             margin="normal"
             required
@@ -61,7 +65,7 @@ const Login = ({ loginData, setLoginData, setToken, setIsLoggedIn, setError, err
             name="password"
             type="password"
             value={loginData.password}
-            onChange={handleLoginChange}
+            onChange={handleChange}
             variant="outlined"
             margin="normal"
             required
