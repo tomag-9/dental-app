@@ -3,23 +3,30 @@ import axios from 'axios';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Grid,
   TextField, MenuItem, Button, Autocomplete, Table, TableHead, TableBody,
-  TableRow, TableCell, IconButton, Box
+  TableRow, TableCell, IconButton, Box, Stepper, Step, StepLabel
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { DatePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format, parseISO } from 'date-fns';
 
 const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null }) => {
+  const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState({
     patient_id: '',
     clinic_id: '',
     doctor_id: '',
     technician_id: '',
     procedure_codes: [],
-    due_date: '',
     status: '',
     procedure_quantities: {},
-    description: ''
+    description: '',
+    due_date: null,
+    start_date: null,
+    end_date: null,
+    try_in: null
   });
-
   const [patients, setPatients] = useState([]);
   const [clinics, setClinics] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -27,6 +34,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
   const [procedureOptions, setProcedureOptions] = useState([]);
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [jobs, setJobs] = useState([]); // For calendar data
 
   const totalCost = useMemo(() => {
     return formData.procedure_codes.reduce((sum, code) => {
@@ -43,14 +51,14 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes] = await Promise.all([
+        const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes, jobsRes] = await Promise.all([
           axios.get('http://localhost:8000/patients/', { headers }),
           axios.get('http://localhost:8000/clinics/', { headers }),
           axios.get('http://localhost:8000/doctors/', { headers }),
           axios.get('http://localhost:8000/technicians/', { headers }),
           axios.get('http://localhost:8000/price_list/', { headers }),
+          axios.get('http://localhost:8000/jobs/', { headers }),
         ]);
-
         setPatients(patientsRes.data);
         setClinics(clinicsRes.data);
         setDoctors(doctorsRes.data);
@@ -63,6 +71,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
             price: p.price
           }))
         );
+        setJobs(jobsRes.data);
       } catch (err) {
         setError('Nepodarilo sa načítať údaje: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
@@ -75,7 +84,11 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         ...initialData,
         procedure_quantities: initialData.procedure_quantities || {},
         procedure_codes: Object.keys(initialData.procedure_quantities || {}),
-        description: initialData.description || ''
+        description: initialData.description || '',
+        due_date: initialData.due_date ? parseISO(initialData.due_date) : null,
+        start_date: initialData.start_date ? parseISO(initialData.start_date) : null,
+        end_date: initialData.end_date ? parseISO(initialData.end_date) : null,
+        try_in: initialData.try_in ? parseISO(initialData.try_in) : null
       });
     } else {
       setFormData({
@@ -84,16 +97,23 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         doctor_id: '',
         technician_id: '',
         procedure_codes: [],
-        due_date: '',
         status: '',
         procedure_quantities: {},
-        description: ''
+        description: '',
+        due_date: null,
+        start_date: null,
+        end_date: null,
+        try_in: null
       });
     }
   }, [open, token, setError, initialData]);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleDateChange = (field) => (date) => {
+    setFormData(prev => ({ ...prev, [field]: date }));
   };
 
   const handleAddProcedure = () => {
@@ -130,185 +150,136 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         clinic_id: parseInt(formData.clinic_id) || null,
         doctor_id: parseInt(formData.doctor_id) || null,
         technician_id: parseInt(formData.technician_id) || null,
-        due_date: formData.due_date || null,
         status: formData.status || 'in_progress',
         procedure_quantities: formData.procedure_quantities,
-        description: formData.description
+        description: formData.description,
+        due_date: formData.due_date ? format(formData.due_date, 'yyyy-MM-dd') : null,
+        start_date: formData.start_date ? format(formData.start_date, 'yyyy-MM-dd') : null,
+        end_date: formData.end_date ? format(formData.end_date, 'yyyy-MM-dd') : null,
+        try_in: formData.try_in ? format(formData.try_in, 'yyyy-MM-dd') : null
       };
-
       if (initialData) {
         await axios.put(`http://localhost:8000/jobs/${initialData.id}`, jobData, { headers: { Authorization: `Bearer ${token}` } });
       } else {
         await axios.post('http://localhost:8000/jobs/', jobData, { headers: { Authorization: `Bearer ${token}` } });
       }
-
       onSuccess();
     } catch (err) {
       setError('Nepodarilo sa pridať/upraviť prácu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     }
   };
 
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ fontSize: '1.8rem' }}>
-        {initialData ? 'Upraviť prácu' : 'Pridať prácu'}
-      </DialogTitle>
-      <DialogContent sx={{ height: '600px', overflow: 'hidden', paddingRight: 0, position: 'relative' }}>
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 8,
-            right: 16,
-            border: '1px solid #ddd',
-            borderRadius: 1,
-            p: 2,
-            backgroundColor: '#f9f9f9',
-            textAlign: 'center',
-            zIndex: 10
-          }}
-        >
-          <Typography variant="subtitle2">Celková cena</Typography>
-          <Typography variant="h6">{totalCost.toFixed(2)} €</Typography>
-        </Box>
-        <Box
-          sx={{
-              position: 'absolute',
-              top: 120,
-              right: 15,
-              border: '1px solid #ddd',
-              borderRadius: 1,
-              p: 2,
-              backgroundColor: '#f9f9f9',
-              textAlign: 'center',
-              zIndex: 10
-            }}
-          >
-            <TextField
-              fullWidth
-              label="Popis (technické poznámky)"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              variant="outlined"
-              multiline
-              rows={3}
-              sx={{ width: 300, mt: 2, '& .MuiInputBase-root': { height: 'auto' } }}
-            />
-          </Box>
-        <Grid container spacing={3}>
-          <Grid container item spacing={3}>
-            <Grid item xs={4}>
-              <TextField
-                select
-                fullWidth
-                label="Pacient"
-                name="patient_id"
-                value={formData.patient_id}
-                onChange={handleChange}
-                variant="outlined"
-                required
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              >
-                <MenuItem value="">Vyberte pacienta</MenuItem>
-                {patients.map(patient => (
-                  <MenuItem key={patient.id} value={patient.id}>
-                    {patient.first_name} {patient.last_name} ({patient.birth_number})
-                  </MenuItem>
-                ))}
-              </TextField>
+  const steps = ['Základné údaje', 'Procedúry', 'Plánovanie'];
+
+  const getStepContent = (step) => {
+    switch (step) {
+      case 0:
+        return (
+          <Grid container spacing={3}>
+            <Grid container item spacing={3}>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Pacient"
+                  name="patient_id"
+                  value={formData.patient_id}
+                  onChange={handleChange}
+                  variant="outlined"
+                  required
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte pacienta</MenuItem>
+                  {patients.map(patient => (
+                    <MenuItem key={patient.id} value={patient.id}>
+                      {patient.first_name} {patient.last_name} ({patient.birth_number})
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Klinika"
+                  name="clinic_id"
+                  value={formData.clinic_id}
+                  onChange={handleChange}
+                  variant="outlined"
+                  required
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte kliniku</MenuItem>
+                  {clinics.map(clinic => (
+                    <MenuItem key={clinic.id} value={clinic.id}>{clinic.name}</MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Lekár"
+                  name="doctor_id"
+                  value={formData.doctor_id}
+                  onChange={handleChange}
+                  variant="outlined"
+                  required
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte lekára</MenuItem>
+                  {doctors.map(doctor => (
+                    <MenuItem key={doctor.id} value={doctor.id}>
+                      {doctor.first_name} {doctor.last_name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
             </Grid>
-            <Grid item xs={4}>
-              <TextField
-                select
-                fullWidth
-                label="Klinika"
-                name="clinic_id"
-                value={formData.clinic_id}
-                onChange={handleChange}
-                variant="outlined"
-                required
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              >
-                <MenuItem value="">Vyberte kliniku</MenuItem>
-                {clinics.map(clinic => (
-                  <MenuItem key={clinic.id} value={clinic.id}>{clinic.name}</MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                select
-                fullWidth
-                label="Lekár"
-                name="doctor_id"
-                value={formData.doctor_id}
-                onChange={handleChange}
-                variant="outlined"
-                required
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              >
-                <MenuItem value="">Vyberte lekára</MenuItem>
-                {doctors.map(doctor => (
-                  <MenuItem key={doctor.id} value={doctor.id}>
-                    {doctor.first_name} {doctor.last_name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-          </Grid>
-          <Grid container item spacing={3}>
-            <Grid item xs={4}>
-              <TextField
-                select
-                fullWidth
-                label="Technik"
-                name="technician_id"
-                value={formData.technician_id}
-                onChange={handleChange}
-                variant="outlined"
-                required
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              >
-                <MenuItem value="">Vyberte technika</MenuItem>
-                {technicians.map(technician => (
-                  <MenuItem key={technician.id} value={technician.id}>
-                    {technician.first_name} {technician.last_name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                select
-                fullWidth
-                label="Stav"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                variant="outlined"
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              >
-                <MenuItem value="">Vyberte stav</MenuItem>
-                <MenuItem value="in_progress">V priebehu</MenuItem>
-                <MenuItem value="finished_unfactured">Dokončené - Nezafakturované</MenuItem>
-                <MenuItem value="finished_factured">Dokončené - Zafakturované</MenuItem>
-                <MenuItem value="closed">Zatvorené</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={4}>
-              <TextField
-                fullWidth
-                label="Dátum splatnosti"
-                name="due_date"
-                type="date"
-                value={formData.due_date}
-                onChange={handleChange}
-                variant="outlined"
-                InputLabelProps={{ shrink: true }}
-                sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
-              />
+            <Grid container item spacing={3}>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Technik"
+                  name="technician_id"
+                  value={formData.technician_id}
+                  onChange={handleChange}
+                  variant="outlined"
+                  required
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte technika</MenuItem>
+                  {technicians.map(technician => (
+                    <MenuItem key={technician.id} value={technician.id}>
+                      {technician.first_name} {technician.last_name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Stav"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  variant="outlined"
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte stav</MenuItem>
+                  <MenuItem value="in_progress">V priebehu</MenuItem>
+                  <MenuItem value="finished_unfactured">Dokončené - Nezafakturované</MenuItem>
+                  <MenuItem value="finished_factured">Dokončené - Zafakturované</MenuItem>
+                  <MenuItem value="closed">Zatvorené</MenuItem>
+                </TextField>
+              </Grid>
             </Grid>
           </Grid>
+        );
+      case 1:
+        return (
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
               Procedúry
@@ -385,12 +356,164 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
                 </TableBody>
               </Table>
             </Box>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 70,
+                right: 5,
+                border: '1px solid #ddd',
+                borderRadius: 1,
+                p: 2,
+                backgroundColor: '#f9f9f9',
+                textAlign: 'center',
+                zIndex: 10
+              }}
+            >
+              <Typography variant="subtitle2">Celková cena</Typography>
+              <Typography variant="h6">{totalCost.toFixed(2)} €</Typography>
+            </Box>
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 70,
+                right: 200,
+                border: '1px solid #ddd',
+                borderRadius: 1,
+                p: 2,
+                backgroundColor: '#f9f9f9',
+                textAlign: 'center',
+                zIndex: 10,
+                maxHeight: 100,
+                overflowY: 'auto',
+              }}
+            >
+              <TextField
+                fullWidth
+                label="Popis (technické poznámky)"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                variant="outlined"
+                multiline
+                rows={3}
+                sx={{ width: 300, mt: 2, '& .MuiInputBase-root': { height: 'auto' } }}
+              />
+            </Box>
           </Grid>
-        </Grid>
+        );
+      case 2:
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={6}>
+              <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
+                Plánovanie
+              </Typography>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <DatePicker
+                      label="Deadline"
+                      value={formData.due_date}
+                      onChange={handleDateChange('due_date')}
+                      renderInput={(params) => <TextField {...params} fullWidth sx={{ mt: 1, '& .MuiInputBase-root': { height: 45 } }} />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <DatePicker
+                      label="Začiatok"
+                      value={formData.start_date || new Date()}
+                      onChange={handleDateChange('start_date')}
+                      renderInput={(params) => <TextField {...params} fullWidth sx={{ mt: 1, '& .MuiInputBase-root': { height: 45 } }} />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <DatePicker
+                      label="Koniec"
+                      value={formData.end_date}
+                      onChange={handleDateChange('end_date')}
+                      renderInput={(params) => <TextField {...params} fullWidth sx={{ mt: 1, '& .MuiInputBase-root': { height: 45 } }} />}
+                    />
+                  </Grid>
+                  <Grid item xs={6}>
+                    <DatePicker
+                      label="Try-in"
+                      value={formData.try_in}
+                      onChange={handleDateChange('try_in')}
+                      renderInput={(params) => <TextField {...params} fullWidth sx={{ mt: 1, '& .MuiInputBase-root': { height: 45 } }} />}
+                    />
+                  </Grid>
+                </Grid>
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
+                Do tejto sekcie pribudne kalendárna časť...
+              </Typography>
+            </Grid>
+          </Grid>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case 'in_progress': return 'V priebehu';
+      case 'finished_unfactured': return 'Dokončené - Nezafakturované';
+      case 'finished_factured': return 'Dokončené - Zafakturované';
+      case 'closed': return 'Zatvorené';
+      default: return status;
+    }
+  };
+
+  const handleNext = () => {
+    if (activeStep === 1 && formData.procedure_codes.length === 0) {
+      setError('Prosím pridajte aspoň jednu procedúru.');
+      return;
+    }
+    setActiveStep((prev) => prev + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep((prev) => prev - 1);
+  };
+
+  const handleReset = () => {
+    setActiveStep(0);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleReset} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ fontSize: '1.8rem' }}>
+        {initialData ? 'Upraviť prácu' : 'Pridať prácu'}
+      </DialogTitle>
+      <DialogContent sx={{ height: '600px', overflow: 'hidden', paddingRight: 0, position: 'relative' }}>
+        <Stepper activeStep={activeStep} sx={{ pt: 2, pb: 2, mb: 2, '& .MuiStepLabel-root': { fontSize: '0.9rem' } }}>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+        {getStepContent(activeStep)}
       </DialogContent>
-      <DialogActions sx={{ justifyContent: 'flex-end', p: 3 }}>
-        <Button onClick={onClose} size="large" sx={{ mr: 1 }}>Zrušiť</Button>
-        <Button onClick={handleSubmit} variant="contained" size="large">Uložiť</Button>
+      <DialogActions sx={{ justifyContent: 'space-between', p: 3 }}>
+        <Box>
+          {activeStep === 0 ? (
+            <Button onClick={handleReset} size="large">Zrušiť</Button>
+          ) : (
+            <Button onClick={handleBack} size="large" sx={{ mr: 1 }}>Späť</Button>
+          )}
+        </Box>
+        <Box>
+          {activeStep === steps.length - 1 ? (
+            <Button onClick={handleSubmit} variant="contained" size="large">Uložiť</Button>
+          ) : (
+            <Button variant="contained" size="large" onClick={handleNext}>Ďalej</Button>
+          )}
+        </Box>
       </DialogActions>
     </Dialog>
   );

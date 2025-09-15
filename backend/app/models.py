@@ -97,6 +97,9 @@ class Job(Base):
     procedure_quantities = Column(JSON, nullable=True)  # Store as JSON dict
     description = Column(String, nullable=True)  # New field for description
     created_at = Column(DateTime, default=datetime.utcnow)
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    try_in = Column(Date, nullable=True)
 
     patient = relationship("Patient", back_populates="jobs")
     clinic = relationship("Clinic", back_populates="jobs")
