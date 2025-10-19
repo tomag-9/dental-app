@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users, invoices, companies
 from app.models import Base
 from app.database import engine
+import logging
 
 app = FastAPI(
     title="Zubná technika API",
@@ -30,8 +31,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables (wrapped to avoid import-time failure in test environments)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logging.warning(f"Could not create DB tables at import time: {e}")
 
 # Include routers
 app.include_router(patients.router)

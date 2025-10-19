@@ -1,22 +1,19 @@
+"""
+Database engine and session factory.
+This module used to try connecting to Postgres at import time which makes test imports fail when
+Postgres isn't available. Changed to lazily create the engine without calling `connect()` so
+imports don't block. Tests override the dependency and provide their own testing session.
+"""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import OperationalError
-import time
 
 DATABASE_URL = "postgresql://user:password@db:5432/dental_db"
 
-# Retry logic for database connection
-for _ in range(5):
-    try:
-        engine = create_engine(DATABASE_URL)
-        engine.connect()
-        break
-    except OperationalError:
-        time.sleep(2)
-else:
-    raise Exception("Nepodarilo sa pripojiť k databáze po 5 pokusoch")
+# Create engine without attempting to connect immediately (avoids import-time failures in tests)
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 def get_db():
     db = SessionLocal()
