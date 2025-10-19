@@ -1,69 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  Box,
-  Typography,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Fab,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Button,
-  MenuItem,
-  Select,
-} from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Box, Typography, IconButton, Fab, Pagination, TableRow, TableCell } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import Card from './ui/Card';
+import Table from './ui/Table';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Button from './ui/Button';
+import Modal from './ui/Modal';
+import ConfirmDialog from './ui/ConfirmDialog';
+import Spinner from './ui/Spinner';
+import EmptyState from './ui/EmptyState';
+import useNotifier from '../hooks/useNotifier.jsx';
+import { api, withError } from '../lib/api';
 
 const Doctors = ({ token, setError }) => {
   const [doctors, setDoctors] = useState([]);
-  const [filteredDoctors, setFilteredDoctors] = useState([]);
+  const [clinics, setClinics] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [editDoctor, setEditDoctor] = useState(null);
-  const [clinics, setClinics] = useState([]);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     title_before: '',
     title_after: '',
     email: '',
-    phone: ''
+    phone: '',
+    clinic_id: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [confirm, setConfirm] = useState({ open: false, id: null });
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const { notify, Toast } = useNotifier();
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [doctorsResponse, clinicsResponse] = await Promise.all([
-          axios.get('http://localhost:8000/doctors/', { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get('http://localhost:8000/clinics/', { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setDoctors(doctorsResponse.data);
-        setFilteredDoctors(doctorsResponse.data);
-        setClinics(clinicsResponse.data);
-      } catch (err) {
-        setError('Nepodarilo sa načítať dáta: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-      }
+      setLoading(true);
+      const [doctorsRes, clinicsRes] = await Promise.all([
+        withError(api(token).get('/doctors/'), (m) => setError('Nepodarilo sa načítať lekárov: ' + m)),
+        withError(api(token).get('/clinics/'), (m) => setError('Nepodarilo sa načítať kliniky: ' + m)),
+      ]);
+      if (doctorsRes) setDoctors(doctorsRes.data);
+      if (clinicsRes) setClinics(clinicsRes.data);
+      setLoading(false);
     };
     fetchData();
   }, [token, setError]);
 
-  useEffect(() => {
-    const filtered = doctors.filter(doctor =>
-      `${doctor.first_name} ${doctor.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredDoctors(filtered);
-  }, [searchTerm, doctors]);
+  const filteredDoctors = useMemo(
+    () =>
+      doctors
+        .filter((d) => {
+          const fullName = `${d.first_name} ${d.last_name}`.toLowerCase();
+          return fullName.includes(searchTerm.toLowerCase());
+        })
+        .sort((a, b) => a.last_name.localeCompare(b.last_name)),
+    [doctors, searchTerm]
+  );
+
+  const pagedDoctors = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredDoctors.slice(start, start + pageSize);
+  }, [filteredDoctors, page]);
 
   const handleOpen = (doctor = null) => {
     setEditDoctor(doctor);
@@ -73,14 +74,16 @@ const Doctors = ({ token, setError }) => {
       title_before: doctor.title_before || '',
       title_after: doctor.title_after || '',
       email: doctor.contact_info?.email || '',
-      phone: doctor.contact_info?.phone || ''
+      phone: doctor.contact_info?.phone || '',
+      clinic_id: doctor.clinic_id || '',
     } : {
       first_name: '',
       last_name: '',
       title_before: '',
       title_after: '',
       email: '',
-      phone: ''
+      phone: '',
+      clinic_id: '',
     });
     setOpen(true);
   };
@@ -94,190 +97,149 @@ const Doctors = ({ token, setError }) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSave = async () => {
-    if (!formData.first_name || !formData.last_name) {
-      setError('Meno a priezvisko sú povinné');
-      return;
-    }
-    const clinic = clinics.find(c => c.name === formData.clinic_name);
-    const dataToSend = {
-      ...formData,
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            const handleSave = async () => {
+    if (!formData.first_name || !formData.last_name) return setError('Meno a priezvisko sú povinné');
+    const payload = {
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      title_before: formData.title_before || null,
+      title_after: formData.title_after || null,
       contact_info: formData.email || formData.phone ? { email: formData.email, phone: formData.phone } : null,
-      clinic_id: clinic ? clinic.id : null
+      clinic_id: formData.clinic_id || null,
     };
-    try {
-      if (editDoctor) {
-        await axios.put(`http://localhost:8000/doctors/${editDoctor.id}`, dataToSend, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        await axios.post('http://localhost:8000/doctors/', dataToSend, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-      const response = await axios.get('http://localhost:8000/doctors/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDoctors(response.data);
-      setFilteredDoctors(response.data);
-      handleClose();
-    } catch (err) {
-      setError('Nepodarilo sa uložiť lekára: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+    if (editDoctor) {
+      const [, err] = await withError(api(token).put(`/doctors/${editDoctor.id}`, payload));
+      if (err) return setError('Nepodarilo sa uložiť lekára: ' + err);
+      notify('Lekár upravený', 'success');
+    } else {
+      const [, err] = await withError(api(token).post('/doctors/', payload));
+      if (err) return setError('Nepodarilo sa uložiť lekára: ' + err);
+      notify('Lekár pridaný', 'success');
     }
+    const [ref] = await withError(api(token).get('/doctors/'));
+    if (ref) setDoctors(ref.data);
+    handleClose();
   };
 
   const handleDelete = async (id) => {
-    try {
-      await axios.delete(`http://localhost:8000/doctors/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const response = await axios.get('http://localhost:8000/doctors/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDoctors(response.data);
-      setFilteredDoctors(response.data);
-    } catch (err) {
-      setError('Nepodarilo sa vymazať lekára: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
+    const [, err] = await withError(api(token).delete(`/doctors/${id}`));
+    if (err) return setError('Nepodarilo sa vymazať lekára: ' + err);
+    notify('Lekár vymazaný', 'success');
+    const [ref] = await withError(api(token).get('/doctors/'));
+    if (ref) setDoctors(ref.data);
+  };
+
+  const getClinicName = (clinicId) => {
+    const clinic = clinics.find((c) => c.id === clinicId);
+    return clinic?.name || '-';
   };
 
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Lekári
-      </Typography>
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => handleOpen()}
-      >
-        <AddIcon />
-      </Fab>
-      <TextField
-        fullWidth
-        label="Hľadať lekárov"
-        variant="outlined"
-        value={searchTerm}
-        onChange={e => setSearchTerm(e.target.value)}
-        sx={{ mb: 2 }}
-      />
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Meno</TableCell>
-              <TableCell>Priezvisko</TableCell>
-              <TableCell>Titul pred</TableCell>
-              <TableCell>Titul za</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Telefón</TableCell>
-              <TableCell>Klinika</TableCell>
-              <TableCell>Akcie</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDoctors.map(doctor => (
-              <TableRow key={doctor.id}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+          Lekári
+        </Typography>
+        <Fab color="primary" aria-label="add" onClick={() => handleOpen()} size="medium">
+          <AddIcon />
+        </Fab>
+      </Box>
+
+      <Card sx={{ mb: 2 }}>
+        <Input label="Hľadať lekárov" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      </Card>
+
+      {loading ? (
+        <Card>
+          <Spinner />
+        </Card>
+      ) : filteredDoctors.length === 0 ? (
+        <Card>
+          <EmptyState title="Žiadni lekári" description="Pridajte svojho prvého lekára." />
+        </Card>
+      ) : (
+        <Card>
+          <Table
+            columns={[
+              { label: 'Meno' },
+              { label: 'Priezvisko' },
+              { label: 'Titul pred' },
+              { label: 'Titul za' },
+              { label: 'Email' },
+              { label: 'Telefón' },
+              { label: 'Klinika' },
+              { label: 'Akcie', align: 'right' },
+            ]}
+            rows={pagedDoctors}
+            renderRow={(doctor) => (
+              <TableRow key={doctor.id} hover>
                 <TableCell>{doctor.first_name}</TableCell>
                 <TableCell>{doctor.last_name}</TableCell>
                 <TableCell>{doctor.title_before || '-'}</TableCell>
                 <TableCell>{doctor.title_after || '-'}</TableCell>
                 <TableCell>{doctor.contact_info?.email || '-'}</TableCell>
                 <TableCell>{doctor.contact_info?.phone || '-'}</TableCell>
-                <TableCell>{doctor.clinic_id ? clinics.find(c => c.id === doctor.clinic_id)?.name || '-' : '-'}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpen(doctor)}>
+                <TableCell>{getClinicName(doctor.clinic_id)}</TableCell>
+                <TableCell align="right">
+                  <IconButton onClick={() => handleOpen(doctor)} size="small">
                     <EditIcon />
                   </IconButton>
-                  <IconButton onClick={() => handleDelete(doctor.id)}>
+                  <IconButton onClick={() => setConfirm({ open: true, id: doctor.id })} size="small" color="error">
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>{editDoctor ? 'Upraviť lekára' : 'Pridať lekára'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Meno"
-            fullWidth
-            value={formData.first_name}
-            onChange={e => handleChange(e)}
-            name="first_name"
-            required
+            )}
           />
-          <TextField
-            margin="dense"
-            label="Priezvisko"
-            fullWidth
-            value={formData.last_name}
-            onChange={e => handleChange(e)}
-            name="last_name"
-            required
-          />
-          <TextField
-            margin="dense"
-            label="Titul pred"
-            fullWidth
-            value={formData.title_before}
-            onChange={e => handleChange(e)}
-            name="title_before"
-          />
-          <TextField
-            margin="dense"
-            label="Titul za"
-            fullWidth
-            value={formData.title_after}
-            onChange={e => handleChange(e)}
-            name="title_after"
-          />
-          <TextField
-            margin="dense"
-            label="Email"
-            fullWidth
-            value={formData.email}
-            onChange={e => handleChange(e)}
-            name="email"
-          />
-          <TextField
-            margin="dense"
-            label="Telefón"
-            fullWidth
-            value={formData.phone}
-            onChange={e => handleChange(e)}
-            name="phone"
-          />
-          <Select
-            margin="dense"
-            label="Klinika"
-            fullWidth
-            value={formData.clinic_name || ''}
-            onChange={e => handleChange(e)}
-            name="clinic_name"
-            displayEmpty
-            renderValue={selected => selected || 'Vyberte kliniku'}
-          >
-            <MenuItem value="">
-              <em>Vyberte kliniku</em>
-            </MenuItem>
-            {clinics.map(clinic => (
-              <MenuItem key={clinic.id} value={clinic.name}>
-                {clinic.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Zrušiť</Button>
-          <Button onClick={handleSave}>Uložiť</Button>
-        </DialogActions>
-      </Dialog>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Pagination count={Math.ceil(filteredDoctors.length / pageSize)} page={page} onChange={(_, v) => setPage(v)} />
+          </Box>
+        </Card>
+      )}
+
+      <Modal
+        open={open}
+        onClose={handleClose}
+        title={editDoctor ? 'Upraviť lekára' : 'Pridať lekára'}
+        actions={[
+          <Button key="cancel" onClick={handleClose}>
+            Zrušiť
+          </Button>,
+          <Button key="save" onClick={handleSave} variant="contained">
+            Uložiť
+          </Button>,
+        ]}
+      >
+        <Input autoFocus label="Meno *" value={formData.first_name} onChange={handleChange} name="first_name" required />
+        <Input label="Priezvisko *" value={formData.last_name} onChange={handleChange} name="last_name" required />
+        <Input label="Titul pred" value={formData.title_before} onChange={handleChange} name="title_before" />
+        <Input label="Titul za" value={formData.title_after} onChange={handleChange} name="title_after" />
+        <Input label="Email" value={formData.email} onChange={handleChange} name="email" />
+        <Input label="Telefón" value={formData.phone} onChange={handleChange} name="phone" />
+        <Select
+          label="Klinika"
+          name="clinic_id"
+          value={formData.clinic_id}
+          onChange={handleChange}
+          items={[
+            { value: '', label: 'Žiadna klinika' },
+            ...clinics.map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
+      </Modal>
+
+      <ConfirmDialog
+        open={confirm.open}
+        onCancel={() => setConfirm({ open: false, id: null })}
+        onConfirm={() => {
+          handleDelete(confirm.id);
+          setConfirm({ open: false, id: null });
+        }}
+        description="Naozaj chcete vymazať tohto lekára? Túto akciu nie je možné vrátiť."
+        confirmText="Vymazať"
+      />
+
+      <Toast />
     </Box>
   );
 };

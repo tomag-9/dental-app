@@ -34,7 +34,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
   const [procedureOptions, setProcedureOptions] = useState([]);
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [jobs, setJobs] = useState([]); // For calendar data
+  // const [jobs, setJobs] = useState([]); // For calendar data - unused
 
   const totalCost = useMemo(() => {
     return formData.procedure_codes.reduce((sum, code) => {
@@ -51,13 +51,12 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes, jobsRes] = await Promise.all([
+        const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes] = await Promise.all([
           axios.get('http://localhost:8000/patients/', { headers }),
           axios.get('http://localhost:8000/clinics/', { headers }),
           axios.get('http://localhost:8000/doctors/', { headers }),
           axios.get('http://localhost:8000/technicians/', { headers }),
           axios.get('http://localhost:8000/price_list/', { headers }),
-          axios.get('http://localhost:8000/jobs/', { headers }),
         ]);
         setPatients(patientsRes.data);
         setClinics(clinicsRes.data);
@@ -71,7 +70,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
             price: p.price
           }))
         );
-        setJobs(jobsRes.data);
+        // setJobs(jobsRes.data); // Commented out - jobs state was unused
       } catch (err) {
         setError('Nepodarilo sa načítať údaje: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
@@ -457,15 +456,15 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     }
   };
 
-  const getStatusDisplay = (status) => {
-    switch (status) {
-      case 'in_progress': return 'V priebehu';
-      case 'finished_unfactured': return 'Dokončené - Nezafakturované';
-      case 'finished_factured': return 'Dokončené - Zafakturované';
-      case 'closed': return 'Zatvorené';
-      default: return status;
-    }
-  };
+  // const getStatusDisplay = (status) => {
+  //   switch (status) {
+  //     case 'in_progress': return 'V priebehu';
+  //     case 'finished_unfactured': return 'Dokončené - Nezafakturované';
+  //     case 'finished_factured': return 'Dokončené - Zafakturované';
+  //     case 'closed': return 'Zatvorené';
+  //     default: return status;
+  //   }
+  // };
 
   const handleNext = () => {
     if (activeStep === 1 && formData.procedure_codes.length === 0) {

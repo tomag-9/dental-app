@@ -140,32 +140,32 @@ const JobDetails = ({ token, setError }) => {
     );
   }
 
-  const formatProcedures = (codes, quantities) => {
-    if (!codes || codes.length === 0) return '-';
-    try {
-      const parsedQuantities = quantities
-        ? typeof quantities === 'string'
-          ? JSON.parse(quantities)
-          : quantities
-        : {};
-      console.log('Parsed Quantities:', parsedQuantities); // Debug log
-      return codes
-        .map(code => {
-          const description = procedureNames[code] || `No description for ${code}`; // Fallback with context
-          const quantity = parsedQuantities[code] || 1; // Get quantity for specific code
-          return `${code} - ${description} (x${quantity})`;
-        })
-        .join(', ');
-    } catch (e) {
-      console.error('Error parsing quantities:', e); // Debug log
-      return codes
-        .map(code => {
-          const description = procedureNames[code] || `No description for ${code}`;
-          return `${code} - ${description} (x1)`; // Default to 1 if parsing fails
-        })
-        .join(', ');
-    }
-  };
+  // const formatProcedures = (codes, quantities) => {
+  //   if (!codes || codes.length === 0) return '-';
+  //   try {
+  //     const parsedQuantities = quantities
+  //       ? typeof quantities === 'string'
+  //         ? JSON.parse(quantities)
+  //         : quantities
+  //       : {};
+  //     console.log('Parsed Quantities:', parsedQuantities); // Debug log
+  //     return codes
+  //       .map(code => {
+  //         const description = procedureNames[code] || `No description for ${code}`; // Fallback with context
+  //         const quantity = parsedQuantities[code] || 1; // Get quantity for specific code
+  //         return `${code} - ${description} (x${quantity})`;
+  //       })
+  //       .join(', ');
+  //   } catch (e) {
+  //     console.error('Error parsing quantities:', e); // Debug log
+  //     return codes
+  //       .map(code => {
+  //         const description = procedureNames[code] || `No description for ${code}`;
+  //         return `${code} - ${description} (x1)`; // Default to 1 if parsing fails
+  //       })
+  //       .join(', ');
+  //   }
+  // };
 
   const renderProcedures = (codes, quantities) => {
     if (!codes || codes.length === 0) return <InfoItem label="Žiadne úkony" value="-" />;

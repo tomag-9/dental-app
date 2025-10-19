@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Box, Typography, Table, TableBody, TableCell, TableHead, TableRow,
   Paper, Button, TextField, IconButton, Dialog, DialogActions,
-  DialogContent, DialogTitle
+  DialogContent, DialogTitle, Snackbar, Alert
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -12,6 +12,7 @@ import MenuItem from '@mui/material/MenuItem';
 
 const Users = ({ token, setError }) => {
   const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState('');
   const [openForm, setOpenForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({
@@ -50,44 +51,52 @@ const Users = ({ token, setError }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-        const data = { ...formData, password: formData.password || undefined }; // Only send password if provided
-        if (selectedUser) {
+      const data = { ...formData, password: formData.password || undefined }; // Only send password if provided
+      if (selectedUser) {
         await axios.put(`http://localhost:8000/users/${selectedUser.id}`, data, {
-            headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }
         });
-        } else {
+        setToast({ open: true, message: 'Používateľ upravený', severity: 'success' });
+      } else {
         await axios.post('http://localhost:8000/users/', data, {
-            headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` }
         });
-        }
-        fetchUsers();
-        handleCloseForm();
+        setToast({ open: true, message: 'Používateľ pridaný', severity: 'success' });
+      }
+      fetchUsers();
+      handleCloseForm();
     } catch (err) {
-        setError('Nepodarilo sa uložiť používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      setError('Nepodarilo sa uložiť používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     }
-    };
+  };
 
-    const handleDelete = async (id) => {
+  const handleDelete = async (id) => {
     try {
-        await axios.delete(`http://localhost:8000/users/${id}`, {
+      await axios.delete(`http://localhost:8000/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
-        });
-        fetchUsers();
+      });
+      setToast({ open: true, message: 'Používateľ vymazaný', severity: 'success' });
+      fetchUsers();
     } catch (err) {
-        setError('Nepodarilo sa vymazať používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      setError('Nepodarilo sa vymazať používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     }
-    };
+  };
 
   return (
     <Box sx={{ maxWidth: 960, mx: 'auto' }}>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4">Používatelia</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
-          Pridať používateľa
-        </Button>
+        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>Používatelia</Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField size="small" label="Hľadať" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenForm()}>
+            Pridať používateľa
+          </Button>
+        </Box>
       </Box>
       <Paper sx={{ mb: 2, overflowX: 'auto' }}>
         <Table>
@@ -99,7 +108,7 @@ const Users = ({ token, setError }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((user) => (
+            {users.filter(u => !search || u.username.toLowerCase().includes(search.toLowerCase()) || u.role.toLowerCase().includes(search.toLowerCase())).map((user) => (
               <TableRow key={user.id}>
                 <TableCell>{user.username}</TableCell>
                 <TableCell>{user.role}</TableCell>
@@ -153,6 +162,17 @@ const Users = ({ token, setError }) => {
           <Button onClick={handleSubmit} variant="contained">Uložiť</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={3000}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setToast((t) => ({ ...t, open: false }))} severity={toast.severity} sx={{ width: '100%' }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

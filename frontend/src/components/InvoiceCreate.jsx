@@ -67,7 +67,7 @@ const InvoiceCreate = ({ token, setError, onBack }) => {
 
     try {
       setGenerating(true);
-      const response = await axios.post('http://localhost:8000/invoices/', {
+      await axios.post('http://localhost:8000/invoices/', {
         clinic_id: selectedClinic,
         job_ids: selectedJobs,
       }, {
