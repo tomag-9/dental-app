@@ -69,6 +69,26 @@ class DoctorResponse(DoctorCreate):
     id: int
     created_at: datetime
 
+class CompanyCreate(BaseModel):
+    name: str
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = "Slovakia"
+    tax_id: Optional[str] = None  # IČO/DIC
+    vat_id: Optional[str] = None   # IČ DPH
+    bank_account: Optional[str] = None  # IBAN
+    bank_bic: Optional[str] = None     # BIC/SWIFT
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    logo_url: Optional[str] = None
+
+class CompanyResponse(CompanyCreate):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
 class TechnicianCreate(BaseModel):
     first_name: str
     last_name: str
@@ -109,6 +129,48 @@ class JobCreate(BaseModel):
 class JobResponse(JobCreate):
     id: int
     created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# Invoicing
+class InvoiceItemCreate(BaseModel):
+    job_id: int
+    description: str
+    quantity: int
+    unit_price: float
+
+
+class InvoiceItemResponse(InvoiceItemCreate):
+    id: int
+    line_total: float
+
+    class Config:
+        orm_mode = True
+
+
+class InvoiceCreate(BaseModel):
+    clinic_id: int
+    job_ids: List[int]
+
+
+class InvoiceUpdateStatus(BaseModel):
+    status: str  # draft, issued, paid, cancelled
+
+
+class InvoiceResponse(BaseModel):
+    id: int
+    number: str
+    clinic_id: int
+    clinic_name: Optional[str] = None
+    status: str
+    total_amount: float
+    created_at: datetime
+    issued_at: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+    items: List[InvoiceItemResponse]
+    patient_names: Optional[List[str]] = None
 
     class Config:
         orm_mode = True

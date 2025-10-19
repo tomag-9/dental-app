@@ -11,11 +11,14 @@ import {
   ListItem,
   ListItemText,
   Button,
+  ListItemButton,
 } from '@mui/material';
 import ToothMap from './ToothMap';
+import { useNavigate } from 'react-router-dom';
 
 const PatientDetailsDialog = ({ patient, onClose, token, setError }) => {
   const [jobs, setJobs] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (patient) {
@@ -32,6 +35,10 @@ const PatientDetailsDialog = ({ patient, onClose, token, setError }) => {
       fetchJobs();
     }
   }, [patient, token, setError]);
+
+  const handleJobClick = (jobId) => {
+    navigate(`/job-details/${jobId}`);
+  };
 
   return (
     <Dialog open={!!patient} onClose={onClose} maxWidth="md" fullWidth>
@@ -50,12 +57,12 @@ const PatientDetailsDialog = ({ patient, onClose, token, setError }) => {
             </Typography>
             <List>
               {jobs.map(job => (
-                <ListItem key={job.id}>
+                <ListItemButton key={job.id} onClick={() => handleJobClick(job.id)}>
                   <ListItemText
                     primary={`Dátum: ${new Date(job.due_date).toLocaleDateString('sk-SK')}`}
-                    secondary={`Úkony: ${job.procedure_codes || '-'}, Detail: ${job.status || '-'}`}
+                    secondary={`Úkony: ${job.procedure_codes || '-'}, Stav: ${job.status || '-'}`}
                   />
-                </ListItem>
+                </ListItemButton>
               ))}
             </List>
           </Box>

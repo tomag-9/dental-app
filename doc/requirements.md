@@ -156,7 +156,7 @@ Možnosť rozšírenia o ďalšie funkcionality (PDF exporty, notifikácie).
 4. Technologický stack
 
 Backend: FastAPI (Python), SQLAlchemy, PostgreSQL.
-Frontend: React.js alebo Vue.js, Tailwind CSS.
+Frontend: React.js, Material UI.
 Databáza: PostgreSQL.
 Kontajnerizácia: Docker, Docker Compose.
 Server: Nginx ako reverzný proxy.

@@ -1,16 +1,34 @@
-import React from 'react';
-import { Box, Typography } from '@mui/material';
+import React, { useState } from 'react';
+import InvoiceHistory from './InvoiceHistory';
+import InvoiceCreate from './InvoiceCreate';
 
 const Invoices = ({ token, setError }) => {
+  const [currentView, setCurrentView] = useState('history'); // 'history' or 'create'
+
+  const handleCreateNew = () => {
+    setCurrentView('create');
+  };
+
+  const handleBackToHistory = () => {
+    setCurrentView('history');
+  };
+
+  if (currentView === 'create') {
+    return (
+      <InvoiceCreate 
+        token={token} 
+        setError={setError} 
+        onBack={handleBackToHistory}
+      />
+    );
+  }
+
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Faktúry
-      </Typography>
-      <Typography color="text.secondary">
-        Táto sekcia bude čoskoro implementovaná
-      </Typography>
-    </Box>
+    <InvoiceHistory 
+      token={token} 
+      setError={setError} 
+      onCreateNew={handleCreateNew}
+    />
   );
 };
 

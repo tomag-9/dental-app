@@ -10,7 +10,9 @@
     "bcrypt": "^6.0.0",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2"
   },
   "name": "dental-app",
   "version": "1.0.0",

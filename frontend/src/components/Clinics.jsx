@@ -1,23 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Box,
-  Typography,
-  TextField,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Fab,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Button,
+  Box, 
+  Typography, 
+  TextField, 
+  IconButton, 
+  Fab, 
+  Pagination 
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -25,7 +14,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 const Clinics = ({ token, setError }) => {
   const [clinics, setClinics] = useState([]);
-  const [filteredClinics, setFilteredClinics] = useState([]);
+  const [filteredClinics, setFilteredClinics] = useState([]); 
   const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [editClinic, setEditClinic] = useState(null);
@@ -40,7 +29,7 @@ const Clinics = ({ token, setError }) => {
   });
 
   useEffect(() => {
-    const fetchClinics = async () => {
+    const fetchClinics = async () => { 
       try {
         const response = await axios.get('http://localhost:8000/clinics/', {
           headers: { Authorization: `Bearer ${token}` },
@@ -50,7 +39,7 @@ const Clinics = ({ token, setError }) => {
       } catch (err) {
         setError('Nepodarilo sa načítať kliniky: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
-    };
+    }; 
     fetchClinics();
   }, [token, setError]);
 
@@ -58,7 +47,7 @@ const Clinics = ({ token, setError }) => {
     const filtered = clinics.filter(clinic =>
       clinic.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredClinics(filtered);
+    setFilteredClinics(filtered); 
   }, [searchTerm, clinics]);
 
   const handleOpen = (clinic = null) => {
@@ -83,7 +72,7 @@ const Clinics = ({ token, setError }) => {
     setOpen(true);
   };
 
-  const handleClose = () => {
+  const handleClose = () => { 
     setOpen(false);
     setEditClinic(null);
   };
@@ -92,7 +81,7 @@ const Clinics = ({ token, setError }) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async () => { 
     if (!formData.name) {
       setError('Názov je povinný');
       return;
@@ -111,7 +100,7 @@ const Clinics = ({ token, setError }) => {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
-      const response = await axios.get('http://localhost:8000/clinics/', {
+      const response = await axios.get('http://localhost:8000/clinics/', { 
         headers: { Authorization: `Bearer ${token}` },
       });
       setClinics(response.data);

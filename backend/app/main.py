@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users
+from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users, invoices, companies
 from app.models import Base
 from app.database import engine
 
@@ -24,7 +24,7 @@ app = FastAPI(
 # Allow CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -41,6 +41,8 @@ app.include_router(technicians.router)
 app.include_router(price_list.router)
 app.include_router(jobs.router)
 app.include_router(users.router)
+app.include_router(invoices.router)
+app.include_router(companies.router)
 
 @app.get("/")
 def read_root():

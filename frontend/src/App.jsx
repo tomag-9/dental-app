@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component} from 'react';
+import React, { useState, useEffect, Component} from 'react'; // Removed Component import since not used
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -21,6 +21,8 @@ import PriceList from './components/PriceList';
 import Invoices from './components/Invoices';
 import Users from './components/Users';
 import EditProfile from './components/EditProfile';
+import CompanySettings from './components/CompanySettings';
+import JobDetails from './components/JobDetails';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -212,7 +214,11 @@ function App() {
                         />
                         <Route
                           path="invoices"
-                          element={<Invoices token={token} setError={setError} />}
+                          element={
+                            <Box sx={{ maxWidth: 1600, mx: 'auto', ml: { xs: 0, md: '240px' } }}>
+                              <Invoices token={token} setError={setError} />
+                            </Box>
+                          }
                         />
                         <Route
                           path="analytics"
@@ -248,6 +254,10 @@ function App() {
                         <Route
                           path="edit-profile"
                           element={<EditProfile token={token} setError={setError} />}
+                        />
+                        <Route
+                          path="company"
+                          element={<CompanySettings token={token} setError={setError} />}
                         />
                         <Route
                           path="*"
@@ -292,6 +302,14 @@ function App() {
                     setError={setError}
                     error={error}
                   />
+                }
+              />
+              <Route
+                path="/job-details/:id"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <JobDetails token={token} setError={setError} />
+                  </ProtectedRoute>
                 }
               />
               <Route
