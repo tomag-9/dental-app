@@ -257,6 +257,14 @@ const JobDetails = ({ token, setError }) => {
                   {technicianName || '-'}
                 </Typography>
               </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 600 }}>
+                  Odtieň zuba
+                </Typography>
+                <Typography variant="body1" fontWeight={500} sx={{ mt: 0.5 }}>
+                  {job.tooth_color || '-'}
+                </Typography>
+              </Box>
             </Stack>
           </Paper>
         </Grid>

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime, date
 from typing import Optional, List, Dict
 
@@ -124,9 +124,20 @@ class JobCreate(BaseModel):
     procedure_quantities: Optional[Dict[str, int]] = None  # New field for quantities
     tooth_procedures: Optional[Dict[str, str]] = None  # Job-specific tooth map
     description: Optional[str] = None  # New field for description
+    tooth_color: Optional[str] = None  # A1-D4
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     try_in: Optional[date] = None
+
+    @field_validator('tooth_color')
+    @classmethod
+    def validate_tooth_color(cls, v):
+        if v is None or v == '':
+            return None
+        valid = {f"{letter}{num}" for letter in ['A','B','C','D'] for num in range(1,5)}
+        if v not in valid:
+            raise ValueError("Invalid tooth_color. Allowed shades: A1-D4")
+        return v
 
 class JobResponse(JobCreate):
     id: int

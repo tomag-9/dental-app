@@ -23,7 +23,8 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     status: '',
     procedure_quantities: {},
     tooth_procedures: {},
-    description: '',
+  description: '',
+  tooth_color: '',
     due_date: null,
     start_date: null,
     end_date: null,
@@ -85,7 +86,8 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         procedure_quantities: initialData.procedure_quantities || {},
         procedure_codes: Object.keys(initialData.procedure_quantities || {}),
         tooth_procedures: initialData.tooth_procedures || {},
-        description: initialData.description || '',
+  description: initialData.description || '',
+  tooth_color: initialData.tooth_color || '',
         due_date: initialData.due_date ? parseISO(initialData.due_date) : null,
         start_date: initialData.start_date ? parseISO(initialData.start_date) : null,
         end_date: initialData.end_date ? parseISO(initialData.end_date) : null,
@@ -101,7 +103,8 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         status: '',
         procedure_quantities: {},
         tooth_procedures: {},
-        description: '',
+  description: '',
+  tooth_color: '',
         due_date: null,
         start_date: null,
         end_date: null,
@@ -156,7 +159,8 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         status: formData.status || 'in_progress',
         procedure_quantities: formData.procedure_quantities,
         tooth_procedures: formData.tooth_procedures,
-        description: formData.description,
+  description: formData.description,
+  tooth_color: formData.tooth_color || null,
         due_date: formData.due_date ? format(formData.due_date, 'yyyy-MM-dd') : null,
         start_date: formData.start_date ? format(formData.start_date, 'yyyy-MM-dd') : null,
         end_date: formData.end_date ? format(formData.end_date, 'yyyy-MM-dd') : null,
@@ -283,6 +287,23 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
                       {technician.first_name} {technician.last_name}
                     </MenuItem>
                   ))}
+                </TextField>
+              </Grid>
+              <Grid item xs={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Odtieň zuba"
+                  name="tooth_color"
+                  value={formData.tooth_color}
+                  onChange={handleChange}
+                  variant="outlined"
+                  sx={{ minWidth: 250, mt: 1, '& .MuiInputBase-root': { height: 45 } }}
+                >
+                  <MenuItem value="">Vyberte odtieň</MenuItem>
+                  {['A','B','C','D'].flatMap(letter => [1,2,3,4].map(num => (
+                    <MenuItem key={`${letter}${num}`} value={`${letter}${num}`}>{`${letter}${num}`}</MenuItem>
+                  )))}
                 </TextField>
               </Grid>
               <Grid item xs={4}>

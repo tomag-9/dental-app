@@ -6,8 +6,10 @@ imports don't block. Tests override the dependency and provide their own testing
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import os
 
-DATABASE_URL = "postgresql://user:password@db:5432/dental_db"
+# Prefer DATABASE_URL from environment (Docker compose), fallback to default
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create engine without attempting to connect immediately (avoids import-time failures in tests)
 engine = create_engine(DATABASE_URL)

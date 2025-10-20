@@ -117,6 +117,7 @@ class Job(Base):
     procedure_quantities = Column(JSON, nullable=True)  # Store as JSON dict
     tooth_procedures = Column(JSON, nullable=True)  # Job-specific tooth map data
     description = Column(String, nullable=True)  # New field for description
+    tooth_color = Column(String, nullable=True)  # Shade like A1-D4
     created_at = Column(DateTime, default=datetime.utcnow)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)

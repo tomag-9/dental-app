@@ -9,6 +9,7 @@ def test_jobs_crud_and_validation(client, auth_headers):
         "procedure_codes": ["TEST"],
         "procedure_quantities": {"TEST": 1},
         "description": "Job from test",
+        "tooth_color": "A2",
     }
     resp = client.post("/jobs/", headers=auth_headers, json=payload)
     assert resp.status_code == 200
@@ -18,20 +19,31 @@ def test_jobs_crud_and_validation(client, auth_headers):
     # get job
     resp = client.get(f"/jobs/{jid}", headers=auth_headers)
     assert resp.status_code == 200
-    assert resp.json()["description"] == "Job from test"
+    data = resp.json()
+    assert data["description"] == "Job from test"
+    assert data["tooth_color"] == "A2"
 
     # update job
     payload_update = payload.copy()
     payload_update["description"] = "Updated job"
+    payload_update["tooth_color"] = "B3"
     resp = client.put(f"/jobs/{jid}", headers=auth_headers, json=payload_update)
     assert resp.status_code == 200
-    assert resp.json()["description"] == "Updated job"
+    data = resp.json()
+    assert data["description"] == "Updated job"
+    assert data["tooth_color"] == "B3"
 
     # invalid procedure code should return 400
     bad_payload = payload.copy()
     bad_payload["procedure_codes"] = ["NONEXISTENT_CODE"]
     resp = client.post("/jobs/", headers=auth_headers, json=bad_payload)
     assert resp.status_code == 400
+
+    # invalid tooth color should return 422 (pydantic validation)
+    bad_payload2 = payload.copy()
+    bad_payload2["tooth_color"] = "E9"
+    resp = client.post("/jobs/", headers=auth_headers, json=bad_payload2)
+    assert resp.status_code == 422
 
     # delete job
     resp = client.delete(f"/jobs/{jid}", headers=auth_headers)
