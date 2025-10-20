@@ -23,6 +23,7 @@ import Users from './components/Users';
 import EditProfile from './components/EditProfile';
 import CompanySettings from './components/CompanySettings';
 import JobDetails from './components/JobDetails';
+import CalendarPage from './components/CalendarPage';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -159,9 +160,24 @@ function App() {
             />
           </>
         )}
-        <Box component="main" sx={{ flexGrow: 1, p: 3, mt: isLoggedIn ? 6 : 0, bgcolor: 'background.default' }}>
+        <Box component="main" sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          mt: isLoggedIn ? 6 : 0, 
+          ml: isLoggedIn ? '60px' : 0, // Add left margin for collapsed drawer (60px)
+          bgcolor: 'background.default',
+          transition: 'margin-left 0.3s ease',
+        }}>
           <ErrorBoundary>
             <Routes>
+              <Route
+                path="/calendar"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <CalendarPage token={token} setError={setError} />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/patients"
                 element={
@@ -214,11 +230,7 @@ function App() {
                         />
                         <Route
                           path="invoices"
-                          element={
-                            <Box sx={{ maxWidth: 1600, mx: 'auto', ml: { xs: 0, md: '240px' } }}>
-                              <Invoices token={token} setError={setError} />
-                            </Box>
-                          }
+                          element={<Invoices token={token} setError={setError} />}
                         />
                         <Route
                           path="analytics"

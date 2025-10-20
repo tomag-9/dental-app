@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
-from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users, invoices, companies
+from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users, invoices, companies, vacations
+from app.routes import patient_toothmap
 from app.models import Base
 from app.database import engine
 
@@ -35,6 +36,7 @@ Base.metadata.create_all(bind=engine)
 
 # Include routers
 app.include_router(patients.router)
+app.include_router(patient_toothmap.router)
 app.include_router(clinics.router)
 app.include_router(doctors.router)
 app.include_router(technicians.router)
@@ -43,6 +45,7 @@ app.include_router(jobs.router)
 app.include_router(users.router)
 app.include_router(invoices.router)
 app.include_router(companies.router)
+app.include_router(vacations.router)
 
 @app.get("/")
 def read_root():

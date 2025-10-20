@@ -12,7 +12,9 @@
     "dayjs": "^1.11.13",
     "esbuild": "^0.25.9",
     "jspdf": "^3.0.3",
-    "jspdf-autotable": "^5.0.2"
+    "jspdf-autotable": "^5.0.2",
+    "moment": "^2.30.1",
+    "react-big-calendar": "^1.19.4"
   },
   "name": "dental-app",
   "version": "1.0.0",

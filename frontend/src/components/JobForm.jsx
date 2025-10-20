@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import { api } from '../lib/api';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Typography, Grid,
   TextField, MenuItem, Button, Autocomplete, Table, TableHead, TableBody,
@@ -10,6 +10,7 @@ import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format, parseISO } from 'date-fns';
+import ToothMap from './ToothMap';
 
 const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null }) => {
   const [activeStep, setActiveStep] = useState(0);
@@ -21,6 +22,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
     procedure_codes: [],
     status: '',
     procedure_quantities: {},
+    tooth_procedures: {},
     description: '',
     due_date: null,
     start_date: null,
@@ -50,13 +52,13 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
 
     const fetchData = async () => {
       try {
-        const headers = { Authorization: `Bearer ${token}` };
+        const apiClient = api(token);
         const [patientsRes, clinicsRes, doctorsRes, techniciansRes, proceduresRes] = await Promise.all([
-          axios.get('http://localhost:8000/patients/', { headers }),
-          axios.get('http://localhost:8000/clinics/', { headers }),
-          axios.get('http://localhost:8000/doctors/', { headers }),
-          axios.get('http://localhost:8000/technicians/', { headers }),
-          axios.get('http://localhost:8000/price_list/', { headers }),
+          apiClient.get('/patients/'),
+          apiClient.get('/clinics/'),
+          apiClient.get('/doctors/'),
+          apiClient.get('/technicians/'),
+          apiClient.get('/price_list/'),
         ]);
         setPatients(patientsRes.data);
         setClinics(clinicsRes.data);
@@ -70,7 +72,6 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
             price: p.price
           }))
         );
-        // setJobs(jobsRes.data); // Commented out - jobs state was unused
       } catch (err) {
         setError('Nepodarilo sa načítať údaje: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
@@ -83,6 +84,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         ...initialData,
         procedure_quantities: initialData.procedure_quantities || {},
         procedure_codes: Object.keys(initialData.procedure_quantities || {}),
+        tooth_procedures: initialData.tooth_procedures || {},
         description: initialData.description || '',
         due_date: initialData.due_date ? parseISO(initialData.due_date) : null,
         start_date: initialData.start_date ? parseISO(initialData.start_date) : null,
@@ -98,6 +100,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         procedure_codes: [],
         status: '',
         procedure_quantities: {},
+        tooth_procedures: {},
         description: '',
         due_date: null,
         start_date: null,
@@ -143,6 +146,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const apiClient = api(token);
       const jobData = {
         ...formData,
         patient_id: parseInt(formData.patient_id) || null,
@@ -151,24 +155,49 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
         technician_id: parseInt(formData.technician_id) || null,
         status: formData.status || 'in_progress',
         procedure_quantities: formData.procedure_quantities,
+        tooth_procedures: formData.tooth_procedures,
         description: formData.description,
         due_date: formData.due_date ? format(formData.due_date, 'yyyy-MM-dd') : null,
         start_date: formData.start_date ? format(formData.start_date, 'yyyy-MM-dd') : null,
         end_date: formData.end_date ? format(formData.end_date, 'yyyy-MM-dd') : null,
         try_in: formData.try_in ? format(formData.try_in, 'yyyy-MM-dd') : null
       };
+
+      // Save the job
       if (initialData) {
-        await axios.put(`http://localhost:8000/jobs/${initialData.id}`, jobData, { headers: { Authorization: `Bearer ${token}` } });
+        await apiClient.put(`/jobs/${initialData.id}`, jobData);
       } else {
-        await axios.post('http://localhost:8000/jobs/', jobData, { headers: { Authorization: `Bearer ${token}` } });
+        await apiClient.post('/jobs/', jobData);
       }
+
+      // Update patient's cumulative tooth map if tooth_procedures were modified
+      if (formData.tooth_procedures && Object.keys(formData.tooth_procedures).length > 0) {
+        const patientId = parseInt(formData.patient_id);
+        if (patientId) {
+          try {
+            // Fetch current patient data
+            const patientRes = await apiClient.get(`/patients/${patientId}`);
+            const currentToothProcedures = patientRes.data.tooth_procedures || {};
+            // Merge with new tooth procedures (new ones override old ones for the same tooth)
+            const updatedToothProcedures = { ...currentToothProcedures, ...formData.tooth_procedures };
+            // Update patient with merged tooth map
+            await apiClient.put(`/patients/${patientId}`, {
+              ...patientRes.data,
+              tooth_procedures: updatedToothProcedures
+            });
+          } catch (patientErr) {
+            // Don't fail the whole operation if patient update fails
+          }
+        }
+      }
+
       onSuccess();
     } catch (err) {
       setError('Nepodarilo sa pridať/upraviť prácu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     }
   };
 
-  const steps = ['Základné údaje', 'Procedúry', 'Plánovanie'];
+  const steps = ['Základné údaje', 'Zubná mapa', 'Procedúry', 'Plánovanie'];
 
   const getStepContent = (step) => {
     switch (step) {
@@ -278,6 +307,25 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
           </Grid>
         );
       case 1:
+        // Tooth Map step for technicians
+        return (
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Zubná mapa (pre technikov: implantát, korunka)
+              </Typography>
+                <ToothMap
+                  editable
+                  value={formData.tooth_procedures}
+                  onChange={(newMap) => {
+                    setFormData((prev) => ({ ...prev, tooth_procedures: newMap }));
+                  }}
+                  allowedProcedures={[{ code: 'I', label: 'Implantát' }, { code: 'K', label: 'Korunka' }]}
+                />
+            </Grid>
+          </Grid>
+        );
+      case 2:
         return (
           <Grid item xs={12}>
             <Typography variant="h6" gutterBottom sx={{ fontSize: '1.4rem', mt: 2 }}>
@@ -400,7 +448,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
             </Box>
           </Grid>
         );
-      case 2:
+      case 3:
         return (
           <Grid container spacing={3}>
             <Grid item xs={6}>

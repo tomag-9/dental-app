@@ -12,12 +12,13 @@ import {
   TableRow,
   Paper,
   IconButton,
-  Fab,
+  Button,
   styled,
+  Card,
+  CardContent,
+  Tooltip,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import SearchIcon from '@mui/icons-material/Search';
+import { Add as AddIcon, Edit as EditIcon, Search as SearchIcon } from '@mui/icons-material';
 import AddPatientDialog from './AddPatientDialog';
 import EditPatientDialog from './EditPatientDialog';
 import PatientDetailsDialog from './PatientDetailsDialog';
@@ -106,18 +107,21 @@ const Patient = ({ token, setError }) => {
   );
 
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Pacienti
-      </Typography>
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => setOpenAddDialog(true)}
-      >
-        <AddIcon />
-      </Fab>
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+          Pacienti
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenAddDialog(true)}
+          size="large"
+        >
+          Nový pacient
+        </Button>
+      </Box>
+
       <AddPatientDialog
         open={openAddDialog}
         onClose={() => setOpenAddDialog(false)}
@@ -156,83 +160,101 @@ const Patient = ({ token, setError }) => {
         token={token}
         setError={setError}
       />
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-          <BlinkingDot />
-          Prebiehajúce práce
-        </Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Meno</TableCell>
-                <TableCell>Priezvisko</TableCell>
-                <TableCell>Rodné číslo</TableCell>
-                <TableCell>Akcie</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {ongoingPatients.map(patient => (
-                <TableRow key={patient.id}>
-                  <TableCell>{patient.first_name}</TableCell>
-                  <TableCell>{patient.last_name}</TableCell>
-                  <TableCell>{patient.birth_number || '-'}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setOpenEditDialog(patient)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => setOpenDetailsDialog(patient)}>
-                      <SearchIcon />
-                    </IconButton>
-                  </TableCell>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
+            <BlinkingDot />
+            Prebiehajúce práce
+          </Typography>
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Meno</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Priezvisko</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Rodné číslo</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Akcie</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-      <Box>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Zoznam všetkých pacientov
-        </Typography>
-        <TextField
-          fullWidth
-          label="Hľadať pacientov (meno, rodné číslo, rok narodenia)"
-          variant="outlined"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          sx={{ mb: 2 }}
-        />
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Meno</TableCell>
-                <TableCell>Priezvisko</TableCell>
-                <TableCell>Rodné číslo</TableCell>
-                <TableCell>Akcie</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredPatients.map(patient => (
-                <TableRow key={patient.id}>
-                  <TableCell>{patient.first_name}</TableCell>
-                  <TableCell>{patient.last_name}</TableCell>
-                  <TableCell>{patient.birth_number || '-'}</TableCell>
-                  <TableCell>
-                    <IconButton onClick={() => setOpenEditDialog(patient)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => setOpenDetailsDialog(patient)}>
-                      <SearchIcon />
-                    </IconButton>
-                  </TableCell>
+              </TableHead>
+              <TableBody>
+                {ongoingPatients.map(patient => (
+                  <TableRow key={patient.id} hover>
+                    <TableCell>{patient.first_name}</TableCell>
+                    <TableCell>{patient.last_name}</TableCell>
+                    <TableCell>{patient.birth_number || '-'}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Upraviť">
+                          <IconButton size="small" onClick={() => setOpenEditDialog(patient)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Detail">
+                          <IconButton size="small" onClick={() => setOpenDetailsDialog(patient)}>
+                            <SearchIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Zoznam všetkých pacientov
+          </Typography>
+          <TextField
+            fullWidth
+            label="Hľadať pacientov (meno, rodné číslo, rok narodenia)"
+            variant="outlined"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            sx={{ mb: 3 }}
+          />
+          <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 650 }}>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Meno</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Priezvisko</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Rodné číslo</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Akcie</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
+              </TableHead>
+              <TableBody>
+                {filteredPatients.map(patient => (
+                  <TableRow key={patient.id} hover>
+                    <TableCell>{patient.first_name}</TableCell>
+                    <TableCell>{patient.last_name}</TableCell>
+                    <TableCell>{patient.birth_number || '-'}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Upraviť">
+                          <IconButton size="small" onClick={() => setOpenEditDialog(patient)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Detail">
+                          <IconButton size="small" onClick={() => setOpenDetailsDialog(patient)}>
+                            <SearchIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
     </Box>
   );
 };

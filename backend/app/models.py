@@ -35,6 +35,7 @@ class Patient(Base):
     address = Column(String)
     phone = Column(String)
     email = Column(String)
+    tooth_procedures = Column(JSON, nullable=True)  # Cumulative tooth map for patient
     created_at = Column(DateTime, default=datetime.utcnow)
     jobs = relationship("Job", back_populates="patient")
 
@@ -114,6 +115,7 @@ class Job(Base):
     status = Column(String, nullable=True)
     procedure_codes = Column(JSON, nullable=True)  # Store as JSON list
     procedure_quantities = Column(JSON, nullable=True)  # Store as JSON dict
+    tooth_procedures = Column(JSON, nullable=True)  # Job-specific tooth map data
     description = Column(String, nullable=True)  # New field for description
     created_at = Column(DateTime, default=datetime.utcnow)
     start_date = Column(Date, nullable=True)
@@ -153,3 +155,11 @@ class InvoiceItem(Base):
 
     invoice = relationship("Invoice", back_populates="items")
     job = relationship("Job")
+
+class Vacation(Base):
+    __tablename__ = "vacations"
+    id = Column(Integer, primary_key=True)
+    start = Column(DateTime, nullable=False)
+    end = Column(DateTime, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

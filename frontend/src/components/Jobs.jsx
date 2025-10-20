@@ -3,9 +3,9 @@ import axios from 'axios';
 import {
   Box,
   Typography,
-  Fab,
+  Button,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
+import { Add as AddIcon } from '@mui/icons-material';
 import JobForm from './JobForm';
 import JobList from './JobList';
 
@@ -67,10 +67,20 @@ const Jobs = ({ token, setError }) => {
   };
 
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Práce
-      </Typography>
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+          Práce
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenForm(true)}
+          size="large"
+        >
+          Nová práca
+        </Button>
+      </Box>
       <JobList
         jobs={jobs}
         patients={patients}
@@ -79,14 +89,6 @@ const Jobs = ({ token, setError }) => {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
-      <Fab
-        color="primary"
-        aria-label="add"
-        sx={{ position: 'fixed', bottom: 16, right: 16 }}
-        onClick={() => setOpenForm(true)}
-      >
-        <AddIcon />
-      </Fab>
       <JobForm
         open={openForm}
         onClose={() => { setOpenForm(false); setSelectedJob(null); }}

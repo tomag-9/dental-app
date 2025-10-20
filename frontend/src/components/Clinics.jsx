@@ -1,16 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Typography, IconButton, Fab, Pagination, TableRow, TableCell } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import Card from './ui/Card';
-import Table from './ui/Table';
-import Input from './ui/Input';
-import Button from './ui/Button';
-import Modal from './ui/Modal';
-import ConfirmDialog from './ui/ConfirmDialog';
-import Spinner from './ui/Spinner';
-import EmptyState from './ui/EmptyState';
+import { 
+  Box, 
+  Typography, 
+  IconButton, 
+  Button, 
+  TextField, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Card,
+  CardContent,
+  CircularProgress,
+  Alert,
+  Tooltip,
+} from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import useNotifier from '../hooks/useNotifier.jsx';
 import { api, withError } from '../lib/api';
 
@@ -30,15 +42,13 @@ const Clinics = ({ token, setError }) => {
   });
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState({ open: false, id: null });
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
   const { notify, Toast } = useNotifier();
 
   useEffect(() => {
     const fetchClinics = async () => {
       setLoading(true);
       const [res] = await withError(api(token).get('/clinics/'), (m) => setError('Nepodarilo sa načítať kliniky: ' + m));
-      if (res) setClinics(res.data);
+      setClinics(res?.data ?? []);
       setLoading(false);
     };
     fetchClinics();
@@ -51,11 +61,6 @@ const Clinics = ({ token, setError }) => {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [clinics, searchTerm]
   );
-
-  const pagedClinics = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredClinics.slice(start, start + pageSize);
-  }, [filteredClinics, page]);
 
   const handleOpen = (clinic = null) => {
     setEditClinic(clinic);
@@ -74,10 +79,12 @@ const Clinics = ({ token, setError }) => {
     );
     setOpen(true);
   };
+  
   const handleClose = () => {
     setOpen(false);
     setEditClinic(null);
   };
+  
   const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSave = async () => {
@@ -109,100 +116,143 @@ const Clinics = ({ token, setError }) => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
           Kliniky
         </Typography>
-        <Fab color="primary" aria-label="add" onClick={() => handleOpen()} size="medium">
-          <AddIcon />
-        </Fab>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpen()}
+          size="large"
+        >
+          Nová klinika
+        </Button>
       </Box>
 
-      <Card sx={{ mb: 2 }}>
-        <Input label="Hľadať kliniky" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <TextField
+            fullWidth
+            label="Hľadať kliniky"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </CardContent>
       </Card>
 
       {loading ? (
         <Card>
-          <Spinner />
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          </CardContent>
         </Card>
       ) : filteredClinics.length === 0 ? (
         <Card>
-          <EmptyState title="Žiadne kliniky" description="Pridajte svoju prvú kliniku." />
+          <CardContent>
+            <Typography variant="h6" color="text.secondary" align="center">
+              Žiadne kliniky
+            </Typography>
+            <Typography variant="body2" color="text.secondary" align="center">
+              Pridajte svoju prvú kliniku.
+            </Typography>
+          </CardContent>
         </Card>
       ) : (
         <Card>
-          <Table
-            columns={[
-              { label: 'Názov' },
-              { label: 'IČO' },
-              { label: 'DIČ' },
-              { label: 'Adresa' },
-              { label: 'Bankové údaje' },
-              { label: 'Email' },
-              { label: 'Telefón' },
-              { label: 'Akcie', align: 'right' },
-            ]}
-            rows={pagedClinics}
-            renderRow={(clinic) => (
-              <TableRow key={clinic.id} hover>
-                <TableCell>{clinic.name}</TableCell>
-                <TableCell>{clinic.ico || '-'}</TableCell>
-                <TableCell>{clinic.dic || '-'}</TableCell>
-                <TableCell>{clinic.address || '-'}</TableCell>
-                <TableCell>{clinic.bank_details || '-'}</TableCell>
-                <TableCell>{clinic.contact_info?.email || '-'}</TableCell>
-                <TableCell>{clinic.contact_info?.phone || '-'}</TableCell>
-                <TableCell align="right">
-                  <IconButton onClick={() => handleOpen(clinic)} size="small">
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => setConfirm({ open: true, id: clinic.id })} size="small" color="error">
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            )}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Pagination count={Math.ceil(filteredClinics.length / pageSize)} page={page} onChange={(_, v) => setPage(v)} />
-          </Box>
+          <CardContent>
+            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: 650 }}>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'grey.50' }}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Názov</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>IČO</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>DIČ</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Adresa</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Bankové údaje</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Telefón</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Akcie</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredClinics.map((clinic) => (
+                    <TableRow key={clinic.id} hover>
+                      <TableCell sx={{ fontWeight: 'medium' }}>{clinic.name}</TableCell>
+                      <TableCell>{clinic.ico || '-'}</TableCell>
+                      <TableCell>{clinic.dic || '-'}</TableCell>
+                      <TableCell>{clinic.address || '-'}</TableCell>
+                      <TableCell>{clinic.bank_details || '-'}</TableCell>
+                      <TableCell>{clinic.contact_info?.email || '-'}</TableCell>
+                      <TableCell>{clinic.contact_info?.phone || '-'}</TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Tooltip title="Upraviť">
+                            <IconButton onClick={() => handleOpen(clinic)} size="small">
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Vymazať">
+                            <IconButton onClick={() => setConfirm({ open: true, id: clinic.id })} size="small" color="error">
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
         </Card>
       )}
 
-      <Modal
-        open={open}
-        onClose={handleClose}
-        title={editClinic ? 'Upraviť kliniku' : 'Pridať kliniku'}
-        actions={[
-          <Button key="cancel" onClick={handleClose}>
-            Zrušiť
-          </Button>,
-          <Button key="save" onClick={handleSave} variant="contained">
-            Uložiť
-          </Button>,
-        ]}
-      >
-        <Input autoFocus label="Názov" value={formData.name} onChange={handleChange} name="name" required />
-        <Input label="IČO" value={formData.ico} onChange={handleChange} name="ico" />
-        <Input label="DIČ" value={formData.dic} onChange={handleChange} name="dic" />
-        <Input label="Adresa" value={formData.address} onChange={handleChange} name="address" />
-        <Input label="Bankové údaje" value={formData.bank_details} onChange={handleChange} name="bank_details" />
-        <Input label="Email" value={formData.email} onChange={handleChange} name="email" />
-        <Input label="Telefón" value={formData.phone} onChange={handleChange} name="phone" />
-      </Modal>
+      {/* Add/Edit Dialog */}
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{editClinic ? 'Upraviť kliniku' : 'Pridať kliniku'}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField autoFocus fullWidth label="Názov" value={formData.name} onChange={handleChange} name="name" required />
+            <TextField fullWidth label="IČO" value={formData.ico} onChange={handleChange} name="ico" />
+            <TextField fullWidth label="DIČ" value={formData.dic} onChange={handleChange} name="dic" />
+            <TextField fullWidth label="Adresa" value={formData.address} onChange={handleChange} name="address" />
+            <TextField fullWidth label="Bankové údaje" value={formData.bank_details} onChange={handleChange} name="bank_details" />
+            <TextField fullWidth label="Email" value={formData.email} onChange={handleChange} name="email" />
+            <TextField fullWidth label="Telefón" value={formData.phone} onChange={handleChange} name="phone" />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Zrušiť</Button>
+          <Button onClick={handleSave} variant="contained">Uložiť</Button>
+        </DialogActions>
+      </Dialog>
 
-      <ConfirmDialog
-        open={confirm.open}
-        onCancel={() => setConfirm({ open: false, id: null })}
-        onConfirm={() => {
-          handleDelete(confirm.id);
-          setConfirm({ open: false, id: null });
-        }}
-        description="Naozaj chcete vymazať túto kliniku? Túto akciu nie je možné vrátiť."
-        confirmText="Vymazať"
-      />
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={confirm.open} onClose={() => setConfirm({ open: false, id: null })}>
+        <DialogTitle>Potvrdiť vymazanie</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Naozaj chcete vymazať túto kliniku? Túto akciu nie je možné vrátiť.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirm({ open: false, id: null })}>Zrušiť</Button>
+          <Button 
+            onClick={() => {
+              handleDelete(confirm.id);
+              setConfirm({ open: false, id: null });
+            }} 
+            variant="contained" 
+            color="error"
+          >
+            Vymazať
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Toast />
     </Box>

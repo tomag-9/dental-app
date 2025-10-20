@@ -76,6 +76,7 @@ const menuItems = [
 export default function Sidebar() {
   const [hoveringDrawer, setHoveringDrawer] = useState(false);
   const [hoveringPopper, setHoveringPopper] = useState(false);
+  const collapseTimeoutRef = React.useRef(null);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -83,7 +84,7 @@ export default function Sidebar() {
   const expanded = hoveringDrawer || hoveringPopper;
 
   const handleItemHover = (event, item) => {
-    if (expanded && item.subItems) {
+    if (item.subItems) {
       setHoveredItem(item);
       setAnchorEl(event.currentTarget);
     } else {
@@ -92,12 +93,39 @@ export default function Sidebar() {
     }
   };
 
+  const handleDrawerLeave = () => {
+    setHoveringDrawer(false);
+    // Start a short timeout to collapse if not hovering popper
+    if (collapseTimeoutRef.current) clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = setTimeout(() => {
+      if (!hoveringDrawer && !hoveringPopper) {
+        setHoveredItem(null);
+        setAnchorEl(null);
+      }
+    }, 100);
+  };
+
+  const handlePopperLeave = () => {
+    setHoveringPopper(false);
+    // Start a short timeout to collapse if not hovering drawer
+    if (collapseTimeoutRef.current) clearTimeout(collapseTimeoutRef.current);
+    collapseTimeoutRef.current = setTimeout(() => {
+      if (!hoveringDrawer && !hoveringPopper) {
+        setHoveredItem(null);
+        setAnchorEl(null);
+      }
+    }, 100);
+  };
+
   return (
     <>
       <Drawer
         variant="permanent"
-        onMouseEnter={() => setHoveringDrawer(true)}
-        onMouseLeave={() => setHoveringDrawer(false)}
+        onMouseEnter={() => {
+          setHoveringDrawer(true);
+          if (collapseTimeoutRef.current) clearTimeout(collapseTimeoutRef.current);
+        }}
+        onMouseLeave={handleDrawerLeave}
         sx={{
           '& .MuiDrawer-paper': {
             width: expanded ? drawerExpandedWidth : drawerCollapsedWidth,
@@ -118,12 +146,6 @@ export default function Sidebar() {
               key={item.text}
               disablePadding
               onMouseEnter={(e) => handleItemHover(e, item)}
-              onMouseLeave={() => {
-                if (!hoveringPopper) {
-                  setHoveredItem(null);
-                  setAnchorEl(null);
-                }
-              }}
             >
               <ListItemButton onClick={() => navigate(item.path)}>
                 <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
@@ -136,19 +158,14 @@ export default function Sidebar() {
         </List>
       </Drawer>
 
-      <Popper
-        open={expanded && Boolean(hoveredItem?.subItems)}
-        anchorEl={anchorEl}
-        placement="right-start"
-        modifiers={[
-          {
-            name: 'offset',
-            options: { offset: [0, 0] }, // presne vedľa
-          },
-        ]}
-        style={{ zIndex: 1300 }}
-      >
-        {hoveredItem?.subItems && (
+      {expanded && hoveredItem?.subItems && (
+        <Popper
+          open={true}
+          anchorEl={anchorEl}
+          placement="right-start"
+          modifiers={[{ name: 'offset', options: { offset: [0, 0] } }]}
+          style={{ zIndex: 1300 }}
+        >
           <Paper
             sx={{
               bgcolor: 'primary.dark',
@@ -156,7 +173,7 @@ export default function Sidebar() {
               minWidth: 160,
             }}
             onMouseEnter={() => setHoveringPopper(true)}
-            onMouseLeave={() => setHoveringPopper(false)}
+            onMouseLeave={handlePopperLeave}
           >
             <List dense>
               {hoveredItem.subItems.map((sub) => (
@@ -170,8 +187,8 @@ export default function Sidebar() {
               ))}
             </List>
           </Paper>
-        )}
-      </Popper>
+        </Popper>
+      )}
     </>
   );
 }

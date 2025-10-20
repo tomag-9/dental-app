@@ -40,6 +40,7 @@ class PatientCreate(BaseModel):
     address: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    tooth_procedures: Optional[Dict] = None  # Cumulative tooth map
 
 class PatientResponse(PatientCreate):
     id: int
@@ -121,6 +122,7 @@ class JobCreate(BaseModel):
     status: Optional[str] = None
     procedure_codes: Optional[List[str]] = None
     procedure_quantities: Optional[Dict[str, int]] = None  # New field for quantities
+    tooth_procedures: Optional[Dict[str, str]] = None  # Job-specific tooth map
     description: Optional[str] = None  # New field for description
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -171,6 +173,19 @@ class InvoiceResponse(BaseModel):
     paid_at: Optional[datetime] = None
     items: List[InvoiceItemResponse]
     patient_names: Optional[List[str]] = None
+
+    class Config:
+        orm_mode = True
+
+# Vacation schemas
+class VacationCreate(BaseModel):
+    start: datetime
+    end: datetime
+    description: Optional[str] = None
+
+class VacationResponse(VacationCreate):
+    id: int
+    created_at: datetime
 
     class Config:
         orm_mode = True
