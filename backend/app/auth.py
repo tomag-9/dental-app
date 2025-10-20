@@ -6,9 +6,13 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from .models import User
 from .database import get_db
+import os
+from dotenv import load_dotenv
 
-SECRET_KEY = "97879d0514bc428ba4cfce943f76f51eac732e865f70b610030691954c432554"  # Replace with a secure key
-ALGORITHM = "HS256"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

@@ -1,20 +1,42 @@
+import sys
+from pathlib import Path
+
+# Add the backend directory to the Python path
+backend_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(backend_dir))
+
+import os
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app import models
 from app.auth import get_password_hash
 from app.database import get_db
 
-# Use in-memory SQLite for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Use a file-based SQLite for tests (temporary file in /tmp)
+TEST_DB_PATH = "/tmp/test_dental_app.db"
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH}"
 
-# Create tables
-models.Base.metadata.create_all(bind=engine)
+# For in-memory testing with StaticPool to ensure single connection
+# SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool  # Use StaticPool to maintain single connection for in-memory DB
+)
+
+# Enable foreign keys for SQLite
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def override_get_db():
@@ -24,16 +46,24 @@ def override_get_db():
     finally:
         db.close()
 
+
 # Override the dependency
 app.dependency_overrides[get_db] = override_get_db
 
 
-@pytest.fixture(scope="session")
-def db():
-    """Provide a session with seeded data for the whole test session."""
+@pytest.fixture(scope="session", autouse=True)
+def setup_database():
+    """Create all tables and seed data once for the entire test session."""
+    # Remove existing test database if it exists
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+    
+    # Create all tables
+    models.Base.metadata.create_all(bind=engine)
+    
+    # Seed minimal data
     db = TestingSessionLocal()
     try:
-        # Seed minimal data similar to app/seed.py
         admin = models.User(username="admin", hashed_password=get_password_hash("password123"), role="admin", is_active=True)
         user1 = models.User(username="user1", hashed_password=get_password_hash("userpass"), role="user", is_active=True)
         db.add_all([admin, user1])
@@ -56,7 +86,7 @@ def db():
         db.add(pl)
         db.flush()
 
-        job = models.Job(
+        job1 = models.Job(
             patient_id=pat.id,
             clinic_id=clinic.id,
             doctor_id=doc.id,
@@ -64,18 +94,44 @@ def db():
             price=100.0,
             procedure_codes=[pl.code],
             procedure_quantities={pl.code: 1},
-            description="Seed job",
+            description="Seed job 1",
         )
-        db.add(job)
+        job2 = models.Job(
+            patient_id=pat.id,
+            clinic_id=clinic.id,
+            doctor_id=doc.id,
+            technician_id=tech.id,
+            price=150.0,
+            procedure_codes=[pl.code],
+            procedure_quantities={pl.code: 2},
+            description="Seed job 2",
+        )
+        db.add_all([job1, job2])
         db.commit()
+    finally:
+        db.close()
+    
+    yield
+    
+    # Cleanup after all tests
+    models.Base.metadata.drop_all(bind=engine)
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
 
+
+@pytest.fixture()
+def db():
+    """Provide a database session for individual tests."""
+    db = TestingSessionLocal()
+    try:
         yield db
     finally:
+        db.rollback()
         db.close()
 
 
 @pytest.fixture()
-def client(db):
+def client():
     """TestClient that uses the overridden DB dependency."""
     with TestClient(app) as c:
         yield c

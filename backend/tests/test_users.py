@@ -42,12 +42,17 @@ def test_get_me_and_update_me(client):
     me = resp.json()
     assert me["username"] == "admin"
 
-    # update me username
-    resp = client.put("/users/me/", headers={"Authorization": f"Bearer {token}"}, json={"username": "admin2", "password": "password123"})
+    # update password only (not username, as that would invalidate the token)
+    resp = client.put("/users/me/", headers={"Authorization": f"Bearer {token}"}, json={"username": "admin", "password": "newpassword123"})
     assert resp.status_code == 200
-    assert resp.json()["username"] == "admin2"
-
-    # revert username so other tests aren't affected
-    resp = client.put("/users/me/", headers={"Authorization": f"Bearer {token}"}, json={"username": "admin", "password": "password123"})
+    assert resp.json()["username"] == "admin"
+    
+    # verify new password works
+    resp = client.post("/users/token", data={"username": "admin", "password": "newpassword123"})
+    assert resp.status_code == 200
+    
+    # revert password for other tests
+    new_token = resp.json()["access_token"]
+    resp = client.put("/users/me/", headers={"Authorization": f"Bearer {new_token}"}, json={"username": "admin", "password": "password123"})
     assert resp.status_code == 200
 

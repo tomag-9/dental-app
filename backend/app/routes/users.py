@@ -10,21 +10,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/", response_model=list[UserResponse])
 def get_users(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    try:
-        if not current_user or getattr(current_user, 'role', None) != "admin":
-            raise HTTPException(status_code=403, detail="Only admins can view users")
-        users = db.query(User).all()
-        return [UserResponse(
-            id=user.id,
-            username=user.username,
-            role=user.role,
-            is_active=user.is_active,
-            created_at=user.created_at
-        ) for user in users]
-    except AttributeError as e:
-        raise HTTPException(status_code=500, detail=f"User role check failed: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view users")
+    users = db.query(User).all()
+    return [UserResponse(
+        id=user.id,
+        username=user.username,
+        role=user.role,
+        is_active=user.is_active,
+        created_at=user.created_at
+    ) for user in users]
 
 @router.post("/register", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
