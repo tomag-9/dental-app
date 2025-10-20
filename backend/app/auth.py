@@ -11,7 +11,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+# Use a test secret key if TESTING environment variable is set, otherwise use env variable
+# This ensures tests work without requiring SECRET_KEY to be set in CI/CD
+if os.getenv("TESTING") == "1":
+    SECRET_KEY = "test-secret-key-for-testing-only-do-not-use-in-production"
+else:
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable must be set for production use")
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
