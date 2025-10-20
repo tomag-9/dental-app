@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
+import os
 from app.routes import patients, clinics, doctors, technicians, price_list, jobs, users, invoices, companies, vacations
 from app.routes import patient_toothmap
 from app.models import Base
@@ -31,8 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables only if not in testing mode
+# Tests will create their own tables in conftest.py
+if os.getenv("TESTING") != "1":
+    Base.metadata.create_all(bind=engine)
 
 # Include routers
 app.include_router(patients.router)

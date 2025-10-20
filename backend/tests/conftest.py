@@ -12,6 +12,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+# Set testing environment variable BEFORE importing app
+os.environ["TESTING"] = "1"
+
 from app.main import app
 from app import models
 from app.auth import get_password_hash
