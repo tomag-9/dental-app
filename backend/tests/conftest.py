@@ -67,25 +67,30 @@ def setup_database():
     # Seed minimal data
     db = TestingSessionLocal()
     try:
-        admin = models.User(username="admin", hashed_password=get_password_hash("password123"), role="admin", is_active=True)
-        user1 = models.User(username="user1", hashed_password=get_password_hash("userpass"), role="user", is_active=True)
-        db.add_all([admin, user1])
-        db.commit()
+        # Create a Lab and assign users to it
+        lab = models.Lab(name="Test Lab", address="Lab Street 1")
+        db.add(lab)
+        db.flush()
 
-        clinic = models.Clinic(name="Test Clinic", address="123 Test St", ico="11122233", dic="SK111222333")
+        admin = models.User(nickname="admin", email="admin@test.local", hashed_password=get_password_hash("password123"), role="admin", is_active=True, lab_id=lab.id)
+        user1 = models.User(nickname="user1", email="user1@test.local", hashed_password=get_password_hash("userpass"), role="user", is_active=True, lab_id=lab.id)
+        db.add_all([admin, user1])
+        db.flush()
+
+        clinic = models.Clinic(name="Test Clinic", address="123 Test St", ico="11122233", dic="SK111222333", lab_id=lab.id)
         db.add(clinic)
         db.flush()
 
-        doc = models.Doctor(first_name="John", last_name="Tester", clinic_id=clinic.id)
-        tech = models.Technician(first_name="Tech", last_name="Tester")
+        doc = models.Doctor(first_name="John", last_name="Tester", clinic_id=clinic.id, lab_id=lab.id)
+        tech = models.Technician(first_name="Tech", last_name="Tester", lab_id=lab.id)
         db.add_all([doc, tech])
         db.flush()
 
-        pat = models.Patient(first_name="Patient", last_name="Zero", birth_number="900101/0000", address="Addr")
+        pat = models.Patient(first_name="Patient", last_name="Zero", birth_number="900101/0000", address="Addr", lab_id=lab.id)
         db.add(pat)
         db.flush()
 
-        pl = models.PriceList(code="TEST", description="Test procedure", price=100.0)
+        pl = models.PriceList(code="TEST", description="Test procedure", price=100.0, lab_id=lab.id)
         db.add(pl)
         db.flush()
 
@@ -94,6 +99,7 @@ def setup_database():
             clinic_id=clinic.id,
             doctor_id=doc.id,
             technician_id=tech.id,
+            lab_id=lab.id,
             price=100.0,
             procedure_codes=[pl.code],
             procedure_quantities={pl.code: 1},
@@ -104,6 +110,7 @@ def setup_database():
             clinic_id=clinic.id,
             doctor_id=doc.id,
             technician_id=tech.id,
+            lab_id=lab.id,
             price=150.0,
             procedure_codes=[pl.code],
             procedure_quantities={pl.code: 2},
@@ -142,7 +149,7 @@ def client():
 
 @pytest.fixture()
 def admin_token(client):
-    resp = client.post("/users/token", data={"username": "admin", "password": "password123"})
+    resp = client.post("/users/token", data={"username": "admin@test.local", "password": "password123"})
     assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
 

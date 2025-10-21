@@ -16,7 +16,8 @@ const Users = ({ token, setError }) => {
   const [openForm, setOpenForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [formData, setFormData] = useState({
-    username: '',
+    nickname: '',
+    email: '',
     password: '',
     role: 'user' // Assuming roles like 'user' or 'admin'
   });
@@ -38,7 +39,7 @@ const Users = ({ token, setError }) => {
 
   const handleOpenForm = (user = null) => {
     setSelectedUser(user);
-    setFormData(user || { username: '', password: '', role: 'user' });
+    setFormData(user || { nickname: '', email: '', password: '', role: 'user' });
     setOpenForm(true);
   };
 
@@ -108,9 +109,9 @@ const Users = ({ token, setError }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.filter(u => !search || u.username.toLowerCase().includes(search.toLowerCase()) || u.role.toLowerCase().includes(search.toLowerCase())).map((user) => (
+            {users.filter(u => !search || (u.nickname && u.nickname.toLowerCase().includes(search.toLowerCase())) || (u.email && u.email.toLowerCase().includes(search.toLowerCase())) || u.role.toLowerCase().includes(search.toLowerCase())).map((user) => (
               <TableRow key={user.id}>
-                <TableCell>{user.username}</TableCell>
+                <TableCell>{user.nickname || user.email}</TableCell>
                 <TableCell>{user.role}</TableCell>
                 <TableCell>
                   <IconButton onClick={() => handleOpenForm(user)}><EditIcon /></IconButton>
@@ -126,12 +127,24 @@ const Users = ({ token, setError }) => {
         <DialogContent>
           <TextField
             margin="dense"
-            label="Meno"
-            name="username"
-            value={formData.username}
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
             onChange={handleChange}
             fullWidth
-            required
+            required={!selectedUser}
+            disabled={!!selectedUser}
+            helperText={selectedUser ? 'Email nemožno meniť' : 'Povinné'}
+          />
+          <TextField
+            margin="dense"
+            label="Prezývka"
+            name="nickname"
+            value={formData.nickname}
+            onChange={handleChange}
+            fullWidth
+            helperText="Voliteľné - použije sa ako zobrazované meno"
           />
           <TextField
             margin="dense"

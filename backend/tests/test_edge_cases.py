@@ -4,8 +4,8 @@ Additional edge case and security tests for the API.
 import pytest
 
 
-def get_token(client, username="admin", password="password123"):
-    """Helper to get auth token."""
+def get_token(client, username="admin@test.local", password="password123"):
+    """Helper to get auth token (email as username)."""
     resp = client.post("/users/token", data={"username": username, "password": password})
     assert resp.status_code == 200
     return resp.json()["access_token"]
@@ -36,12 +36,12 @@ class TestAuthenticationSecurity:
     
     def test_wrong_password(self, client):
         """Test login with wrong password."""
-        resp = client.post("/users/token", data={"username": "admin", "password": "wrong_password"})
+        resp = client.post("/users/token", data={"username": "admin@test.local", "password": "wrong_password"})
         assert resp.status_code == 401
     
     def test_nonexistent_user(self, client):
         """Test login with nonexistent username."""
-        resp = client.post("/users/token", data={"username": "nonexistent_user", "password": "any_password"})
+        resp = client.post("/users/token", data={"username": "nonexistent_user@example.com", "password": "any_password"})
         assert resp.status_code == 401
 
 
@@ -194,23 +194,36 @@ class TestConcurrency:
         for i in range(3):
             resp = client.post(
                 "/users/register",
-                json={"username": f"concurrent_user_{i}", "password": "testpass"}
+                json={"email": f"concurrent_user_{i}@test.com", "nickname": f"concurrent_user_{i}", "password": "testpass"}
             )
             assert resp.status_code == 200
     
     def test_duplicate_username_registration(self, client):
-        """Test that duplicate usernames are rejected."""
+        """Test that duplicate emails are rejected."""
+        import time
+        unique_suffix = str(int(time.time() * 1000))
+        
         # Register first user
         resp1 = client.post(
-            "/users/register",
-            json={"username": "duplicate_test", "password": "pass1"}
+            "/users/signup",
+            json={
+                "email": f"duplicate_test_{unique_suffix}@test.com",
+                "nickname": "duplicate1",
+                "password": "pass1",
+                "lab_name": f"Test Lab {unique_suffix}"
+            }
         )
         assert resp1.status_code == 200
         
-        # Try to register same username again
+        # Try to register same email again with different lab name
         resp2 = client.post(
-            "/users/register",
-            json={"username": "duplicate_test", "password": "pass2"}
+            "/users/signup",
+            json={
+                "email": f"duplicate_test_{unique_suffix}@test.com",
+                "nickname": "duplicate2",
+                "password": "pass2",
+                "lab_name": f"Test Lab {unique_suffix}_2"
+            }
         )
         assert resp2.status_code == 400
         assert "already registered" in resp2.json()["detail"].lower()
@@ -261,7 +274,7 @@ class TestAdminPrivileges:
     def test_non_admin_cannot_list_users(self, client):
         """Test that non-admin users cannot list all users."""
         # Login as non-admin user (user1)
-        resp = client.post("/users/token", data={"username": "user1", "password": "userpass"})
+        resp = client.post("/users/token", data={"username": "user1@test.local", "password": "userpass"})
         assert resp.status_code == 200
         token = resp.json()["access_token"]
         

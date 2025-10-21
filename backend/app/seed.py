@@ -31,6 +31,25 @@ def run() -> None:
     db = SessionLocal()
     try:
         # Users
+        # Superadmin user (no lab_id needed)
+        superadmin_user, _ = get_or_create(
+            db,
+            User,
+            defaults={
+                "hashed_password": get_password_hash("password123"),
+                "role": "superadmin",
+                "is_active": True,
+                "nickname": "superadmin",
+            },
+            email="superadmin@dentallab.com",
+        )
+        if not getattr(superadmin_user, "hashed_password", None) or len(superadmin_user.hashed_password) < 10:
+            superadmin_user.hashed_password = get_password_hash("password123")
+        superadmin_user.role = "superadmin"
+        superadmin_user.is_active = True
+        superadmin_user.email = superadmin_user.email or "superadmin@dentallab.com"
+        superadmin_user.nickname = superadmin_user.nickname or "superadmin"
+        
         admin_user, _ = get_or_create(
             db,
             User,
@@ -38,13 +57,16 @@ def run() -> None:
                 "hashed_password": get_password_hash("password123"),
                 "role": "admin",
                 "is_active": True,
+                "nickname": "admin",
             },
-            username="admin",
+            email="admin@dentallab.com",
         )
         if not getattr(admin_user, "hashed_password", None) or len(admin_user.hashed_password) < 10:
             admin_user.hashed_password = get_password_hash("password123")
         admin_user.role = "admin"
         admin_user.is_active = True
+        admin_user.email = admin_user.email or "admin@dentallab.com"
+        admin_user.nickname = admin_user.nickname or "admin"
 
         normal_user, _ = get_or_create(
             db,
@@ -53,13 +75,16 @@ def run() -> None:
                 "hashed_password": get_password_hash("userpass"),
                 "role": "user",
                 "is_active": True,
+                "nickname": "user1",
             },
-            username="user1",
+            email="user1@dentallab.com",
         )
         if not getattr(normal_user, "hashed_password", None) or len(normal_user.hashed_password) < 10:
             normal_user.hashed_password = get_password_hash("userpass")
         normal_user.role = "user"
         normal_user.is_active = True
+        normal_user.email = normal_user.email or "user1@dentallab.com"
+        normal_user.nickname = normal_user.nickname or "user1"
 
         db.commit()
 

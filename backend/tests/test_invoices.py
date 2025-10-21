@@ -8,7 +8,7 @@ from app.main import app
 client = TestClient(app)
 
 
-def get_token(username: str = "admin", password: str = "password123") -> str:
+def get_token(username: str = "admin@test.local", password: str = "password123") -> str:
 	resp = client.post("/users/token", data={"username": username, "password": password})
 	assert resp.status_code == 200, resp.text
 	return resp.json()["access_token"]
@@ -20,7 +20,7 @@ def auth_headers(token: str) -> dict:
 
 @pytest.mark.order(1)
 def test_login_ok():
-	resp = client.post("/users/token", data={"username": "admin", "password": "password123"})
+	resp = client.post("/users/token", data={"username": "admin@test.local", "password": "password123"})
 	assert resp.status_code == 200
 	data = resp.json()
 	assert "access_token" in data

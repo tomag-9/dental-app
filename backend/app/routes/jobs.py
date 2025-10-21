@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from app.models import Job, PriceList
+from app.models import Job, PriceList, Patient, Clinic, Doctor, Technician, User
 from app.schemas import JobCreate, JobResponse
 from app.database import get_db
 from app.auth import get_current_user
@@ -20,13 +20,30 @@ def validate_procedure_codes(procedure_codes: list[str], db: Session):
             detail=f"Invalid procedure codes: {invalid_codes}"
         )
 
-@router.post("/", response_model=JobResponse, dependencies=[Depends(get_current_user)])
-def create_job(job: JobCreate, db: Session = Depends(get_db)):
+@router.post("/", response_model=JobResponse)
+def create_job(job: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     validate_procedure_codes(job.procedure_codes, db)
     if job.procedure_codes and job.procedure_quantities:
         if len(job.procedure_codes) != len(set(job.procedure_quantities.keys())):
             raise HTTPException(status_code=400, detail="Procedure codes and quantities must match")
-    db_job = Job(**job.dict(exclude_unset=True))
+    payload = job.dict(exclude_unset=True)
+    # Non-superadmin: enforce lab scope and consistency
+    if current_user.role != "superadmin":
+        if not current_user.lab_id:
+            raise HTTPException(status_code=400, detail="User is not assigned to any lab")
+        # Check referenced entities belong to same lab
+        pat = db.query(Patient).filter(Patient.id == payload["patient_id"]).first()
+        cli = db.query(Clinic).filter(Clinic.id == payload["clinic_id"]).first()
+        doc = db.query(Doctor).filter(Doctor.id == payload["doctor_id"]).first()
+        tech = db.query(Technician).filter(Technician.id == payload["technician_id"]).first()
+        if not all([pat, cli, doc, tech]):
+            raise HTTPException(status_code=400, detail="Referenced entities not found")
+        if any(getattr(ent, "lab_id", None) != current_user.lab_id for ent in [pat, cli, doc, tech]):
+            raise HTTPException(status_code=403, detail="Entities must belong to the same lab")
+        payload["lab_id"] = current_user.lab_id
+    db_job = Job(**payload)
     try:
         db.add(db_job)
         db.commit()
@@ -38,29 +55,45 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail=f"Invalid patient_id: {job.patient_id} does not exist")
         raise HTTPException(status_code=400, detail="Database integrity error")
 
-@router.get("/", response_model=list[JobResponse], dependencies=[Depends(get_current_user)])
-def get_jobs(patient_id: int = Query(None, description="Filter by patient ID"), db: Session = Depends(get_db)):
+@router.get("/", response_model=list[JobResponse])
+def get_jobs(patient_id: int = Query(None, description="Filter by patient ID"), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    q = db.query(Job)
+    if current_user.role != "superadmin":
+        q = q.filter(Job.lab_id == current_user.lab_id)
     if patient_id:
-        jobs = db.query(Job).filter(Job.patient_id == patient_id).all()
+        q = q.filter(Job.patient_id == patient_id)
+        jobs = q.all()
         if not jobs:
             raise HTTPException(status_code=404, detail=f"No jobs found for patient_id: {patient_id}")
         return jobs
-    return db.query(Job).all()
+    return q.all()
 
-@router.get("/{job_id}", response_model=JobResponse, dependencies=[Depends(get_current_user)])
-def get_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id).first()
+@router.get("/{job_id}", response_model=JobResponse)
+def get_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    q = db.query(Job).filter(Job.id == job_id)
+    if current_user.role != "superadmin":
+        q = q.filter(Job.lab_id == current_user.lab_id)
+    job = q.first()
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.put("/{job_id}", response_model=JobResponse, dependencies=[Depends(get_current_user)])
-def update_job(job_id: int, job: JobCreate, db: Session = Depends(get_db)):
+@router.put("/{job_id}", response_model=JobResponse)
+def update_job(job_id: int, job: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     validate_procedure_codes(job.procedure_codes, db)
     if job.procedure_codes and job.procedure_quantities:
         if len(job.procedure_codes) != len(set(job.procedure_quantities.keys())):
             raise HTTPException(status_code=400, detail="Procedure codes and quantities must match")
-    db_job = db.query(Job).filter(Job.id == job_id).first()
+    q = db.query(Job).filter(Job.id == job_id)
+    if current_user.role != "superadmin":
+        q = q.filter(Job.lab_id == current_user.lab_id)
+    db_job = q.first()
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     try:
@@ -76,9 +109,14 @@ def update_job(job_id: int, job: JobCreate, db: Session = Depends(get_db)):
         # ... (other integrity checks)
         raise HTTPException(status_code=400, detail="Database integrity error")
 
-@router.delete("/{job_id}", dependencies=[Depends(get_current_user)])
-def delete_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(Job).filter(Job.id == job_id).first()
+@router.delete("/{job_id}")
+def delete_job(job_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    q = db.query(Job).filter(Job.id == job_id)
+    if current_user.role != "superadmin":
+        q = q.filter(Job.lab_id == current_user.lab_id)
+    job = q.first()
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     db.delete(job)

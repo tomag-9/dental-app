@@ -28,7 +28,11 @@ const PriceList = ({ token, setError }) => {
 
   const fetchItems = async () => {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      });
       if (!res.ok) throw new Error('Failed to load price list');
       const data = await res.json();
       setPriceItems(data);

@@ -4,8 +4,8 @@ Tests for company endpoints.
 import pytest
 
 
-def get_token(client, username="admin", password="password123"):
-    """Helper to get auth token."""
+def get_token(client, username="admin@test.local", password="password123"):
+    """Helper to get auth token (email as username)."""
     resp = client.post("/users/token", data={"username": username, "password": password})
     assert resp.status_code == 200
     return resp.json()["access_token"]

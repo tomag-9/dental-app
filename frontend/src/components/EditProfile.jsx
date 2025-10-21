@@ -5,8 +5,8 @@ import {
 } from '@mui/material';
 
 const EditProfile = ({ token, setError }) => {
-  const [userData, setUserData] = useState({ username: '', password: '' });
-  const [originalUsername, setOriginalUsername] = useState('');
+  const [userData, setUserData] = useState({ nickname: '', password: '' });
+  const [originalNickname, setOriginalNickname] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -14,8 +14,8 @@ const EditProfile = ({ token, setError }) => {
         const response = await axios.get('http://localhost:8000/users/me/', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setUserData({ username: response.data.username, password: '' });
-        setOriginalUsername(response.data.username);
+        setUserData({ nickname: response.data.nickname || '', password: '' });
+        setOriginalNickname(response.data.nickname || '');
       } catch (err) {
         setError('Nepodarilo sa načítať údaje používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }
@@ -30,7 +30,7 @@ const EditProfile = ({ token, setError }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const data = { username: userData.username, password: userData.password || undefined };
+      const data = { nickname: userData.nickname, password: userData.password || undefined };
       await axios.put('http://localhost:8000/users/me/', data, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -47,13 +47,12 @@ const EditProfile = ({ token, setError }) => {
         <form onSubmit={handleSubmit}>
           <TextField
             margin="normal"
-            label="Meno"
-            name="username"
-            value={userData.username}
+            label="Prezývka"
+            name="nickname"
+            value={userData.nickname}
             onChange={handleChange}
             fullWidth
-            required
-            disabled={userData.username === originalUsername}
+            helperText="Voliteľné - použije sa ako zobrazované meno"
           />
           <TextField
             margin="normal"

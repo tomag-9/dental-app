@@ -4,30 +4,30 @@ import {
   Box, Typography, Card, CardContent, TextField, Button, Stack,
   Alert, CircularProgress, Grid, Divider, Paper
 } from '@mui/material';
-import { Save as SaveIcon, Business as BusinessIcon } from '@mui/icons-material';
+import { Save as SaveIcon, Science as ScienceIcon } from '@mui/icons-material';
 
-const CompanySettings = ({ token, setError }) => {
-  const [company, setCompany] = useState(null);
+const LabSettings = ({ token, setError }) => {
+  const [lab, setLab] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    fetchCompany();
+    fetchLab();
   }, []);
 
-  const fetchCompany = async () => {
+  const fetchLab = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:8000/companies/', {
+      const response = await axios.get('http://localhost:8000/labs/', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Get the first company (there should be only one)
+      // Get the first lab (there should be only one)
       if (response.data.length > 0) {
-        setCompany(response.data[0]);
+        setLab(response.data[0]);
       } else {
-        // Create a new company if none exists
-        setCompany({
+        // Create a new lab if none exists
+        setLab({
           name: '',
           address: '',
           city: '',
@@ -44,7 +44,7 @@ const CompanySettings = ({ token, setError }) => {
         });
       }
     } catch (err) {
-      setError('Nepodarilo sa načítať údaje spoločnosti: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      setError('Nepodarilo sa načítať údaje laboratória: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     } finally {
       setLoading(false);
     }
@@ -53,28 +53,28 @@ const CompanySettings = ({ token, setError }) => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      if (company.id) {
-        // Update existing company
-        await axios.put(`http://localhost:8000/companies/${company.id}`, company, {
+      if (lab.id) {
+        // Update existing lab
+        await axios.put(`http://localhost:8000/labs/${lab.id}`, lab, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
-        // Create new company
-        const response = await axios.post('http://localhost:8000/companies/', company, {
+        // Create new lab
+        const response = await axios.post('http://localhost:8000/labs/', lab, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setCompany(response.data);
+        setLab(response.data);
       }
-      setSuccessMsg('Údaje spoločnosti boli úspešne uložené.');
+      setSuccessMsg('Údaje laboratória boli úspešne uložené.');
     } catch (err) {
-      setError('Nepodarilo sa uložiť údaje spoločnosti: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+      setError('Nepodarilo sa uložiť údaje laboratória: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleChange = (field, value) => {
-    setCompany(prev => ({ ...prev, [field]: value }));
+    setLab(prev => ({ ...prev, [field]: value }));
   };
 
   if (loading) {
@@ -85,10 +85,10 @@ const CompanySettings = ({ token, setError }) => {
     );
   }
 
-  if (!company) {
+  if (!lab) {
     return (
       <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3, ml: { xs: 0, md: '240px' } }}>
-        <Alert severity="error">Nepodarilo sa načítať údaje spoločnosti.</Alert>
+        <Alert severity="error">Nepodarilo sa načítať údaje laboratória.</Alert>
       </Box>
     );
   }
@@ -96,9 +96,9 @@ const CompanySettings = ({ token, setError }) => {
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3, ml: { xs: 0, md: '240px' } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <BusinessIcon sx={{ mr: 2, fontSize: 32 }} />
+        <ScienceIcon sx={{ mr: 2, fontSize: 32 }} />
         <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-          Nastavenia spoločnosti
+          Nastavenia laboratória
         </Typography>
       </Box>
 
@@ -109,43 +109,43 @@ const CompanySettings = ({ token, setError }) => {
       )}
 
       <Grid container spacing={3}>
-        {/* Company Information */}
+        {/* Lab Information */}
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Základné údaje spoločnosti
+                Základné údaje laboratória
               </Typography>
               <Stack spacing={2}>
                 <TextField
                   fullWidth
-                  label="Názov spoločnosti"
-                  value={company.name || ''}
+                  label="Názov laboratória"
+                  value={lab.name || ''}
                   onChange={(e) => handleChange('name', e.target.value)}
                   required
                 />
                 <TextField
                   fullWidth
                   label="Adresa"
-                  value={company.address || ''}
+                  value={lab.address || ''}
                   onChange={(e) => handleChange('address', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="Mesto"
-                  value={company.city || ''}
+                  value={lab.city || ''}
                   onChange={(e) => handleChange('city', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="PSČ"
-                  value={company.postal_code || ''}
+                  value={lab.postal_code || ''}
                   onChange={(e) => handleChange('postal_code', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="Krajina"
-                  value={company.country || ''}
+                  value={lab.country || ''}
                   onChange={(e) => handleChange('country', e.target.value)}
                 />
               </Stack>
@@ -164,26 +164,26 @@ const CompanySettings = ({ token, setError }) => {
                 <TextField
                   fullWidth
                   label="Telefón"
-                  value={company.phone || ''}
+                  value={lab.phone || ''}
                   onChange={(e) => handleChange('phone', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="Email"
                   type="email"
-                  value={company.email || ''}
+                  value={lab.email || ''}
                   onChange={(e) => handleChange('email', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="Webová stránka"
-                  value={company.website || ''}
+                  value={lab.website || ''}
                   onChange={(e) => handleChange('website', e.target.value)}
                 />
                 <TextField
                   fullWidth
                   label="URL loga"
-                  value={company.logo_url || ''}
+                  value={lab.logo_url || ''}
                   onChange={(e) => handleChange('logo_url', e.target.value)}
                 />
               </Stack>
@@ -203,7 +203,7 @@ const CompanySettings = ({ token, setError }) => {
                   <TextField
                     fullWidth
                     label="IČO/DIC"
-                    value={company.tax_id || ''}
+                    value={lab.tax_id || ''}
                     onChange={(e) => handleChange('tax_id', e.target.value)}
                   />
                 </Grid>
@@ -211,7 +211,7 @@ const CompanySettings = ({ token, setError }) => {
                   <TextField
                     fullWidth
                     label="IČ DPH"
-                    value={company.vat_id || ''}
+                    value={lab.vat_id || ''}
                     onChange={(e) => handleChange('vat_id', e.target.value)}
                   />
                 </Grid>
@@ -219,7 +219,7 @@ const CompanySettings = ({ token, setError }) => {
                   <TextField
                     fullWidth
                     label="IBAN"
-                    value={company.bank_account || ''}
+                    value={lab.bank_account || ''}
                     onChange={(e) => handleChange('bank_account', e.target.value)}
                   />
                 </Grid>
@@ -227,7 +227,7 @@ const CompanySettings = ({ token, setError }) => {
                   <TextField
                     fullWidth
                     label="BIC/SWIFT"
-                    value={company.bank_bic || ''}
+                    value={lab.bank_bic || ''}
                     onChange={(e) => handleChange('bank_bic', e.target.value)}
                   />
                 </Grid>
@@ -242,14 +242,14 @@ const CompanySettings = ({ token, setError }) => {
           variant="contained"
           startIcon={saving ? <CircularProgress size={20} /> : <SaveIcon />}
           onClick={handleSave}
-          disabled={saving || !company.name}
+          disabled={saving || !lab.name}
           size="large"
         >
-          Uložiť údaje spoločnosti
+          Uložiť údaje laboratória
         </Button>
       </Box>
     </Box>
   );
 };
 
-export default CompanySettings;
+export default LabSettings;

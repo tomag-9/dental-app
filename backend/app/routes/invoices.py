@@ -5,8 +5,8 @@ from typing import List
 
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import Invoice, InvoiceItem, Job, Clinic, User, Patient, Company
-from app.schemas import InvoiceCreate, InvoiceResponse, InvoiceUpdateStatus, InvoiceItemResponse
+from app.models import Invoice, InvoiceItem, Job, Clinic, User, Patient, Lab
+from app.schemas import InvoiceCreate, InvoiceResponse, InvoiceUpdateStatus, InvoiceItemResponse, InvoiceResponse
 import xml.etree.ElementTree as ET
 
 try:
@@ -36,13 +36,16 @@ def create_invoice(payload: InvoiceCreate, current_user: User = Depends(get_curr
 	clinic = db.query(Clinic).filter(Clinic.id == payload.clinic_id).first()
 	if not clinic:
 		raise HTTPException(status_code=404, detail="Clinic not found")
+	# Enforce lab scoping for non-superadmin
+	if current_user.role != "superadmin" and clinic.lab_id != current_user.lab_id:
+		raise HTTPException(status_code=403, detail="Forbidden")
 
 	jobs: List[Job] = db.query(Job).filter(Job.id.in_(payload.job_ids)).all()
 	if len(jobs) != len(payload.job_ids):
 		raise HTTPException(status_code=400, detail="One or more jobs not found")
 
 	number = generate_invoice_number(db)
-	invoice = Invoice(clinic_id=clinic.id, number=number, status="issued", created_at=datetime.utcnow(), issued_at=datetime.utcnow())
+	invoice = Invoice(clinic_id=clinic.id, lab_id=clinic.lab_id, number=number, status="issued", created_at=datetime.utcnow(), issued_at=datetime.utcnow())
 	db.add(invoice)
 	db.flush()
 
@@ -99,7 +102,10 @@ def create_invoice(payload: InvoiceCreate, current_user: User = Depends(get_curr
 def list_invoices(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
 	if not current_user:
 		raise HTTPException(status_code=401, detail="Not authenticated")
-	invoices = db.query(Invoice).all()
+	q = db.query(Invoice)
+	if current_user.role != "superadmin":
+		q = q.filter(Invoice.lab_id == current_user.lab_id)
+	invoices = q.all()
 	return [enrich_invoice(inv, db) for inv in invoices]
 
 
@@ -107,7 +113,10 @@ def list_invoices(current_user: User = Depends(get_current_user), db: Session = 
 def get_invoice(invoice_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
 	if not current_user:
 		raise HTTPException(status_code=401, detail="Not authenticated")
-	invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+	q = db.query(Invoice).filter(Invoice.id == invoice_id)
+	if current_user.role != "superadmin":
+		q = q.filter(Invoice.lab_id == current_user.lab_id)
+	invoice = q.first()
 	if not invoice:
 		raise HTTPException(status_code=404, detail="Invoice not found")
 	return enrich_invoice(invoice, db)
@@ -117,7 +126,10 @@ def get_invoice(invoice_id: int, current_user: User = Depends(get_current_user),
 def update_invoice_status(invoice_id: int, update: InvoiceUpdateStatus, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
 	if not current_user:
 		raise HTTPException(status_code=401, detail="Not authenticated")
-	invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+	q = db.query(Invoice).filter(Invoice.id == invoice_id)
+	if current_user.role != "superadmin":
+		q = q.filter(Invoice.lab_id == current_user.lab_id)
+	invoice = q.first()
 	if not invoice:
 		raise HTTPException(status_code=404, detail="Invoice not found")
 	invoice.status = update.status
@@ -179,8 +191,8 @@ def invoice_pdf(invoice_id: int, db: Session = Depends(get_db)):
 	patients = db.query(Patient).filter(Patient.id.in_([j.patient_id for j in jobs])).all()
 	patient_names = [f"{p.first_name} {p.last_name}" for p in patients]
 	
-	# Get company billing info for PDF header
-	company = db.query(Company).first()  # Get the first (and likely only) company
+	# Get lab billing info for PDF header based on clinic's lab
+	lab = db.query(Lab).join(Clinic, Clinic.lab_id == Lab.id).filter(Clinic.id == invoice.clinic_id).first()
 
 	# Prepare QR raster image for PDF
 	qr_img_reader = None
@@ -203,39 +215,39 @@ def invoice_pdf(invoice_id: int, db: Session = Depends(get_db)):
 	if qr_img_reader:
 		c.drawImage(qr_img_reader, width - 50*mm, height - 50*mm, width=30*mm, height=30*mm, preserveAspectRatio=True, mask='auto')
 
-	# Header with company billing info
+	# Header with lab billing info
 	c.setFont("Helvetica-Bold", 16)
 	c.drawString(20*mm, (height - 20*mm), "FAKTURA")
 	c.setFont("Helvetica", 10)
 	c.drawString(20*mm, (height - 28*mm), f"Cislo: {invoice.number}")
 	c.drawString(20*mm, (height - 34*mm), f"Datum vystavenia: {invoice.issued_at.strftime('%d.%m.%Y') if invoice.issued_at else datetime.utcnow().strftime('%d.%m.%Y')}")
 	
-	# Seller (Company) info
-	if company:
+	# Seller (Lab) info
+	if lab:
 		c.setFont("Helvetica-Bold", 12)
 		c.drawString(20*mm, (height - 50*mm), "Dodavatel:")
 		c.setFont("Helvetica", 10)
 		y_pos = height - 56*mm
-		if company.name:
-			c.drawString(20*mm, y_pos, company.name)
+		if lab.name:
+			c.drawString(20*mm, y_pos, lab.name)
 			y_pos -= 6*mm
-		if company.address:
-			c.drawString(20*mm, y_pos, company.address)
+		if lab.address:
+			c.drawString(20*mm, y_pos, lab.address)
 			y_pos -= 6*mm
-		if company.city and company.postal_code:
-			c.drawString(20*mm, y_pos, f"{company.postal_code} {company.city}")
+		if lab.city and lab.postal_code:
+			c.drawString(20*mm, y_pos, f"{lab.postal_code} {lab.city}")
 			y_pos -= 6*mm
-		if company.tax_id:
-			c.drawString(20*mm, y_pos, f"ICO: {company.tax_id}")
+		if lab.tax_id:
+			c.drawString(20*mm, y_pos, f"ICO: {lab.tax_id}")
 			y_pos -= 6*mm
-		if company.vat_id:
-			c.drawString(20*mm, y_pos, f"IC DPH: {company.vat_id}")
+		if lab.vat_id:
+			c.drawString(20*mm, y_pos, f"IC DPH: {lab.vat_id}")
 			y_pos -= 6*mm
-		if company.bank_account:
-			c.drawString(20*mm, y_pos, f"IBAN: {company.bank_account}")
+		if lab.bank_account:
+			c.drawString(20*mm, y_pos, f"IBAN: {lab.bank_account}")
 			y_pos -= 6*mm
-		if company.bank_bic:
-			c.drawString(20*mm, y_pos, f"BIC: {company.bank_bic}")
+		if lab.bank_bic:
+			c.drawString(20*mm, y_pos, f"BIC: {lab.bank_bic}")
 			y_pos -= 6*mm
 	else:
 		c.setFont("Helvetica-Bold", 12)
@@ -264,7 +276,7 @@ def invoice_pdf(invoice_id: int, db: Session = Depends(get_db)):
 		c.drawString(110*mm, y_pos, "Klinika - udaje nie su k dispozicii")
 
 	# Items table (simplified)
-	y = height - 120*mm  # Adjusted for company info
+	y = height - 120*mm  # Adjusted for lab info
 	c.setFont("Helvetica-Bold", 10)
 	c.drawString(20*mm, y, "Description")
 	c.drawString(120*mm, y, "Qty")

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   List,
@@ -8,6 +8,7 @@ import {
   Popper,
   Paper,
   ListItemButton,
+  Divider,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,68 +21,108 @@ import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WorkIcon from '@mui/icons-material/Work';
 import EngineeringIcon from '@mui/icons-material/Engineering';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BusinessIcon from '@mui/icons-material/Business';
+import GroupIcon from '@mui/icons-material/Group';
+import SubscriptionsIcon from '@mui/icons-material/Subscriptions';
 
 const drawerCollapsedWidth = 60;
 const drawerExpandedWidth = 200;
 const topOffset = 55;
-
-const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Kalendár', icon: <EventIcon />, path: '/calendar' },
-  { text: 'Pacienti', icon: <PeopleIcon />, path: '/patients' },
-  {
-    text: 'Financie',
-    icon: <AttachMoneyIcon />,
-    path: '/finance/overview',
-    subItems: [
-      { text: 'Cenník', path: '/finance/price-list' },
-      { text: 'Faktúry', path: '/finance/invoices' },
-      { text: 'Analytika', path: '/finance/analytics' },
-    ],
-  },
-  {
-    text: 'Sklad',
-    icon: <InventoryIcon />,
-    path: '/storage',
-    subItems: [
-      { text: 'Prehľad', path: '/storage/overview' },
-      { text: 'Položky', path: '/storage/items' },
-    ],
-  },
-  {
-    text: 'Lekári',
-    icon: <LocalHospitalIcon />,
-    path: '/doctors',
-    subItems: [
-      { text: 'Zoznam', path: '/medics/list' },
-      { text: 'Rozvrh', path: '/medics/schedule' },
-    ],
-  },
-  { text: 'Kliniky', icon: <LocalHospitalIcon />, path: '/clinics' },
-  { text: 'Práce', icon: <WorkIcon />, path: '/jobs' },
-  { text: 'Technici', icon: <EngineeringIcon />, path: '/technicians' },
-  {
-    text: 'Nastavenia',
-    icon: <SettingsIcon />,
-    path: '/settings',
-    subItems: [
-      { text: 'Používatelia', path: '/settings/users' },
-      { text: 'Môj profil', path: '/settings/edit-profile' },
-      { text: 'Spoločnosť', path: '/settings/company' },
-      { text: 'Oprávnenia', path: '/settings/permissions' },
-    ],
-  },
-];
 
 export default function Sidebar() {
   const [hoveringDrawer, setHoveringDrawer] = useState(false);
   const [hoveringPopper, setHoveringPopper] = useState(false);
   const collapseTimeoutRef = React.useRef(null);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [userRole, setUserRole] = useState('user');
   const [anchorEl, setAnchorEl] = useState(null);
 
   const navigate = useNavigate();
   const expanded = hoveringDrawer || hoveringPopper;
+
+  useEffect(() => {
+    // Get user role from localStorage
+    const updateUserRole = () => {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      setUserRole(user.role || 'user');
+    };
+    
+    updateUserRole();
+    
+    // Listen for storage changes (e.g., when user logs in)
+    window.addEventListener('storage', updateUserRole);
+    
+    // Also check periodically in case storage event doesn't fire
+    const interval = setInterval(updateUserRole, 1000);
+    
+    return () => {
+      window.removeEventListener('storage', updateUserRole);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Regular menu items for all users
+  const regularMenuItems = [
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
+    { text: 'Kalendár', icon: <EventIcon />, path: '/calendar' },
+    { text: 'Pacienti', icon: <PeopleIcon />, path: '/patients' },
+    {
+      text: 'Financie',
+      icon: <AttachMoneyIcon />,
+      path: '/finance/overview',
+      subItems: [
+        { text: 'Cenník', path: '/finance/price-list' },
+        { text: 'Faktúry', path: '/finance/invoices' },
+        { text: 'Analytika', path: '/finance/analytics' },
+      ],
+    },
+    {
+      text: 'Sklad',
+      icon: <InventoryIcon />,
+      path: '/storage',
+      subItems: [
+        { text: 'Prehľad', path: '/storage/overview' },
+        { text: 'Položky', path: '/storage/items' },
+      ],
+    },
+    {
+      text: 'Lekári',
+      icon: <LocalHospitalIcon />,
+      path: '/doctors',
+      subItems: [
+        { text: 'Zoznam', path: '/medics/list' },
+        { text: 'Rozvrh', path: '/medics/schedule' },
+      ],
+    },
+    { text: 'Kliniky', icon: <LocalHospitalIcon />, path: '/clinics' },
+    { text: 'Práce', icon: <WorkIcon />, path: '/jobs' },
+    { text: 'Technici', icon: <EngineeringIcon />, path: '/technicians' },
+    {
+      text: 'Nastavenia',
+      icon: <SettingsIcon />,
+      path: '/settings',
+      subItems: [
+        { text: 'Používatelia', path: '/settings/users' },
+        { text: 'Môj profil', path: '/settings/edit-profile' },
+        { text: 'Laboratórium', path: '/settings/lab' },
+        { text: 'Oprávnenia', path: '/settings/permissions' },
+      ],
+    },
+  ];
+
+  // Superadmin-only menu items
+  const superadminMenuItems = [
+    { text: 'Superadmin', icon: <AdminPanelSettingsIcon />, path: '/superadmin/dashboard' },
+    { text: 'Laboratóriá', icon: <BusinessIcon />, path: '/superadmin/labs' },
+    { text: 'Všetci používatelia', icon: <GroupIcon />, path: '/superadmin/users' },
+    { text: 'Predplatné', icon: <SubscriptionsIcon />, path: '/superadmin/subscriptions' },
+  ];
+
+  // Combine menu items based on role
+  const menuItems = userRole === 'superadmin' 
+    ? [...superadminMenuItems, ...regularMenuItems] 
+    : regularMenuItems;
 
   const handleItemHover = (event, item) => {
     if (item.subItems) {

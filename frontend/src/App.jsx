@@ -12,6 +12,7 @@ import {
 import NavBar from './components/NavBar';
 import DrawerComponent from './components/Drawer';
 import Login from './components/Login';
+import Signup from './components/Signup';
 import Patient from './components/Patient';
 import Jobs from './components/Jobs';
 import Doctors from './components/Doctors';
@@ -21,9 +22,13 @@ import PriceList from './components/PriceList';
 import Invoices from './components/Invoices';
 import Users from './components/Users';
 import EditProfile from './components/EditProfile';
-import CompanySettings from './components/CompanySettings';
+import LabSettings from './components/LabSettings';
 import JobDetails from './components/JobDetails';
 import CalendarPage from './components/CalendarPage';
+import SuperadminDashboard from './components/SuperadminDashboard';
+import LabManagement from './components/LabManagement';
+import UserManagement from './components/UserManagement';
+import SubscriptionManagement from './components/SubscriptionManagement';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -115,7 +120,7 @@ const ProtectedRoute = ({ children, token, setError, setToken, setIsLoggedIn }) 
 
 function App() {
   const [loginData, setLoginData] = useState({
-    username: '',
+    email: '',
     password: '',
   });
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -134,7 +139,7 @@ function App() {
     setToken('');
     localStorage.removeItem('token');
     setIsLoggedIn(false);
-    setLoginData({ username: '', password: '' });
+      setLoginData({ email: '', password: '' });
     setError('');
     setSidebarOpen(false);
     setIsDrawerExpanded(false);
@@ -175,6 +180,38 @@ function App() {
                 element={
                   <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
                     <CalendarPage token={token} setError={setError} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/dashboard"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <SuperadminDashboard token={token} setError={setError} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/labs"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <LabManagement token={token} setError={setError} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/users"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <UserManagement token={token} setError={setError} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/superadmin/subscriptions"
+                element={
+                  <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                    <SubscriptionManagement token={token} setError={setError} />
                   </ProtectedRoute>
                 }
               />
@@ -268,8 +305,8 @@ function App() {
                           element={<EditProfile token={token} setError={setError} />}
                         />
                         <Route
-                          path="company"
-                          element={<CompanySettings token={token} setError={setError} />}
+                          path="lab"
+                          element={<LabSettings token={token} setError={setError} />}
                         />
                         <Route
                           path="*"
@@ -313,6 +350,17 @@ function App() {
                     setIsLoggedIn={setIsLoggedIn}
                     setError={setError}
                     error={error}
+                  />
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <Signup
+                    onLoginSuccess={(token) => {
+                      setToken(token);
+                      setIsLoggedIn(true);
+                    }}
                   />
                 }
               />

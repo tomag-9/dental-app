@@ -1,15 +1,18 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 from datetime import datetime, date
 from typing import Optional, List, Dict
 
 class UserCreate(BaseModel):
-    username: str
+    nickname: Optional[str] = None
+    email: Optional[str] = None
     password: Optional[str] = None
     role: Optional[str] = "user"  # Allow role to be set
+    lab_id: Optional[int] = None  # For assigning users to an existing lab
 
 class UserResponse(BaseModel):
     id: int
-    username: str
+    nickname: Optional[str] = None
+    email: Optional[str] = None
     role: str  # Add this line
     is_active: bool
     created_at: datetime
@@ -45,6 +48,8 @@ class PatientCreate(BaseModel):
 class PatientResponse(PatientCreate):
     id: int
     created_at: datetime
+    class Config:
+        orm_mode = True
 
 class ClinicCreate(BaseModel):
     name: str
@@ -57,6 +62,8 @@ class ClinicCreate(BaseModel):
 class ClinicResponse(ClinicCreate):
     id: int
     created_at: datetime
+    class Config:
+        orm_mode = True
 
 class DoctorCreate(BaseModel):
     first_name: str
@@ -69,8 +76,10 @@ class DoctorCreate(BaseModel):
 class DoctorResponse(DoctorCreate):
     id: int
     created_at: datetime
+    class Config:
+        orm_mode = True
 
-class CompanyCreate(BaseModel):
+class LabCreate(BaseModel):
     name: str
     address: Optional[str] = None
     city: Optional[str] = None
@@ -85,10 +94,34 @@ class CompanyCreate(BaseModel):
     website: Optional[str] = None
     logo_url: Optional[str] = None
 
-class CompanyResponse(CompanyCreate):
+class LabResponse(LabCreate):
     id: int
     created_at: datetime
     updated_at: datetime
+    # Allow creating this model from ORM (SQLAlchemy) objects
+    model_config = ConfigDict(from_attributes=True)
+
+class SignupRequest(BaseModel):
+    # Lab information
+    lab_name: str
+    lab_address: Optional[str] = None
+    lab_city: Optional[str] = None
+    lab_postal_code: Optional[str] = None
+    lab_country: Optional[str] = "Slovakia"
+    lab_tax_id: Optional[str] = None
+    lab_vat_id: Optional[str] = None
+    lab_phone: Optional[str] = None
+    lab_email: Optional[str] = None
+    
+    # Admin user credentials
+    nickname: Optional[str] = None  # Optional display name; login is by email
+    password: str
+    email: Optional[str] = None
+
+class SignupResponse(BaseModel):
+    lab: LabResponse
+    user: UserResponse
+    token: Token
 
 class TechnicianCreate(BaseModel):
     first_name: str
@@ -100,6 +133,8 @@ class TechnicianCreate(BaseModel):
 class TechnicianResponse(TechnicianCreate):
     id: int
     created_at: datetime
+    class Config:
+        orm_mode = True
 
 class PriceListCreate(BaseModel):
     code: str
@@ -111,6 +146,8 @@ class PriceListCreate(BaseModel):
 class PriceListResponse(PriceListCreate):
     id: int
     created_at: datetime
+    class Config:
+        orm_mode = True
 
 class JobCreate(BaseModel):
     patient_id: int
@@ -197,6 +234,7 @@ class VacationCreate(BaseModel):
 class VacationResponse(VacationCreate):
     id: int
     created_at: datetime
+    lab_id: Optional[int] = None
 
     class Config:
         orm_mode = True

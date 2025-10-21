@@ -6,14 +6,41 @@ from datetime import datetime
 
 Base = declarative_base()
 
+
+# Model pre laboratórium/techniku
+class Lab(Base):
+    __tablename__ = "labs"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    address = Column(String)
+    city = Column(String)
+    postal_code = Column(String)
+    country = Column(String, default="Slovakia")
+    tax_id = Column(String)  # IČO/DIC
+    vat_id = Column(String)   # IČ DPH
+    bank_account = Column(String)  # IBAN
+    bank_bic = Column(String)     # BIC/SWIFT
+    phone = Column(String)
+    email = Column(String)
+    website = Column(String)
+    logo_url = Column(String)
+    contact_info = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    users = relationship("User", back_populates="lab")
+    technicians = relationship("Technician", back_populates="lab")
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, nullable=False)
+    nickname = Column(String, unique=True, nullable=True)
+    email = Column(String, unique=True, nullable=True)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="user")  # Updated
-    is_active = Column(Boolean, nullable=False, default=True)  # Updated
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)  # Updated
+    role = Column(String, nullable=False, default="user")  # superadmin, admin, user
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
+    lab = relationship("Lab", back_populates="users")
 
 class DentalPractice(Base):
     __tablename__ = "dental_practice"
@@ -36,6 +63,8 @@ class Patient(Base):
     phone = Column(String)
     email = Column(String)
     tooth_procedures = Column(JSON, nullable=True)  # Cumulative tooth map for patient
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    lab = relationship("Lab")
     created_at = Column(DateTime, default=datetime.utcnow)
     jobs = relationship("Job", back_populates="patient")
 
@@ -48,6 +77,8 @@ class Clinic(Base):
     address = Column(String)
     bank_details = Column(String)
     contact_info = Column(JSON)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    lab = relationship("Lab")
     created_at = Column(DateTime, default=datetime.utcnow)
     jobs = relationship("Job", back_populates="clinic")
 
@@ -60,27 +91,12 @@ class Doctor(Base):
     title_after = Column(String)
     contact_info = Column(JSON)
     clinic_id = Column(Integer, ForeignKey("clinics.id"))
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    lab = relationship("Lab")
     created_at = Column(DateTime, default=datetime.utcnow)
     jobs = relationship("Job", back_populates="doctor")
 
-class Company(Base):
-    __tablename__ = "companies"
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    address = Column(String)
-    city = Column(String)
-    postal_code = Column(String)
-    country = Column(String, default="Slovakia")
-    tax_id = Column(String)  # IČO/DIC
-    vat_id = Column(String)   # IČ DPH
-    bank_account = Column(String)  # IBAN
-    bank_bic = Column(String)     # BIC/SWIFT
-    phone = Column(String)
-    email = Column(String)
-    website = Column(String)
-    logo_url = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+## Company model removed in favor of Lab
 
 class Technician(Base):
     __tablename__ = "technicians"
@@ -91,6 +107,8 @@ class Technician(Base):
     title_after = Column(String)
     contact_info = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
+    lab = relationship("Lab", back_populates="technicians")
     jobs = relationship("Job", back_populates="technician")
 
 class PriceList(Base):
@@ -99,6 +117,8 @@ class PriceList(Base):
     code = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=False)
     price = Column(Float, nullable=False)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
+    lab = relationship("Lab")
     valid_from = Column(Date)
     valid_to = Column(Date)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -110,6 +130,8 @@ class Job(Base):
     clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False)
     doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False)
     technician_id = Column(Integer, ForeignKey("technicians.id"), nullable=False)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    lab = relationship("Lab")
     price = Column(Float, nullable=True)
     due_date = Column(Date, nullable=True)
     status = Column(String, nullable=True)
@@ -133,6 +155,7 @@ class Invoice(Base):
     __tablename__ = "invoices"
     id = Column(Integer, primary_key=True)
     clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
     number = Column(String, unique=True, nullable=False)
     status = Column(String, nullable=False, default="draft")  # draft, issued, paid, cancelled
     total_amount = Column(Float, nullable=False, default=0.0)
@@ -141,6 +164,7 @@ class Invoice(Base):
     paid_at = Column(DateTime, nullable=True)
 
     clinic = relationship("Clinic")
+    lab = relationship("Lab")
     items = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
 
 
@@ -164,3 +188,19 @@ class Vacation(Base):
     end = Column(DateTime, nullable=False)
     description = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
+    lab = relationship("Lab")
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False, unique=True)
+    plan = Column(String, nullable=False, default="free")  # free, pro, enterprise
+    status = Column(String, nullable=False, default="inactive")  # active, past_due, cancelled, inactive
+    seats = Column(Integer, nullable=False, default=5)
+    current_period_start = Column(Date, nullable=True)
+    current_period_end = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    lab = relationship("Lab")
