@@ -39,6 +39,11 @@ def create_item(item: WarehouseItemCreate, db: Session = Depends(get_db), curren
     
     if current_user.role == "superadmin" and getattr(item, "lab_id", None):
         lab_id = item.lab_id  # not exposed in schema, kept simple
+    
+    # Ensure lab_id is valid before proceeding
+    if not lab_id:
+        raise HTTPException(status_code=400, detail="Invalid lab assignment")
+    
     # check SKU uniqueness within lab if provided
     if item.sku:
         exists = db.query(WarehouseItem).filter(WarehouseItem.lab_id == lab_id, WarehouseItem.sku == item.sku).first()

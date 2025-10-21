@@ -20,3 +20,7 @@ htmlcov/
 dist/
 build/
 .pytest_cache/
+.venv/
+backend/.venv/
+backend/venv/
+frontend/node_modules/

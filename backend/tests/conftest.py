@@ -158,3 +158,15 @@ def admin_token(client):
 def auth_headers(admin_token):
     return {"Authorization": f"Bearer {admin_token}"}
 
+
+@pytest.fixture()
+def user_token(client):
+    resp = client.post("/users/token", data={"username": "user1@test.local", "password": "userpass"})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+@pytest.fixture()
+def user_auth_headers(user_token):
+    return {"Authorization": f"Bearer {user_token}"}
+
