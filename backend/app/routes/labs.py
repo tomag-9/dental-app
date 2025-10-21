@@ -13,7 +13,7 @@ def create_lab(lab: LabCreate, current_user: User = Depends(get_current_user), d
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    db_lab = Lab(**lab.dict())
+    db_lab = Lab(**lab.model_dump())
     db.add(db_lab)
     db.commit()
     db.refresh(db_lab)
@@ -54,7 +54,7 @@ def update_lab(lab_id: int, lab: LabCreate, current_user: User = Depends(get_cur
     if current_user.role != "superadmin" and current_user.lab_id != db_lab.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     
-    for field, value in lab.dict().items():
+    for field, value in lab.model_dump().items():
         setattr(db_lab, field, value)
     
     db.commit()

@@ -20,7 +20,7 @@ def get_vacations(current_user: User = Depends(get_current_user), db: Session = 
 def create_vacation(vacation: VacationCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = vacation.dict()
+    payload = vacation.model_dump()
     if current_user.role != "superadmin":
         payload["lab_id"] = current_user.lab_id
     db_vac = Vacation(**payload)

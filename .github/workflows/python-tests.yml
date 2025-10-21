@@ -11,6 +11,8 @@ on:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    env:
+      TESTING: '1'
 
     steps:
       - name: Checkout repository

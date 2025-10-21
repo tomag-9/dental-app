@@ -24,25 +24,26 @@ def validate_procedure_codes(procedure_codes: list[str], db: Session):
 def create_job(job: JobCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    if not current_user.lab_id:
+        raise HTTPException(status_code=400, detail="User is not assigned to any lab")
     validate_procedure_codes(job.procedure_codes, db)
     if job.procedure_codes and job.procedure_quantities:
         if len(job.procedure_codes) != len(set(job.procedure_quantities.keys())):
             raise HTTPException(status_code=400, detail="Procedure codes and quantities must match")
-    payload = job.dict(exclude_unset=True)
-    # Non-superadmin: enforce lab scope and consistency
+    payload = job.model_dump(exclude_unset=True)
+    # Check referenced entities belong to same lab (for non-superadmin enforce, for superadmin validate)
+    pat = db.query(Patient).filter(Patient.id == payload["patient_id"]).first()
+    cli = db.query(Clinic).filter(Clinic.id == payload["clinic_id"]).first()
+    doc = db.query(Doctor).filter(Doctor.id == payload["doctor_id"]).first()
+    tech = db.query(Technician).filter(Technician.id == payload["technician_id"]).first()
+    if not all([pat, cli, doc, tech]):
+        raise HTTPException(status_code=400, detail="Referenced entities not found")
     if current_user.role != "superadmin":
-        if not current_user.lab_id:
-            raise HTTPException(status_code=400, detail="User is not assigned to any lab")
-        # Check referenced entities belong to same lab
-        pat = db.query(Patient).filter(Patient.id == payload["patient_id"]).first()
-        cli = db.query(Clinic).filter(Clinic.id == payload["clinic_id"]).first()
-        doc = db.query(Doctor).filter(Doctor.id == payload["doctor_id"]).first()
-        tech = db.query(Technician).filter(Technician.id == payload["technician_id"]).first()
-        if not all([pat, cli, doc, tech]):
-            raise HTTPException(status_code=400, detail="Referenced entities not found")
+        # Non-superadmin: enforce lab scope and consistency
         if any(getattr(ent, "lab_id", None) != current_user.lab_id for ent in [pat, cli, doc, tech]):
             raise HTTPException(status_code=403, detail="Entities must belong to the same lab")
-        payload["lab_id"] = current_user.lab_id
+    # Always assign lab_id from current user
+    payload["lab_id"] = current_user.lab_id
     db_job = Job(**payload)
     try:
         db.add(db_job)
@@ -97,7 +98,7 @@ def update_job(job_id: int, job: JobCreate, current_user: User = Depends(get_cur
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     try:
-        for key, value in job.dict(exclude_unset=True).items():
+        for key, value in job.model_dump(exclude_unset=True).items():
             setattr(db_job, key, value)
         db.commit()
         db.refresh(db_job)

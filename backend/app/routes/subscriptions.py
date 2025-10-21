@@ -4,7 +4,7 @@ from app.models import Subscription, Lab
 from app.database import get_db
 from app.auth import get_superadmin_user, get_current_user
 from app.models import User
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 
@@ -26,8 +26,7 @@ class SubscriptionResponse(BaseModel):
     current_period_start: Optional[date]
     current_period_end: Optional[date]
     
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/my", response_model=SubscriptionResponse)
 def get_my_subscription(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

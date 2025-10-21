@@ -11,11 +11,11 @@ router = APIRouter(prefix="/doctors", tags=["doctors"])
 def create_doctor(doctor: DoctorCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    if current_user.role != "superadmin" and not current_user.lab_id:
+    if not current_user.lab_id:
         raise HTTPException(status_code=400, detail="User is not assigned to any lab")
-    payload = doctor.dict()
-    if current_user.role != "superadmin":
-        payload["lab_id"] = current_user.lab_id
+    payload = doctor.model_dump()
+    # Always assign lab_id from current user (superadmin uses their lab_id, others use their lab_id)
+    payload["lab_id"] = current_user.lab_id
     db_doctor = Doctor(**payload)
     db.add(db_doctor)
     db.commit()
@@ -51,7 +51,7 @@ def update_doctor(doctor_id: int, doctor: DoctorCreate, current_user: User = Dep
         raise HTTPException(status_code=404, detail="Lekár nenájdený")
     if current_user.role != "superadmin" and db_doctor.lab_id != current_user.lab_id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    for key, value in doctor.dict().items():
+    for key, value in doctor.model_dump().items():
         setattr(db_doctor, key, value)
     db.commit()
     db.refresh(db_doctor)

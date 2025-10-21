@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import Invoice, InvoiceItem, Job, Clinic, User, Patient, Lab
-from app.schemas import InvoiceCreate, InvoiceResponse, InvoiceUpdateStatus, InvoiceItemResponse, InvoiceResponse
+from app.schemas import InvoiceCreate, InvoiceResponse, InvoiceUpdateStatus, InvoiceItemResponse
 import xml.etree.ElementTree as ET
 
 try:
@@ -25,7 +25,7 @@ def test_endpoint():
 def generate_invoice_number(db: Session) -> str:
 	# Simple incremental numbering: INV-<timestamp>-<count>
 	count = db.query(Invoice).count() + 1
-	return f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{count:04d}"
+	return f"INV-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{count:04d}"
 
 
 @router.post("/", response_model=InvoiceResponse)
@@ -45,7 +45,7 @@ def create_invoice(payload: InvoiceCreate, current_user: User = Depends(get_curr
 		raise HTTPException(status_code=400, detail="One or more jobs not found")
 
 	number = generate_invoice_number(db)
-	invoice = Invoice(clinic_id=clinic.id, lab_id=clinic.lab_id, number=number, status="issued", created_at=datetime.utcnow(), issued_at=datetime.utcnow())
+	invoice = Invoice(clinic_id=clinic.id, lab_id=clinic.lab_id, number=number, status="issued", created_at=datetime.now(timezone.utc), issued_at=datetime.now(timezone.utc))
 	db.add(invoice)
 	db.flush()
 
@@ -134,9 +134,9 @@ def update_invoice_status(invoice_id: int, update: InvoiceUpdateStatus, current_
 		raise HTTPException(status_code=404, detail="Invoice not found")
 	invoice.status = update.status
 	if update.status == "issued" and not invoice.issued_at:
-		invoice.issued_at = datetime.utcnow()
+		invoice.issued_at = datetime.now(timezone.utc)
 	if update.status == "paid" and not invoice.paid_at:
-		invoice.paid_at = datetime.utcnow()
+		invoice.paid_at = datetime.now(timezone.utc)
 	db.commit()
 	db.refresh(invoice)
 
@@ -220,7 +220,7 @@ def invoice_pdf(invoice_id: int, db: Session = Depends(get_db)):
 	c.drawString(20*mm, (height - 20*mm), "FAKTURA")
 	c.setFont("Helvetica", 10)
 	c.drawString(20*mm, (height - 28*mm), f"Cislo: {invoice.number}")
-	c.drawString(20*mm, (height - 34*mm), f"Datum vystavenia: {invoice.issued_at.strftime('%d.%m.%Y') if invoice.issued_at else datetime.utcnow().strftime('%d.%m.%Y')}")
+	c.drawString(20*mm, (height - 34*mm), f"Datum vystavenia: {invoice.issued_at.strftime('%d.%m.%Y') if invoice.issued_at else datetime.now(timezone.utc).strftime('%d.%m.%Y')}")
 	
 	# Seller (Lab) info
 	if lab:

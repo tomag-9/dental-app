@@ -81,7 +81,6 @@ backend/tests/
 ├── test_clinics_and_price_list.py  # Clinic and price list tests
 ├── test_doctors_technicians.py     # Doctor and technician tests
 ├── test_invoices.py         # Invoice tests
-├── test_companies.py        # Company management tests (NEW)
 ├── test_vacations.py        # Vacation management tests (NEW)
 └── test_edge_cases.py       # Security and edge case tests (NEW)
 ```
@@ -102,7 +101,7 @@ See `doc/test_coverage.md` for detailed coverage information.
 | Clinics & Price List | 1 | ✅ |
 | Doctors & Technicians | 1 | ✅ |
 | Invoices | 3 | ✅ |
-| Companies | 10 | ✅ |
+| Companies (removed) | 0 | — |
 | Vacations | 5 | ✅ |
 | Edge Cases & Security | 19 | ✅ |
 

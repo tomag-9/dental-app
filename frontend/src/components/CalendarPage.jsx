@@ -36,7 +36,7 @@ const CalendarPage = ({ token, setError }) => {
         let vacationsRes = { data: [] };
         try {
           vacationsRes = await apiClient.get('/vacations/');
-        } catch {}
+        } catch { /* ignore errors fetching vacations */ }
         // Map jobs to calendar events
         const jobEvents = jobsRes.data.map(job => ({
           id: `job-${job.id}`,

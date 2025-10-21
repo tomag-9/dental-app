@@ -5,7 +5,7 @@ from app.models import User, Lab, Subscription
 from app.schemas import UserCreate, UserResponse, Token, SignupRequest, SignupResponse
 from app.database import get_db
 from app.auth import get_current_user, get_password_hash, verify_password, create_access_token, get_superadmin_user
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -39,8 +39,8 @@ def signup(signup_data: SignupRequest, db: Session = Depends(get_db)):
             vat_id=None,
             phone=None,
             email=signup_data.lab_email or signup_data.email,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         db.add(new_lab)
         db.flush()  # Get lab ID without committing
@@ -54,7 +54,7 @@ def signup(signup_data: SignupRequest, db: Session = Depends(get_db)):
             lab_id=new_lab.id,
             email=signup_data.email,
             is_active=True,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         db.add(new_user)
         db.flush()
@@ -65,10 +65,10 @@ def signup(signup_data: SignupRequest, db: Session = Depends(get_db)):
             plan="free",
             status="active",
             seats=5,
-            current_period_start=datetime.utcnow().date(),
-            current_period_end=(datetime.utcnow() + timedelta(days=30)).date(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            current_period_start=datetime.now(timezone.utc).date(),
+            current_period_end=(datetime.now(timezone.utc) + timedelta(days=30)).date(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
         db.add(subscription)
         
@@ -130,7 +130,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         hashed_password=hashed_password,
         role=user.role or "user",
         lab_id=user.lab_id,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         is_active=True,
     )
     db.add(db_user)
@@ -174,31 +174,60 @@ def get_current_user_me(current_user: User = Depends(get_current_user)):
 def update_current_user(me_update: UserCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    # Update nickname (ensure uniqueness)
     if me_update.nickname and me_update.nickname != current_user.nickname:
         db_user = db.query(User).filter(User.nickname == me_update.nickname).first()
         if db_user:
             raise HTTPException(status_code=400, detail="Nickname already registered")
         current_user.nickname = me_update.nickname
+    # Update email (login) with uniqueness check
+    if me_update.email and me_update.email != current_user.email:
+        existing = db.query(User).filter(User.email == me_update.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        current_user.email = me_update.email
+    # Update password
     if me_update.password:
         current_user.hashed_password = get_password_hash(me_update.password)
+    # Update role (self) with strict permissions
+    if me_update.role and me_update.role != current_user.role:
+        target_role = me_update.role
+        if target_role == "superadmin" and current_user.role != "superadmin":
+            raise HTTPException(status_code=403, detail="Only superadmin can assign superadmin role")
+        if target_role == "admin" and current_user.role not in ("admin", "superadmin"):
+            raise HTTPException(status_code=403, detail="Only admin or superadmin can assign admin role")
+        # Allow demotion or lateral changes for permitted users
+        current_user.role = target_role
     db.commit()
     db.refresh(current_user)
     return current_user
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user_update: UserCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not current_user or getattr(current_user, 'role', None) != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can update users")
+    if not current_user or getattr(current_user, 'role', None) not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Only admin or superadmin can update users")
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+    # Admins operate within their lab (except superadmin)
+    if current_user.role != "superadmin" and current_user.lab_id != db_user.lab_id:
+        raise HTTPException(status_code=403, detail="Cannot modify users from another lab")
     if user_update.nickname:
         if db.query(User).filter(User.nickname == user_update.nickname).first() and db_user.nickname != user_update.nickname:
             raise HTTPException(status_code=400, detail="Nickname already registered")
         db_user.nickname = user_update.nickname
+    if user_update.email and user_update.email != db_user.email:
+        if db.query(User).filter(User.email == user_update.email).first():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        db_user.email = user_update.email
     if user_update.password:
         db_user.hashed_password = get_password_hash(user_update.password)
     if user_update.role:
+        # Only superadmin can assign superadmin; admin/superadmin can assign admin; others not allowed
+        if user_update.role == "superadmin" and current_user.role != "superadmin":
+            raise HTTPException(status_code=403, detail="Only superadmin can assign superadmin role")
+        if user_update.role == "admin" and current_user.role not in ("admin", "superadmin"):
+            raise HTTPException(status_code=403, detail="Only admin or superadmin can assign admin role")
         db_user.role = user_update.role
     db.commit()
     db.refresh(db_user)

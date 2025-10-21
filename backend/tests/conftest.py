@@ -72,7 +72,7 @@ def setup_database():
         db.add(lab)
         db.flush()
 
-        admin = models.User(nickname="admin", email="admin@test.local", hashed_password=get_password_hash("password123"), role="admin", is_active=True, lab_id=lab.id)
+        admin = models.User(nickname="admin", email="admin@test.local", hashed_password=get_password_hash("password123"), role="superadmin", is_active=True, lab_id=lab.id)
         user1 = models.User(nickname="user1", email="user1@test.local", hashed_password=get_password_hash("userpass"), role="user", is_active=True, lab_id=lab.id)
         db.add_all([admin, user1])
         db.flush()

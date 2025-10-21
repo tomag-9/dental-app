@@ -13,12 +13,11 @@ router = APIRouter(prefix="/clinics", tags=["clinics"])
 def create_clinic(clinic: ClinicCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    # Assign clinic to current user's lab unless superadmin; superadmin must specify via future param
-    if current_user.role != "superadmin" and not current_user.lab_id:
+    if not current_user.lab_id:
         raise HTTPException(status_code=400, detail="User is not assigned to any lab")
-    payload = clinic.dict()
-    if current_user.role != "superadmin":
-        payload["lab_id"] = current_user.lab_id
+    payload = clinic.model_dump()
+    # Always assign lab_id from current user (superadmin uses their lab_id, others use their lab_id)
+    payload["lab_id"] = current_user.lab_id
     db_clinic = Clinic(**payload)
     db.add(db_clinic)
     db.commit()
@@ -54,7 +53,7 @@ def update_clinic(clinic_id: int, clinic: ClinicCreate, current_user: User = Dep
         raise HTTPException(status_code=404, detail="Klinika nenájdená")
     if current_user.role != "superadmin" and db_clinic.lab_id != current_user.lab_id:
         raise HTTPException(status_code=403, detail="Forbidden")
-    for key, value in clinic.dict().items():
+    for key, value in clinic.model_dump().items():
         setattr(db_clinic, key, value)
     db.commit()
     db.refresh(db_clinic)

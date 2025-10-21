@@ -7,15 +7,6 @@
 #### 1. **test_clinics_and_price_list.py** (1 test)
 - ✅ Full CRUD operations for clinics and price lists
 
-#### 2. **test_companies.py** (10 tests) - NEW!
-- ✅ Create company with full details
-- ✅ List all companies
-- ✅ Get company by ID
-- ✅ Update company information
-- ✅ Delete company
-- ✅ Handle non-existent company (404 errors)
-- ✅ Authentication requirements
-- ✅ Minimal field validation
 
 #### 3. **test_doctors_technicians.py** (1 test)
 - ✅ Full CRUD operations for doctors and technicians
@@ -87,7 +78,7 @@ Comprehensive edge case and security testing:
 |--------|----------|-------|
 | **Users & Auth** | Excellent | 8 tests |
 | **Clinics** | Good | 1 test |
-| **Companies** | Excellent | 10 tests |
+| **Companies (removed)** | N/A | 0 tests |
 | **Doctors/Technicians** | Basic | 1 test |
 | **Patients** | Basic | 1 test |
 | **Jobs** | Basic | 1 test |
@@ -229,7 +220,7 @@ docker-compose exec backend pytest --cov=app --cov-report=html
 
 **Areas with Excellent Coverage:**
 - Authentication & Authorization
-- Companies Management
+- Labs (replacing Companies)
 - Vacations Management
 - Edge Cases & Error Handling
 

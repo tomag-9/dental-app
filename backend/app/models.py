@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, Float, JSON, ForeignKey, ARRAY, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -97,6 +97,24 @@ class Doctor(Base):
     jobs = relationship("Job", back_populates="doctor")
 
 ## Company model removed in favor of Lab
+
+# Warehouse inventory item
+class WarehouseItem(Base):
+    __tablename__ = "warehouse_items"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    sku = Column(String, nullable=True)  # unique per lab
+    quantity = Column(Float, nullable=False, default=0)
+    unit = Column(String, nullable=False, default="pcs")
+    min_threshold = Column(Float, nullable=True)
+    category = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    cost_price = Column(Float, nullable=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    lab_id = Column(Integer, ForeignKey("labs.id"), nullable=False)
+    lab = relationship("Lab")
 
 class Technician(Base):
     __tablename__ = "technicians"

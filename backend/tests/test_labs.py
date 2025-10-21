@@ -1,5 +1,5 @@
 """
-Tests for company endpoints.
+Tests for lab endpoints.
 """
 import pytest
 
@@ -16,12 +16,12 @@ def auth_headers(token):
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_create_company(client):
-    """Test creating a company."""
+def test_create_lab(client):
+    """Test creating a lab."""
     token = get_token(client)
     
     resp = client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "Test Dental Lab s.r.o.",
@@ -42,13 +42,13 @@ def test_create_company(client):
     assert "id" in data
 
 
-def test_list_companies(client):
-    """Test listing companies."""
+def test_list_labs(client):
+    """Test listing labs."""
     token = get_token(client)
     
-    # Create a company first
+    # Create a lab first
     client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "Another Lab",
@@ -57,21 +57,21 @@ def test_list_companies(client):
         }
     )
     
-    # List all companies
-    resp = client.get("/companies/", headers=auth_headers(token))
+    # List all labs
+    resp = client.get("/labs/", headers=auth_headers(token))
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
     assert len(data) >= 1
 
 
-def test_get_company_by_id(client):
-    """Test getting a specific company by ID."""
+def test_get_lab_by_id(client):
+    """Test getting a specific lab by ID."""
     token = get_token(client)
     
-    # Create a company
+    # Create a lab
     create_resp = client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "Specific Lab",
@@ -79,23 +79,23 @@ def test_get_company_by_id(client):
             "tax_id": "11223344"
         }
     )
-    company_id = create_resp.json()["id"]
+    lab_id = create_resp.json()["id"]
     
-    # Get the company by ID
-    resp = client.get(f"/companies/{company_id}", headers=auth_headers(token))
+    # Get the lab by ID
+    resp = client.get(f"/labs/{lab_id}", headers=auth_headers(token))
     assert resp.status_code == 200
     data = resp.json()
-    assert data["id"] == company_id
+    assert data["id"] == lab_id
     assert data["name"] == "Specific Lab"
 
 
-def test_update_company(client):
-    """Test updating a company."""
+def test_update_lab(client):
+    """Test updating a lab."""
     token = get_token(client)
     
-    # Create a company
+    # Create a lab
     create_resp = client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "Old Name",
@@ -103,11 +103,11 @@ def test_update_company(client):
             "tax_id": "99887766"
         }
     )
-    company_id = create_resp.json()["id"]
+    lab_id = create_resp.json()["id"]
     
-    # Update the company
+    # Update the lab
     resp = client.put(
-        f"/companies/{company_id}",
+        f"/labs/{lab_id}",
         headers=auth_headers(token),
         json={
             "name": "New Name",
@@ -123,13 +123,13 @@ def test_update_company(client):
     assert data["email"] == "updated@lab.sk"
 
 
-def test_delete_company(client):
-    """Test deleting a company."""
+def test_delete_lab(client):
+    """Test deleting a lab."""
     token = get_token(client)
     
-    # Create a company
+    # Create a lab
     create_resp = client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "To Be Deleted",
@@ -137,32 +137,32 @@ def test_delete_company(client):
             "tax_id": "55443322"
         }
     )
-    company_id = create_resp.json()["id"]
+    lab_id = create_resp.json()["id"]
     
-    # Delete the company
-    resp = client.delete(f"/companies/{company_id}", headers=auth_headers(token))
+    # Delete the lab
+    resp = client.delete(f"/labs/{lab_id}", headers=auth_headers(token))
     assert resp.status_code == 200
     assert "message" in resp.json()
     
     # Verify it's deleted
-    resp = client.get(f"/companies/{company_id}", headers=auth_headers(token))
+    resp = client.get(f"/labs/{lab_id}", headers=auth_headers(token))
     assert resp.status_code == 404
 
 
-def test_get_nonexistent_company(client):
-    """Test getting a company that doesn't exist."""
+def test_get_nonexistent_lab(client):
+    """Test getting a lab that doesn't exist."""
     token = get_token(client)
     
-    resp = client.get("/companies/999999", headers=auth_headers(token))
+    resp = client.get("/labs/999999", headers=auth_headers(token))
     assert resp.status_code == 404
 
 
-def test_update_nonexistent_company(client):
-    """Test updating a company that doesn't exist."""
+def test_update_nonexistent_lab(client):
+    """Test updating a lab that doesn't exist."""
     token = get_token(client)
     
     resp = client.put(
-        "/companies/999999",
+        "/labs/999999",
         headers=auth_headers(token),
         json={
             "name": "Doesn't exist",
@@ -173,23 +173,23 @@ def test_update_nonexistent_company(client):
     assert resp.status_code == 404
 
 
-def test_delete_nonexistent_company(client):
-    """Test deleting a company that doesn't exist."""
+def test_delete_nonexistent_lab(client):
+    """Test deleting a lab that doesn't exist."""
     token = get_token(client)
     
-    resp = client.delete("/companies/999999", headers=auth_headers(token))
+    resp = client.delete("/labs/999999", headers=auth_headers(token))
     assert resp.status_code == 404
 
 
-def test_company_requires_authentication(client):
-    """Test that company endpoints require authentication."""
-    # Try to list companies without auth
-    resp = client.get("/companies/")
+def test_lab_requires_authentication(client):
+    """Test that lab endpoints require authentication."""
+    # Try to list labs without auth
+    resp = client.get("/labs/")
     assert resp.status_code == 401
     
     # Try to create without auth
     resp = client.post(
-        "/companies/",
+        "/labs/",
         json={
             "name": "No Auth Lab",
             "address": "Test",
@@ -199,12 +199,12 @@ def test_company_requires_authentication(client):
     assert resp.status_code == 401
 
 
-def test_create_company_with_minimal_fields(client):
-    """Test creating a company with only required fields."""
+def test_create_lab_with_minimal_fields(client):
+    """Test creating a lab with only required fields."""
     token = get_token(client)
     
     resp = client.post(
-        "/companies/",
+        "/labs/",
         headers=auth_headers(token),
         json={
             "name": "Minimal Lab",
@@ -216,3 +216,43 @@ def test_create_company_with_minimal_fields(client):
     assert data["name"] == "Minimal Lab"
     # Optional fields should be None or empty
     assert data.get("email") is None or data.get("email") == ""
+
+
+def test_lab_access_control_non_superadmin(client):
+    """Test that non-superadmin users can only see their own lab."""
+    # Get superadmin token
+    superadmin_token = get_token(client)
+    
+    # Create lab 1 using signup (which creates lab + admin user)
+    signup1_resp = client.post(
+        "/users/signup",
+        json={
+            "lab_name": "Access Control Lab 1",
+            "lab_address": "Address 1",
+            "lab_city": "City 1",
+            "email": "admin1@lab1.local",
+            "password": "password123",
+            "nickname": "admin1"
+        }
+    )
+    assert signup1_resp.status_code == 200
+    signup1_data = signup1_resp.json()
+    lab1_id = signup1_data["lab"]["id"]
+    admin1_token = signup1_data["token"]["access_token"]
+    
+    # Create lab 2 using superadmin
+    lab2_resp = client.post(
+        "/labs/",
+        headers=auth_headers(superadmin_token),
+        json={"name": "Access Control Lab 2", "address": "Address 2", "tax_id": "22222222"}
+    )
+    assert lab2_resp.status_code == 200
+    lab2_id = lab2_resp.json()["id"]
+    
+    # Admin1 should be able to access their own lab
+    resp = client.get(f"/labs/{lab1_id}", headers=auth_headers(admin1_token))
+    assert resp.status_code == 200
+    
+    # Admin1 should NOT be able to access another lab
+    resp = client.get(f"/labs/{lab2_id}", headers=auth_headers(admin1_token))
+    assert resp.status_code == 403

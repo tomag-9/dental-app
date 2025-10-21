@@ -6,7 +6,6 @@ import {
 
 const EditProfile = ({ token, setError }) => {
   const [userData, setUserData] = useState({ nickname: '', password: '' });
-  const [originalNickname, setOriginalNickname] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -14,8 +13,7 @@ const EditProfile = ({ token, setError }) => {
         const response = await axios.get('http://localhost:8000/users/me/', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setUserData({ nickname: response.data.nickname || '', password: '' });
-        setOriginalNickname(response.data.nickname || '');
+  setUserData({ nickname: response.data.nickname || '', password: '' });
       } catch (err) {
         setError('Nepodarilo sa načítať údaje používateľa: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
       }

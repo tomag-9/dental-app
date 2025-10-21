@@ -186,21 +186,7 @@ const ToothMap = ({ editable = false, value, onChange, allowedProcedures }) => {
       flexDirection: 'row-reverse',
   };
   
-  // Extra medzera/oddelenie pre vizuálny stred (medzi pravou a ľavou stranou)
-  const separatorStyle = {
-      height: '30px', 
-      width: '100%', 
-      margin: '10px 0',
-      backgroundColor: '#f0f0f0',
-      border: '1px solid #ccc',
-      borderRadius: '4px',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      fontSize: '0.9rem',
-      fontWeight: 'bold',
-      color: '#555',
-  }
+  // (removed unused separatorStyle)
 
 
   return (

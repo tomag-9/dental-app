@@ -124,7 +124,7 @@ const JobDetails = ({ token, setError }) => {
               break;
             }
           }
-        } catch (invoiceErr) {
+        } catch {
           // No invoice found for this job or error fetching invoices
         }
       } catch (err) {
@@ -336,7 +336,7 @@ const JobDetails = ({ token, setError }) => {
                         : job.procedure_quantities
                       : {};
                     quantity = parsed && typeof parsed === 'object' && code in parsed ? parsed[code] : 1;
-                  } catch (e) { quantity = 1; }
+                  } catch { quantity = 1; }
                   return (
                     <Grid item xs={12} sm={6} md={4} key={idx}>
                       <Box sx={{ 

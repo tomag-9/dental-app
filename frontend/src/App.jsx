@@ -20,6 +20,9 @@ import Clinics from './components/Clinics';
 import Technicians from './components/Technicians';
 import PriceList from './components/PriceList';
 import Invoices from './components/Invoices';
+import FinanceOverview from './components/FinanceOverview';
+import FinanceAnalytics from './components/FinanceAnalytics';
+import LabDashboard from './components/LabDashboard';
 import Users from './components/Users';
 import EditProfile from './components/EditProfile';
 import LabSettings from './components/LabSettings';
@@ -29,6 +32,8 @@ import SuperadminDashboard from './components/SuperadminDashboard';
 import LabManagement from './components/LabManagement';
 import UserManagement from './components/UserManagement';
 import SubscriptionManagement from './components/SubscriptionManagement';
+import StorageOverview from './components/StorageOverview';
+import StorageItems from './components/StorageItems';
 import './index.css';
 
 class ErrorBoundary extends Component {
@@ -162,6 +167,8 @@ function App() {
               setSidebarOpen={setSidebarOpen}
               isDrawerExpanded={isDrawerExpanded}
               setIsDrawerExpanded={setIsDrawerExpanded}
+              token={token}
+              setError={setError}
             />
           </>
         )}
@@ -259,32 +266,13 @@ function App() {
                 path="/finance/*"
                 element={
                   <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
-                    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+                    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
                       <Routes>
-                        <Route
-                          path="price-list"
-                          element={<PriceList token={token} setError={setError} />}
-                        />
-                        <Route
-                          path="invoices"
-                          element={<Invoices token={token} setError={setError} />}
-                        />
-                        <Route
-                          path="analytics"
-                          element={
-                            <Typography variant="h4">Analytika (placeholder)</Typography>
-                          }
-                        />
-                        <Route
-                          path="overview"
-                          element={
-                            <Typography variant="h4">Financie - Prehľad (placeholder)</Typography>
-                          }
-                        />
-                        <Route
-                          path="*"
-                          element={<Navigate to="/finance/price-list" />}
-                        />
+                        <Route path="price-list" element={<PriceList token={token} setError={setError} />} />
+                        <Route path="invoices" element={<Invoices token={token} setError={setError} />} />
+                        <Route path="analytics" element={<FinanceAnalytics token={token} setError={setError} />} />
+                        <Route path="overview" element={<FinanceOverview token={token} setError={setError} />} />
+                        <Route path="*" element={<Navigate to="/finance/overview" />} />
                       </Routes>
                     </Box>
                   </ProtectedRoute>
@@ -321,25 +309,24 @@ function App() {
                 path="/"
                 element={
                   <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
-                    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
-                      <Typography variant="h4" sx={{ mb: 3 }}>
-                        Vitajte v DentalApp
-                      </Typography>
-                      <Typography color="text.secondary" paragraph>
-                        DentalApp je moderná aplikácia na správu zubných techník, ktorá vám umožňuje efektívne spravovať pacientov, lekárov, technikov, kliniky a práce.
-                      </Typography>
-                      <Typography color="text.secondary" paragraph>
-                        <strong>Rýchle štatistiky:</strong>
-                      </Typography>
-                      <Typography color="text.secondary">
-                        - Počet pacientov: Čoskoro dostupné<br />
-                        - Aktívne práce: Čoskoro dostupné<br />
-                        - Prihlásený používateľ: {loginData.username || 'admin'}
-                      </Typography>
-                    </Box>
+                    <LabDashboard token={token} setError={setError} />
                   </ProtectedRoute>
                 }
               />
+            <Route
+              path="/storage/*"
+              element={
+                <ProtectedRoute token={token} setError={setError} setToken={setToken} setIsLoggedIn={setIsLoggedIn}>
+                  <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+                    <Routes>
+                      <Route path="overview" element={<StorageOverview token={token} setError={setError} />} />
+                      <Route path="items" element={<StorageItems token={token} setError={setError} />} />
+                      <Route path="*" element={<Navigate to="/storage/overview" />} />
+                    </Routes>
+                  </Box>
+                </ProtectedRoute>
+              }
+            />
               <Route
                 path="/login"
                 element={

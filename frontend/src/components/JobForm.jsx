@@ -189,7 +189,7 @@ const JobForm = ({ open, onClose, onSuccess, token, setError, initialData = null
               ...patientRes.data,
               tooth_procedures: updatedToothProcedures
             });
-          } catch (patientErr) {
+          } catch {
             // Don't fail the whole operation if patient update fails
           }
         }

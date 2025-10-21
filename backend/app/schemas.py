@@ -17,12 +17,44 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# Warehouse schemas
+class WarehouseItemBase(BaseModel):
+    name: str
+    sku: Optional[str] = None
+    quantity: float = 0
+    unit: str = "pcs"
+    min_threshold: Optional[float] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    cost_price: Optional[float] = None
+    notes: Optional[str] = None
+
+class WarehouseItemCreate(WarehouseItemBase):
+    pass
+
+class WarehouseItemUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    quantity: Optional[float] = None
+    unit: Optional[str] = None
+    min_threshold: Optional[float] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    cost_price: Optional[float] = None
+    notes: Optional[str] = None
+
+class WarehouseItemResponse(WarehouseItemBase):
+    id: int
+    lab_id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class DentalPracticeCreate(BaseModel):
     name: str
@@ -48,8 +80,7 @@ class PatientCreate(BaseModel):
 class PatientResponse(PatientCreate):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ClinicCreate(BaseModel):
     name: str
@@ -62,8 +93,7 @@ class ClinicCreate(BaseModel):
 class ClinicResponse(ClinicCreate):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class DoctorCreate(BaseModel):
     first_name: str
@@ -76,8 +106,7 @@ class DoctorCreate(BaseModel):
 class DoctorResponse(DoctorCreate):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LabCreate(BaseModel):
     name: str
@@ -133,8 +162,7 @@ class TechnicianCreate(BaseModel):
 class TechnicianResponse(TechnicianCreate):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PriceListCreate(BaseModel):
     code: str
@@ -146,8 +174,7 @@ class PriceListCreate(BaseModel):
 class PriceListResponse(PriceListCreate):
     id: int
     created_at: datetime
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class JobCreate(BaseModel):
     patient_id: int
@@ -180,8 +207,7 @@ class JobResponse(JobCreate):
     id: int
     created_at: datetime
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Invoicing
@@ -196,8 +222,7 @@ class InvoiceItemResponse(InvoiceItemCreate):
     id: int
     line_total: float
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceCreate(BaseModel):
@@ -222,8 +247,7 @@ class InvoiceResponse(BaseModel):
     items: List[InvoiceItemResponse]
     patient_names: Optional[List[str]] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Vacation schemas
 class VacationCreate(BaseModel):
@@ -236,5 +260,4 @@ class VacationResponse(VacationCreate):
     created_at: datetime
     lab_id: Optional[int] = None
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

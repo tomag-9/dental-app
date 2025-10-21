@@ -9,6 +9,7 @@ import {
   Paper,
   ListItemButton,
   Divider,
+  Badge,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,6 +38,7 @@ export default function Sidebar() {
   const [hoveredItem, setHoveredItem] = useState(null);
   const [userRole, setUserRole] = useState('user');
   const [anchorEl, setAnchorEl] = useState(null);
+  const [lowStockCount, setLowStockCount] = useState(0);
 
   const navigate = useNavigate();
   const expanded = hoveringDrawer || hoveringPopper;
@@ -58,6 +60,33 @@ export default function Sidebar() {
     
     return () => {
       window.removeEventListener('storage', updateUserRole);
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Poll low-stock count for warehouse and update badge
+    let cancel = false;
+    const fetchLowStock = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const resp = await fetch('http://localhost:8000/warehouse/items', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return;
+        const items = await resp.json();
+        if (cancel) return;
+        const count = items.filter((i) => i.min_threshold != null && i.quantity <= i.min_threshold).length;
+        setLowStockCount(count);
+      } catch {
+        /* ignore errors */
+      }
+    };
+    fetchLowStock();
+    const interval = setInterval(fetchLowStock, 60000); // refresh every 60s
+    return () => {
+      cancel = true;
       clearInterval(interval);
     };
   }, []);
@@ -190,7 +219,13 @@ export default function Sidebar() {
             >
               <ListItemButton onClick={() => navigate(item.path)}>
                 <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
-                  {item.icon}
+                  {item.text === 'Sklad' ? (
+                    <Badge color="warning" badgeContent={lowStockCount} invisible={lowStockCount === 0} overlap="circular">
+                      {item.icon}
+                    </Badge>
+                  ) : (
+                    item.icon
+                  )}
                 </ListItemIcon>
                 {expanded && <ListItemText primary={item.text} />}
               </ListItemButton>

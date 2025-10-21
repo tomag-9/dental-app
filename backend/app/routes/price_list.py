@@ -11,7 +11,7 @@ router = APIRouter(prefix="/price_list", tags=["price_list"])
 def create_price_list(price_list: PriceListCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = price_list.dict()
+    payload = price_list.model_dump()
     if current_user.role != "superadmin":
         payload["lab_id"] = current_user.lab_id
     db_price_list = PriceList(**payload)
@@ -51,7 +51,7 @@ def update_price_list(price_list_id: int, price_list: PriceListCreate, current_u
     db_price_list = q.first()
     if db_price_list is None:
         raise HTTPException(status_code=404, detail="Položka cenníka nenájdená")
-    for key, value in price_list.dict().items():
+    for key, value in price_list.model_dump().items():
         setattr(db_price_list, key, value)
     db.commit()
     db.refresh(db_price_list)
