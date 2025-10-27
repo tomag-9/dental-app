@@ -1,0 +1,44 @@
+name: 🦷 Dental App – Project Automation
+
+on:
+  issues:
+    types: [opened, assigned, closed]
+
+permissions:
+  contents: read
+  issues: write
+  # 'projects' permission can be unsupported in some GHES / linter versions.
+  # If your runner requires managing project cards, use a PAT with repo scope
+  # or enable the appropriate permission on the runner. Removed here to
+  # avoid 'Unexpected value' lint errors.
+
+jobs:
+  automate-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move new issues to Backlog
+        if: github.event.action == 'opened'
+        uses: peter-evans/create-or-update-project-card@v3
+        with:
+          project-name: "Dental App Board"
+          column-name: "Backlog"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+
+      - name: Move issue to In Progress when assigned
+        if: github.event.action == 'assigned'
+        uses: peter-evans/create-or-update-project-card@v3
+        with:
+          project-name: "Dental App Board"
+          column-name: "In Progress"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+
+      - name: Move issue to Done when closed
+        if: github.event.action == 'closed'
+        uses: peter-evans/create-or-update-project-card@v3
+        with:
+          project-name: "Dental App Board"
+          column-name: "Done"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
