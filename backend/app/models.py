@@ -6,8 +6,6 @@ from datetime import datetime
 
 Base = declarative_base()
 
-
-# Model pre laboratórium/techniku
 class Lab(Base):
     __tablename__ = "labs"
     id = Column(Integer, primary_key=True)
@@ -175,7 +173,7 @@ class Invoice(Base):
     clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False)
     lab_id = Column(Integer, ForeignKey("labs.id"), nullable=True)
     number = Column(String, unique=True, nullable=False)
-    status = Column(String, nullable=False, default="draft")  # draft, issued, paid, cancelled
+    status = Column(String, nullable=False, default="draft")
     total_amount = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     issued_at = Column(DateTime, nullable=True)

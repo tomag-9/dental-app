@@ -1,26 +1,40 @@
-backend/alembic.ini
-backend/alembic/env.py
 node_modules/
-.env
+frontend/node_modules/
+
+# Python caches
 __pycache__/
 *.pyc
-instance/
-.vscode/
-.idea/
-.DS_Store
-*.sqlite3
-.alembic.ini
-*.log
-*.db
-*.env
-*.pytest_cache/
-coverage
-htmlcov/
-*.egg-info/
+.pytest_cache/
+
+# Build artifacts
 dist/
 build/
-.pytest_cache/
+htmlcov/
+coverage
+*.egg-info/
+
+# OS/editor files
+.DS_Store
+.vscode/
+.idea/
+
+# Virtual environments
 .venv/
 backend/.venv/
 backend/venv/
-frontend/node_modules/
+
+# Local databases/logs
+*.db
+*.log
+
+# Environment files (keep examples)
+.env
+.env.*
+!.env.dev.example
+!.env.prod.example
+
+# Misc
+instance/
+alembic.ini
+backend/alembic.ini
+backend/alembic/env.py
