@@ -2,8 +2,11 @@ name: Nightly Deploy
 
 on:
   schedule:
-    - cron: '0 3 * * *' # 03:00 UTC nightly
+    - cron: '0 1 * * *' # 01:00 UTC nightly
   workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.REGISTRY_HOST }}/${{ secrets.REGISTRY_USER }}
 
 jobs:
   deploy:
@@ -24,13 +27,13 @@ jobs:
 
       - name: Build and push backend
         run: |
-          docker build -f backend/Dockerfile -t ${{ secrets.REGISTRY_HOST }}/dental-app/backend:nightly .
-          docker push ${{ secrets.REGISTRY_HOST }}/dental-app/backend:nightly
+          docker build -f backend/Dockerfile -t $REGISTRY/dental-app/backend:nightly .
+          docker push $REGISTRY/dental-app/backend:nightly
 
       - name: Build and push frontend
         run: |
-          docker build -f frontend/Dockerfile -t ${{ secrets.REGISTRY_HOST }}/dental-app/frontend:nightly .
-          docker push ${{ secrets.REGISTRY_HOST }}/dental-app/frontend:nightly
+          docker build -f frontend/Dockerfile -t $REGISTRY/dental-app/frontend:nightly .
+          docker push $REGISTRY/dental-app/frontend:nightly
 
       - name: Deploy via SSH (LXC container direct)
         uses: appleboy/ssh-action@v1.0.0
@@ -42,8 +45,8 @@ jobs:
             set -euo pipefail
             cd /root/dental-app
             echo "Pulling images..."
-            docker pull ${{ secrets.REGISTRY_HOST }}/dental-app/backend:nightly
-            docker pull ${{ secrets.REGISTRY_HOST }}/dental-app/frontend:nightly
+            docker pull $REGISTRY/dental-app/backend:nightly
+            docker pull $REGISTRY/dental-app/frontend:nightly
             echo "Bringing up services..."
             APP_ENV=production docker compose -f docker-compose.prod.yml --env-file /root/dental-app/.env.prod up -d --remove-orphans
             echo "Pruning old images..."
