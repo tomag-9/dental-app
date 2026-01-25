@@ -24,7 +24,7 @@ export default function Jobs({ token, setError }) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">Práce</h2><button onClick={() => setOpenForm(true)} className="bg-primary text-white px-4 py-2 rounded-xl font-bold shadow-lg">+ Nová práca</button></div>
-      <JobList jobs={jobs} patients={patients} token={token} setError={setError} onEdit={(j) => { setSelectedJob(j); setOpenForm(true); }} onDelete={async (id) => { if (window.confirm('Zmazať?')) { await api(token).delete(`/jobs/${id}/`); fetchData(); } }} />
+      {loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div> : <JobList jobs={jobs} patients={patients} token={token} setError={setError} onEdit={(j) => { setSelectedJob(j); setOpenForm(true); }} onDelete={async (id) => { if (window.confirm('Zmazať?')) { await api(token).delete(`/jobs/${id}/`); fetchData(); } }} />}
       <JobForm open={openForm} onClose={() => { setOpenForm(false); setSelectedJob(null); }} onSuccess={() => { setOpenForm(false); fetchData(); }} token={token} setError={setError} initialData={selectedJob} />
     </div>
   );

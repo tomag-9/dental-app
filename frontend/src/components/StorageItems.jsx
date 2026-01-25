@@ -15,7 +15,7 @@ export default function StorageItems({ token, setError }) {
             setLoading(true);
             const res = await api(token).get('/warehouse/');
             setItems(res.data);
-        } catch (_e) { setError('Chyba pri načítaní skladu'); }
+        } catch { setError('Chyba pri načítaní skladu'); }
         finally { setLoading(false); }
     };
 
@@ -28,7 +28,7 @@ export default function StorageItems({ token, setError }) {
             setOpenAdd(false);
             setFormData({ name: '', quantity: 0, unit: 'pcs', min_threshold: 0 });
             fetchItems();
-        } catch (_e) { alert('Chyba pri ukladaní.'); }
+        } catch { alert('Chyba pri ukladaní.'); }
     };
 
     const filteredItems = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));

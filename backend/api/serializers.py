@@ -47,42 +47,49 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class ClinicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Clinic
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Doctor
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class WarehouseItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = WarehouseItem
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
     class Meta:
         model = Technician
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class PriceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = PriceList
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = "__all__"
+        read_only_fields = ("lab",)
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):

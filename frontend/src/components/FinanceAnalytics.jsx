@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { BarChart3, Loader2 } from 'lucide-react';
 
 export default function FinanceAnalytics({ token, setError }) {
-  const [invoices, setInvoices] = useState([]);
+  const [, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

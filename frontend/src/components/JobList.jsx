@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Edit2, Trash2, ChevronUp, ChevronDown, Search } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-function cn(...inputs) { return twMerge(clsx(inputs)); }
-export default function JobList({ jobs, patients, token, setError, onEdit, onDelete }) {
-  const [priceList, setPriceList] = useState([]);
+import { Edit2 } from 'lucide-react';
+
+export default function JobList({ jobs, patients, token, setError, onEdit }) {
+  const [, setPriceList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [openSections, setOpenSections] = useState({ in_progress: true, finished_unfactured: true });
   useEffect(() => {
     const fetch = async () => {
       try { const res = await api(token).get('/price_list/'); setPriceList(res.data); }

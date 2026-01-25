@@ -7,7 +7,7 @@ import { api } from '../lib/api';
 export default function Login({ setToken, setIsLoggedIn }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({ email: '', password: '' });
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,7 +21,7 @@ export default function Login({ setToken, setIsLoggedIn }) {
       localStorage.setItem('user', JSON.stringify(userRes.data));
       localStorage.setItem('role', userRes.data.role);
       setIsLoggedIn(true); navigate('/');
-    } catch (_e) { setError('Nesprávne údaje'); }
+    } catch { setError('Nesprávne údaje'); }
     finally { setLoading(false); }
   };
   return (

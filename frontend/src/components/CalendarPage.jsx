@@ -11,8 +11,6 @@ const localizer = momentLocalizer(moment);
 export default function CalendarPage({ token, setError }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
-  const [vacation, setVacation] = useState({ start: '', end: '', description: '' });
 
   const fetchEvents = async () => {
     try {

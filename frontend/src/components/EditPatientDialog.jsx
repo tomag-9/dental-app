@@ -12,7 +12,7 @@ export default function EditPatientDialog({ open, onClose, patient, token, onSuc
     const handleSubmit = async (e) => {
         e.preventDefault(); setSaving(true);
         try { await api(token).put(`/patients/${patient.id}/`, formData); onSuccess(); onClose(); }
-        catch (err) { alert('Chyba pri ukladaní.'); }
+        catch { alert('Chyba pri ukladaní.'); }
         finally { setSaving(false); }
     };
     if (!patient) return null;

@@ -19,7 +19,7 @@ export default function Signup({ onLoginSuccess }) {
       localStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('role', user.role);
       onLoginSuccess(token.access_token); navigate('/');
-    } catch (_e) { setError('Registrácia zlyhala'); }
+    } catch { setError('Registrácia zlyhala'); }
     finally { setLoading(false); }
   };
   return (
