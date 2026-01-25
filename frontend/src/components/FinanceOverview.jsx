@@ -1,69 +1,46 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { Box, Grid, Paper, Typography } from '@mui/material';
+import { api } from '../lib/api';
+import { Wallet, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 
-const FinanceOverview = ({ token, setError }) => {
+export default function FinanceOverview({ token, setError }) {
   const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const resp = await axios.get('http://localhost:8000/invoices/', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        setLoading(true);
+        const resp = await api(token).get('/invoices/');
         setInvoices(resp.data || []);
-      } catch (err) {
-        setError?.('Nepodarilo sa načítať financie: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-      }
+      } catch { setError?.('Chyba financií'); }
+      finally { setLoading(false); }
     };
-    fetchData();
+    if (token) fetchData();
   }, [token, setError]);
 
   const stats = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
     const paid = invoices.filter(i => i.status === 'paid');
-    const unpaid = invoices.filter(i => i.status !== 'paid');
-    const monthly = paid.filter(i => {
-      const d = i.paid_date ? new Date(i.paid_date) : (i.issued_date ? new Date(i.issued_date) : null);
-      return d && d.getFullYear() === y && d.getMonth() === m;
-    });
-    const yearly = paid.filter(i => {
-      const d = i.paid_date ? new Date(i.paid_date) : (i.issued_date ? new Date(i.issued_date) : null);
-      return d && d.getFullYear() === y;
-    });
-    const monthlyIncome = monthly.reduce((s, i) => s + (i.total || 0), 0);
-    const yearlyIncome = yearly.reduce((s, i) => s + (i.total || 0), 0);
-    const outstanding = unpaid.reduce((s, i) => s + (i.total || 0), 0);
-    return { monthlyIncome, yearlyIncome, outstanding, paid: paid.length, unpaid: unpaid.length, count: invoices.length };
+    const unpaid = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled');
+    const monthlyIncome = paid.reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+    const outstanding = unpaid.reduce((s, i) => s + (parseFloat(i.total_amount) || 0), 0);
+    return { monthlyIncome, outstanding };
   }, [invoices]);
 
-  return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>Financie – Prehľad</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">Mesačný príjem</Typography>
-            <Typography variant="h5">{stats.monthlyIncome.toFixed(2)} €</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">Ročný príjem</Typography>
-            <Typography variant="h5">{stats.yearlyIncome.toFixed(2)} €</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">Nevysporiadané (nezaplatené)</Typography>
-            <Typography variant="h5">{stats.outstanding.toFixed(2)} €</Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-};
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" size={32} /></div>;
 
-export default FinanceOverview;
+  return (
+    <div className="space-y-6 max-w-6xl mx-auto font-medium">
+      <h2 className="text-2xl font-bold">Financie – Prehľad</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-8 rounded-3xl shadow border">
+            <div className="flex items-center gap-3 mb-2 text-green-600"><TrendingUp size={20} /><span className="text-xs font-bold uppercase tracking-widest">Prijaté platby</span></div>
+            <div className="text-4xl font-black">{stats.monthlyIncome.toFixed(2)} €</div>
+        </div>
+        <div className="bg-white p-8 rounded-3xl shadow border">
+            <div className="flex items-center gap-3 mb-2 text-orange-600"><AlertCircle size={20} /><span className="text-xs font-bold uppercase tracking-widest">Nevybavené faktúry</span></div>
+            <div className="text-4xl font-black">{stats.outstanding.toFixed(2)} €</div>
+        </div>
+      </div>
+    </div>
+  );
+}

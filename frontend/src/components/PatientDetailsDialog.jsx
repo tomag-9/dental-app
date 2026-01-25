@@ -1,134 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Box,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Button,
-  ListItemButton,
-} from '@mui/material';
+import Modal from './Modal';
+import { User, Phone, Mail, MapPin, Loader2, Calendar } from 'lucide-react';
 import ToothMap from './ToothMap';
-import { useNavigate } from 'react-router-dom';
 
-
-const PatientDetailsDialog = ({ patient, onClose, token, setError }) => {
-  const [jobs, setJobs] = useState([]);
-  const [cumulativeToothMap, setCumulativeToothMap] = useState({});
-  const [freshPatient, setFreshPatient] = useState(patient);
-  const navigate = useNavigate();
-
-  // Always fetch fresh patient data and cumulative tooth map when dialog is opened or patient changes
-  useEffect(() => {
-    if (patient && patient.id) {
-      const apiClient = api(token);
-      const fetchPatient = async () => {
-        try {
-          const response = await apiClient.get(`/patients/${patient.id}`);
-          setFreshPatient(response.data);
-        } catch (err) {
-          setError('Nepodarilo sa načítať pacienta: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
+export default function PatientDetailsDialog({ open, onClose, patient, token }) {
+    const [jobs, setJobs] = useState([]);
+    const [loading, setLoading] = useState(false);
+    useEffect(() => {
+        if (open && patient) {
+            const fetchJobs = async () => {
+                setLoading(true);
+                try {
+                    const res = await api(token).get(`/jobs/?patient_id=${patient.id}`);
+                    setJobs(res.data);
+                } catch (e) { console.error(e); }
+                finally { setLoading(false); }
+            };
+            fetchJobs();
         }
-      };
-      const fetchCumulativeToothMap = async () => {
-        try {
-          const response = await apiClient.get(`/patients/${patient.id}/cumulative_tooth_map`);
-          setCumulativeToothMap(response.data);
-        } catch (err) {
-          setError('Nepodarilo sa načítať sumarizovanú zubnú mapu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-        }
-      };
-      fetchPatient();
-      fetchCumulativeToothMap();
-    }
-  }, [patient, token, setError]);
-
-  useEffect(() => {
-    if (patient && patient.id) {
-      const apiClient = api(token);
-      const fetchJobs = async () => {
-        try {
-          const response = await apiClient.get(`/jobs/?patient_id=${patient.id}`);
-          setJobs(response.data);
-        } catch (err) {
-          setError('Nepodarilo sa načítať práce: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-        }
-      };
-      fetchJobs();
-    }
-  }, [patient, token, setError]);
-
-  const handleJobClick = (jobId) => {
-    navigate(`/job-details/${jobId}`);
-  };
-
-  return (
-    <Dialog open={!!patient} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Detaily pacienta: {freshPatient?.first_name} {freshPatient?.last_name}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Zubná mapa (kumulatívny stav)
-            </Typography>
-            <ToothMap 
-              editable={false} 
-              value={cumulativeToothMap} 
-            />
-          </Box>
-          <Box sx={{ flex: 1, maxHeight: '400px', overflowY: 'auto' }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              História prác
-            </Typography>
-            {/* Status translation map */}
-            {(() => {
-              const statusTranslations = {
-                'pending': 'Čaká na spracovanie',
-                'in_progress': 'Prebieha',
-                'completed': 'Ukončená',
-                'closed': 'Uzavretá',
-                'cancelled': 'Zrušená',
-                'draft': 'Návrh',
-                '': '-',
-                null: '-',
-                undefined: '-',
-              };
-              return (
-                <List>
-                  {jobs.map(job => (
-                    <ListItemButton key={job.id} onClick={() => handleJobClick(job.id)} sx={{ borderRadius: 2, mb: 1, '&:hover': { bgcolor: 'grey.100' } }}>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>{new Date(job.due_date).toLocaleDateString('sk-SK')}</span>
-                            <span style={{ fontWeight: 500, color: '#1976d2' }}>{statusTranslations[job.status] || job.status || '-'}</span>
-                          </Box>
-                        }
-                        secondary={
-                          <Box>
-                            <span style={{ color: '#666' }}>Úkony: {job.procedure_codes || '-'}</span>
-                          </Box>
-                        }
-                      />
-                    </ListItemButton>
-                  ))}
-                </List>
-              );
-            })()}
-
-          </Box>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Zavrieť</Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-export default PatientDetailsDialog;
+    }, [open, patient, token]);
+    if (!patient) return null;
+    return (
+        <Modal open={open} onClose={onClose} title={`Pacient: ${patient.first_name} ${patient.last_name}`} maxWidth="max-w-5xl">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="space-y-6">
+                    <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4">
+                        <div className="flex items-start gap-3"><User className="text-primary mt-1" size={20} /><div><span className="text-[10px] font-bold text-gray-400 uppercase">Rodné číslo</span><div className="font-bold text-gray-900">{patient.birth_number || '—'}</div></div></div>
+                        <div className="flex items-start gap-3"><Phone className="text-primary mt-1" size={20} /><div><span className="text-[10px] font-bold text-gray-400 uppercase">Telefón</span><div className="font-bold text-gray-900">{patient.phone || '—'}</div></div></div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Calendar size={18} className="text-primary" /> História prác</h4>
+                        {loading ? <Loader2 className="animate-spin text-primary mx-auto" /> : (
+                            <div className="space-y-3">
+                                {jobs.map(j => (
+                                    <div key={j.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex justify-between items-center"><div className="flex flex-col"><span className="text-xs font-bold text-gray-900">#{j.id}</span><span className="text-[10px] text-gray-500 font-medium">{j.due_date}</span></div><span className="text-[10px] font-bold uppercase bg-white px-2 py-0.5 rounded border">{j.status}</span></div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className="lg:col-span-2 space-y-4">
+                    <h4 className="font-bold text-gray-900">Kumulatívna zubná mapa</h4>
+                    <ToothMap value={patient.tooth_procedures || {}} editable={false} />
+                </div>
+            </div>
+        </Modal>
+    );
+}

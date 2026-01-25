@@ -1,87 +1,29 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { Box, Grid, Paper, Typography, List, ListItem, ListItemText } from '@mui/material';
-import { BarChart, PieChart } from '@mui/x-charts';
+import { api } from '../lib/api';
+import { BarChart3, Loader2 } from 'lucide-react';
 
 export default function FinanceAnalytics({ token, setError }) {
   const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const resp = await axios.get('http://localhost:8000/invoices/', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        setLoading(true);
+        const resp = await api(token).get('/invoices/');
         setInvoices(resp.data || []);
-      } catch (err) {
-        setError?.('Nepodarilo sa načítať analytiku: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-      }
+      } catch { setError?.('Chyba analytiky'); }
+      finally { setLoading(false); }
     };
-    fetchData();
+    if (token) fetchData();
   }, [token, setError]);
 
-  const byMonth = useMemo(() => {
-    const map = new Map();
-    for (const inv of invoices) {
-      const d = inv.paid_date ? new Date(inv.paid_date) : (inv.issued_date ? new Date(inv.issued_date) : null);
-      if (!d) continue;
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      map.set(key, (map.get(key) || 0) + (inv.total || 0));
-    }
-    const arr = Array.from(map.entries()).sort();
-    return {
-      labels: arr.map(([k]) => k),
-      values: arr.map(([, v]) => v),
-      entries: arr,
-    };
-  }, [invoices]);
-
-  const topClients = useMemo(() => {
-    const map = new Map();
-    for (const inv of invoices) {
-      const key = inv.clinic_id || 'unknown';
-      map.set(key, (map.get(key) || 0) + (inv.total || 0));
-    }
-    const arr = Array.from(map.entries()).sort((a,b) => b[1]-a[1]).slice(0, 5);
-    return {
-      labels: arr.map(([id]) => `Klinika #${id}`),
-      values: arr.map(([, v]) => v),
-      entries: arr,
-    };
-  }, [invoices]);
+  if (loading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-primary" size={32} /></div>;
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>Financie – Analytika</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={7}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">Tržby podľa mesiaca</Typography>
-            {byMonth.values?.length ? (
-              <BarChart
-                xAxis={[{ scaleType: 'band', data: byMonth.labels }]}
-                series={[{ data: byMonth.values, label: '€' }]}
-                height={300}
-              />
-            ) : (
-              <Typography color="text.secondary">Žiadne dáta</Typography>
-            )}
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">Top kliniky podľa tržieb</Typography>
-            {topClients.values?.length ? (
-              <PieChart
-                series={[{ data: topClients.entries.map(([id, v]) => ({ id, value: v, label: `#${id}` })) }]}
-                height={300}
-              />
-            ) : (
-              <Typography color="text.secondary">Žiadne dáta</Typography>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="flex items-center gap-3"><BarChart3 size={24} className="text-primary"/><h2 className="text-2xl font-black uppercase tracking-tight">Analytika</h2></div>
+      <div className="bg-white p-12 rounded-3xl shadow border border-dashed text-center text-gray-400 font-bold">Vizuálne grafy budú dostupné v ďalšej aktualizácii.</div>
+    </div>
   );
 }

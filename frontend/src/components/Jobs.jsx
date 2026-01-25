@@ -1,104 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  Box,
-  Typography,
-  Button,
-} from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { api } from '../lib/api';
+import { Plus, Loader2 } from 'lucide-react';
 import JobForm from './JobForm';
 import JobList from './JobList';
 
-const Jobs = ({ token, setError }) => {
+export default function Jobs({ token, setError }) {
   const [jobs, setJobs] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
 
-  const fetchJobs = async () => {
+  const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/jobs/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setJobs(response.data);
-    } catch (err) {
-      setError('Nepodarilo sa načítať práce: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
+      setLoading(true);
+      const [j, p] = await Promise.all([api(token).get('/jobs/'), api(token).get('/patients/')]);
+      setJobs(j.data); setPatients(p.data);
+    } catch { setError('Chyba pri načítaní prác'); }
+    finally { setLoading(false); }
   };
-
-  const fetchPatients = async () => {
-    try {
-      const response = await axios.get('http://localhost:8000/patients/', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPatients(response.data);
-    } catch (err) {
-      setError('Nepodarilo sa načítať pacientov: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchJobs();
-      fetchPatients();
-    }
-  }, [token]);
-
-  const handleJobAdded = () => {
-    fetchJobs();
-    setOpenForm(false);
-    setSelectedJob(null);
-  };
-
-  const handleEdit = (job) => {
-    setSelectedJob(job);
-    setOpenForm(true);
-  };
-
-  const handleDelete = async (jobId) => {
-    try {
-      await axios.delete(`http://localhost:8000/jobs/${jobId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      fetchJobs();
-    } catch (err) {
-      setError('Nepodarilo sa vymazať prácu: ' + (err.response?.data?.detail || 'Skontrolujte pripojenie'));
-    }
-  };
+  useEffect(() => { if (token) fetchData(); }, [token]);
 
   return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-          Práce
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setOpenForm(true)}
-          size="large"
-        >
-          Nová práca
-        </Button>
-      </Box>
-      <JobList
-        jobs={jobs}
-        patients={patients}
-        token={token}
-        setError={setError}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
-      <JobForm
-        open={openForm}
-        onClose={() => { setOpenForm(false); setSelectedJob(null); }}
-        onSuccess={handleJobAdded}
-        token={token}
-        setError={setError}
-        initialData={selectedJob}
-      />
-    </Box>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">Práce</h2><button onClick={() => setOpenForm(true)} className="bg-primary text-white px-4 py-2 rounded-xl font-bold shadow-lg">+ Nová práca</button></div>
+      <JobList jobs={jobs} patients={patients} token={token} setError={setError} onEdit={(j) => { setSelectedJob(j); setOpenForm(true); }} onDelete={async (id) => { if (window.confirm('Zmazať?')) { await api(token).delete(`/jobs/${id}/`); fetchData(); } }} />
+      <JobForm open={openForm} onClose={() => { setOpenForm(false); setSelectedJob(null); }} onSuccess={() => { setOpenForm(false); fetchData(); }} token={token} setError={setError} initialData={selectedJob} />
+    </div>
   );
-};
-
-export default Jobs;
+}
