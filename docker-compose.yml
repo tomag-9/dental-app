@@ -1,40 +1,43 @@
 version: '3.8'
+
 services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=dental_db
+      - POSTGRES_USER=dental_user
+      - POSTGRES_PASSWORD=dental_pass
+
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY}
-      - ALGORITHM=${ALGORITHM}
     volumes:
       - ./backend:/app
-    working_dir: /app  # Explicitly set working directory
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
-  db:
-    image: postgres:14
+    ports:
+      - "8000:8000"
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    stop_grace_period: 30s
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-mngdb#xhl3$zus7(355+5d-3a-lcoh978@adcq$(n%2kw6c)vv
+      - DATABASE_URL=postgres://dental_user:dental_pass@db:5432/dental_db
+      - ALLOWED_HOSTS=localhost,127.0.0.1,backend
+    depends_on:
+      - db
+    command: python manage.py runserver 0.0.0.0:8000
+
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     ports:
       - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
     depends_on:
       - backend
-    environment:
-      - VITE_PORT=${VITE_PORT}
-    command: npm run dev -- --host 0.0.0.0
+
 volumes:
-  db_data:
+  postgres_data:

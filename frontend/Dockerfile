@@ -1,16 +1,20 @@
-FROM node:20
+# Use Node 20 as base
+FROM node:20-slim
 
 WORKDIR /app
 
-# Skopíruj package.json a inštaluj závislosti
-COPY frontend/package.json frontend/package-lock.json ./
+# Copy package files first for better caching
+COPY package.json package-lock.json ./
 RUN npm install
 
-# Prebuildni esbuild pre aktuálnu platformu
-RUN npm rebuild esbuild
+# Copy the rest of the application
+COPY . .
 
-# Skopíruj zvyšok aplikácie
-COPY frontend/ .
+# Build the application (for production)
+# If this is for dev only, we could skip this, but usually good to check build in CI
+RUN npm run build --if-present
 
-# Spusti dev server
-CMD ["npm", "run", "dev"]
+EXPOSE 5173
+
+# Default command for development
+CMD ["npm", "run", "dev", "--", "--host"]
