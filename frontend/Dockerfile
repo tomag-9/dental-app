@@ -1,16 +1,13 @@
-FROM node:20
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Skopíruj package.json a inštaluj závislosti
-COPY frontend/package.json frontend/package-lock.json ./
+COPY package*.json ./
+
 RUN npm install
 
-# Prebuildni esbuild pre aktuálnu platformu
-RUN npm rebuild esbuild
+COPY . .
 
-# Skopíruj zvyšok aplikácie
-COPY frontend/ .
+EXPOSE 5173
 
-# Spusti dev server
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host"]

@@ -38,3 +38,5 @@ instance/
 alembic.ini
 backend/alembic.ini
 backend/alembic/env.py
+
+rebuild-dev.sh

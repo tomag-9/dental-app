@@ -1,23 +1,34 @@
 import axios from 'axios';
 
-// Simple axios instance factory with token header and base URL fallback
-export const api = (token) =>
-  axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-    headers: token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {},
-  });
+const api = axios.create({
+    baseURL: '/api',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
 
-export const withError = async (promise, onError) => {
-  try {
-    const res = await promise;
-    return [res, null];
-  } catch (err) {
-    const msg = err.response?.data?.detail || err.message || 'Skontrolujte pripojenie';
-    onError?.(msg);
-    return [null, msg];
-  }
-};
+// Add a request interceptor to include the token
+api.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Add a response interceptor to handle 401s (optional)
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            // localStorage.removeItem('token');
+            // window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
+export default api;
