@@ -14,7 +14,7 @@ export default function Login({ setToken, setIsLoggedIn }) {
   const handleLogin = async (e) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/token/', formData);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/token/`, formData);
       const newToken = response.data.access;
       setToken(newToken); localStorage.setItem('token', newToken);
       const userRes = await api(newToken).get('/users/me/');

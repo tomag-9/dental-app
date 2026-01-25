@@ -13,7 +13,7 @@ export default function Signup({ onLoginSuccess }) {
     if (formData.password !== formData.confirmPassword) { setError('Heslá sa nezhodujú'); return; }
     setLoading(true); setError('');
     try {
-      const response = await axios.post('http://localhost:8000/api/signup/', formData);
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/signup/`, formData);
       const { token, user } = response.data;
       localStorage.setItem('token', token.access_token);
       localStorage.setItem('user', JSON.stringify(user));
