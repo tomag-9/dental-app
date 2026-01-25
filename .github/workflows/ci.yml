@@ -14,17 +14,22 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m venv venv
+          ./venv/bin/pip install --upgrade pip
+          ./venv/bin/pip install -r requirements.txt
       - name: Lint
-        run: ruff check .
+        run: ./venv/bin/ruff check .
       - name: Run tests
         env:
           TESTING: '1'
           SECRET_KEY: 'test-key'
-        run: pytest
+        run: ./venv/bin/python manage.py test
 
   frontend:
     runs-on: [self-hosted, Linux, X64]
@@ -33,6 +38,10 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Install deps
         run: npm install
       - name: Lint
@@ -47,7 +56,7 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - name: Build images
-        run: |
-          docker build -t dental-app-backend:ci ./backend
-          docker build -t dental-app-frontend:ci ./frontend
+      - name: Build backend image
+        run: docker build -t dental-app-backend:ci ./backend
+      - name: Build frontend image
+        run: docker build -t dental-app-frontend:ci ./frontend
