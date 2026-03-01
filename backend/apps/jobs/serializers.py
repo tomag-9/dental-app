@@ -31,6 +31,9 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = "__all__"
         read_only_fields = ["lab"]
+        extra_kwargs = {
+            "doctor": {"required": False, "allow_null": True},
+        }
 
     def validate_procedure_codes(self, value):
         """Validate that all procedure codes exist in the price list."""

@@ -28,7 +28,13 @@ class Job(models.Model):
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="jobs")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="jobs")
     clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE, related_name="jobs")
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name="jobs")
+    doctor = models.ForeignKey(
+        Doctor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="jobs",
+    )
     technician = models.ForeignKey(
         Technician,
         on_delete=models.SET_NULL,

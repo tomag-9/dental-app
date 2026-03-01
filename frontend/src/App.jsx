@@ -59,31 +59,33 @@ function App() {
             <Route path="/jobs/:id/edit" element={<JobCreate />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
 
-            <Route path="/clinics" element={<Clinics />} />
-            <Route path="/clinics/new" element={<ClinicCreate />} />
-            <Route path="/clinics/:id/edit" element={<ClinicCreate />} />
+            <Route element={<ProtectedRoute allowedRoles={["admin", "superadmin"]} />}>
+              <Route path="/clinics" element={<Clinics />} />
+              <Route path="/clinics/new" element={<ClinicCreate />} />
+              <Route path="/clinics/:id/edit" element={<ClinicCreate />} />
 
-            <Route path="/doctors" element={<Doctors />} />
-            <Route path="/doctors/new" element={<DoctorCreate />} />
-            <Route path="/doctors/:id/edit" element={<DoctorCreate />} />
+              <Route path="/doctors" element={<Doctors />} />
+              <Route path="/doctors/new" element={<DoctorCreate />} />
+              <Route path="/doctors/:id/edit" element={<DoctorCreate />} />
 
-            <Route path="/technicians" element={<Technicians />} />
-            <Route path="/technicians/new" element={<TechnicianCreate />} />
-            <Route path="/technicians/:id/edit" element={<TechnicianCreate />} />
+              <Route path="/technicians" element={<Technicians />} />
+              <Route path="/technicians/new" element={<TechnicianCreate />} />
+              <Route path="/technicians/:id/edit" element={<TechnicianCreate />} />
 
-            <Route path="/finance" element={<Finance />} />
-            <Route path="/finance/overview" element={<Navigate to="/finance" replace />} />
-            <Route path="/finance/price-list" element={<Navigate to="/price-list" replace />} />
-            <Route path="/finance/invoices" element={<Navigate to="/invoices" replace />} />
-            <Route path="/finance/analytics" element={<Navigate to="/finance" replace />} />
+              <Route path="/finance" element={<Finance />} />
+              <Route path="/finance/overview" element={<Navigate to="/finance" replace />} />
+              <Route path="/finance/price-list" element={<Navigate to="/price-list" replace />} />
+              <Route path="/finance/invoices" element={<Navigate to="/invoices" replace />} />
+              <Route path="/finance/analytics" element={<Navigate to="/finance" replace />} />
 
-            <Route path="/price-list" element={<PriceList />} />
-            <Route path="/price-list/new" element={<PriceListCreate />} />
-            <Route path="/price-list/:id/edit" element={<PriceListCreate />} />
+              <Route path="/price-list" element={<PriceList />} />
+              <Route path="/price-list/new" element={<PriceListCreate />} />
+              <Route path="/price-list/:id/edit" element={<PriceListCreate />} />
 
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/invoices/new" element={<InvoiceErrorBoundary><InvoiceDetail /></InvoiceErrorBoundary>} />
-            <Route path="/invoices/:id" element={<InvoiceErrorBoundary><InvoiceDetail /></InvoiceErrorBoundary>} />
+              <Route path="/invoices" element={<Invoices />} />
+              <Route path="/invoices/new" element={<InvoiceErrorBoundary><InvoiceDetail /></InvoiceErrorBoundary>} />
+              <Route path="/invoices/:id" element={<InvoiceErrorBoundary><InvoiceDetail /></InvoiceErrorBoundary>} />
+            </Route>
 
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/inventory/new" element={<InventoryCreate />} />

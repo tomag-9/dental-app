@@ -25,6 +25,7 @@ import useAuthStore from '../../store/auth';
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [expandSuperadmin, setExpandSuperadmin] = useState(false);
+    const [expandFinance, setExpandFinance] = useState(true);
     const [expandMasterData, setExpandMasterData] = useState(true);
     const logout = useAuthStore(state => state.logout);
     const user = useAuthStore(state => state.user);
@@ -44,12 +45,11 @@ export default function Sidebar() {
         .map(part => part[0]?.toUpperCase())
         .join('') || 'P';
 
+    const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(user?.role);
     const mainLinks = [
         { name: 'Nástenka', to: '/', icon: LayoutDashboard },
         { name: 'Práce', to: '/jobs', icon: Briefcase },
         { name: 'Pacienti', to: '/patients', icon: Users },
-        { name: 'Financie', to: '/finance', icon: Receipt },
-        { name: 'Faktúry', to: '/invoices', icon: FileText },
         { name: 'Sklad', to: '/inventory', icon: Package },
         { name: 'Kalendár', to: '/calendar', icon: CalendarDays },
         { name: 'Nastavenia', to: '/settings', icon: Settings },
@@ -104,6 +104,57 @@ export default function Sidebar() {
                     </NavLink>
                 ))}
 
+                {isAdminOrSuperadmin && (
+                    <div>
+                        <button
+                            type="button"
+                            onClick={() => setExpandFinance((prev) => !prev)}
+                            className={cn(
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-foreground',
+                                collapsed && 'justify-center'
+                            )}
+                        >
+                            <Receipt size={20} />
+                            {!collapsed && (
+                                <>
+                                    <span className="flex-1 text-left">Financie</span>
+                                    {expandFinance ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                </>
+                            )}
+                        </button>
+
+                        {!collapsed && expandFinance && (
+                            <div className="mt-1 ml-2 pl-2 border-l-2 border-border/70 space-y-1">
+                                <NavLink
+                                    to="/finance"
+                                    className={({ isActive }) => cn(
+                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
+                                        isActive
+                                            ? 'bg-primary/10 text-primary font-medium'
+                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                    )}
+                                >
+                                    <Receipt size={16} />
+                                    <span>Prehľad</span>
+                                </NavLink>
+                                <NavLink
+                                    to="/invoices"
+                                    className={({ isActive }) => cn(
+                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
+                                        isActive
+                                            ? 'bg-primary/10 text-primary font-medium'
+                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                    )}
+                                >
+                                    <FileText size={16} />
+                                    <span>Faktúry</span>
+                                </NavLink>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {isAdminOrSuperadmin && (
                 <div className="pt-2">
                     <button
                         type="button"
@@ -142,6 +193,7 @@ export default function Sidebar() {
                         </div>
                     )}
                 </div>
+                )}
 
                 {/* Superadmin Section */}
                 {isSuperadmin && (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -20,6 +20,8 @@ export default function JobCreate() {
     const [procedureQuantities, setProcedureQuantities] = useState({});
     const [selectedProcedureCode, setSelectedProcedureCode] = useState('');
     const [selectedProcedureQty, setSelectedProcedureQty] = useState(1);
+    const [toastMessage, setToastMessage] = useState('');
+    const toastTimeoutRef = useRef(null);
 
     // Form Data
     const [patientId, setPatientId] = useState('');
@@ -38,6 +40,10 @@ export default function JobCreate() {
     const [clinics, setClinics] = useState([]);
     const [technicians, setTechnicians] = useState([]);
     const [priceList, setPriceList] = useState([]);
+    const [patientQuery, setPatientQuery] = useState('');
+    const [clinicQuery, setClinicQuery] = useState('');
+    const [doctorQuery, setDoctorQuery] = useState('');
+    const [technicianQuery, setTechnicianQuery] = useState('');
 
     const toothColorOptions = [
         'A1', 'A2', 'A3', 'A4',
@@ -45,6 +51,49 @@ export default function JobCreate() {
         'C1', 'C2', 'C3', 'C4',
         'D1', 'D2', 'D3', 'D4',
     ];
+
+    const normalizeListResponse = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.results)) return responseData.results;
+        return [];
+    };
+
+    const normalizeText = (value) => String(value ?? '').toLowerCase();
+
+    const getPatientBirthYear = (patient) => {
+        if (patient?.birth_year) return String(patient.birth_year);
+        if (patient?.year_of_birth) return String(patient.year_of_birth);
+
+        if (patient?.birth_date) {
+            const date = new Date(patient.birth_date);
+            if (!Number.isNaN(date.getTime())) {
+                return String(date.getFullYear());
+            }
+        }
+
+        const rawBirthNumber = String(patient?.birth_number ?? '').replace(/\D/g, '');
+        if (rawBirthNumber.length >= 2) {
+            const yy = Number(rawBirthNumber.slice(0, 2));
+            if (Number.isFinite(yy)) {
+                const currentYY = new Date().getFullYear() % 100;
+                const fullYear = yy <= currentYY ? 2000 + yy : 1900 + yy;
+                return String(fullYear);
+            }
+        }
+
+        return '';
+    };
+
+    const showToast = (message) => {
+        setToastMessage(message);
+        if (toastTimeoutRef.current) {
+            window.clearTimeout(toastTimeoutRef.current);
+        }
+        toastTimeoutRef.current = window.setTimeout(() => {
+            setToastMessage('');
+            toastTimeoutRef.current = null;
+        }, 3500);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -56,16 +105,24 @@ export default function JobCreate() {
                     api.get('/jobs/technicians/'),
                     api.get('/finance/price-list/')
                 ]);
-                setPatients(Array.isArray(pRes.data) ? pRes.data : []);
-                setDoctors(Array.isArray(dRes.data) ? dRes.data : []);
-                setClinics(Array.isArray(cRes.data) ? cRes.data : []);
-                setTechnicians(Array.isArray(tRes.data) ? tRes.data : []);
-                setPriceList(Array.isArray(prRes.data) ? prRes.data : []);
+                setPatients(normalizeListResponse(pRes.data));
+                setDoctors(normalizeListResponse(dRes.data));
+                setClinics(normalizeListResponse(cRes.data));
+                setTechnicians(normalizeListResponse(tRes.data));
+                setPriceList(normalizeListResponse(prRes.data));
             } catch (err) {
                 console.error(err);
             }
         };
         fetchData();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) {
+                window.clearTimeout(toastTimeoutRef.current);
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -130,6 +187,59 @@ export default function JobCreate() {
         }, 0);
     }, [selectedProcedureCodes, procedureQuantities, priceList]);
 
+    const filteredPatients = useMemo(() => {
+        const query = normalizeText(patientQuery).trim();
+        if (!query) return patients;
+
+        return patients.filter((patient) => {
+            const haystack = [
+                patient?.id,
+                patient?.first_name,
+                patient?.last_name,
+                patient?.email,
+                patient?.birth_number,
+                getPatientBirthYear(patient),
+            ];
+
+            return haystack.some((value) => normalizeText(value).includes(query));
+        });
+    }, [patients, patientQuery]);
+
+    const filteredClinics = useMemo(() => {
+        const query = normalizeText(clinicQuery).trim();
+        if (!query) return clinics;
+
+        return clinics.filter((clinic) => {
+            const haystack = [clinic?.id, clinic?.name, clinic?.ico];
+            return haystack.some((value) => normalizeText(value).includes(query));
+        });
+    }, [clinics, clinicQuery]);
+
+    const filteredDoctors = useMemo(() => {
+        const query = normalizeText(doctorQuery).trim();
+        if (!query) return doctors;
+
+        return doctors.filter((doctor) => {
+            const haystack = [doctor?.id, doctor?.first_name, doctor?.last_name, doctor?.email];
+            return haystack.some((value) => normalizeText(value).includes(query));
+        });
+    }, [doctors, doctorQuery]);
+
+    const filteredTechnicians = useMemo(() => {
+        const query = normalizeText(technicianQuery).trim();
+        if (!query) return technicians;
+
+        return technicians.filter((technician) => {
+            const haystack = [
+                technician?.id,
+                technician?.first_name,
+                technician?.last_name,
+                technician?.contact_info?.email,
+            ];
+            return haystack.some((value) => normalizeText(value).includes(query));
+        });
+    }, [technicians, technicianQuery]);
+
     const getApiError = (err, fallbackMessage) => {
         const payload = err?.response?.data;
         if (typeof payload?.detail === 'string') return payload.detail;
@@ -170,8 +280,8 @@ export default function JobCreate() {
         setLoading(true);
         setError('');
         try {
-            if (!patientId || !doctorId || !clinicId) {
-                setError('Pacient, lekár a klinika sú povinné polia');
+            if (!patientId || !clinicId) {
+                showToast('Pacient a klinika sú povinné polia.');
                 setLoading(false);
                 return;
             }
@@ -183,7 +293,7 @@ export default function JobCreate() {
 
             const payload = {
                 patient: Number(patientId),
-                doctor: Number(doctorId),
+                doctor: doctorId ? Number(doctorId) : null,
                 clinic: Number(clinicId),
                 technician: technicianId ? Number(technicianId) : null,
                 due_date: dueDate || null,
@@ -215,8 +325,8 @@ export default function JobCreate() {
 
     const goToNextStep = () => {
         if (currentStep === 1) {
-            if (!patientId || !doctorId || !clinicId) {
-                setError('V 1. kroku sú povinné: pacient, klinika a lekár.');
+            if (!patientId || !clinicId) {
+                showToast('V 1. kroku sú povinné: pacient a klinika.');
                 return;
             }
         }
@@ -231,6 +341,12 @@ export default function JobCreate() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
+            {toastMessage && (
+                <div className="fixed right-4 top-4 z-50 max-w-md rounded-md bg-gray-900 px-4 py-3 text-sm text-white shadow-lg">
+                    {toastMessage}
+                </div>
+            )}
+
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => navigate('/jobs')}>
                     <ArrowLeft size={20} />
@@ -273,40 +389,70 @@ export default function JobCreate() {
                         <>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Pacient</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded-md mb-2"
+                                    placeholder="Hľadať: meno, priezvisko, rok narodenia, e-mail, rodné číslo, ID"
+                                    value={patientQuery}
+                                    onChange={e => setPatientQuery(e.target.value)}
+                                />
                                 <select className="w-full p-2 border rounded-md" value={patientId} onChange={e => setPatientId(e.target.value)}>
                                     <option value="">Vyberte pacienta</option>
-                                    {patients.map(p => (
-                                        <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
+                                    {filteredPatients.map(p => (
+                                        <option key={p.id} value={p.id}>
+                                            #{p.id} {p.first_name} {p.last_name} {p.birth_number ? `• ${p.birth_number}` : ''} {p.email ? `• ${p.email}` : ''}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Klinika</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded-md mb-2"
+                                    placeholder="Hľadať: názov kliniky, číslo (IČO), ID"
+                                    value={clinicQuery}
+                                    onChange={e => setClinicQuery(e.target.value)}
+                                />
                                 <select className="w-full p-2 border rounded-md" value={clinicId} onChange={e => setClinicId(e.target.value)}>
                                     <option value="">Vyberte kliniku</option>
-                                    {clinics.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    {filteredClinics.map(c => (
+                                        <option key={c.id} value={c.id}>#{c.id} {c.name}{c.ico ? ` • IČO ${c.ico}` : ''}</option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-1">Lekár</label>
+                                <label className="block text-sm font-medium mb-1">Lekár (voliteľné)</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded-md mb-2"
+                                    placeholder="Hľadať: meno, priezvisko, číslo, ID"
+                                    value={doctorQuery}
+                                    onChange={e => setDoctorQuery(e.target.value)}
+                                />
                                 <select className="w-full p-2 border rounded-md" value={doctorId} onChange={e => setDoctorId(e.target.value)}>
-                                    <option value="">Vyberte lekára</option>
-                                    {doctors.map(d => (
-                                        <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
+                                    <option value="">Bez lekára</option>
+                                    {filteredDoctors.map(d => (
+                                        <option key={d.id} value={d.id}>#{d.id} {d.first_name} {d.last_name}</option>
                                     ))}
                                 </select>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Technik</label>
+                                <input
+                                    type="text"
+                                    className="w-full p-2 border rounded-md mb-2"
+                                    placeholder="Hľadať: meno, priezvisko, číslo, ID"
+                                    value={technicianQuery}
+                                    onChange={e => setTechnicianQuery(e.target.value)}
+                                />
                                 <select className="w-full p-2 border rounded-md" value={technicianId} onChange={e => setTechnicianId(e.target.value)}>
                                     <option value="">Vyberte technika</option>
-                                    {technicians.map(t => (
-                                        <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
+                                    {filteredTechnicians.map(t => (
+                                        <option key={t.id} value={t.id}>#{t.id} {t.first_name} {t.last_name}</option>
                                     ))}
                                 </select>
                             </div>

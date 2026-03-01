@@ -11,6 +11,7 @@ export default function Settings() {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
 
+    const isAdmin = user?.role === 'admin';
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(user?.role);
 
     const allSettings = [
@@ -22,6 +23,9 @@ export default function Settings() {
     const settings = allSettings.filter((section) => {
         if (section.id === 'users') {
             return isAdminOrSuperadmin;
+        }
+        if (section.id === 'lab') {
+            return isAdmin;
         }
         return true;
     });

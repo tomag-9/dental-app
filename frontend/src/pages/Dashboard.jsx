@@ -30,6 +30,11 @@ export default function Dashboard() {
         return [];
     };
 
+    const formatAmount = (value) => {
+        const amount = Number(value);
+        return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
+    };
+
     const fetchDashboardData = async () => {
         setLoading(true);
         setError(null);
@@ -87,7 +92,7 @@ export default function Dashboard() {
         },
         { 
             title: 'Tržby', 
-            value: `${Number(stats.revenue || 0).toFixed(2)} €`, 
+            value: `${formatAmount(stats.revenue)} €`, 
             icon: DollarSign, 
             color: 'bg-green-100 text-green-600' 
         },
@@ -256,7 +261,7 @@ export default function Dashboard() {
                                         </div>
                                         <div className="text-right">
                                             <p className="font-semibold text-gray-900 text-sm">
-                                                {invoice.total_amount?.toFixed(2) || '0.00'} €
+                                                {formatAmount(invoice?.total_amount)} €
                                             </p>
                                             {invoice.created_at && (
                                                 <p className="text-xs text-gray-500">
