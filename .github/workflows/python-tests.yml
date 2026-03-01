@@ -1,12 +1,14 @@
-name: Backend tests
+name: Backend Django Tests
 
 on:
   push:
     paths:
       - 'backend/**'
+      - '.github/workflows/python-tests.yml'
   pull_request:
     paths:
       - 'backend/**'
+      - '.github/workflows/python-tests.yml'
 
 jobs:
   test-backend:
@@ -41,17 +43,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run backend tests
+      - name: Run backend tests (Django)
         working-directory: backend
         run: |
           export PYTHONPATH=.
-          pytest -q
+          python manage.py test --verbosity=2
 
-      - name: Upload pytest results (logs)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-logs
-          path: |
-            backend/.pytest_cache
-            backend
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "Backend tests (Django) completed. Check logs above for results."

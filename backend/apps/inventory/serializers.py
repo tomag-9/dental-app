@@ -7,3 +7,4 @@ class WarehouseItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = WarehouseItem
         fields = "__all__"
+        read_only_fields = ["lab"]
