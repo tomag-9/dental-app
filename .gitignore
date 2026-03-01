@@ -44,3 +44,5 @@ rebuild-dev.sh
 
 *.md
 *.MD
+frontend_legacy/
+backend_legacy/
