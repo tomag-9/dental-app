@@ -10,10 +10,11 @@ const statusLabel = {
     new: 'Nové',
     in_progress: 'V priebehu',
     completed: 'Dokončené',
+    finished_factured: 'Dokončené a fakturované',
     cancelled: 'Zrušené',
 };
 
-const sectionOrder = ['new', 'in_progress', 'completed', 'cancelled'];
+const sectionOrder = ['new', 'in_progress', 'completed', 'finished_factured', 'cancelled'];
 
 export default function Jobs() {
     const [jobs, setJobs] = useState([]);

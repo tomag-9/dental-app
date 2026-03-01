@@ -69,6 +69,16 @@ export default function Invoices() {
         }
     };
 
+    const getStatusLabel = (status) => {
+        const labels = {
+            draft: 'Koncept',
+            issued: 'Vystavená',
+            paid: 'Uhradená',
+            cancelled: 'Zrušená',
+        };
+        return labels[status] || status || '-';
+    };
+
     const getStatusIcon = (status) => {
         switch (status) {
             case 'draft': return '📝';
@@ -118,11 +128,11 @@ export default function Invoices() {
                             onChange={(e) => setStatusFilter(e.target.value)}
                             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         >
-                            <option value="all">All Statuses</option>
-                            <option value="draft">Draft</option>
-                            <option value="issued">Issued</option>
-                            <option value="paid">Paid</option>
-                            <option value="cancelled">Cancelled</option>
+                            <option value="all">Všetky stavy</option>
+                            <option value="draft">Koncept</option>
+                            <option value="issued">Vystavená</option>
+                            <option value="paid">Uhradená</option>
+                            <option value="cancelled">Zrušená</option>
                         </select>
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -175,7 +185,7 @@ export default function Invoices() {
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                                                    {getStatusIcon(invoice.status)} {invoice.status}
+                                                    {getStatusIcon(invoice.status)} {getStatusLabel(invoice.status)}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right">

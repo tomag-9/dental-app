@@ -108,8 +108,11 @@ export default function Dashboard() {
         switch (status) {
             case 'completed':
                 return 'bg-green-100 text-green-800';
+            case 'finished_factured':
+                return 'bg-emerald-100 text-emerald-800';
             case 'in_progress':
                 return 'bg-blue-100 text-blue-800';
+            case 'new':
             case 'pending':
                 return 'bg-yellow-100 text-yellow-800';
             case 'cancelled':
@@ -117,6 +120,18 @@ export default function Dashboard() {
             default:
                 return 'bg-gray-100 text-gray-800';
         }
+    };
+
+    const getJobStatusLabel = (status) => {
+        const labels = {
+            new: 'Nová',
+            pending: 'Čaká',
+            in_progress: 'V priebehu',
+            completed: 'Dokončená',
+            finished_factured: 'Dokončená a fakturovaná',
+            cancelled: 'Zrušená',
+        };
+        return labels[status] || status || '-';
     };
 
     const getInvoiceStatusColor = (status) => {
@@ -132,6 +147,16 @@ export default function Dashboard() {
             default:
                 return 'bg-gray-100 text-gray-800';
         }
+    };
+
+    const getInvoiceStatusLabel = (status) => {
+        const labels = {
+            draft: 'Koncept',
+            issued: 'Vystavená',
+            paid: 'Uhradená',
+            cancelled: 'Zrušená',
+        };
+        return labels[status] || status || '-';
     };
 
     if (loading) {
@@ -211,7 +236,7 @@ export default function Dashboard() {
                                             <div className="flex items-center gap-2 mb-1">
                                                 <p className="font-medium text-gray-900 text-sm">Práca #{job.id}</p>
                                                 <Badge className={getJobStatusColor(job.status)}>
-                                                    {job.status}
+                                                    {getJobStatusLabel(job.status)}
                                                 </Badge>
                                             </div>
                                             <p className="text-xs text-gray-600">
@@ -252,7 +277,7 @@ export default function Dashboard() {
                                                     {invoice.number || `INV-${invoice.id}`}
                                                 </p>
                                                 <Badge className={getInvoiceStatusColor(invoice.status)}>
-                                                    {invoice.status}
+                                                    {getInvoiceStatusLabel(invoice.status)}
                                                 </Badge>
                                             </div>
                                             <p className="text-xs text-gray-600">

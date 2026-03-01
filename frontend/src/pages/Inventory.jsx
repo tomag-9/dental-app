@@ -22,12 +22,18 @@ export default function Inventory() {
         fetchItems();
     }, []);
 
+    const normalizeListResponse = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.results)) return responseData.results;
+        return [];
+    };
+
     const fetchItems = async () => {
         setIsLoading(true);
         setError('');
         try {
             const response = await api.get('/warehouse/');
-            setItems(response.data);
+            setItems(normalizeListResponse(response.data));
         } catch (err) {
             console.error('Failed to fetch inventory:', err);
             setError('Failed to load inventory items');
@@ -67,8 +73,11 @@ export default function Inventory() {
     const handleAdjustQuantity = async (id, delta) => {
         try {
             const item = items.find(i => i.id === id);
-            const newQuantity = Math.max(0, item.quantity + delta);
-            await api.put(`/warehouse/${id}/`, { quantity: newQuantity });
+            if (!item) return;
+            const currentQuantity = Number(item.quantity || 0);
+            const safeDelta = Number(delta || 0);
+            const newQuantity = Math.max(0, currentQuantity + safeDelta);
+            await api.patch(`/warehouse/${id}/`, { quantity: newQuantity });
             await fetchItems();
         } catch (err) {
             console.error('Failed to adjust quantity:', err);

@@ -20,27 +20,43 @@ export default function Calendar() {
     fetchEvents();
   }, []);
 
+  const normalizeListResponse = (responseData) => {
+    if (Array.isArray(responseData)) return responseData;
+    if (Array.isArray(responseData?.results)) return responseData.results;
+    return [];
+  };
+
+  const toISODateString = (value) => {
+    if (!value) return null;
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return format(date, 'yyyy-MM-dd');
+  };
+
   const fetchEvents = async () => {
     setLoading(true);
     setError(null);
     try {
       const [jobsRes, vacationsRes] = await Promise.all([
-        api.get('/jobs/'),
-        api.get('/vacations/').catch(() => ({ data: [] }))
+        api.get('/jobs/jobs/'),
+        api.get('/jobs/vacations/').catch(() => ({ data: [] }))
       ]);
 
-      const jobEvents = jobsRes.data.map(job => ({
+      const jobs = normalizeListResponse(jobsRes.data);
+      const vacations = normalizeListResponse(vacationsRes.data);
+
+      const jobEvents = jobs.map(job => ({
         id: `job-${job.id}`,
         type: 'job',
         title: `Job #${job.id}`,
         status: job.status,
-        date: job.start_date || job.due_date,
-        startDate: job.start_date,
-        endDate: job.end_date || job.due_date,
+        date: job.start_date || job.due_date || job.created_at,
+        startDate: job.start_date || job.due_date || job.created_at,
+        endDate: job.end_date || job.due_date || job.start_date || job.created_at,
         resource: job
-      }));
+      })).filter(event => event.date);
 
-      const vacationEvents = vacationsRes.data.map(vac => ({
+      const vacationEvents = vacations.map(vac => ({
         id: `vacation-${vac.id}`,
         type: 'vacation',
         title: vac.description || 'Vacation',
@@ -48,7 +64,7 @@ export default function Calendar() {
         startDate: vac.start,
         endDate: vac.end,
         resource: vac
-      }));
+      })).filter(event => event.startDate && event.endDate);
 
       setEvents([...jobEvents, ...vacationEvents]);
     } catch (err) {
@@ -99,14 +115,18 @@ export default function Calendar() {
 
   const getEventsForDate = (date) => {
     if (!date) return [];
-    const dateStr = format(date, 'yyyy-MM-dd');
+    const dateStr = toISODateString(date);
+    if (!dateStr) return [];
+
     return events.filter(event => {
-      const eventStart = format(parseISO(event.startDate), 'yyyy-MM-dd');
-      const eventEnd = format(parseISO(event.endDate), 'yyyy-MM-dd');
-      const eventDate = format(parseISO(event.date), 'yyyy-MM-dd');
+      const eventStart = toISODateString(event.startDate);
+      const eventEnd = toISODateString(event.endDate);
+      const eventDate = toISODateString(event.date);
+      if (!eventDate) return false;
       
       // Check if date is within vacation range or is job date
       if (event.type === 'vacation') {
+        if (!eventStart || !eventEnd) return false;
         return dateStr >= eventStart && dateStr <= eventEnd;
       }
       return dateStr === eventDate;

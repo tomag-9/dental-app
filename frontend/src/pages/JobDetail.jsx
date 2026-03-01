@@ -10,6 +10,7 @@ const statusLabel = {
     new: 'Nová',
     in_progress: 'V priebehu',
     completed: 'Dokončená',
+    finished_factured: 'Dokončená a fakturovaná',
     cancelled: 'Zrušená',
 };
 
