@@ -32,12 +32,18 @@ export default function Jobs() {
         fetchJobs();
     }, []);
 
+    const normalizeListResponse = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.results)) return responseData.results;
+        return [];
+    };
+
     const fetchJobs = async () => {
         setIsLoading(true);
         setError('');
         try {
             const response = await api.get('/jobs/jobs/');
-            setJobs(response.data);
+            setJobs(normalizeListResponse(response.data));
         } catch (err) {
             console.error('Failed to fetch jobs:', err);
             setError('Nepodarilo sa načítať práce');

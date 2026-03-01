@@ -1,3 +1,14 @@
+# DEPRECATED (Read-Only Archive)
+
+This folder is a legacy reference implementation and is decommissioned from active development.
+
+- Status: `DEPRECATED`
+- Write policy: `READ-ONLY` (do not add/edit feature code here)
+- Replacement: active frontend lives in `frontend/`
+- Removal plan: remove this folder after final parity verification and release sign-off
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

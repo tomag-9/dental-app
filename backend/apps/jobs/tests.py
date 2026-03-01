@@ -359,3 +359,89 @@ class JobValidationApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["lab"], self.lab_a.id)
+
+
+class TechnicianApiTests(APITestCase):
+    def setUp(self):
+        self.lab_a = Lab.objects.create(name="Tech Lab A")
+        self.lab_b = Lab.objects.create(name="Tech Lab B")
+
+        self.admin_a = User.objects.create_user(
+            username="tech_admin_a",
+            email="tech_admin_a@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab_a,
+        )
+        self.admin_b = User.objects.create_user(
+            username="tech_admin_b",
+            email="tech_admin_b@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab_b,
+        )
+
+        self.tech_a = Technician.objects.create(
+            lab=self.lab_a,
+            first_name="Lukas",
+            last_name="A",
+        )
+        self.tech_b = Technician.objects.create(
+            lab=self.lab_b,
+            first_name="Marek",
+            last_name="B",
+        )
+
+    def test_create_technician_assigns_users_lab_even_without_lab_in_payload(self):
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("technician-list")
+
+        payload = {
+            "first_name": "Jozef",
+            "last_name": "Novak",
+            "title_before": "Ing.",
+            "contact_info": {"email": "jozef@example.com"},
+        }
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_create_technician_ignores_client_supplied_lab(self):
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("technician-list")
+
+        payload = {
+            "first_name": "Peter",
+            "last_name": "Scope",
+            "lab": self.lab_b.id,
+        }
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_update_technician_works_without_sending_lab(self):
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("technician-detail", args=[self.tech_a.id])
+
+        payload = {
+            "first_name": "Lukas-updated",
+            "last_name": "A",
+            "title_after": "PhD.",
+        }
+        response = self.client.put(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["first_name"], "Lukas-updated")
+        self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_list_technicians_is_scoped_to_users_lab(self):
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("technician-list")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.tech_a.id)

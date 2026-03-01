@@ -15,7 +15,9 @@ import {
     FileText,
     X,
     Shield,
-    CreditCard
+    CreditCard,
+    ChevronDown,
+    ChevronRight
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import useAuthStore from '../../store/auth';
@@ -23,6 +25,7 @@ import useAuthStore from '../../store/auth';
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [expandSuperadmin, setExpandSuperadmin] = useState(false);
+    const [expandMasterData, setExpandMasterData] = useState(true);
     const logout = useAuthStore(state => state.logout);
     const user = useAuthStore(state => state.user);
 
@@ -41,19 +44,22 @@ export default function Sidebar() {
         .map(part => part[0]?.toUpperCase())
         .join('') || 'P';
 
-    const links = [
+    const mainLinks = [
         { name: 'Nástenka', to: '/', icon: LayoutDashboard },
         { name: 'Práce', to: '/jobs', icon: Briefcase },
         { name: 'Pacienti', to: '/patients', icon: Users },
-        { name: 'Kliniky', to: '/clinics', icon: Building },
-        { name: 'Lekári', to: '/doctors', icon: Stethoscope },
-        { name: 'Technici', to: '/technicians', icon: Wrench },
         { name: 'Financie', to: '/finance', icon: Receipt },
-        { name: 'Cenník', to: '/price-list', icon: Receipt },
         { name: 'Faktúry', to: '/invoices', icon: FileText },
         { name: 'Sklad', to: '/inventory', icon: Package },
         { name: 'Kalendár', to: '/calendar', icon: CalendarDays },
         { name: 'Nastavenia', to: '/settings', icon: Settings },
+    ];
+
+    const masterDataLinks = [
+        { name: 'Kliniky', to: '/clinics', icon: Building },
+        { name: 'Lekári', to: '/doctors', icon: Stethoscope },
+        { name: 'Technici', to: '/technicians', icon: Wrench },
+        { name: 'Cenník', to: '/price-list', icon: Receipt },
     ];
 
     const superadminLinks = [
@@ -81,7 +87,7 @@ export default function Sidebar() {
             </div>
 
             <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-                {links.map((link) => (
+                {mainLinks.map((link) => (
                     <NavLink
                         key={link.to}
                         to={link.to}
@@ -97,6 +103,45 @@ export default function Sidebar() {
                         {!collapsed && <span>{link.name}</span>}
                     </NavLink>
                 ))}
+
+                <div className="pt-2">
+                    <button
+                        type="button"
+                        onClick={() => setExpandMasterData((prev) => !prev)}
+                        className={cn(
+                            'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-foreground',
+                            collapsed && 'justify-center'
+                        )}
+                    >
+                        <Settings size={20} />
+                        {!collapsed && (
+                            <>
+                                <span className="flex-1 text-left">Konfigurácia</span>
+                                {expandMasterData ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            </>
+                        )}
+                    </button>
+
+                    {!collapsed && expandMasterData && (
+                        <div className="mt-1 ml-2 pl-2 border-l-2 border-border/70 space-y-1">
+                            {masterDataLinks.map((link) => (
+                                <NavLink
+                                    key={link.to}
+                                    to={link.to}
+                                    className={({ isActive }) => cn(
+                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
+                                        isActive
+                                            ? 'bg-primary/10 text-primary font-medium'
+                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                    )}
+                                >
+                                    <link.icon size={16} />
+                                    <span>{link.name}</span>
+                                </NavLink>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 {/* Superadmin Section */}
                 {isSuperadmin && (

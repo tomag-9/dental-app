@@ -31,14 +31,14 @@ export default function InvoiceDetail() {
     const loadInvoice = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get(`/invoices/${id}`);
+            const response = await api.get(`/invoices/${id}/`);
             const inv = response.data;
             setInvoice(inv);
             setFormData({
-                clinic_id: inv.clinic_id || '',
-                job_ids: (inv.items || []).map(item => item.job_id),
+                clinic_id: inv.clinic_id || inv.clinic || '',
+                job_ids: (inv.items || []).map(item => item.job_id || item.job).filter(Boolean),
             });
-            setSelectedJobs((inv.items || []).map(item => item.job_id));
+            setSelectedJobs((inv.items || []).map(item => item.job_id || item.job).filter(Boolean));
         } catch (err) {
             console.error('Failed to fetch invoice:', err);
             setError('Failed to load invoice');
@@ -93,11 +93,12 @@ export default function InvoiceDetail() {
 
     const handleStatusChange = async (newStatus) => {
         try {
-            await api.put(`/invoices/${id}/status`, { status: newStatus });
+            await api.put(`/invoices/${id}/status/`, { status: newStatus });
             await loadInvoice();
         } catch (err) {
             console.error('Failed to update status:', err);
-            setError('Failed to update invoice status');
+            const detail = err?.response?.data?.detail;
+            setError(typeof detail === 'string' ? detail : 'Failed to update invoice status');
         }
     };
 

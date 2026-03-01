@@ -24,6 +24,12 @@ export default function Dashboard() {
         fetchDashboardData();
     }, []);
 
+    const normalizeListResponse = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.results)) return responseData.results;
+        return [];
+    };
+
     const fetchDashboardData = async () => {
         setLoading(true);
         setError(null);
@@ -34,14 +40,17 @@ export default function Dashboard() {
                 api.get('/invoices/')
             ]);
 
-            const jobs = jobsRes.data || [];
-            const patients = patientsRes.data || [];
-            const invoices = invoicesRes.data || [];
+            const jobs = normalizeListResponse(jobsRes.data);
+            const patients = normalizeListResponse(patientsRes.data);
+            const invoices = normalizeListResponse(invoicesRes.data);
 
             // Calculate stats
             const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'cancelled').length;
             const completedJobs = jobs.filter(j => j.status === 'completed').length;
-            const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+            const totalRevenue = invoices.reduce((sum, inv) => {
+                const amount = Number(inv?.total_amount ?? 0);
+                return sum + (Number.isFinite(amount) ? amount : 0);
+            }, 0);
 
             setStats({
                 totalPatients: patients.length,
@@ -78,7 +87,7 @@ export default function Dashboard() {
         },
         { 
             title: 'Tržby', 
-            value: `${stats.revenue.toFixed(2)} €`, 
+            value: `${Number(stats.revenue || 0).toFixed(2)} €`, 
             icon: DollarSign, 
             color: 'bg-green-100 text-green-600' 
         },

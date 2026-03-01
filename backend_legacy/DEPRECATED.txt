@@ -1,0 +1,16 @@
+DEPRECATED / READ-ONLY ARCHIVE
+
+Purpose
+- Historical FastAPI + Alembic implementation kept temporarily for migration verification.
+
+Current policy
+- Do not implement new features in this folder.
+- Do not run production workflows from this folder.
+- Treat contents as read-only reference during final cutover.
+
+Active stack
+- Backend runtime: backend/ (Django + DRF)
+- Migrations: Django migrations via manage.py (not Alembic)
+
+Removal gate
+- Remove backend_legacy/ after endpoint parity and smoke checks are accepted.

@@ -26,7 +26,11 @@ export default function JobCreate() {
     const [doctorId, setDoctorId] = useState('');
     const [clinicId, setClinicId] = useState('');
     const [dueDate, setDueDate] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [tryInDate, setTryInDate] = useState('');
     const [toothData, setToothData] = useState({});
+    const [currentStep, setCurrentStep] = useState(1);
 
     // Dropdown Data
     const [patients, setPatients] = useState([]);
@@ -77,6 +81,9 @@ export default function JobCreate() {
                 setClinicId(job.clinic ? String(job.clinic) : '');
                 setTechnicianId(job.technician ? String(job.technician) : '');
                 setDueDate(job.due_date || '');
+                setStartDate(job.start_date || '');
+                setEndDate(job.end_date || '');
+                setTryInDate(job.try_in_date || '');
                 setStatus(job.status || 'new');
                 setDescription(job.description || '');
                 setToothData(job.input_tooth_procedures || {});
@@ -159,7 +166,7 @@ export default function JobCreate() {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
         setLoading(true);
         setError('');
         try {
@@ -180,6 +187,9 @@ export default function JobCreate() {
                 clinic: Number(clinicId),
                 technician: technicianId ? Number(technicianId) : null,
                 due_date: dueDate || null,
+                start_date: startDate || null,
+                end_date: endDate || null,
+                try_in_date: tryInDate || null,
                 description: description || null,
                 input_tooth_procedures: toothData,
                 procedure_codes: procedureCodes.length ? procedureCodes : null,
@@ -203,6 +213,22 @@ export default function JobCreate() {
         }
     };
 
+    const goToNextStep = () => {
+        if (currentStep === 1) {
+            if (!patientId || !doctorId || !clinicId) {
+                setError('V 1. kroku sú povinné: pacient, klinika a lekár.');
+                return;
+            }
+        }
+        setError('');
+        setCurrentStep((prev) => Math.min(3, prev + 1));
+    };
+
+    const goToPrevStep = () => {
+        setError('');
+        setCurrentStep((prev) => Math.max(1, prev - 1));
+    };
+
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
@@ -221,21 +247,33 @@ export default function JobCreate() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Form */}
-                <div className="lg:col-span-1 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Údaje o práci</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+                {[1, 2, 3].map((step) => (
+                    <div
+                        key={step}
+                        className={`px-3 py-1 rounded-full text-sm border ${currentStep === step ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}
+                    >
+                        {step === 1 && '1. Základné údaje'}
+                        {step === 2 && '2. Úkony a popis'}
+                        {step === 3 && '3. Dátumy'}
+                    </div>
+                ))}
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>
+                        {currentStep === 1 && 'Krok 1: Základné údaje'}
+                        {currentStep === 2 && 'Krok 2: Úkony a popis'}
+                        {currentStep === 3 && 'Krok 3: Dátumy'}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {currentStep === 1 && (
+                        <>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Pacient</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={patientId}
-                                    onChange={e => setPatientId(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={patientId} onChange={e => setPatientId(e.target.value)}>
                                     <option value="">Vyberte pacienta</option>
                                     {patients.map(p => (
                                         <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
@@ -245,11 +283,7 @@ export default function JobCreate() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Klinika</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={clinicId}
-                                    onChange={e => setClinicId(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={clinicId} onChange={e => setClinicId(e.target.value)}>
                                     <option value="">Vyberte kliniku</option>
                                     {clinics.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -259,11 +293,7 @@ export default function JobCreate() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Lekár</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={doctorId}
-                                    onChange={e => setDoctorId(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={doctorId} onChange={e => setDoctorId(e.target.value)}>
                                     <option value="">Vyberte lekára</option>
                                     {doctors.map(d => (
                                         <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>
@@ -273,11 +303,7 @@ export default function JobCreate() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Technik</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={technicianId}
-                                    onChange={e => setTechnicianId(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={technicianId} onChange={e => setTechnicianId(e.target.value)}>
                                     <option value="">Vyberte technika</option>
                                     {technicians.map(t => (
                                         <option key={t.id} value={t.id}>{t.first_name} {t.last_name}</option>
@@ -287,45 +313,26 @@ export default function JobCreate() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Stav</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={status}
-                                    onChange={e => setStatus(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={status} onChange={e => setStatus(e.target.value)}>
                                     <option value="new">Nová</option>
                                     <option value="in_progress">V priebehu</option>
                                     <option value="completed">Dokončená</option>
                                     <option value="cancelled">Zrušená</option>
                                 </select>
                             </div>
+                        </>
+                    )}
 
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Termín odovzdania</label>
-                                <input
-                                    type="date"
-                                    className="w-full p-2 border rounded-md"
-                                    value={dueDate}
-                                    onChange={e => setDueDate(e.target.value)}
-                                />
-                            </div>
-
+                    {currentStep === 2 && (
+                        <>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Popis</label>
-                                <textarea
-                                    className="w-full p-2 border rounded-md"
-                                    rows={3}
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                />
+                                <textarea className="w-full p-2 border rounded-md" rows={3} value={description} onChange={e => setDescription(e.target.value)} />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Farba zuba</label>
-                                <select
-                                    className="w-full p-2 border rounded-md"
-                                    value={toothColor}
-                                    onChange={e => setToothColor(e.target.value)}
-                                >
+                                <select className="w-full p-2 border rounded-md" value={toothColor} onChange={e => setToothColor(e.target.value)}>
                                     <option value="">Bez farby</option>
                                     {toothColorOptions.map(shade => (
                                         <option key={shade} value={shade}>{shade}</option>
@@ -336,11 +343,7 @@ export default function JobCreate() {
                             <div className="space-y-3 border rounded-md p-3 bg-muted/20">
                                 <label className="block text-sm font-medium">Cenníkové úkony</label>
                                 <div className="flex gap-2">
-                                    <select
-                                        className="flex-1 p-2 border rounded-md"
-                                        value={selectedProcedureCode}
-                                        onChange={e => setSelectedProcedureCode(e.target.value)}
-                                    >
+                                    <select className="flex-1 p-2 border rounded-md" value={selectedProcedureCode} onChange={e => setSelectedProcedureCode(e.target.value)}>
                                         <option value="">Vyberte kód</option>
                                         {availableProcedureOptions.map(item => (
                                             <option key={item.id} value={item.code}>
@@ -348,13 +351,7 @@ export default function JobCreate() {
                                             </option>
                                         ))}
                                     </select>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        className="w-20 p-2 border rounded-md"
-                                        value={selectedProcedureQty}
-                                        onChange={e => setSelectedProcedureQty(e.target.value)}
-                                    />
+                                    <input type="number" min="1" className="w-20 p-2 border rounded-md" value={selectedProcedureQty} onChange={e => setSelectedProcedureQty(e.target.value)} />
                                     <Button type="button" variant="outline" onClick={addProcedure}>Pridať</Button>
                                 </div>
 
@@ -370,64 +367,87 @@ export default function JobCreate() {
                                                         <span className="font-medium">{code}</span>
                                                         <span className="text-muted-foreground"> {item?.description || ''}</span>
                                                     </div>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        className="w-20 p-1 border rounded"
-                                                        value={qty}
-                                                        onChange={e => changeProcedureQty(code, e.target.value)}
-                                                    />
+                                                    <input type="number" min="1" className="w-20 p-1 border rounded" value={qty} onChange={e => changeProcedureQty(code, e.target.value)} />
                                                     <div className="w-24 text-right">€{(unitPrice * qty).toFixed(2)}</div>
                                                     <Button type="button" variant="ghost" onClick={() => removeProcedure(code)}>Odobrať</Button>
                                                 </div>
                                             );
                                         })}
-                                        <div className="pt-2 border-t text-right font-semibold">
-                                            Odhad ceny: €{totalProcedurePrice.toFixed(2)}
-                                        </div>
+                                        <div className="pt-2 border-t text-right font-semibold">Odhad ceny: €{totalProcedurePrice.toFixed(2)}</div>
                                     </div>
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
 
-                    <Button className="w-full" size="lg" onClick={handleSubmit} disabled={loading}>
-                        <Save className="mr-2 h-4 w-4" />
-                        {loading ? 'Ukladám...' : isEditing ? 'Uložiť zmeny' : 'Vytvoriť prácu'}
-                    </Button>
-                </div>
-
-                {/* Right Column: Tooth Map */}
-                <div className="lg:col-span-2">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle>Zubný kríž / úkony</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ToothMap
-                                editable={true}
-                                value={toothData}
-                                onChange={setToothData}
-                            />
-
-                            <div className="mt-4 p-4 bg-muted/50 rounded-lg">
-                                <h4 className="font-semibold text-sm mb-2">Vybrané úkony:</h4>
-                                {Object.keys(toothData).length === 0 ? (
-                                    <p className="text-xs text-muted-foreground">Nič nie je vybrané</p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-2">
-                                        {Object.entries(toothData).map(([tooth, code]) => (
-                                            <div key={tooth} className="bg-white border rounded px-2 py-1 text-xs font-mono shadow-sm">
-                                                <b>{tooth}</b>: {code}
+                            <Card className="h-full">
+                                <CardHeader>
+                                    <CardTitle>Zubný kríž / úkony</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <ToothMap editable={true} value={toothData} onChange={setToothData} />
+                                    <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                                        <h4 className="font-semibold text-sm mb-2">Vybrané úkony:</h4>
+                                        {Object.keys(toothData).length === 0 ? (
+                                            <p className="text-xs text-muted-foreground">Nič nie je vybrané</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                {Object.entries(toothData).map(([tooth, code]) => (
+                                                    <div key={tooth} className="bg-white border rounded px-2 py-1 text-xs font-mono shadow-sm">
+                                                        <b>{tooth}</b>: {code}
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
-                                )}
+                                </CardContent>
+                            </Card>
+                        </>
+                    )}
+
+                    {currentStep === 3 && (
+                        <>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Termín odovzdania</label>
+                                <input type="date" className="w-full p-2 border rounded-md" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Začiatok práce</label>
+                                <input type="date" className="w-full p-2 border rounded-md" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Skúška</label>
+                                <input type="date" className="w-full p-2 border rounded-md" value={tryInDate} onChange={e => setTryInDate(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Ukončenie práce</label>
+                                <input type="date" className="w-full p-2 border rounded-md" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="flex justify-between gap-3 pt-2">
+                        <Button type="button" variant="outline" onClick={() => navigate('/jobs')}>
+                            Zrušiť
+                        </Button>
+                        <div className="flex gap-2">
+                            {currentStep > 1 && (
+                                <Button type="button" variant="outline" onClick={goToPrevStep}>
+                                    Späť
+                                </Button>
+                            )}
+                            {currentStep < 3 ? (
+                                <Button type="button" onClick={goToNextStep}>
+                                    Ďalej
+                                </Button>
+                            ) : (
+                                <Button type="button" onClick={handleSubmit} disabled={loading}>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    {loading ? 'Ukladám...' : isEditing ? 'Uložiť zmeny' : 'Vytvoriť prácu'}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
