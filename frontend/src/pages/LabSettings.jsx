@@ -3,10 +3,8 @@ import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Save, Loader2, AlertCircle } from 'lucide-react';
-import useAuthStore from '../store/auth';
 
 export default function LabSettings() {
-    const user = useAuthStore(state => state.user);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');

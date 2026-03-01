@@ -60,7 +60,7 @@ export default function UsersSettings() {
         }
     };
 
-    const handleDeleteUser = async (userId) => {
+    const handleDeleteUser = async () => {
         if (!window.confirm('Are you sure you want to delete this user?')) return;
 
         try {

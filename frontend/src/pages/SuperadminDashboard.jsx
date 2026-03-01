@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Building2, Users, CheckCircle2, XCircle, Loader2, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
-import { Card } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 
 export default function SuperadminDashboard() {
   const [labs, setLabs] = useState([]);
@@ -80,11 +80,14 @@ export default function SuperadminDashboard() {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, color }) => (
+  const StatCard = ({ icon: iconComponent, title, value, color }) => {
+    const IconComponent = iconComponent;
+    
+    return (
     <Card className="p-6">
       <div className="flex items-start gap-4">
         <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6" />
+          <IconComponent className="w-6 h-6" />
         </div>
         <div>
           <p className="text-sm text-gray-600">{title}</p>
@@ -93,6 +96,7 @@ export default function SuperadminDashboard() {
       </div>
     </Card>
   );
+  };
 
   if (loading) {
     return (

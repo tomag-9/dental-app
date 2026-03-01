@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Users, Briefcase, Activity, DollarSign, TrendingUp } from 'lucide-react';
 import { LoadingState, EmptyState, ErrorState } from '../components/states';
 import api from '../lib/api';
-import { Badge } from '../components/ui/badge';
+import { Badge } from '../components/ui/Badge';
 import { format } from 'date-fns';
 
 export default function Dashboard() {

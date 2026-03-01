@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Edit2, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import api from '../lib/api';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 
 export default function SuperadminUsers() {
   const [users, setUsers] = useState([]);

@@ -1,5 +1,5 @@
 import { AlertCircle, RotateCcw } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from '../ui/Button';
 
 export default function ErrorState({ 
   title = 'Something went wrong',

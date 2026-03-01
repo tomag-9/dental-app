@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -26,13 +26,7 @@ export default function InventoryCreate() {
 
     const units = ['pcs', 'g', 'ml', 'kg', 'l'];
 
-    useEffect(() => {
-        if (isEditing) {
-            fetchItem();
-        }
-    }, [id]);
-
-    const fetchItem = async () => {
+    const fetchItem = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get(`/warehouse/items/${id}`);
@@ -54,7 +48,13 @@ export default function InventoryCreate() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        if (isEditing) {
+            fetchItem();
+        }
+    }, [isEditing, fetchItem]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

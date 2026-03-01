@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -21,13 +21,7 @@ export default function PriceListCreate() {
         hasExpiry: false,
     });
 
-    useEffect(() => {
-        if (isEditing) {
-            fetchItem();
-        }
-    }, [id]);
-
-    const fetchItem = async () => {
+    const fetchItem = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get(`/finance/pricelist/${id}/`);
@@ -46,7 +40,13 @@ export default function PriceListCreate() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        if (isEditing) {
+            fetchItem();
+        }
+    }, [isEditing, fetchItem]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;

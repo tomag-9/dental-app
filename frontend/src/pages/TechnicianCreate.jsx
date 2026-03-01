@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -21,13 +21,7 @@ export default function TechnicianCreate() {
         phone: '',
     });
 
-    useEffect(() => {
-        if (isEditing) {
-            fetchTechnician();
-        }
-    }, [id]);
-
-    const fetchTechnician = async () => {
+    const fetchTechnician = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get(`/jobs/technicians/${id}/`);
@@ -46,7 +40,13 @@ export default function TechnicianCreate() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        if (isEditing) {
+            fetchTechnician();
+        }
+    }, [isEditing, fetchTechnician]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -21,38 +21,7 @@ export default function InvoiceDetail() {
     });
     const [selectedJobs, setSelectedJobs] = useState([]);
 
-    useEffect(() => {
-        loadClinics();
-        if (!isCreating) {
-            loadInvoice();
-        }
-    }, [id]);
-
-    useEffect(() => {
-        if (formData.clinic_id) {
-            loadJobsForClinic();
-        }
-    }, [formData.clinic_id]);
-
-    const loadClinics = async () => {
-        try {
-            const response = await api.get('/crm/clinics/');
-            setClinics(response.data);
-        } catch (err) {
-            console.error('Failed to fetch clinics:', err);
-        }
-    };
-
-    const loadJobsForClinic = async () => {
-        try {
-            const response = await api.get(`/jobs/?clinic_id=${formData.clinic_id}`);
-            setJobs(response.data);
-        } catch (err) {
-            console.error('Failed to fetch jobs:', err);
-        }
-    };
-
-    const loadInvoice = async () => {
+    const loadInvoice = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get(`/invoices/${id}`);
@@ -68,6 +37,37 @@ export default function InvoiceDetail() {
             setError('Failed to load invoice');
         } finally {
             setLoading(false);
+        }
+    }, [id]);
+
+    const loadJobsForClinic = useCallback(async () => {
+        try {
+            const response = await api.get(`/jobs/?clinic_id=${formData.clinic_id}`);
+            setJobs(response.data);
+        } catch (err) {
+            console.error('Failed to fetch jobs:', err);
+        }
+    }, [formData.clinic_id]);
+
+    useEffect(() => {
+        loadClinics();
+        if (!isCreating) {
+            loadInvoice();
+        }
+    }, [id, isCreating, loadInvoice]);
+
+    useEffect(() => {
+        if (formData.clinic_id) {
+            loadJobsForClinic();
+        }
+    }, [formData.clinic_id, loadJobsForClinic]);
+
+    const loadClinics = async () => {
+        try {
+            const response = await api.get('/crm/clinics/');
+            setClinics(response.data);
+        } catch (err) {
+            console.error('Failed to fetch clinics:', err);
         }
     };
 

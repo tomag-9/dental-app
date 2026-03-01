@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth, parseISO } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
 
 const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -13,7 +13,6 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showVacationDialog, setShowVacationDialog] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
   const [vacation, setVacation] = useState({ start: '', end: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,7 +59,6 @@ export default function Calendar() {
   };
 
   const handleDateClick = (date) => {
-    setSelectedDate(date);
     setVacation({
       start: format(date, 'yyyy-MM-dd\'T\'HH:mm'),
       end: format(new Date(date.getTime() + 86400000), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -79,7 +77,6 @@ export default function Calendar() {
       });
       setShowVacationDialog(false);
       setVacation({ start: '', end: '', description: '' });
-      setSelectedDate(null);
       await fetchEvents();
     } catch (err) {
       setError('Failed to save vacation: ' + (err.response?.data?.detail || err.message));

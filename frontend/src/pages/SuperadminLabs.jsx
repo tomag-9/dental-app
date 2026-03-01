@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Loader2, AlertCircle, MapPin, Mail, Phone, Globe } from 'lucide-react';
 import api from '../lib/api';
-import { Card } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 
 export default function SuperadminLabs() {
   const [labs, setLabs] = useState([]);
