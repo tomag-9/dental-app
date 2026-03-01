@@ -24,7 +24,7 @@ export default function PriceListCreate() {
     const fetchItem = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get(`/finance/pricelist/${id}/`);
+            const response = await api.get(`/finance/price-list/${id}/`);
             const item = response.data;
             setFormData({
                 code: item.code || '',
@@ -91,9 +91,9 @@ export default function PriceListCreate() {
             };
 
             if (isEditing) {
-                await api.put(`/finance/pricelist/${id}/`, payload);
+                await api.put(`/finance/price-list/${id}/`, payload);
             } else {
-                await api.post('/finance/pricelist/', payload);
+                await api.post('/finance/price-list/', payload);
             }
 
             navigate('/price-list');

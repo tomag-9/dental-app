@@ -34,12 +34,12 @@ export default function Clinics() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Clinics</h1>
-                    <p className="text-muted-foreground">Manage dental clinics.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Kliniky</h1>
+                    <p className="text-muted-foreground">Správa zubných kliník.</p>
                 </div>
                 <Link to="/clinics/new">
                     <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Add Clinic
+                        <Plus className="mr-2 h-4 w-4" /> Pridať kliniku
                     </Button>
                 </Link>
             </div>
@@ -47,11 +47,11 @@ export default function Clinics() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>All Clinics</CardTitle>
+                        <CardTitle>Všetky kliniky</CardTitle>
                         <div className="relative w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <input
-                                placeholder="Search clinics..."
+                                placeholder="Hľadať kliniky..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -64,10 +64,10 @@ export default function Clinics() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-muted/50 text-muted-foreground">
                                 <tr>
-                                    <th className="px-4 py-3 font-medium">Name</th>
-                                    <th className="px-4 py-3 font-medium">Contact</th>
-                                    <th className="px-4 py-3 font-medium">Address</th>
-                                    <th className="px-4 py-3 font-medium text-right">Actions</th>
+                                    <th className="px-4 py-3 font-medium">Názov</th>
+                                    <th className="px-4 py-3 font-medium">Kontakt</th>
+                                    <th className="px-4 py-3 font-medium">Adresa</th>
+                                    <th className="px-4 py-3 font-medium text-right">Akcie</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
@@ -80,7 +80,7 @@ export default function Clinics() {
                                 ) : filteredClinics.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="p-4 text-center text-muted-foreground">
-                                            No clinics found.
+                                            Nenašli sa žiadne kliniky.
                                         </td>
                                     </tr>
                                 ) : (
@@ -99,7 +99,9 @@ export default function Clinics() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <Button variant="ghost" size="sm">Edit</Button>
+                                                <Link to={`/clinics/${clinic.id}/edit`}>
+                                                    <Button variant="ghost" size="sm">Upraviť</Button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))

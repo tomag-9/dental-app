@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import { downloadBlobFile } from '../lib/browserActions';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Plus, Search, Loader2, Eye, Download, Trash2, Badge } from 'lucide-react';
 import { LoadingState, ErrorState, EmptyState } from '../components/states';
 
@@ -12,6 +14,7 @@ export default function Invoices() {
     const [search, setSearch] = useState('');
     const [error, setError] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
     useEffect(() => {
         fetchInvoices();
@@ -31,15 +34,16 @@ export default function Invoices() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this invoice?')) return;
-
+    const confirmDelete = async () => {
+        if (!invoiceToDelete) return;
         try {
-            await api.delete(`/invoices/${id}`);
+            await api.delete(`/invoices/${invoiceToDelete}`);
             await fetchInvoices();
         } catch (err) {
             console.error('Failed to delete invoice:', err);
             setError('Failed to delete invoice');
+        } finally {
+            setInvoiceToDelete(null);
         }
     };
 
@@ -48,13 +52,7 @@ export default function Invoices() {
             const response = await api.get(`/invoices/${id}/pdf`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `invoice-${id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentElement.removeChild(link);
+            downloadBlobFile(response.data, `invoice-${id}.pdf`);
         } catch (err) {
             console.error('Failed to download PDF:', err);
             setError('Failed to download invoice');
@@ -198,7 +196,7 @@ export default function Invoices() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => handleDelete(invoice.id)}
+                                                        onClick={() => setInvoiceToDelete(invoice.id)}
                                                         className="text-red-600 hover:text-red-700"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -213,6 +211,17 @@ export default function Invoices() {
                     )}
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={!!invoiceToDelete}
+                title="Delete invoice"
+                message="Are you sure you want to delete this invoice?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                destructive
+                onConfirm={confirmDelete}
+                onCancel={() => setInvoiceToDelete(null)}
+            />
         </div>
     );
 }

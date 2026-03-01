@@ -21,7 +21,7 @@ export default function SuperadminSubscriptions() {
       // Try to fetch from subscriptions endpoint
       let subsData = [];
       try {
-        const response = await api.get('/subscriptions/');
+        const response = await api.get('/finance/subscriptions/');
         subsData = Array.isArray(response.data) ? response.data : [];
       } catch {
         // Fallback: get subscriptions from labs endpoint

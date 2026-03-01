@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
+import { downloadBlobFile } from '../lib/browserActions';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, Loader2, Download, AlertCircle } from 'lucide-react';
@@ -20,6 +21,12 @@ export default function InvoiceDetail() {
         job_ids: [],
     });
     const [selectedJobs, setSelectedJobs] = useState([]);
+
+    const normalizeListResponse = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.results)) return responseData.results;
+        return [];
+    };
 
     const loadInvoice = useCallback(async () => {
         setLoading(true);
@@ -42,10 +49,15 @@ export default function InvoiceDetail() {
 
     const loadJobsForClinic = useCallback(async () => {
         try {
-            const response = await api.get(`/jobs/?clinic_id=${formData.clinic_id}`);
-            setJobs(response.data);
+            const response = await api.get('/jobs/jobs/');
+            const allJobs = normalizeListResponse(response.data);
+            const clinicJobs = allJobs.filter(
+                (job) => Number(job?.clinic) === Number(formData.clinic_id)
+            );
+            setJobs(clinicJobs);
         } catch (err) {
             console.error('Failed to fetch jobs:', err);
+            setJobs([]);
         }
     }, [formData.clinic_id]);
 
@@ -130,13 +142,7 @@ export default function InvoiceDetail() {
             const response = await api.get(`/invoices/${id}/pdf`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `invoice-${id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.parentElement.removeChild(link);
+            downloadBlobFile(response.data, `invoice-${id}.pdf`);
         } catch (err) {
             console.error('Failed to download PDF:', err);
             setError('Failed to download invoice');
@@ -152,8 +158,12 @@ export default function InvoiceDetail() {
     }
 
     const selectedClinic = clinics.find(c => c.id === parseInt(formData.clinic_id));
-    const invoiceJobs = jobs.filter(job => formData.job_ids.includes(job.id));
-    const totalAmount = invoiceJobs.reduce((sum, job) => sum + (job.estimated_cost || 0), 0);
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    const invoiceJobs = safeJobs.filter(job => formData.job_ids.includes(job.id));
+    const totalAmount = invoiceJobs.reduce((sum, job) => {
+        const amount = Number(job?.price ?? job?.estimated_cost ?? 0);
+        return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -260,13 +270,13 @@ export default function InvoiceDetail() {
                             <label className="block text-sm font-medium mb-3">
                                 Jobs to Invoice <span className="text-destructive">*</span>
                             </label>
-                            {jobs.length === 0 ? (
+                            {safeJobs.length === 0 ? (
                                 <p className="text-sm text-muted-foreground py-4">
                                     No jobs available for this clinic. Jobs must exist before creating an invoice.
                                 </p>
                             ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
-                                    {jobs.map(job => (
+                                    {safeJobs.map(job => (
                                         <label key={job.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded">
                                             <input
                                                 type="checkbox"
@@ -279,7 +289,7 @@ export default function InvoiceDetail() {
                                                     {job.description || `Job #${job.id}`}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">
-                                                    €{(job.estimated_cost || 0).toFixed(2)}
+                                                    €{Number(job?.price ?? job?.estimated_cost ?? 0).toFixed(2)}
                                                 </div>
                                             </div>
                                         </label>

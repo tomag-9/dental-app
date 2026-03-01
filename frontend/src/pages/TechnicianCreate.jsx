@@ -36,7 +36,7 @@ export default function TechnicianCreate() {
             });
         } catch (err) {
             console.error('Failed to fetch technician:', err);
-            setError('Failed to load technician');
+            setError('Nepodarilo sa načítať technika');
         } finally {
             setLoading(false);
         }
@@ -59,7 +59,7 @@ export default function TechnicianCreate() {
 
         // Validate required fields
         if (!formData.first_name.trim() || !formData.last_name.trim()) {
-            setError('First name and last name are required');
+            setError('Meno a priezvisko sú povinné');
             return;
         }
 
@@ -85,7 +85,18 @@ export default function TechnicianCreate() {
             navigate('/technicians');
         } catch (err) {
             console.error('Failed to save technician:', err);
-            setError(err.response?.data?.detail || 'Failed to save technician');
+            const apiError = err.response?.data;
+            if (typeof apiError?.detail === 'string') {
+                setError(apiError.detail);
+            } else if (apiError && typeof apiError === 'object') {
+                setError(
+                    Object.entries(apiError)
+                        .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : String(value)}`)
+                        .join(' | ')
+                );
+            } else {
+                setError('Nepodarilo sa uložiť technika');
+            }
         } finally {
             setLoading(false);
         }
@@ -103,12 +114,12 @@ export default function TechnicianCreate() {
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        {isEditing ? 'Edit Technician' : 'New Technician'}
+                        {isEditing ? 'Upraviť technika' : 'Nový technik'}
                     </h1>
                     <p className="text-muted-foreground">
                         {isEditing
-                            ? 'Update technician information.'
-                            : 'Add a new technician to the lab.'}
+                            ? 'Úprava údajov technika.'
+                            : 'Pridanie nového technika do laboratória.'}
                     </p>
                 </div>
             </div>
@@ -121,14 +132,14 @@ export default function TechnicianCreate() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
+                    <CardTitle>Osobné údaje</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    First Name <span className="text-destructive">*</span>
+                                    Meno <span className="text-destructive">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -136,13 +147,13 @@ export default function TechnicianCreate() {
                                     value={formData.first_name}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="John"
+                                    placeholder="Ján"
                                     required
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Last Name <span className="text-destructive">*</span>
+                                    Priezvisko <span className="text-destructive">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -150,7 +161,7 @@ export default function TechnicianCreate() {
                                     value={formData.last_name}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Smith"
+                                    placeholder="Novák"
                                     required
                                 />
                             </div>
@@ -159,7 +170,7 @@ export default function TechnicianCreate() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Title Before
+                                    Titul pred menom
                                 </label>
                                 <input
                                     type="text"
@@ -167,12 +178,12 @@ export default function TechnicianCreate() {
                                     value={formData.title_before}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Dr., Prof., etc."
+                                    placeholder="MUDr., Ing."
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Title After
+                                    Titul za menom
                                 </label>
                                 <input
                                     type="text"
@@ -180,14 +191,14 @@ export default function TechnicianCreate() {
                                     value={formData.title_after}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Jr., Sr., etc."
+                                    placeholder="PhD."
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Email</label>
+                                <label className="block text-sm font-medium mb-2">E-mail</label>
                                 <input
                                     type="email"
                                     name="email"
@@ -198,7 +209,7 @@ export default function TechnicianCreate() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Phone</label>
+                                <label className="block text-sm font-medium mb-2">Telefón</label>
                                 <input
                                     type="tel"
                                     name="phone"
@@ -216,18 +227,18 @@ export default function TechnicianCreate() {
                                 variant="outline"
                                 onClick={() => navigate('/technicians')}
                             >
-                                Cancel
+                                Zrušiť
                             </Button>
                             <Button type="submit" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Save Technician
+                                        Uložiť technika
                                     </>
                                 )}
                             </Button>

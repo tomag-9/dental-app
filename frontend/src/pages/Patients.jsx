@@ -25,7 +25,7 @@ export default function Patients() {
             setPatients(response.data);
         } catch (err) {
             console.error('Failed to fetch patients:', err);
-            setError('Failed to load patients');
+            setError('Nepodarilo sa načítať pacientov');
         } finally {
             setIsLoading(false);
         }
@@ -38,30 +38,30 @@ export default function Patients() {
     );
 
     const columns = [
-        { key: 'name', label: 'Name' },
-        { key: 'birth', label: 'Birth Number' },
-        { key: 'phone', label: 'Phone', className: 'hidden lg:table-cell' },
-        { key: 'email', label: 'Email', className: 'hidden lg:table-cell' },
-        { key: 'actions', label: 'Actions', className: 'text-right' }
+        { key: 'name', label: 'Meno' },
+        { key: 'birth', label: 'Rodné číslo' },
+        { key: 'phone', label: 'Telefón', className: 'hidden lg:table-cell' },
+        { key: 'email', label: 'E-mail', className: 'hidden lg:table-cell' },
+        { key: 'actions', label: 'Akcie', className: 'text-right' }
     ];
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Patients</h1>
-                    <p className="text-muted-foreground">Manage your patient records.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Pacienti</h1>
+                    <p className="text-muted-foreground">Správa kariet pacientov.</p>
                 </div>
                 <Link to="/patients/new">
                     <Button className="w-full sm:w-auto">
-                        <Plus className="mr-2 h-4 w-4" /> Add Patient
+                        <Plus className="mr-2 h-4 w-4" /> Pridať pacienta
                     </Button>
                 </Link>
             </div>
 
             {error && (
                 <ErrorState
-                    title="Failed to Load Patients"
+                    title="Nepodarilo sa načítať pacientov"
                     message={error}
                     onRetry={fetchPatients}
                 />
@@ -69,11 +69,11 @@ export default function Patients() {
 
             <Card>
                 <CardHeader className="space-y-4">
-                    <CardTitle>All Patients ({filteredPatients.length})</CardTitle>
+                    <CardTitle>Všetci pacienti ({filteredPatients.length})</CardTitle>
                     <div className="relative">
                         <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <input
-                            placeholder="Search by name or birth number..."
+                            placeholder="Hľadať podľa mena alebo rodného čísla..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -86,8 +86,8 @@ export default function Patients() {
                         data={filteredPatients}
                         isLoading={isLoading}
                         isEmpty={filteredPatients.length === 0}
-                        emptyTitle="No patients found"
-                        emptyDescription={search ? 'Try adjusting your search criteria.' : 'Create your first patient to get started.'}
+                        emptyTitle="Nenašli sa žiadni pacienti"
+                        emptyDescription={search ? 'Skúste upraviť vyhľadávanie.' : 'Začnite vytvorením prvého pacienta.'}
                         renderMobileCard={(patient) => (
                             <>
                                 <div className="flex items-start justify-between">
@@ -96,7 +96,7 @@ export default function Patients() {
                                             {patient.first_name} {patient.last_name}
                                         </p>
                                         <p className="text-sm text-gray-600 mt-1">
-                                            Birth: {patient.birth_number || '-'}
+                                            Rodné číslo: {patient.birth_number || '-'}
                                         </p>
                                     </div>
                                     <Link to={`/patients/${patient.id}/edit`}>

@@ -18,6 +18,7 @@ class TechnicianSerializer(serializers.ModelSerializer):
     class Meta:
         model = Technician
         fields = "__all__"
+        read_only_fields = ["lab", "created_at"]
 
 
 class JobSerializer(serializers.ModelSerializer):

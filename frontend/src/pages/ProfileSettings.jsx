@@ -7,6 +7,7 @@ import useAuthStore from '../store/auth';
 
 export default function ProfileSettings() {
     const user = useAuthStore(state => state.user);
+    const updateUser = useAuthStore(state => state.updateUser);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -62,15 +63,30 @@ export default function ProfileSettings() {
 
         setLoading(true);
         try {
-            // Update profile endpoint
-            await api.put(`/users/${user?.id}`, {
+            const response = await api.put('/users/me/', {
                 nickname: formData.nickname || null,
                 email: formData.email || null,
             });
+            if (response?.data) {
+                updateUser(response.data);
+            }
             setSuccess('Profile updated successfully');
         } catch (err) {
             console.error('Failed to update profile:', err);
-            setError(err.response?.data?.detail || 'Failed to update profile');
+            const apiData = err.response?.data;
+            if (typeof apiData?.detail === 'string') {
+                setError(apiData.detail);
+            } else if (apiData && typeof apiData === 'object') {
+                const firstError = Object.entries(apiData)
+                    .map(([field, value]) => {
+                        const message = Array.isArray(value) ? value.join(', ') : String(value);
+                        return `${field}: ${message}`;
+                    })
+                    .join(' | ');
+                setError(firstError || 'Failed to update profile');
+            } else {
+                setError('Failed to update profile');
+            }
         } finally {
             setLoading(false);
         }

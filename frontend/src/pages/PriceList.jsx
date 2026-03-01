@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import { printHtmlDocument } from '../lib/browserActions';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Plus, Search, Loader2, Edit2, Trash2, Printer } from 'lucide-react';
 
 export default function PriceList() {
@@ -10,6 +12,7 @@ export default function PriceList() {
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [error, setError] = useState('');
+    const [itemToDelete, setItemToDelete] = useState(null);
 
     useEffect(() => {
         fetchPriceList();
@@ -19,7 +22,7 @@ export default function PriceList() {
         setIsLoading(true);
         setError('');
         try {
-            const response = await api.get('/finance/pricelist/');
+            const response = await api.get('/finance/price-list/');
             setItems(response.data);
         } catch (err) {
             console.error('Failed to fetch price list:', err);
@@ -29,15 +32,16 @@ export default function PriceList() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this price list item?')) return;
-
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         try {
-            await api.delete(`/finance/pricelist/${id}/`);
+            await api.delete(`/finance/price-list/${itemToDelete}/`);
             await fetchPriceList();
         } catch (err) {
             console.error('Failed to delete item:', err);
             setError('Failed to delete item');
+        } finally {
+            setItemToDelete(null);
         }
     };
 
@@ -134,15 +138,11 @@ export default function PriceList() {
             </html>
         `;
 
-        const printWindow = window.open('', '_blank', 'width=900,height=700');
-        printWindow.document.open();
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.focus();
-
-        setTimeout(() => {
-            printWindow.print();
-        }, 250);
+        try {
+            printHtmlDocument(html);
+        } catch {
+            setError('Failed to open print preview');
+        }
     };
 
     const filteredItems = items.filter(item =>
@@ -249,7 +249,7 @@ export default function PriceList() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => handleDelete(item.id)}
+                                                    onClick={() => setItemToDelete(item.id)}
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
@@ -263,6 +263,17 @@ export default function PriceList() {
                     )}
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={!!itemToDelete}
+                title="Zmazať položku cenníka"
+                message="Naozaj chcete zmazať túto položku cenníka?"
+                confirmText="Zmazať"
+                cancelText="Zrušiť"
+                destructive
+                onConfirm={confirmDelete}
+                onCancel={() => setItemToDelete(null)}
+            />
         </div>
     );
 }

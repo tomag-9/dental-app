@@ -29,7 +29,7 @@ export default function InventoryCreate() {
     const fetchItem = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get(`/warehouse/items/${id}`);
+            const response = await api.get(`/warehouse/${id}/`);
             const item = response.data;
             setFormData({
                 name: item.name || '',
@@ -85,9 +85,9 @@ export default function InventoryCreate() {
             };
 
             if (isEditing) {
-                await api.put(`/warehouse/items/${id}`, payload);
+                await api.put(`/warehouse/${id}/`, payload);
             } else {
-                await api.post('/warehouse/items', payload);
+                await api.post('/warehouse/', payload);
             }
 
             navigate('/inventory');

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import { downloadBlobFile } from '../lib/browserActions';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Plus, Search, Loader2, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 
 export default function Inventory() {
@@ -10,8 +12,11 @@ export default function Inventory() {
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [error, setError] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState(null);
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         fetchItems();
@@ -21,7 +26,7 @@ export default function Inventory() {
         setIsLoading(true);
         setError('');
         try {
-            const response = await api.get('/warehouse/items');
+            const response = await api.get('/warehouse/');
             setItems(response.data);
         } catch (err) {
             console.error('Failed to fetch inventory:', err);
@@ -46,15 +51,16 @@ export default function Inventory() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this item?')) return;
-
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         try {
-            await api.delete(`/warehouse/items/${id}`);
+            await api.delete(`/warehouse/${itemToDelete}/`);
             await fetchItems();
         } catch (err) {
             console.error('Failed to delete item:', err);
             setError('Failed to delete item');
+        } finally {
+            setItemToDelete(null);
         }
     };
 
@@ -62,11 +68,128 @@ export default function Inventory() {
         try {
             const item = items.find(i => i.id === id);
             const newQuantity = Math.max(0, item.quantity + delta);
-            await api.put(`/warehouse/items/${id}`, { quantity: newQuantity });
+            await api.put(`/warehouse/${id}/`, { quantity: newQuantity });
             await fetchItems();
         } catch (err) {
             console.error('Failed to adjust quantity:', err);
             setError('Failed to adjust quantity');
+        }
+    };
+
+    const handleExportCsv = () => {
+        const headers = [
+            'name',
+            'sku',
+            'quantity',
+            'unit',
+            'min_threshold',
+            'category',
+            'location',
+            'cost_price',
+            'notes',
+        ];
+
+        const escapeCsv = (value) => {
+            const text = (value ?? '').toString().replace(/"/g, '""');
+            return `"${text}"`;
+        };
+
+        const rows = filteredItems.map((item) => [
+            item.name,
+            item.sku,
+            item.quantity,
+            item.unit,
+            item.min_threshold,
+            item.category,
+            item.location,
+            item.cost_price,
+            item.notes,
+        ]);
+
+        const csv = [headers.join(','), ...rows.map((row) => row.map(escapeCsv).join(','))].join('\n');
+        downloadBlobFile(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'inventory-export.csv');
+    };
+
+    const parseCsvLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let index = 0; index < line.length; index += 1) {
+            const char = line[index];
+            if (char === '"') {
+                if (inQuotes && line[index + 1] === '"') {
+                    current += '"';
+                    index += 1;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current);
+        return result;
+    };
+
+    const handleImportCsv = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        setError('');
+
+        try {
+            const content = await file.text();
+            const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
+            if (lines.length < 2) {
+                setError('CSV súbor neobsahuje žiadne dáta na import.');
+                return;
+            }
+
+            const headers = parseCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+            const required = ['name', 'quantity', 'unit'];
+            const missing = required.filter((column) => !headers.includes(column));
+            if (missing.length > 0) {
+                setError(`Chýbajú povinné stĺpce: ${missing.join(', ')}`);
+                return;
+            }
+
+            const records = lines.slice(1).map((line) => {
+                const values = parseCsvLine(line);
+                const entry = {};
+                headers.forEach((header, index) => {
+                    entry[header] = (values[index] ?? '').trim();
+                });
+                return entry;
+            });
+
+            for (const entry of records) {
+                if (!entry.name) continue;
+                const payload = {
+                    name: entry.name,
+                    sku: entry.sku || null,
+                    quantity: Number(entry.quantity || 0),
+                    unit: entry.unit || 'pcs',
+                    min_threshold: entry.min_threshold ? Number(entry.min_threshold) : null,
+                    category: entry.category || null,
+                    location: entry.location || null,
+                    cost_price: entry.cost_price ? Number(entry.cost_price) : null,
+                    notes: entry.notes || null,
+                };
+                await api.post('/warehouse/', payload);
+            }
+
+            await fetchItems();
+        } catch (err) {
+            console.error('Failed to import CSV:', err);
+            setError('Nepodarilo sa importovať CSV súbor.');
+        } finally {
+            setIsImporting(false);
+            event.target.value = '';
         }
     };
 
@@ -91,11 +214,28 @@ export default function Inventory() {
                     <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
                     <p className="text-muted-foreground">Manage dental materials and supplies.</p>
                 </div>
-                <Link to="/inventory/new">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Add Item
+                <div className="flex gap-2">
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".csv"
+                        onChange={handleImportCsv}
+                        className="hidden"
+                    />
+                    <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isImporting}
+                    >
+                        {isImporting ? 'Importujem…' : 'Import CSV'}
                     </Button>
-                </Link>
+                    <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
+                    <Link to="/inventory/new">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {(lowStockCount > 0 || outOfStockCount > 0) && (
@@ -249,7 +389,7 @@ export default function Inventory() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => handleDelete(item.id)}
+                                                        onClick={() => setItemToDelete(item.id)}
                                                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
@@ -264,6 +404,17 @@ export default function Inventory() {
                     )}
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={!!itemToDelete}
+                title="Zmazať položku"
+                message="Naozaj chcete zmazať túto skladovú položku?"
+                confirmText="Zmazať"
+                cancelText="Zrušiť"
+                destructive
+                onConfirm={confirmDelete}
+                onCancel={() => setItemToDelete(null)}
+            />
         </div>
     );
 }

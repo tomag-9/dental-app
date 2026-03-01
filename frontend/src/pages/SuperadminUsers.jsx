@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 export default function SuperadminUsers() {
   const [users, setUsers] = useState([]);
@@ -13,6 +14,7 @@ export default function SuperadminUsers() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [formData, setFormData] = useState({
     nickname: '',
     email: '',
@@ -52,14 +54,15 @@ export default function SuperadminUsers() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
-    
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
     try {
-      await api.delete(`/users/${userId}`);
+      await api.delete(`/users/${userToDelete}`);
       await fetchUsers();
     } catch (err) {
       setError('Failed to delete user: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setUserToDelete(null);
     }
   };
 
@@ -251,7 +254,7 @@ export default function SuperadminUsers() {
                     </td>
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => setUserToDelete(user.id)}
                         className="text-red-600 hover:text-red-800 inline-flex items-center gap-1"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -264,6 +267,17 @@ export default function SuperadminUsers() {
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        open={!!userToDelete}
+        title="Delete user"
+        message="Are you sure you want to delete this user?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        destructive
+        onConfirm={handleDeleteUser}
+        onCancel={() => setUserToDelete(null)}
+      />
     </div>
   );
 }

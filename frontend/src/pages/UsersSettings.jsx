@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Plus, Search, Loader2, Trash2, Check, X } from 'lucide-react';
 
 export default function UsersSettings() {
@@ -9,6 +10,7 @@ export default function UsersSettings() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [search, setSearch] = useState('');
+    const [userToDelete, setUserToDelete] = useState(null);
     const [showNewUserForm, setShowNewUserForm] = useState(false);
     const [formData, setFormData] = useState({
         nickname: '',
@@ -61,15 +63,16 @@ export default function UsersSettings() {
     };
 
     const handleDeleteUser = async () => {
-        if (!window.confirm('Are you sure you want to delete this user?')) return;
+        if (!userToDelete) return;
 
         try {
-            // Note: Delete endpoint might not be available
-            // This is a placeholder
-            setError('Delete user functionality not yet implemented');
+            await api.delete(`/users/${userToDelete}/`);
+            await fetchUsers();
         } catch (err) {
             console.error('Failed to delete user:', err);
-            setError('Failed to delete user');
+            setError(err.response?.data?.detail || 'Failed to delete user');
+        } finally {
+            setUserToDelete(null);
         }
     };
 
@@ -229,9 +232,8 @@ export default function UsersSettings() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => handleDeleteUser(user.id)}
+                                                    onClick={() => setUserToDelete(user.id)}
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                    disabled
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -244,6 +246,17 @@ export default function UsersSettings() {
                     )}
                 </CardContent>
             </Card>
+
+            <ConfirmDialog
+                open={!!userToDelete}
+                title="Delete user"
+                message="Are you sure you want to delete this user?"
+                confirmText="Delete"
+                cancelText="Cancel"
+                destructive
+                onConfirm={handleDeleteUser}
+                onCancel={() => setUserToDelete(null)}
+            />
         </div>
     );
 }

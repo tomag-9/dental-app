@@ -110,7 +110,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if _is_superadmin(user):
             return User.objects.all()
         if _is_admin_or_superadmin(user) and getattr(user, "lab", None):
-            return User.objects.filter(lab=user.lab)
+            return User.objects.filter(lab=user.lab).exclude(role="superadmin")
         return User.objects.none()
 
     def list(self, request, *args, **kwargs):

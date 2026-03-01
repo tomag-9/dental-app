@@ -26,26 +26,41 @@ export default function Sidebar() {
     const logout = useAuthStore(state => state.logout);
     const user = useAuthStore(state => state.user);
 
+    const roleLabels = {
+        superadmin: 'Superadmin',
+        admin: 'Administrátor',
+        user: 'Používateľ',
+    };
+
+    const displayName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username || 'Používateľ';
+    const roleLabel = roleLabels[user?.role] || 'Používateľ';
+    const initials = (displayName || 'P')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0]?.toUpperCase())
+        .join('') || 'P';
+
     const links = [
-        { name: 'Dashboard', to: '/', icon: LayoutDashboard },
-        { name: 'Jobs', to: '/jobs', icon: Briefcase },
-        { name: 'Patients', to: '/patients', icon: Users },
-        { name: 'Clinics', to: '/clinics', icon: Building },
-        { name: 'Doctors', to: '/doctors', icon: Stethoscope },
-        { name: 'Technicians', to: '/technicians', icon: Wrench },
-        { name: 'Finance', to: '/finance', icon: Receipt },
-        { name: 'Price List', to: '/price-list', icon: Receipt },
-        { name: 'Invoices', to: '/invoices', icon: FileText },
-        { name: 'Inventory', to: '/inventory', icon: Package },
-        { name: 'Calendar', to: '/calendar', icon: CalendarDays },
-        { name: 'Settings', to: '/settings', icon: Settings },
+        { name: 'Nástenka', to: '/', icon: LayoutDashboard },
+        { name: 'Práce', to: '/jobs', icon: Briefcase },
+        { name: 'Pacienti', to: '/patients', icon: Users },
+        { name: 'Kliniky', to: '/clinics', icon: Building },
+        { name: 'Lekári', to: '/doctors', icon: Stethoscope },
+        { name: 'Technici', to: '/technicians', icon: Wrench },
+        { name: 'Financie', to: '/finance', icon: Receipt },
+        { name: 'Cenník', to: '/price-list', icon: Receipt },
+        { name: 'Faktúry', to: '/invoices', icon: FileText },
+        { name: 'Sklad', to: '/inventory', icon: Package },
+        { name: 'Kalendár', to: '/calendar', icon: CalendarDays },
+        { name: 'Nastavenia', to: '/settings', icon: Settings },
     ];
 
     const superadminLinks = [
-        { name: 'Dashboard', to: '/superadmin/dashboard', icon: LayoutDashboard },
-        { name: 'Users', to: '/superadmin/users', icon: Users },
-        { name: 'Labs', to: '/superadmin/labs', icon: Building },
-        { name: 'Subscriptions', to: '/superadmin/subscriptions', icon: CreditCard },
+        { name: 'Nástenka', to: '/superadmin/dashboard', icon: LayoutDashboard },
+        { name: 'Používatelia', to: '/superadmin/users', icon: Users },
+        { name: 'Laboratóriá', to: '/superadmin/labs', icon: Building },
+        { name: 'Predplatné', to: '/superadmin/subscriptions', icon: CreditCard },
     ];
 
     const isSuperadmin = user?.role === 'superadmin';
@@ -126,12 +141,13 @@ export default function Sidebar() {
             <div className="p-4 border-t border-border">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                        U
+                        {initials}
                     </div>
                     {!collapsed && (
                         <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-medium truncate">User</p>
-                            <button onClick={logout} className="text-xs text-red-500 hover:underline">Log out</button>
+                            <p className="text-sm font-medium truncate">{displayName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{roleLabel}</p>
+                            <button onClick={logout} className="text-xs text-red-500 hover:underline">Odhlásiť sa</button>
                         </div>
                     )}
                 </div>
