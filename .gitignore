@@ -38,3 +38,9 @@ instance/
 alembic.ini
 backend/alembic.ini
 backend/alembic/env.py
+
+check-all.sh
+rebuild-dev.sh
+
+*.md
+*.MD

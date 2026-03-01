@@ -1,0 +1,41 @@
+from django.contrib import admin
+from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+from apps.core.views import LabViewSet, UserViewSet
+from apps.crm.views import ClinicViewSet, DoctorViewSet, PatientViewSet
+from apps.finance.views import InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
+from apps.inventory.views import WarehouseItemViewSet
+from apps.jobs.views import JobViewSet, TechnicianViewSet, VacationViewSet
+
+# Root-level router for commonly accessed endpoints
+root_router = DefaultRouter()
+root_router.register(r"invoices", InvoiceViewSet)
+root_router.register(r"users", UserViewSet)
+root_router.register(r"labs", LabViewSet)
+root_router.register(r"vacations", VacationViewSet)
+root_router.register(r"warehouse", WarehouseItemViewSet)
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    # Root API endpoints
+    path("api/", include(root_router.urls)),
+    # Nested app routes
+    path("api/core/", include("apps.core.urls")),
+    path("api/crm/", include("apps.crm.urls")),
+    path("api/jobs/", include("apps.jobs.urls")),
+    path("api/finance/", include("apps.finance.urls")),
+    path("api/inventory/", include("apps.inventory.urls")),
+    # Auth
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    # Swagger/Schema
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+]
