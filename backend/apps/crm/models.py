@@ -1,8 +1,10 @@
 from django.db import models
+
 from apps.core.models import Lab
 
+
 class Clinic(models.Model):
-    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='clinics')
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="clinics")
     name = models.CharField(max_length=255, null=False)
     ico = models.CharField(max_length=50, unique=True, blank=True, null=True)
     dic = models.CharField(max_length=50, blank=True, null=True)
@@ -14,9 +16,12 @@ class Clinic(models.Model):
     def __str__(self):
         return self.name
 
+
 class Doctor(models.Model):
-    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='doctors')
-    clinic = models.ForeignKey(Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name='doctors')
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="doctors")
+    clinic = models.ForeignKey(
+        Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name="doctors"
+    )
     first_name = models.CharField(max_length=100, null=False)
     last_name = models.CharField(max_length=100, null=False)
     title_before = models.CharField(max_length=50, blank=True, null=True)
@@ -27,8 +32,9 @@ class Doctor(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
+
 class Patient(models.Model):
-    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name='patients')
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="patients")
     first_name = models.CharField(max_length=100, null=False)
     last_name = models.CharField(max_length=100, null=False)
     birth_number = models.CharField(max_length=50, unique=True, null=False)

@@ -18,7 +18,6 @@ import useAuthStore from '../../store/auth';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
-    const user = useAuthStore(state => state.user); // Though user details aren't strictly loaded in store yet
     const logout = useAuthStore(state => state.logout);
 
     const links = [

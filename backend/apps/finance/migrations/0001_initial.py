@@ -9,64 +9,184 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('core', '0001_initial'),
-        ('crm', '0001_initial'),
-        ('jobs', '0001_initial'),
+        ("core", "0001_initial"),
+        ("crm", "0001_initial"),
+        ("jobs", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Invoice',
+            name="Invoice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('number', models.CharField(max_length=50, unique=True)),
-                ('status', models.CharField(choices=[('draft', 'Draft'), ('issued', 'Issued'), ('paid', 'Paid'), ('cancelled', 'Cancelled')], default='draft', max_length=20)),
-                ('total_amount', models.DecimalField(decimal_places=2, default=0.0, max_digits=12)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('issued_at', models.DateTimeField(blank=True, null=True)),
-                ('paid_at', models.DateTimeField(blank=True, null=True)),
-                ('due_date', models.DateField(blank=True, null=True)),
-                ('clinic', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invoices', to='crm.clinic')),
-                ('lab', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invoices', to='core.lab')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("number", models.CharField(max_length=50, unique=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("draft", "Draft"),
+                            ("issued", "Issued"),
+                            ("paid", "Paid"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="draft",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "total_amount",
+                    models.DecimalField(decimal_places=2, default=0.0, max_digits=12),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("issued_at", models.DateTimeField(blank=True, null=True)),
+                ("paid_at", models.DateTimeField(blank=True, null=True)),
+                ("due_date", models.DateField(blank=True, null=True)),
+                (
+                    "clinic",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="invoices",
+                        to="crm.clinic",
+                    ),
+                ),
+                (
+                    "lab",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="invoices",
+                        to="core.lab",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='InvoiceItem',
+            name="InvoiceItem",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('description', models.CharField(max_length=255)),
-                ('quantity', models.IntegerField(default=1)),
-                ('unit_price', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
-                ('line_total', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
-                ('invoice', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='finance.invoice')),
-                ('job', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='invoice_items', to='jobs.job')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("description", models.CharField(max_length=255)),
+                ("quantity", models.IntegerField(default=1)),
+                (
+                    "unit_price",
+                    models.DecimalField(decimal_places=2, default=0.0, max_digits=10),
+                ),
+                (
+                    "line_total",
+                    models.DecimalField(decimal_places=2, default=0.0, max_digits=10),
+                ),
+                (
+                    "invoice",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="items",
+                        to="finance.invoice",
+                    ),
+                ),
+                (
+                    "job",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="invoice_items",
+                        to="jobs.job",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PriceList',
+            name="PriceList",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('code', models.CharField(max_length=50, unique=True)),
-                ('description', models.CharField(max_length=255)),
-                ('price', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('valid_from', models.DateField(blank=True, null=True)),
-                ('valid_to', models.DateField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('lab', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='price_list_items', to='core.lab')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("code", models.CharField(max_length=50, unique=True)),
+                ("description", models.CharField(max_length=255)),
+                ("price", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("valid_from", models.DateField(blank=True, null=True)),
+                ("valid_to", models.DateField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "lab",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="price_list_items",
+                        to="core.lab",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Subscription',
+            name="Subscription",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('plan', models.CharField(choices=[('free', 'Free'), ('pro', 'Pro'), ('enterprise', 'Enterprise')], default='free', max_length=20)),
-                ('status', models.CharField(choices=[('active', 'Active'), ('past_due', 'Past Due'), ('cancelled', 'Cancelled'), ('inactive', 'Inactive')], default='inactive', max_length=20)),
-                ('seats', models.IntegerField(default=5)),
-                ('current_period_start', models.DateField(blank=True, null=True)),
-                ('current_period_end', models.DateField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('lab', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='subscription', to='core.lab')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "plan",
+                    models.CharField(
+                        choices=[
+                            ("free", "Free"),
+                            ("pro", "Pro"),
+                            ("enterprise", "Enterprise"),
+                        ],
+                        default="free",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("active", "Active"),
+                            ("past_due", "Past Due"),
+                            ("cancelled", "Cancelled"),
+                            ("inactive", "Inactive"),
+                        ],
+                        default="inactive",
+                        max_length=20,
+                    ),
+                ),
+                ("seats", models.IntegerField(default=5)),
+                ("current_period_start", models.DateField(blank=True, null=True)),
+                ("current_period_end", models.DateField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "lab",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="subscription",
+                        to="core.lab",
+                    ),
+                ),
             ],
         ),
     ]
