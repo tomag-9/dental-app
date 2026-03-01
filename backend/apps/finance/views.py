@@ -161,7 +161,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             for code in procedures:
                 quantity = int(quantities.get(code, 1))
                 unit_price = (
-                    Decimal(str(job.price or 0)) if len(procedures) == 1 else Decimal("0")
+                    Decimal(str(job.price or 0))
+                    if len(procedures) == 1
+                    else Decimal("0")
                 )
                 item = InvoiceItem.objects.create(
                     invoice=invoice,
@@ -269,7 +271,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 break
 
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawRightString(190 * mm, 18 * mm, f"Total: {Decimal(invoice.total_amount):.2f}")
+        pdf.drawRightString(
+            190 * mm, 18 * mm, f"Total: {Decimal(invoice.total_amount):.2f}"
+        )
 
         pdf.showPage()
         pdf.save()

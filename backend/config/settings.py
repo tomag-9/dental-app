@@ -163,7 +163,9 @@ SPECTACULAR_SETTINGS = {
 # CORS Configuration
 _cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
 if _cors_origins:
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in _cors_origins.split(",") if origin.strip()]
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip() for origin in _cors_origins.split(",") if origin.strip()
+    ]
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:5280",

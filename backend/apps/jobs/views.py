@@ -6,7 +6,10 @@ from .serializers import JobSerializer, TechnicianSerializer, VacationSerializer
 
 
 def _is_superadmin(user):
-    return getattr(user, "is_superuser", False) or getattr(user, "role", None) == "superadmin"
+    return (
+        getattr(user, "is_superuser", False)
+        or getattr(user, "role", None) == "superadmin"
+    )
 
 
 class TechnicianViewSet(viewsets.ModelViewSet):
@@ -32,22 +35,30 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Job.objects.all() if _is_superadmin(user) else Job.objects.filter(lab=user.lab) if hasattr(user, "lab") and user.lab else Job.objects.none()
-        
+        qs = (
+            Job.objects.all()
+            if _is_superadmin(user)
+            else (
+                Job.objects.filter(lab=user.lab)
+                if hasattr(user, "lab") and user.lab
+                else Job.objects.none()
+            )
+        )
+
         # Patient filtering
         patient_id = self.request.query_params.get("patient_id")
         if patient_id:
             qs = qs.filter(patient_id=patient_id)
             if not qs.exists():
                 raise NotFound(f"No jobs found for patient_id: {patient_id}")
-        
+
         return qs
 
     def perform_create(self, serializer):
         user = self.request.user
         if not hasattr(user, "lab") or not user.lab:
             raise ValidationError("User is not assigned to any lab")
-        
+
         # Always assign current user's lab
         serializer.save(lab=user.lab)
 

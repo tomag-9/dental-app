@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
+import FormField from '../components/form/FormField';
 import api from '../lib/api';
 
 export default function PatientCreate() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -23,22 +25,28 @@ export default function PatientCreate() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(null);
         setLoading(true);
         try {
             await api.post('/crm/patients/', formData);
             navigate('/patients');
         } catch (err) {
             console.error(err);
-            alert('Failed to create patient');
+            setError(err.response?.data?.detail || 'Failed to create patient');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/patients')}>
+        <div className="space-y-6 max-w-4xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => navigate('/patients')}
+                    className="w-10 h-10"
+                >
                     <ArrowLeft size={20} />
                 </Button>
                 <div>
@@ -47,51 +55,96 @@ export default function PatientCreate() {
                 </div>
             </div>
 
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                    <p className="text-red-700">{error}</p>
+                </div>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">First Name</label>
-                                <input name="first_name" value={formData.first_name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Last Name</label>
-                                <input name="last_name" value={formData.last_name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
-                            </div>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* Name Fields */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                            <FormField
+                                label="First Name"
+                                name="first_name"
+                                value={formData.first_name}
+                                onChange={handleChange}
+                                required
+                            />
+                            <FormField
+                                label="Last Name"
+                                name="last_name"
+                                value={formData.last_name}
+                                onChange={handleChange}
+                                required
+                            />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Birth Number (RC)</label>
-                            <input name="birth_number" value={formData.birth_number} onChange={handleChange} className="w-full p-2 border rounded-md" placeholder="e.g. 851212/1234" required />
+                        {/* Birth Number */}
+                        <FormField
+                            label="Birth Number (RC)"
+                            name="birth_number"
+                            value={formData.birth_number}
+                            onChange={handleChange}
+                            placeholder="e.g. 851212/1234"
+                            helpText="Patient's birth/identification number"
+                            required
+                        />
+
+                        {/* Contact Fields */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                            <FormField
+                                label="Email"
+                                name="email"
+                                type="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                            />
+                            <FormField
+                                label="Phone"
+                                name="phone"
+                                type="tel"
+                                value={formData.phone}
+                                onChange={handleChange}
+                            />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Email</label>
-                                <input name="email" type="email" value={formData.email} onChange={handleChange} className="w-full p-2 border rounded-md" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Phone</label>
-                                <input name="phone" value={formData.phone} onChange={handleChange} className="w-full p-2 border rounded-md" />
-                            </div>
-                        </div>
+                        {/* Address */}
+                        <FormField
+                            label="Address"
+                            name="address"
+                            type="textarea"
+                            value={formData.address}
+                            onChange={handleChange}
+                            rows={3}
+                        />
 
-                        <div>
-                            <label className="block text-sm font-medium mb-1">Address</label>
-                            <textarea name="address" value={formData.address} onChange={handleChange} className="w-full p-2 border rounded-md" rows={3} />
+                        {/* Actions */}
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t">
+                            <Button 
+                                type="button"
+                                variant="outline" 
+                                onClick={() => navigate('/patients')}
+                                className="w-full sm:w-auto"
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit"
+                                disabled={loading}
+                                className="w-full sm:w-auto"
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                {loading ? 'Saving...' : 'Save Patient'}
+                            </Button>
                         </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-end">
-                        <Button onClick={handleSubmit} disabled={loading}>
-                            <Save className="mr-2 h-4 w-4" />
-                            {loading ? 'Saving...' : 'Save Patient'}
-                        </Button>
-                    </div>
+                    </form>
                 </CardContent>
             </Card>
         </div>

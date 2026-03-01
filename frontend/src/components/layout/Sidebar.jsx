@@ -4,21 +4,27 @@ import {
     LayoutDashboard,
     Users,
     Briefcase,
-    Calendar,
+    CalendarDays,
     Receipt,
     Package,
     Settings,
     Menu,
     Stethoscope,
     Building,
-    X
+    Wrench,
+    FileText,
+    X,
+    Shield,
+    CreditCard
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import useAuthStore from '../../store/auth';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
+    const [expandSuperadmin, setExpandSuperadmin] = useState(false);
     const logout = useAuthStore(state => state.logout);
+    const user = useAuthStore(state => state.user);
 
     const links = [
         { name: 'Dashboard', to: '/', icon: LayoutDashboard },
@@ -26,10 +32,23 @@ export default function Sidebar() {
         { name: 'Patients', to: '/patients', icon: Users },
         { name: 'Clinics', to: '/clinics', icon: Building },
         { name: 'Doctors', to: '/doctors', icon: Stethoscope },
+        { name: 'Technicians', to: '/technicians', icon: Wrench },
         { name: 'Finance', to: '/finance', icon: Receipt },
+        { name: 'Price List', to: '/price-list', icon: Receipt },
+        { name: 'Invoices', to: '/invoices', icon: FileText },
         { name: 'Inventory', to: '/inventory', icon: Package },
+        { name: 'Calendar', to: '/calendar', icon: CalendarDays },
         { name: 'Settings', to: '/settings', icon: Settings },
     ];
+
+    const superadminLinks = [
+        { name: 'Dashboard', to: '/superadmin/dashboard', icon: LayoutDashboard },
+        { name: 'Users', to: '/superadmin/users', icon: Users },
+        { name: 'Labs', to: '/superadmin/labs', icon: Building },
+        { name: 'Subscriptions', to: '/superadmin/subscriptions', icon: CreditCard },
+    ];
+
+    const isSuperadmin = user?.role === 'superadmin';
 
     return (
         <div className={cn(
@@ -63,6 +82,45 @@ export default function Sidebar() {
                         {!collapsed && <span>{link.name}</span>}
                     </NavLink>
                 ))}
+
+                {/* Superadmin Section */}
+                {isSuperadmin && (
+                    <>
+                        <div className="my-4 px-3">
+                            <button
+                                onClick={() => setExpandSuperadmin(!expandSuperadmin)}
+                                className={cn(
+                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-red-100 hover:text-red-800",
+                                    collapsed && "justify-center"
+                                )}
+                            >
+                                <Shield size={20} />
+                                {!collapsed && <span className="font-semibold">Superadmin</span>}
+                            </button>
+                        </div>
+
+                        {expandSuperadmin && (
+                            <div className="space-y-1 ml-2 pl-2 border-l-2 border-red-300">
+                                {superadminLinks.map((link) => (
+                                    <NavLink
+                                        key={link.to}
+                                        to={link.to}
+                                        className={({ isActive }) => cn(
+                                            "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm",
+                                            isActive
+                                                ? "bg-red-100 text-red-700 font-medium"
+                                                : "text-muted-foreground hover:bg-red-50 hover:text-red-600",
+                                            collapsed && "justify-center"
+                                        )}
+                                    >
+                                        <link.icon size={18} />
+                                        {!collapsed && <span>{link.name}</span>}
+                                    </NavLink>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
             </nav>
 
             <div className="p-4 border-t border-border">

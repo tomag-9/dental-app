@@ -33,9 +33,7 @@ class InvoiceCreateSerializer(serializers.Serializer):
 
 
 class InvoiceStatusUpdateSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(
-        choices=("draft", "issued", "paid", "cancelled")
-    )
+    status = serializers.ChoiceField(choices=("draft", "issued", "paid", "cancelled"))
 
 
 class InvoiceSerializer(serializers.ModelSerializer):

@@ -238,7 +238,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if "nickname" in data and data["nickname"] != user.nickname:
             nickname = data["nickname"] or None
-            if nickname and User.objects.filter(nickname=nickname).exclude(id=user.id).exists():
+            if (
+                nickname
+                and User.objects.filter(nickname=nickname).exclude(id=user.id).exists()
+            ):
                 return Response(
                     {"detail": "Nickname already registered"},
                     status=status.HTTP_400_BAD_REQUEST,

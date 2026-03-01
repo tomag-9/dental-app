@@ -12,7 +12,7 @@ class WarehouseItemCrudApiTests(APITestCase):
     def setUp(self):
         self.lab_a = Lab.objects.create(name="Lab A")
         self.lab_b = Lab.objects.create(name="Lab B")
-        
+
         self.admin_a = User.objects.create_user(
             username="admin_a",
             email="warehouse_admin_a@example.com",
