@@ -29,14 +29,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/magula12/dental-app.git"
+    "url": "git+https://github.com/magi-9/dental-app.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/magula12/dental-app/issues"
+    "url": "https://github.com/magi-9/dental-app/issues"
   },
-  "homepage": "https://github.com/magula12/dental-app#readme"
+  "homepage": "https://github.com/magi-9/dental-app#readme"
 }

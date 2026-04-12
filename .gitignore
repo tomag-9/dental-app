@@ -42,7 +42,5 @@ backend/alembic/env.py
 check-all.sh
 rebuild-dev.sh
 
-*.md
-*.MD
 frontend_legacy/
 backend_legacy/

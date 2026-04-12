@@ -6,6 +6,7 @@ import { Save, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LabSettings() {
     const [loading, setLoading] = useState(true);
+    const [labId, setLabId] = useState(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [formData, setFormData] = useState({
@@ -34,6 +35,7 @@ export default function LabSettings() {
             const response = await api.get('/labs/');
             if (response.data && response.data.length > 0) {
                 const lab = response.data[0]; // Get first (current) lab
+                setLabId(lab.id);
                 setFormData({
                     name: lab.name || '',
                     address: lab.address || '',
@@ -72,15 +74,19 @@ export default function LabSettings() {
             return;
         }
 
+        if (!labId) {
+            setError('No lab found. Cannot save settings.');
+            return;
+        }
+
         setLoading(true);
         try {
-            // Update lab - would need lab ID
-            // For now, this is a placeholder
-            setSuccess('Lab settings would be updated here');
-            setError('Lab update functionality not yet fully implemented');
+            await api.patch(`/labs/${labId}/`, formData);
+            setSuccess('Lab settings saved successfully');
         } catch (err) {
             console.error('Failed to update lab:', err);
-            setError('Failed to update lab settings');
+            const detail = err?.response?.data?.detail;
+            setError(typeof detail === 'string' ? detail : 'Failed to update lab settings');
         } finally {
             setLoading(false);
         }
