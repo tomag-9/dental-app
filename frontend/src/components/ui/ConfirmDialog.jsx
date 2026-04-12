@@ -15,7 +15,7 @@ export default function ConfirmDialog({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg">
+            <div className="w-full max-w-md rounded-lg border border-sky-200 bg-sky-50 p-6 shadow-lg">
                 <h3 className="text-lg font-semibold">{title}</h3>
                 {message && <p className="mt-2 text-sm text-muted-foreground">{message}</p>}
                 <div className="mt-6 flex justify-end gap-2">

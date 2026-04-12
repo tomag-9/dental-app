@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
-const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const daysOfWeek = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -33,6 +33,8 @@ export default function Calendar() {
     return format(date, 'yyyy-MM-dd');
   };
 
+  const formatMonthYear = (date) => date.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
+
   const fetchEvents = async () => {
     setLoading(true);
     setError(null);
@@ -48,7 +50,7 @@ export default function Calendar() {
       const jobEvents = jobs.map(job => ({
         id: `job-${job.id}`,
         type: 'job',
-        title: `Job #${job.id}`,
+        title: `Práca #${job.id}`,
         status: job.status,
         date: job.start_date || job.due_date || job.created_at,
         startDate: job.start_date || job.due_date || job.created_at,
@@ -59,7 +61,7 @@ export default function Calendar() {
       const vacationEvents = vacations.map(vac => ({
         id: `vacation-${vac.id}`,
         type: 'vacation',
-        title: vac.description || 'Vacation',
+        title: vac.description || 'Dovolenka',
         date: vac.start,
         startDate: vac.start,
         endDate: vac.end,
@@ -68,7 +70,7 @@ export default function Calendar() {
 
       setEvents([...jobEvents, ...vacationEvents]);
     } catch (err) {
-      setError('Failed to load calendar events: ' + (err.response?.data?.detail || err.message));
+      setError('Nepodarilo sa načítať udalosti kalendára: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ export default function Calendar() {
   const handleVacationSave = async () => {
     try {
       setSubmitting(true);
-      await api.post('/vacations/', {
+      await api.post('/jobs/vacations/', {
         start: new Date(vacation.start).toISOString(),
         end: new Date(vacation.end).toISOString(),
         description: vacation.description
@@ -95,7 +97,7 @@ export default function Calendar() {
       setVacation({ start: '', end: '', description: '' });
       await fetchEvents();
     } catch (err) {
-      setError('Failed to save vacation: ' + (err.response?.data?.detail || err.message));
+      setError('Nepodarilo sa uložiť dovolenku: ' + (err.response?.data?.detail || err.message));
     } finally {
       setSubmitting(false);
     }
@@ -146,24 +148,24 @@ export default function Calendar() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold">Calendar</h1>
+        <h1 className="text-4xl font-bold">Kalendár</h1>
         <Button onClick={() => fetchEvents()} variant="outline" size="sm">
-          Refresh
+          Obnoviť
         </Button>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <p className="text-red-700">{error}</p>
+        <div className="rounded-lg border border-destructive/50 bg-destructive/15 p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+          <p className="text-foreground">{error}</p>
         </div>
       )}
 
       <Card className="p-6">
         {/* Calendar Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">
-            {format(currentDate, 'MMMM yyyy')}
+          <h2 className="text-2xl font-bold capitalize">
+            {formatMonthYear(currentDate)}
           </h2>
           <div className="flex gap-2">
             <Button
@@ -178,7 +180,7 @@ export default function Calendar() {
               variant="outline"
               size="sm"
             >
-              Today
+              Dnes
             </Button>
             <Button
               onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
@@ -193,14 +195,14 @@ export default function Calendar() {
         {/* Days of Week */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {daysOfWeek.map(day => (
-            <div key={day} className="h-10 flex items-center justify-center font-semibold text-gray-600 text-sm">
+            <div key={day} className="h-10 flex items-center justify-center font-semibold text-muted-foreground text-sm">
               {day}
             </div>
           ))}
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1 bg-gray-50 p-2 rounded-lg">
+        <div className="grid grid-cols-7 gap-1 rounded-lg bg-sky-50 p-2 border border-sky-200">
           {days.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             const isCurrentMonth = day && isSameMonth(day, currentDate);
@@ -211,14 +213,14 @@ export default function Calendar() {
                 key={idx}
                 onClick={() => day && isCurrentMonth && handleDateClick(day)}
                 className={`
-                  min-h-24 p-2 rounded border border-gray-200 cursor-pointer
-                  ${!day || !isCurrentMonth ? 'bg-gray-100' : 'bg-white hover:bg-blue-50'}
-                  ${isToday ? 'bg-blue-100 border-blue-300' : ''}
+                  min-h-24 p-2 rounded border border-sky-200 cursor-pointer transition-colors
+                  ${!day || !isCurrentMonth ? 'bg-sky-100/50' : 'bg-sky-50 hover:bg-sky-100'}
+                  ${isToday ? 'ring-1 ring-blue-400 border-blue-300' : ''}
                 `}
               >
                 {day && (
                   <>
-                    <div className={`text-sm font-semibold mb-1 ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}`}>
+                    <div className={`text-sm font-semibold mb-1 ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground/70'}`}>
                       {format(day, 'd')}
                     </div>
                     <div className="space-y-0.5">
@@ -226,8 +228,8 @@ export default function Calendar() {
                         <div
                           key={event.id}
                           className={`
-                            text-xs px-1.5 py-0.5 rounded truncate text-white font-medium
-                            ${event.type === 'vacation' ? 'bg-purple-500' : 'bg-blue-500'}
+                            text-xs px-1.5 py-0.5 rounded truncate font-medium
+                            ${event.type === 'vacation' ? 'bg-violet-500/30 text-violet-100 border border-violet-300/40' : 'bg-blue-500/30 text-blue-100 border border-blue-300/40'}
                           `}
                           title={event.title}
                         >
@@ -245,45 +247,45 @@ export default function Calendar() {
 
       {/* Vacation Dialog */}
       {showVacationDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <Card className="w-full max-w-md p-6">
-            <h3 className="text-xl font-bold mb-4">Add Vacation</h3>
+            <h3 className="text-xl font-bold mb-4">Pridať dovolenku</h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date & Time
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Začiatok
                 </label>
                 <input
                   type="datetime-local"
                   value={vacation.start}
                   onChange={e => setVacation(v => ({ ...v, start: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date & Time
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Koniec
                 </label>
                 <input
                   type="datetime-local"
                   value={vacation.end}
                   onChange={e => setVacation(v => ({ ...v, end: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description (Optional)
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Popis (voliteľné)
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Summer vacation"
+                  placeholder="napr. Letná dovolenka"
                   value={vacation.description}
                   onChange={e => setVacation(v => ({ ...v, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 />
               </div>
             </div>
@@ -295,7 +297,7 @@ export default function Calendar() {
                 className="flex-1"
                 disabled={submitting}
               >
-                Cancel
+                Zrušiť
               </Button>
               <Button
                 onClick={handleVacationSave}
@@ -303,7 +305,7 @@ export default function Calendar() {
                 disabled={submitting}
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-                Save
+                Uložiť
               </Button>
             </div>
           </Card>

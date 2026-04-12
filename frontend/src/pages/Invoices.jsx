@@ -28,7 +28,7 @@ export default function Invoices() {
             setInvoices(response.data);
         } catch (err) {
             console.error('Failed to fetch invoices:', err);
-            setError('Failed to load invoices');
+            setError('Nepodarilo sa načítať faktúry');
         } finally {
             setIsLoading(false);
         }
@@ -41,7 +41,7 @@ export default function Invoices() {
             await fetchInvoices();
         } catch (err) {
             console.error('Failed to delete invoice:', err);
-            setError('Failed to delete invoice');
+            setError('Nepodarilo sa zmazať faktúru');
         } finally {
             setInvoiceToDelete(null);
         }
@@ -55,7 +55,7 @@ export default function Invoices() {
             downloadBlobFile(response.data, `invoice-${id}.pdf`);
         } catch (err) {
             console.error('Failed to download PDF:', err);
-            setError('Failed to download invoice');
+            setError('Nepodarilo sa stiahnuť faktúru');
         }
     };
 
@@ -73,7 +73,7 @@ export default function Invoices() {
         const labels = {
             draft: 'Koncept',
             issued: 'Vystavená',
-            paid: 'Uhradená',
+            paid: 'Zaplatená',
             cancelled: 'Zrušená',
         };
         return labels[status] || status || '-';
@@ -101,19 +101,19 @@ export default function Invoices() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
-                    <p className="text-muted-foreground">Manage customer invoices and payments.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Faktúry</h1>
+                    <p className="text-muted-foreground">Správa faktúr a platieb.</p>
                 </div>
                 <Link to="/invoices/new" className="w-full sm:w-auto">
                     <Button className="w-full sm:w-auto">
-                        <Plus className="mr-2 h-4 w-4" /> Create Invoice
+                        <Plus className="mr-2 h-4 w-4" /> Vytvoriť faktúru
                     </Button>
                 </Link>
             </div>
 
             {error && (
                 <ErrorState
-                    title="Failed to Load Invoices"
+                    title="Nepodarilo sa načítať faktúry"
                     message={error}
                     onRetry={fetchInvoices}
                 />
@@ -121,56 +121,56 @@ export default function Invoices() {
 
             <Card>
                 <CardHeader className="space-y-4">
-                    <CardTitle>All Invoices ({filteredInvoices.length})</CardTitle>
+                    <CardTitle>Všetky faktúry ({filteredInvoices.length})</CardTitle>
                     <div className="flex flex-col sm:flex-row gap-4">
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-sky-300 text-sm"
                         >
                             <option value="all">Všetky stavy</option>
                             <option value="draft">Koncept</option>
                             <option value="issued">Vystavená</option>
-                            <option value="paid">Uhradená</option>
+                            <option value="paid">Zaplatená</option>
                             <option value="cancelled">Zrušená</option>
                         </select>
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                             <input
-                                placeholder="Search invoices..."
+                                placeholder="Hľadať faktúry..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-gray-300 bg-background px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="flex h-10 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-blue-400 focus:border-sky-300"
                             />
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <LoadingState message="Loading invoices..." />
+                        <LoadingState message="Načítavam faktúry..." />
                     ) : filteredInvoices.length === 0 ? (
                         <EmptyState
-                            title={invoices.length === 0 ? "No invoices yet" : "No invoices match"}
+                            title={invoices.length === 0 ? "Zatiaľ žiadne faktúry" : "Žiadne faktúry nevyhovujú filtru"}
                             description={invoices.length === 0 
-                                ? "Create your first invoice to get started." 
-                                : "Try adjusting your search or filter."}
+                                ? "Vytvorte svoju prvú faktúru, aby sa zobrazila v zozname." 
+                                : "Skúste upraviť hľadanie alebo filter."}
                         />
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                                <thead className="bg-sky-100 border-b-2 border-sky-200">
                                     <tr>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700">Invoice #</th>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden md:table-cell">Clinic</th>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden lg:table-cell">Patients</th>
-                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Amount</th>
-                                        <th className="px-4 py-3 font-medium text-center text-gray-700">Status</th>
-                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Actions</th>
+                                        <th className="px-4 py-3 font-medium text-left text-gray-700">Číslo faktúry</th>
+                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden md:table-cell">Klinika</th>
+                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden lg:table-cell">Pacienti</th>
+                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Suma</th>
+                                        <th className="px-4 py-3 font-medium text-center text-gray-700">Stav</th>
+                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Akcie</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
+                                <tbody className="divide-y divide-sky-200">
                                     {filteredInvoices.map((invoice) => (
-                                        <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={invoice.id} className="hover:bg-sky-50 transition-colors">
                                             <td className="px-4 py-3 font-medium text-blue-600">
                                                 {invoice.number}
                                             </td>
@@ -181,7 +181,7 @@ export default function Invoices() {
                                                 {(invoice.patient_names || []).join(', ') || '-'}
                                             </td>
                                             <td className="px-4 py-3 text-right font-medium text-gray-900">
-                                                €{parseFloat(invoice.total_amount).toFixed(2)}
+                                                {parseFloat(invoice.total_amount).toFixed(2)} €
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(invoice.status)}`}>
@@ -191,7 +191,7 @@ export default function Invoices() {
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <Link to={`/invoices/${invoice.id}`}>
-                                                        <Button variant="outline" size="sm" title="View">
+                                                        <Button variant="outline" size="sm" title="Zobraziť">
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                     </Link>
@@ -199,7 +199,7 @@ export default function Invoices() {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleDownloadPDF(invoice.id)}
-                                                        title="Download"
+                                                        title="Stiahnuť PDF"
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </Button>
@@ -224,10 +224,10 @@ export default function Invoices() {
 
             <ConfirmDialog
                 open={!!invoiceToDelete}
-                title="Delete invoice"
-                message="Are you sure you want to delete this invoice?"
-                confirmText="Delete"
-                cancelText="Cancel"
+                title="Zmazať faktúru"
+                message="Naozaj chcete zmazať túto faktúru?"
+                confirmText="Zmazať"
+                cancelText="Zrušiť"
                 destructive
                 onConfirm={confirmDelete}
                 onCancel={() => setInvoiceToDelete(null)}

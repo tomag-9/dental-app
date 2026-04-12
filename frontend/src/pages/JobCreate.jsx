@@ -3,9 +3,109 @@ import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Search, Check, ChevronsUpDown } from 'lucide-react';
 import ToothMap from '../components/dental/ToothMap';
 import api from '../lib/api';
+
+function SearchableSelect({
+    label,
+    placeholder,
+    query,
+    setQuery,
+    value,
+    setValue,
+    options,
+    getOptionLabel,
+    selectedLabel,
+    emptyText,
+    allowEmpty = false,
+    emptyOptionLabel = 'Bez výberu',
+}) {
+    const [open, setOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => {
+        const handleOutsideClick = (event) => {
+            if (!wrapperRef.current?.contains(event.target)) {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
+    return (
+        <div className="space-y-1.5">
+            <label className="block text-sm font-medium">{label}</label>
+            <div className="relative" ref={wrapperRef}>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                    type="text"
+                    value={query}
+                    onFocus={() => setOpen(true)}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setOpen(true);
+                    }}
+                    placeholder={placeholder}
+                    className="h-10 w-full rounded-md border border-sky-200 bg-sky-50 pl-9 pr-10 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                />
+                <ChevronsUpDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+
+                {open && (
+                    <div className="absolute z-40 mt-2 max-h-56 w-full overflow-auto rounded-md border border-sky-200 bg-sky-50 p-1 shadow-md">
+                        {allowEmpty && (
+                            <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                    setValue('');
+                                    setQuery('');
+                                    setOpen(false);
+                                }}
+                                className="flex w-full items-center justify-between rounded-sm px-2 py-2 text-left text-sm hover:bg-sky-100"
+                            >
+                                <span>{emptyOptionLabel}</span>
+                                {!value && <Check className="h-4 w-4 text-primary" />}
+                            </button>
+                        )}
+
+                        {options.length === 0 ? (
+                            <div className="px-2 py-2 text-sm text-muted-foreground">{emptyText}</div>
+                        ) : (
+                            options.map((option) => {
+                                const optionValue = String(option.id);
+                                const optionLabel = getOptionLabel(option);
+                                const isSelected = value === optionValue;
+
+                                return (
+                                    <button
+                                        key={optionValue}
+                                        type="button"
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => {
+                                            setValue(optionValue);
+                                            setQuery(optionLabel);
+                                            setOpen(false);
+                                        }}
+                                        className="flex w-full items-center justify-between rounded-sm px-2 py-2 text-left text-sm hover:bg-sky-100"
+                                    >
+                                        <span className="truncate">{optionLabel}</span>
+                                        {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+            </div>
+            <p className="min-h-5 text-xs text-muted-foreground">
+                {value && selectedLabel ? `Vybrané: ${selectedLabel}` : ' '}
+            </p>
+        </div>
+    );
+}
 
 export default function JobCreate() {
     const navigate = useNavigate();
@@ -240,6 +340,70 @@ export default function JobCreate() {
         });
     }, [technicians, technicianQuery]);
 
+    const getPatientOptionLabel = (patient) => [
+        `#${patient?.id}`,
+        `${patient?.first_name || ''} ${patient?.last_name || ''}`.trim(),
+        patient?.birth_number ? `RČ ${patient.birth_number}` : '',
+        patient?.email || '',
+    ].filter(Boolean).join(' • ');
+
+    const getClinicOptionLabel = (clinic) => [
+        `#${clinic?.id}`,
+        clinic?.name || '',
+        clinic?.ico ? `IČO ${clinic.ico}` : '',
+    ].filter(Boolean).join(' • ');
+
+    const getDoctorOptionLabel = (doctor) => [
+        `#${doctor?.id}`,
+        `${doctor?.first_name || ''} ${doctor?.last_name || ''}`.trim(),
+    ].filter(Boolean).join(' • ');
+
+    const getTechnicianOptionLabel = (technician) => [
+        `#${technician?.id}`,
+        `${technician?.first_name || ''} ${technician?.last_name || ''}`.trim(),
+    ].filter(Boolean).join(' • ');
+
+    const selectedPatient = useMemo(
+        () => patients.find((item) => String(item.id) === String(patientId)),
+        [patients, patientId]
+    );
+    const selectedClinic = useMemo(
+        () => clinics.find((item) => String(item.id) === String(clinicId)),
+        [clinics, clinicId]
+    );
+    const selectedDoctor = useMemo(
+        () => doctors.find((item) => String(item.id) === String(doctorId)),
+        [doctors, doctorId]
+    );
+    const selectedTechnician = useMemo(
+        () => technicians.find((item) => String(item.id) === String(technicianId)),
+        [technicians, technicianId]
+    );
+
+    useEffect(() => {
+        if (selectedPatient && !patientQuery) {
+            setPatientQuery(getPatientOptionLabel(selectedPatient));
+        }
+    }, [selectedPatient, patientQuery]);
+
+    useEffect(() => {
+        if (selectedClinic && !clinicQuery) {
+            setClinicQuery(getClinicOptionLabel(selectedClinic));
+        }
+    }, [selectedClinic, clinicQuery]);
+
+    useEffect(() => {
+        if (selectedDoctor && !doctorQuery) {
+            setDoctorQuery(getDoctorOptionLabel(selectedDoctor));
+        }
+    }, [selectedDoctor, doctorQuery]);
+
+    useEffect(() => {
+        if (selectedTechnician && !technicianQuery) {
+            setTechnicianQuery(getTechnicianOptionLabel(selectedTechnician));
+        }
+    }, [selectedTechnician, technicianQuery]);
+
     const getApiError = (err, fallbackMessage) => {
         const payload = err?.response?.data;
         if (typeof payload?.detail === 'string') return payload.detail;
@@ -363,11 +527,11 @@ export default function JobCreate() {
                 </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
-                {[1, 2, 3].map((step) => (
-                    <div
-                        key={step}
-                        className={`px-3 py-1 rounded-full text-sm border ${currentStep === step ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground'}`}
+                    <div className="flex flex-wrap gap-2">
+                                {[1, 2, 3].map((step) => (
+                                    <div
+                                        key={step}
+                                        className={`px-3 py-1 rounded-full text-sm border ${currentStep === step ? 'bg-blue-600 text-white border-blue-600' : 'bg-sky-50 border-sky-200 text-slate-600'}`}
                     >
                         {step === 1 && '1. Základné údaje'}
                         {step === 2 && '2. Úkony a popis'}
@@ -386,87 +550,80 @@ export default function JobCreate() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {currentStep === 1 && (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Pacient</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded-md mb-2"
-                                    placeholder="Hľadať: meno, priezvisko, rok narodenia, e-mail, rodné číslo, ID"
-                                    value={patientQuery}
-                                    onChange={e => setPatientQuery(e.target.value)}
+                        <div className="space-y-4 rounded-xl border border-sky-200 bg-sky-50 p-4 sm:p-5">
+                            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                <SearchableSelect
+                                    label="Pacient"
+                                    placeholder="Meno, priezvisko, rok narodenia, e-mail, rodné číslo, ID"
+                                    query={patientQuery}
+                                    setQuery={setPatientQuery}
+                                    value={patientId}
+                                    setValue={setPatientId}
+                                    options={filteredPatients}
+                                    getOptionLabel={getPatientOptionLabel}
+                                    selectedLabel={selectedPatient ? getPatientOptionLabel(selectedPatient) : ''}
+                                    emptyText="Žiadny pacient nevyhovuje vyhľadávaniu."
                                 />
-                                <select className="w-full p-2 border rounded-md" value={patientId} onChange={e => setPatientId(e.target.value)}>
-                                    <option value="">Vyberte pacienta</option>
-                                    {filteredPatients.map(p => (
-                                        <option key={p.id} value={p.id}>
-                                            #{p.id} {p.first_name} {p.last_name} {p.birth_number ? `• ${p.birth_number}` : ''} {p.email ? `• ${p.email}` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+
+                                <SearchableSelect
+                                    label="Klinika"
+                                    placeholder="Názov kliniky, IČO, ID"
+                                    query={clinicQuery}
+                                    setQuery={setClinicQuery}
+                                    value={clinicId}
+                                    setValue={setClinicId}
+                                    options={filteredClinics}
+                                    getOptionLabel={getClinicOptionLabel}
+                                    selectedLabel={selectedClinic ? getClinicOptionLabel(selectedClinic) : ''}
+                                    emptyText="Žiadna klinika nevyhovuje vyhľadávaniu."
+                                />
+
+                                <SearchableSelect
+                                    label="Lekár (voliteľné)"
+                                    placeholder="Meno, priezvisko, ID"
+                                    query={doctorQuery}
+                                    setQuery={setDoctorQuery}
+                                    value={doctorId}
+                                    setValue={setDoctorId}
+                                    options={filteredDoctors}
+                                    getOptionLabel={getDoctorOptionLabel}
+                                    selectedLabel={selectedDoctor ? getDoctorOptionLabel(selectedDoctor) : ''}
+                                    emptyText="Žiadny lekár nevyhovuje vyhľadávaniu."
+                                    allowEmpty
+                                    emptyOptionLabel="Bez lekára"
+                                />
+
+                                <SearchableSelect
+                                    label="Technik"
+                                    placeholder="Meno, priezvisko, ID"
+                                    query={technicianQuery}
+                                    setQuery={setTechnicianQuery}
+                                    value={technicianId}
+                                    setValue={setTechnicianId}
+                                    options={filteredTechnicians}
+                                    getOptionLabel={getTechnicianOptionLabel}
+                                    selectedLabel={selectedTechnician ? getTechnicianOptionLabel(selectedTechnician) : ''}
+                                    emptyText="Žiadny technik nevyhovuje vyhľadávaniu."
+                                    allowEmpty
+                                    emptyOptionLabel="Bez technika"
+                                />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Klinika</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded-md mb-2"
-                                    placeholder="Hľadať: názov kliniky, číslo (IČO), ID"
-                                    value={clinicQuery}
-                                    onChange={e => setClinicQuery(e.target.value)}
-                                />
-                                <select className="w-full p-2 border rounded-md" value={clinicId} onChange={e => setClinicId(e.target.value)}>
-                                    <option value="">Vyberte kliniku</option>
-                                    {filteredClinics.map(c => (
-                                        <option key={c.id} value={c.id}>#{c.id} {c.name}{c.ico ? ` • IČO ${c.ico}` : ''}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Lekár (voliteľné)</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded-md mb-2"
-                                    placeholder="Hľadať: meno, priezvisko, číslo, ID"
-                                    value={doctorQuery}
-                                    onChange={e => setDoctorQuery(e.target.value)}
-                                />
-                                <select className="w-full p-2 border rounded-md" value={doctorId} onChange={e => setDoctorId(e.target.value)}>
-                                    <option value="">Bez lekára</option>
-                                    {filteredDoctors.map(d => (
-                                        <option key={d.id} value={d.id}>#{d.id} {d.first_name} {d.last_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Technik</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded-md mb-2"
-                                    placeholder="Hľadať: meno, priezvisko, číslo, ID"
-                                    value={technicianQuery}
-                                    onChange={e => setTechnicianQuery(e.target.value)}
-                                />
-                                <select className="w-full p-2 border rounded-md" value={technicianId} onChange={e => setTechnicianId(e.target.value)}>
-                                    <option value="">Vyberte technika</option>
-                                    {filteredTechnicians.map(t => (
-                                        <option key={t.id} value={t.id}>#{t.id} {t.first_name} {t.last_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Stav</label>
-                                <select className="w-full p-2 border rounded-md" value={status} onChange={e => setStatus(e.target.value)}>
+                            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 sm:p-4">
+                                <label className="mb-1 block text-sm font-medium">Stav</label>
+                                <select
+                                    className="h-10 w-full rounded-md border border-sky-200 bg-sky-50 px-3 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                                    value={status}
+                                    onChange={e => setStatus(e.target.value)}
+                                >
                                     <option value="new">Nová</option>
                                     <option value="in_progress">V priebehu</option>
                                     <option value="completed">Dokončená</option>
+                                    <option value="finished_factured">Dokončená a fakturovaná</option>
                                     <option value="cancelled">Zrušená</option>
                                 </select>
                             </div>
-                        </>
+                        </div>
                     )}
 
                     {currentStep === 2 && (
@@ -478,7 +635,7 @@ export default function JobCreate() {
 
                             <div>
                                 <label className="block text-sm font-medium mb-1">Farba zuba</label>
-                                <select className="w-full p-2 border rounded-md" value={toothColor} onChange={e => setToothColor(e.target.value)}>
+                                <select className="w-full p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={toothColor} onChange={e => setToothColor(e.target.value)}>
                                     <option value="">Bez farby</option>
                                     {toothColorOptions.map(shade => (
                                         <option key={shade} value={shade}>{shade}</option>
@@ -486,10 +643,10 @@ export default function JobCreate() {
                                 </select>
                             </div>
 
-                            <div className="space-y-3 border rounded-md p-3 bg-muted/20">
+                            <div className="space-y-3 border border-sky-200 rounded-md p-3 bg-sky-50">
                                 <label className="block text-sm font-medium">Cenníkové úkony</label>
                                 <div className="flex gap-2">
-                                    <select className="flex-1 p-2 border rounded-md" value={selectedProcedureCode} onChange={e => setSelectedProcedureCode(e.target.value)}>
+                                    <select className="flex-1 p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={selectedProcedureCode} onChange={e => setSelectedProcedureCode(e.target.value)}>
                                         <option value="">Vyberte kód</option>
                                         {availableProcedureOptions.map(item => (
                                             <option key={item.id} value={item.code}>
@@ -497,7 +654,7 @@ export default function JobCreate() {
                                             </option>
                                         ))}
                                     </select>
-                                    <input type="number" min="1" className="w-20 p-2 border rounded-md" value={selectedProcedureQty} onChange={e => setSelectedProcedureQty(e.target.value)} />
+                                    <input type="number" min="1" className="w-20 p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={selectedProcedureQty} onChange={e => setSelectedProcedureQty(e.target.value)} />
                                     <Button type="button" variant="outline" onClick={addProcedure}>Pridať</Button>
                                 </div>
 
@@ -513,7 +670,7 @@ export default function JobCreate() {
                                                         <span className="font-medium">{code}</span>
                                                         <span className="text-muted-foreground"> {item?.description || ''}</span>
                                                     </div>
-                                                    <input type="number" min="1" className="w-20 p-1 border rounded" value={qty} onChange={e => changeProcedureQty(code, e.target.value)} />
+                                                    <input type="number" min="1" className="w-20 p-1 border border-sky-200 bg-sky-50 rounded focus:ring-1 focus:ring-blue-400 focus:outline-none" value={qty} onChange={e => changeProcedureQty(code, e.target.value)} />
                                                     <div className="w-24 text-right">€{(unitPrice * qty).toFixed(2)}</div>
                                                     <Button type="button" variant="ghost" onClick={() => removeProcedure(code)}>Odobrať</Button>
                                                 </div>
@@ -530,14 +687,14 @@ export default function JobCreate() {
                                 </CardHeader>
                                 <CardContent>
                                     <ToothMap editable={true} value={toothData} onChange={setToothData} />
-                                    <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                                    <div className="mt-4 p-4 bg-sky-50 rounded-lg border border-sky-200">
                                         <h4 className="font-semibold text-sm mb-2">Vybrané úkony:</h4>
                                         {Object.keys(toothData).length === 0 ? (
                                             <p className="text-xs text-muted-foreground">Nič nie je vybrané</p>
                                         ) : (
                                             <div className="flex flex-wrap gap-2">
                                                 {Object.entries(toothData).map(([tooth, code]) => (
-                                                    <div key={tooth} className="bg-white border rounded px-2 py-1 text-xs font-mono shadow-sm">
+                                                    <div key={tooth} className="bg-sky-100 border border-sky-200 rounded px-2 py-1 text-xs font-mono shadow-sm">
                                                         <b>{tooth}</b>: {code}
                                                     </div>
                                                 ))}
@@ -553,19 +710,19 @@ export default function JobCreate() {
                         <>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Termín odovzdania</label>
-                                <input type="date" className="w-full p-2 border rounded-md" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                                <input type="date" className="w-full p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Začiatok práce</label>
-                                <input type="date" className="w-full p-2 border rounded-md" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                                <input type="date" className="w-full p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={startDate} onChange={e => setStartDate(e.target.value)} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Skúška</label>
-                                <input type="date" className="w-full p-2 border rounded-md" value={tryInDate} onChange={e => setTryInDate(e.target.value)} />
+                                <input type="date" className="w-full p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={tryInDate} onChange={e => setTryInDate(e.target.value)} />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Ukončenie práce</label>
-                                <input type="date" className="w-full p-2 border rounded-md" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                                <input type="date" className="w-full p-2 border border-sky-200 bg-sky-50 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
                             </div>
                         </>
                     )}

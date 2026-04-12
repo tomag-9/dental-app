@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
+
+echo "[check-all-scripts] Checking helper scripts..."
+for script in ./rebuild-dev ./check-all-scripts ./backend/rebuild-dev ./backend/check-all-scripts; do
+  if [[ -f "$script" ]]; then
+    if [[ -x "$script" ]]; then
+      echo "  OK: $script"
+    else
+      echo "  WARN: $script exists but is not executable"
+    fi
+  else
+    echo "  MISSING: $script"
+  fi
+done
+
+echo "[check-all-scripts] Validating docker compose file..."
+docker compose config -q
+echo "  OK: docker compose config"
+
+echo "[check-all-scripts] Root package scripts:"
+node -e "const p=require('./package.json'); console.log(Object.keys(p.scripts||{}).join(', ') || '(none)');"
+
+echo "[check-all-scripts] Frontend package scripts:"
+node -e "const p=require('./frontend/package.json'); console.log(Object.keys(p.scripts||{}).join(', ') || '(none)');"
+
+echo "[check-all-scripts] Backend Django check (container):"
+if docker compose ps --status running backend | grep -q backend; then
+  docker compose exec -T backend python manage.py check
+else
+  echo "  INFO: backend container is not running, skipping manage.py check"
+fi
+
+echo "[check-all-scripts] Done."

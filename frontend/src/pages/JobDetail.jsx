@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Pencil, UserRound, Building2, Stethoscope, Wrench } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Pencil, UserRound, Building2, Stethoscope, Wrench, FileText, CircleDollarSign, Clock3, ClipboardList } from 'lucide-react';
 import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 import ToothMap from '../components/dental/ToothMap';
 
 const statusLabel = {
@@ -12,6 +13,14 @@ const statusLabel = {
     completed: 'Dokončená',
     finished_factured: 'Dokončená a fakturovaná',
     cancelled: 'Zrušená',
+};
+
+const statusTone = {
+    new: 'bg-blue-500/20 text-blue-100 border-blue-400/40',
+    in_progress: 'bg-sky-500/20 text-sky-100 border-sky-400/40',
+    completed: 'bg-emerald-500/20 text-emerald-100 border-emerald-400/40',
+    finished_factured: 'bg-indigo-500/20 text-indigo-100 border-indigo-400/40',
+    cancelled: 'bg-rose-500/20 text-rose-100 border-rose-400/40',
 };
 
 export default function JobDetail() {
@@ -62,36 +71,66 @@ export default function JobDetail() {
                 label: 'Technik',
                 value: job.technician_details ? `${job.technician_details.first_name || ''} ${job.technician_details.last_name || ''}`.trim() : '-',
             },
+        ];
+    }, [job]);
+
+    const formatDate = (value) => (value ? new Date(value).toLocaleDateString('sk-SK') : '-');
+
+    const formatPrice = (value) => {
+        const numberValue = Number(value);
+        if (!Number.isFinite(numberValue)) return '-';
+        return `${numberValue.toFixed(2)} €`;
+    };
+
+    const metaCards = useMemo(() => {
+        if (!job) return [];
+        return [
             {
-                icon: <CalendarDays className="h-4 w-4" />,
-                label: 'Termín',
-                value: job.due_date ? new Date(job.due_date).toLocaleDateString('sk-SK') : '-',
+                title: 'Stav',
+                value: statusLabel[job.status] || job.status || '-',
+                icon: <ClipboardList className="h-4 w-4" />,
+                badge: true,
             },
             {
-                label: 'Stav',
-                value: statusLabel[job.status] || job.status || '-',
+                title: 'Termín odovzdania',
+                value: formatDate(job.due_date),
+                icon: <Clock3 className="h-4 w-4" />,
+            },
+            {
+                title: 'Skúška',
+                value: formatDate(job.try_in_date),
+                icon: <CalendarDays className="h-4 w-4" />,
+            },
+            {
+                title: 'Cena',
+                value: formatPrice(job.price),
+                icon: <CircleDollarSign className="h-4 w-4" />,
             },
         ];
     }, [job]);
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/jobs')}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Detail práce #{id}</h1>
-                        <p className="text-muted-foreground">Zobrazenie kompletnej karty práce.</p>
+        <div className="mx-auto max-w-6xl space-y-6">
+            <Card className="border-primary/30 bg-gradient-to-br from-card/95 via-card/90 to-primary/10">
+                <CardContent className="p-5 md:p-6">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                            <Button variant="ghost" size="icon" onClick={() => navigate('/jobs')} className="mt-0.5 shrink-0">
+                                <ArrowLeft className="h-5 w-5" />
+                            </Button>
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">Detail práce #{id}</h1>
+                                <p className="mt-1 text-sm md:text-base text-muted-foreground">Prehľad zákazky, termínov, ceny a zubnej mapy.</p>
+                            </div>
+                        </div>
+                        <Link to={`/jobs/${id}/edit`} className="md:self-start">
+                            <Button>
+                                <Pencil className="mr-2 h-4 w-4" /> Upraviť prácu
+                            </Button>
+                        </Link>
                     </div>
-                </div>
-                <Link to={`/jobs/${id}/edit`}>
-                    <Button>
-                        <Pencil className="mr-2 h-4 w-4" /> Upraviť
-                    </Button>
-                </Link>
-            </div>
+                </CardContent>
+            </Card>
 
             {error && (
                 <div className="p-4 bg-destructive/10 text-destructive rounded-md">
@@ -109,41 +148,65 @@ export default function JobDetail() {
                 </Card>
             ) : (
                 <>
-                    <Card>
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <Card className="border-primary/25 lg:col-span-2">
+                            <CardHeader>
+                                <CardTitle>Základné informácie</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {detailRows.map((row) => (
+                                        <div key={row.label} className="rounded-lg border border-border/80 bg-background/35 px-4 py-3">
+                                            <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                                                {row.icon}
+                                                <span>{row.label}</span>
+                                            </div>
+                                            <p className="text-sm font-medium text-foreground">{row.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-primary/25">
+                            <CardHeader>
+                                <CardTitle>Stav a termíny</CardTitle>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-3">
+                                {metaCards.map((item) => (
+                                    <div key={item.title} className="rounded-lg border border-border/80 bg-background/35 px-4 py-3">
+                                        <div className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                                            {item.icon}
+                                            <span>{item.title}</span>
+                                        </div>
+                                        {item.badge ? (
+                                            <Badge className={statusTone[job.status] || 'bg-primary/20 text-primary-foreground border-primary/40'}>
+                                                {item.value}
+                                            </Badge>
+                                        ) : (
+                                            <p className="text-base font-semibold text-foreground">{item.value}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <Card className="border-primary/25">
                         <CardHeader>
-                            <CardTitle>Základné informácie</CardTitle>
+                            <CardTitle className="flex items-center gap-2">
+                                <FileText className="h-5 w-5" />
+                                Popis práce
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-md border overflow-hidden">
-                                <table className="w-full text-sm">
-                                    <tbody>
-                                        {detailRows.map((row) => (
-                                            <tr key={row.label} className="border-t first:border-t-0">
-                                                <td className="px-4 py-3 font-medium w-52 bg-muted/30">
-                                                    <div className="flex items-center gap-2">
-                                                        {row.icon}
-                                                        <span>{row.label}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">{row.value}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="rounded-lg border border-border/80 bg-background/35 p-4">
+                                <p className="whitespace-pre-wrap text-sm text-foreground/95">{job.description || 'Bez popisu.'}</p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Popis práce</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm whitespace-pre-wrap">{job.description || 'Bez popisu.'}</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
+                    <Card className="border-primary/25">
                         <CardHeader>
                             <CardTitle>Zubná mapa</CardTitle>
                         </CardHeader>

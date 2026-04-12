@@ -79,7 +79,7 @@ export default function Dashboard() {
 
     const statCards = [
         { 
-            title: 'Pacienti spolu', 
+            title: 'Počet pacientov', 
             value: stats.totalPatients.toLocaleString(), 
             icon: Users, 
             color: 'bg-blue-100 text-blue-600' 
@@ -125,7 +125,7 @@ export default function Dashboard() {
     const getJobStatusLabel = (status) => {
         const labels = {
             new: 'Nová',
-            pending: 'Čaká',
+            pending: 'Čakajúca',
             in_progress: 'V priebehu',
             completed: 'Dokončená',
             finished_factured: 'Dokončená a fakturovaná',
@@ -153,7 +153,7 @@ export default function Dashboard() {
         const labels = {
             draft: 'Koncept',
             issued: 'Vystavená',
-            paid: 'Uhradená',
+            paid: 'Zaplatená',
             cancelled: 'Zrušená',
         };
         return labels[status] || status || '-';
@@ -210,13 +210,13 @@ export default function Dashboard() {
                     <Button variant="outline">Prejsť na faktúry</Button>
                 </Link>
                 <Link to="/inventory">
-                    <Button variant="outline">Skontrolovať sklad</Button>
+                    <Button variant="outline">Prejsť na sklad</Button>
                 </Link>
             </div>
 
             {/* Recent Activity Grid */}
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
-                {/* Recent Jobs */}
+                {/* Posledné práce */}
                 <Card className="lg:col-span-4">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Posledné práce</CardTitle>
@@ -226,7 +226,7 @@ export default function Dashboard() {
                         {recentJobs.length === 0 ? (
                             <EmptyState
                                 title="Zatiaľ žiadne práce"
-                                description="Po vytvorení sa tu zobrazia posledné práce."
+                                description="Posledné práce sa zobrazia po ich vytvorení."
                             />
                         ) : (
                             <div className="space-y-4">
@@ -255,7 +255,7 @@ export default function Dashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Recent Invoices */}
+                {/* Posledné faktúry */}
                 <Card className="lg:col-span-3">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Posledné faktúry</CardTitle>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                         {recentInvoices.length === 0 ? (
                             <EmptyState
                                 title="Zatiaľ žiadne faktúry"
-                                description="Po vytvorení sa tu zobrazia posledné faktúry."
+                                description="Posledné faktúry sa zobrazia po ich vytvorení."
                             />
                         ) : (
                             <div className="space-y-4">
@@ -281,7 +281,7 @@ export default function Dashboard() {
                                                 </Badge>
                                             </div>
                                             <p className="text-xs text-gray-600">
-                                                {invoice.clinic_name || 'Neznáma klinika'}
+                                                {invoice.clinic_name || 'Unknown clinic'}
                                             </p>
                                         </div>
                                         <div className="text-right">

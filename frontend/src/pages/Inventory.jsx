@@ -36,7 +36,7 @@ export default function Inventory() {
             setItems(normalizeListResponse(response.data));
         } catch (err) {
             console.error('Failed to fetch inventory:', err);
-            setError('Failed to load inventory items');
+            setError('Nepodarilo sa načítať skladové položky');
         } finally {
             setIsLoading(false);
         }
@@ -50,10 +50,19 @@ export default function Inventory() {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'OUT': return 'bg-red-100 text-red-800';
-            case 'LOW': return 'bg-yellow-100 text-yellow-800';
-            case 'OK': return 'bg-green-100 text-green-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'OUT': return 'bg-rose-500/20 text-rose-100 border border-rose-400/40';
+            case 'LOW': return 'bg-amber-500/20 text-amber-100 border border-amber-400/40';
+            case 'OK': return 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/40';
+            default: return 'bg-primary/20 text-primary-foreground border border-primary/40';
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'OUT': return 'Nie je skladom';
+            case 'LOW': return 'Nízky stav';
+            case 'OK': return 'Skladom';
+            default: return status;
         }
     };
 
@@ -64,7 +73,7 @@ export default function Inventory() {
             await fetchItems();
         } catch (err) {
             console.error('Failed to delete item:', err);
-            setError('Failed to delete item');
+            setError('Nepodarilo sa zmazať položku');
         } finally {
             setItemToDelete(null);
         }
@@ -81,7 +90,7 @@ export default function Inventory() {
             await fetchItems();
         } catch (err) {
             console.error('Failed to adjust quantity:', err);
-            setError('Failed to adjust quantity');
+            setError('Nepodarilo sa upraviť množstvo');
         }
     };
 
@@ -116,7 +125,7 @@ export default function Inventory() {
         ]);
 
         const csv = [headers.join(','), ...rows.map((row) => row.map(escapeCsv).join(','))].join('\n');
-        downloadBlobFile(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'inventory-export.csv');
+        downloadBlobFile(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'sklad-export.csv');
     };
 
     const parseCsvLine = (line) => {
@@ -220,8 +229,8 @@ export default function Inventory() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-                    <p className="text-muted-foreground">Manage dental materials and supplies.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Sklad</h1>
+                    <p className="text-muted-foreground">Správa dentálnych materiálov a zásob.</p>
                 </div>
                 <div className="flex gap-2">
                     <input
@@ -236,12 +245,12 @@ export default function Inventory() {
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isImporting}
                     >
-                        {isImporting ? 'Importujem…' : 'Import CSV'}
+                        {isImporting ? 'Importujem…' : 'Importovať CSV'}
                     </Button>
-                    <Button variant="outline" onClick={handleExportCsv}>Export CSV</Button>
+                    <Button variant="outline" onClick={handleExportCsv}>Exportovať CSV</Button>
                     <Link to="/inventory/new">
                         <Button>
-                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                            <Plus className="mr-2 h-4 w-4" /> Pridať položku
                         </Button>
                     </Link>
                 </div>
@@ -250,23 +259,23 @@ export default function Inventory() {
             {(lowStockCount > 0 || outOfStockCount > 0) && (
                 <div className="grid gap-4 md:grid-cols-2">
                     {outOfStockCount > 0 && (
-                        <Card className="border-destructive/50 bg-destructive/5">
+                        <Card className="border-destructive/60 bg-destructive/15">
                             <CardContent className="pt-6 flex items-start gap-3">
                                 <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{outOfStockCount} items out of stock</p>
-                                    <p className="text-sm text-muted-foreground">Require immediate reordering</p>
+                                    <p className="font-semibold text-foreground">{outOfStockCount} položiek nie je skladom</p>
+                                    <p className="text-sm text-foreground/85">Vyžadujú okamžité doobjednanie</p>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
                     {lowStockCount > 0 && (
-                        <Card className="border-yellow-500/50 bg-yellow-50">
+                        <Card className="border-amber-400/60 bg-amber-500/15">
                             <CardContent className="pt-6 flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                <AlertTriangle className="h-5 w-5 text-amber-200 flex-shrink-0 mt-0.5" />
                                 <div>
-                                    <p className="font-medium">{lowStockCount} items low in stock</p>
-                                    <p className="text-sm text-muted-foreground">Below minimum threshold</p>
+                                    <p className="font-semibold text-foreground">{lowStockCount} položiek má nízky stav</p>
+                                    <p className="text-sm text-foreground/85">Pod minimálnym limitom</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -283,15 +292,15 @@ export default function Inventory() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <CardTitle>All Items ({filteredItems.length})</CardTitle>
+                        <CardTitle>Všetky položky ({filteredItems.length})</CardTitle>
                         <div className="flex gap-4 flex-wrap">
                             {categories.length > 0 && (
                                 <select
                                     value={categoryFilter}
                                     onChange={(e) => setCategoryFilter(e.target.value)}
-                                    className="px-3 py-2 border border-input rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
                                 >
-                                    <option value="all">All Categories</option>
+                                    <option value="all">Všetky kategórie</option>
                                     {categories.map(cat => (
                                         <option key={cat} value={cat}>{cat}</option>
                                     ))}
@@ -300,20 +309,20 @@ export default function Inventory() {
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 border border-input rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
                             >
-                                <option value="all">All Status</option>
-                                <option value="OK">In Stock</option>
-                                <option value="LOW">Low Stock</option>
-                                <option value="OUT">Out of Stock</option>
+                                <option value="all">Všetky stavy</option>
+                                <option value="OK">Skladom</option>
+                                <option value="LOW">Nízky stav</option>
+                                <option value="OUT">Nie je skladom</option>
                             </select>
                             <div className="relative w-64">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
                                 <input
-                                    placeholder="Search items..."
+                                    placeholder="Hľadať položky..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    className="flex h-10 w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-2 pl-8 text-sm shadow-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
                                 />
                             </div>
                         </div>
@@ -327,28 +336,28 @@ export default function Inventory() {
                     ) : filteredItems.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             {items.length === 0
-                                ? 'No inventory items found. Add your first item to get started.'
-                                : 'No items match your search.'}
+                                ? 'Nenašli sa žiadne skladové položky. Pridajte prvú položku.'
+                                : 'Žiadne položky nevyhovujú hľadaniu.'}
                         </div>
                     ) : (
-                        <div className="rounded-md border overflow-x-auto">
+                        <div className="rounded-md border border-sky-200 overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
+                                <thead className="bg-sky-100">
                                     <tr>
-                                        <th className="px-4 py-3 font-medium text-left">Item Name</th>
+                                        <th className="px-4 py-3 font-medium text-left">Názov položky</th>
                                         <th className="px-4 py-3 font-medium text-left">SKU</th>
-                                        <th className="px-4 py-3 font-medium text-center">Quantity</th>
-                                        <th className="px-4 py-3 font-medium text-left">Unit</th>
-                                        <th className="px-4 py-3 font-medium text-center">Status</th>
-                                        <th className="px-4 py-3 font-medium text-left">Category</th>
-                                        <th className="px-4 py-3 font-medium text-right">Actions</th>
+                                        <th className="px-4 py-3 font-medium text-center">Množstvo</th>
+                                        <th className="px-4 py-3 font-medium text-left">Jednotka</th>
+                                        <th className="px-4 py-3 font-medium text-center">Stav</th>
+                                        <th className="px-4 py-3 font-medium text-left">Kategória</th>
+                                        <th className="px-4 py-3 font-medium text-right">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredItems.map((item) => {
                                         const status = getStockStatus(item);
                                         return (
-                                            <tr key={item.id} className="border-t hover:bg-muted/50 transition-colors">
+                                            <tr key={item.id} className="border-t border-sky-100 hover:bg-sky-50 transition-colors">
                                                 <td className="px-4 py-3 font-medium">
                                                     {item.name}
                                                 </td>
@@ -383,7 +392,7 @@ export default function Inventory() {
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     <span className={`inline-flex px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(status)}`}>
-                                                        {status}
+                                                        {getStatusLabel(status)}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3 text-muted-foreground">

@@ -1,43 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
+    /* Blue-tinted palette for all surfaces */
+    --background: 210 55% 94%;
+    --foreground: 222 47% 11%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 210 45% 97%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 210 40% 98%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 160 51% 47%;
-    /* #45ac8b but in HSL approx */
-    --primary-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 50% 94%;
+    --secondary-foreground: 222 47% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 35% 92%;
+    --muted-foreground: 215 20% 35%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 50% 92%;
+    --accent-foreground: 222 47% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 160 51% 47%;
+    --border: 214 32% 86%;
+    --input: 214 32% 86%;
+    --ring: 217 91% 60%;
 
     --radius: 0.5rem;
   }
 
   body {
-    @apply font-sans antialiased;
-    background-color: hsl(var(--background));
+    background:
+      radial-gradient(circle at 0% 0%, hsl(210 70% 95%) 0, transparent 50%),
+      radial-gradient(circle at 100% 100%, hsl(210 60% 93%) 0, transparent 55%),
+      linear-gradient(180deg, hsl(210 55% 94%) 0%, hsl(210 50% 95%) 100%),
+      hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'Inter', sans-serif;
+    font-family: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  input,
+  select,
+  textarea {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--card));
+    border-color: hsl(210 35% 82%);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  option {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--foreground));
+  }
+
+  select:focus,
+  input:focus,
+  textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(59 130 246 / .35);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.45);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 }

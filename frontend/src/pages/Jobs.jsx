@@ -97,9 +97,9 @@ export default function Jobs() {
         }
 
         return (
-            <div className="rounded-md border overflow-x-auto">
+            <div className="rounded-md border border-sky-200 bg-sky-50 overflow-x-auto shadow-sm">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-muted/50 text-muted-foreground">
+                    <thead className="bg-sky-100 text-slate-700">
                         <tr>
                             <th className="px-4 py-3 font-medium">ID</th>
                             <th className="px-4 py-3 font-medium">Pacient</th>
@@ -110,9 +110,9 @@ export default function Jobs() {
                             <th className="px-4 py-3 font-medium text-right">Akcie</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody className="divide-y divide-sky-200">
                         {items.map((job) => (
-                            <tr key={job.id} className="hover:bg-muted/50">
+                            <tr key={job.id} className="hover:bg-sky-100/80 transition-colors">
                                 <td className="px-4 py-3 font-medium">#{job.id}</td>
                                 <td className="px-4 py-3">
                                     {job.patient_details?.first_name} {job.patient_details?.last_name}
@@ -158,7 +158,7 @@ export default function Jobs() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Práce</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-primary">Práce</h1>
                     <p className="text-muted-foreground">Prehľad, správa a stav zákaziek.</p>
                 </div>
                 <Link to="/jobs/new">
@@ -174,18 +174,18 @@ export default function Jobs() {
                 </div>
             )}
 
-            <Card>
+            <Card className="border-sky-200 shadow-sm">
                 <CardHeader>
                     <CardTitle>Vyhľadávanie</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="relative max-w-md">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
                         <input
                             placeholder="Pacient, lekár, klinika, stav, ID..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="flex h-9 w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                         />
                     </div>
                 </CardContent>
@@ -196,13 +196,13 @@ export default function Jobs() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
             ) : filteredJobs.length === 0 ? (
-                <div className="text-center text-muted-foreground p-8 bg-card rounded-lg border border-dashed">
+                <div className="text-center text-muted-foreground p-8 bg-sky-50 rounded-lg border border-dashed border-sky-200">
                     Žiadne práce.
                 </div>
             ) : (
                 <div className="space-y-4">
                     {sectionOrder.map((status) => (
-                        <Card key={status}>
+                        <Card key={status} className="border-sky-200 shadow-sm">
                             <CardHeader className="pb-3">
                                 <button
                                     type="button"

@@ -71,16 +71,20 @@ export default function Sidebar() {
 
     const isSuperadmin = user?.role === 'superadmin';
 
+    const navBase = "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm";
+    const navActive = "bg-blue-400/25 text-blue-100 font-medium";
+    const navInactive = "text-slate-200 hover:bg-slate-500/40 hover:text-white";
+
     return (
         <div className={cn(
-            "h-screen bg-card border-r border-border transition-all duration-300 flex flex-col z-20",
+            "h-screen border-r border-slate-500/50 bg-slate-600 text-slate-100 shadow-md transition-all duration-300 flex flex-col z-20",
             collapsed ? "w-20" : "w-64"
         )}>
-            <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-                {!collapsed && <span className="font-bold text-xl text-primary">DentalLab</span>}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-500/50 bg-slate-600/90">
+                {!collapsed && <span className="font-bold text-xl text-blue-200">DentalLab</span>}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
+                    className="p-2 rounded-md text-slate-300 hover:bg-slate-500/50 hover:text-white"
                 >
                     {collapsed ? <Menu size={20} /> : <X size={20} />}
                 </button>
@@ -92,10 +96,8 @@ export default function Sidebar() {
                         key={link.to}
                         to={link.to}
                         className={({ isActive }) => cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                            isActive
-                                ? "bg-primary/10 text-primary font-medium"
-                                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                            navBase,
+                            isActive ? navActive : navInactive,
                             collapsed && "justify-center"
                         )}
                     >
@@ -110,7 +112,7 @@ export default function Sidebar() {
                             type="button"
                             onClick={() => setExpandFinance((prev) => !prev)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-foreground',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
                                 collapsed && 'justify-center'
                             )}
                         >
@@ -124,27 +126,17 @@ export default function Sidebar() {
                         </button>
 
                         {!collapsed && expandFinance && (
-                            <div className="mt-1 ml-2 pl-2 border-l-2 border-border/70 space-y-1">
+                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
                                 <NavLink
                                     to="/finance"
-                                    className={({ isActive }) => cn(
-                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
-                                        isActive
-                                            ? 'bg-primary/10 text-primary font-medium'
-                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                                    )}
+                                    className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive)}
                                 >
                                     <Receipt size={16} />
                                     <span>Prehľad</span>
                                 </NavLink>
                                 <NavLink
                                     to="/invoices"
-                                    className={({ isActive }) => cn(
-                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
-                                        isActive
-                                            ? 'bg-primary/10 text-primary font-medium'
-                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                                    )}
+                                    className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive)}
                                 >
                                     <FileText size={16} />
                                     <span>Faktúry</span>
@@ -155,54 +147,48 @@ export default function Sidebar() {
                 )}
 
                 {isAdminOrSuperadmin && (
-                <div className="pt-2">
-                    <button
-                        type="button"
-                        onClick={() => setExpandMasterData((prev) => !prev)}
-                        className={cn(
-                            'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-accent hover:text-foreground',
-                            collapsed && 'justify-center'
-                        )}
-                    >
-                        <Settings size={20} />
-                        {!collapsed && (
-                            <>
-                                <span className="flex-1 text-left">Konfigurácia</span>
-                                {expandMasterData ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                            </>
-                        )}
-                    </button>
+                    <div className="pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setExpandMasterData((prev) => !prev)}
+                            className={cn(
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
+                                collapsed && 'justify-center'
+                            )}
+                        >
+                            <Settings size={20} />
+                            {!collapsed && (
+                                <>
+                                    <span className="flex-1 text-left">Konfigurácia</span>
+                                    {expandMasterData ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                </>
+                            )}
+                        </button>
 
-                    {!collapsed && expandMasterData && (
-                        <div className="mt-1 ml-2 pl-2 border-l-2 border-border/70 space-y-1">
-                            {masterDataLinks.map((link) => (
-                                <NavLink
-                                    key={link.to}
-                                    to={link.to}
-                                    className={({ isActive }) => cn(
-                                        'flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm',
-                                        isActive
-                                            ? 'bg-primary/10 text-primary font-medium'
-                                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                                    )}
-                                >
-                                    <link.icon size={16} />
-                                    <span>{link.name}</span>
-                                </NavLink>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        {!collapsed && expandMasterData && (
+                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
+                                {masterDataLinks.map((link) => (
+                                    <NavLink
+                                        key={link.to}
+                                        to={link.to}
+                                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive)}
+                                    >
+                                        <link.icon size={16} />
+                                        <span>{link.name}</span>
+                                    </NavLink>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 )}
 
-                {/* Superadmin Section */}
                 {isSuperadmin && (
                     <>
                         <div className="my-4 px-3">
                             <button
                                 onClick={() => setExpandSuperadmin(!expandSuperadmin)}
                                 className={cn(
-                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-muted-foreground hover:bg-red-100 hover:text-red-800",
+                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm",
                                     collapsed && "justify-center"
                                 )}
                             >
@@ -212,18 +198,12 @@ export default function Sidebar() {
                         </div>
 
                         {expandSuperadmin && (
-                            <div className="space-y-1 ml-2 pl-2 border-l-2 border-red-300">
+                            <div className="space-y-1 ml-2 pl-2 border-l border-slate-500">
                                 {superadminLinks.map((link) => (
                                     <NavLink
                                         key={link.to}
                                         to={link.to}
-                                        className={({ isActive }) => cn(
-                                            "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm",
-                                            isActive
-                                                ? "bg-red-100 text-red-700 font-medium"
-                                                : "text-muted-foreground hover:bg-red-50 hover:text-red-600",
-                                            collapsed && "justify-center"
-                                        )}
+                                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center")}
                                     >
                                         <link.icon size={18} />
                                         {!collapsed && <span>{link.name}</span>}
@@ -235,16 +215,16 @@ export default function Sidebar() {
                 )}
             </nav>
 
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-slate-500/50 bg-slate-600/90">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    <div className="w-10 h-10 rounded-full bg-blue-400/30 border border-blue-300/50 flex items-center justify-center text-blue-100 font-bold">
                         {initials}
                     </div>
                     {!collapsed && (
                         <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-medium truncate">{displayName}</p>
-                            <p className="text-xs text-muted-foreground truncate">{roleLabel}</p>
-                            <button onClick={logout} className="text-xs text-red-500 hover:underline">Odhlásiť sa</button>
+                            <p className="text-sm font-medium truncate text-slate-100">{displayName}</p>
+                            <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
+                            <button onClick={logout} className="text-xs text-blue-200 hover:underline">Odhlásiť sa</button>
                         </div>
                     )}
                 </div>

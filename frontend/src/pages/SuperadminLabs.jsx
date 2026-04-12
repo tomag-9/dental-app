@@ -89,14 +89,14 @@ export default function SuperadminLabs() {
       )}
 
       {/* Search */}
-      <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2">
-        <Search className="w-5 h-5 text-gray-400" />
+      <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-lg px-4 py-2">
+        <Search className="w-5 h-5 text-slate-500" />
         <input
           type="text"
-          placeholder="Search by name, city, or email..."
+          placeholder="Hľadať podľa názvu, mesta alebo e-mailu..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 outline-none"
+          className="flex-1 outline-none bg-transparent placeholder:text-slate-500"
         />
       </div>
 
