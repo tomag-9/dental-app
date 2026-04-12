@@ -23,6 +23,9 @@ class Job(models.Model):
         ("in_progress", "In Progress"),
         ("completed", "Completed"),
         ("cancelled", "Cancelled"),
+        ("finished_factured", "Finished – Factured"),
+        ("finished_unfactured", "Finished – Unfactured"),
+        ("closed", "Closed"),
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="jobs")

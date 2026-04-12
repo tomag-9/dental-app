@@ -46,11 +46,13 @@ export default function ProfileSettings() {
 
         setLoading(true);
         try {
-            // Note: Password change endpoint might need to be implemented
-            setError('Password change functionality not yet implemented');
+            await api.put('/users/me/', { password: formData.newPassword });
+            setSuccess('Password updated successfully');
+            setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
         } catch (err) {
             console.error('Failed to change password:', err);
-            setError('Failed to change password');
+            const detail = err?.response?.data?.detail;
+            setError(typeof detail === 'string' ? detail : 'Failed to change password');
         } finally {
             setLoading(false);
         }
