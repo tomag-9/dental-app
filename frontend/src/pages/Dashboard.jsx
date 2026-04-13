@@ -24,12 +24,6 @@ export default function Dashboard() {
         fetchDashboardData();
     }, []);
 
-    const normalizeListResponse = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.results)) return responseData.results;
-        return [];
-    };
-
     const formatAmount = (value) => {
         const amount = Number(value);
         return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
@@ -39,36 +33,16 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
         try {
-            const [jobsRes, patientsRes, invoicesRes] = await Promise.all([
-                api.get('/jobs/jobs/'),
-                api.get('/crm/patients/'),
-                api.get('/invoices/')
-            ]);
-
-            const jobs = normalizeListResponse(jobsRes.data);
-            const patients = normalizeListResponse(patientsRes.data);
-            const invoices = normalizeListResponse(invoicesRes.data);
-
-            // Calculate stats
-            const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'cancelled').length;
-            const completedJobs = jobs.filter(j => j.status === 'completed').length;
-            const totalRevenue = invoices.reduce((sum, inv) => {
-                const amount = Number(inv?.total_amount ?? 0);
-                return sum + (Number.isFinite(amount) ? amount : 0);
-            }, 0);
-
+            const response = await api.get('/dashboard/stats/');
+            const data = response.data;
             setStats({
-                totalPatients: patients.length,
-                activeJobs,
-                revenue: totalRevenue,
-                completedJobs
+                totalPatients: data.total_patients,
+                activeJobs: data.active_jobs,
+                revenue: parseFloat(data.total_revenue || 0),
+                completedJobs: data.completed_jobs,
             });
-
-            // Get recent jobs (last 5)
-            setRecentJobs(jobs.slice(0, 5));
-
-            // Get recent invoices (last 5)
-            setRecentInvoices(invoices.slice(0, 5));
+            setRecentJobs(data.recent_jobs || []);
+            setRecentInvoices(data.recent_invoices || []);
         } catch (err) {
             console.error('Failed to fetch dashboard data:', err);
             setError('Nepodarilo sa načítať dáta nástenky. Skúste to znova.');

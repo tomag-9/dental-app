@@ -15,9 +15,9 @@ export default function Settings() {
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(user?.role);
 
     const allSettings = [
-        { id: 'profile', label: 'Profile', icon: User, component: ProfileSettings },
-        { id: 'users', label: 'Team Members', icon: Users, component: UsersSettings },
-        { id: 'lab', label: 'Lab Settings', icon: Building, component: LabSettings },
+        { id: 'profile', label: 'Profil', icon: User, component: ProfileSettings },
+        { id: 'users', label: 'Členovia tímu', icon: Users, component: UsersSettings },
+        { id: 'lab', label: 'Nastavenia laboratória', icon: Building, component: LabSettings },
     ];
 
     const settings = allSettings.filter((section) => {
@@ -42,8 +42,8 @@ export default function Settings() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">Manage your account, lab, and team settings.</p>
+                <h1 className="text-3xl font-bold tracking-tight">Nastavenia</h1>
+                <p className="text-muted-foreground">Spravujte účet, laboratórium a členov tímu.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">

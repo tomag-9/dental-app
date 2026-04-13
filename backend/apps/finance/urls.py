@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
+from .views import FinanceStatsView, InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
 
 router = DefaultRouter()
 router.register(r"invoices", InvoiceViewSet)
@@ -10,4 +10,5 @@ router.register(r"subscriptions", SubscriptionViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),
+    path("stats/", FinanceStatsView.as_view(), name="finance-stats"),
 ]

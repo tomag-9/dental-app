@@ -41,7 +41,7 @@ export default function PatientCreate() {
                 });
             } catch (err) {
                 console.error(err);
-                setError(err.response?.data?.detail || 'Failed to load patient');
+                setError(err.response?.data?.detail || 'Nepodarilo sa načítať pacienta.');
             } finally {
                 setLoading(false);
             }
@@ -66,7 +66,7 @@ export default function PatientCreate() {
             navigate('/patients');
         } catch (err) {
             console.error(err);
-            setError(err.response?.data?.detail || (isEditing ? 'Failed to update patient' : 'Failed to create patient'));
+            setError(err.response?.data?.detail || (isEditing ? 'Nepodarilo sa aktualizovať pacienta.' : 'Nepodarilo sa vytvoriť pacienta.'));
         } finally {
             setLoading(false);
         }
@@ -84,8 +84,8 @@ export default function PatientCreate() {
                     <ArrowLeft size={20} />
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{isEditing ? 'Edit Patient' : 'New Patient'}</h1>
-                    <p className="text-muted-foreground">{isEditing ? 'Update patient record.' : 'Add a new patient record.'}</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{isEditing ? 'Upraviť pacienta' : 'Nový pacient'}</h1>
+                    <p className="text-muted-foreground">{isEditing ? 'Úprava záznamu pacienta.' : 'Pridanie nového pacienta.'}</p>
                 </div>
             </div>
 
@@ -98,21 +98,21 @@ export default function PatientCreate() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
+                    <CardTitle>Osobné údaje</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Name Fields */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div className="grid grid-cols-2 gap-4">
                             <FormField
-                                label="First Name"
+                                label="Meno"
                                 name="first_name"
                                 value={formData.first_name}
                                 onChange={handleChange}
                                 required
                             />
                             <FormField
-                                label="Last Name"
+                                label="Priezvisko"
                                 name="last_name"
                                 value={formData.last_name}
                                 onChange={handleChange}
@@ -122,26 +122,26 @@ export default function PatientCreate() {
 
                         {/* Birth Number */}
                         <FormField
-                            label="Birth Number (RC)"
+                            label="Rodné číslo"
                             name="birth_number"
                             value={formData.birth_number}
                             onChange={handleChange}
-                            placeholder="e.g. 851212/1234"
-                            helpText="Patient's birth/identification number"
+                            placeholder="napr. 851212/1234"
+                            helpText="Rodné číslo pacienta"
                             required
                         />
 
                         {/* Contact Fields */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                        <div className="grid grid-cols-2 gap-4">
                             <FormField
-                                label="Email"
+                                label="E-mail"
                                 name="email"
                                 type="email"
                                 value={formData.email}
                                 onChange={handleChange}
                             />
                             <FormField
-                                label="Phone"
+                                label="Telefón"
                                 name="phone"
                                 type="tel"
                                 value={formData.phone}
@@ -151,7 +151,7 @@ export default function PatientCreate() {
 
                         {/* Address */}
                         <FormField
-                            label="Address"
+                            label="Adresa"
                             name="address"
                             type="textarea"
                             value={formData.address}
@@ -161,21 +161,21 @@ export default function PatientCreate() {
 
                         {/* Actions */}
                         <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t">
-                            <Button 
+                            <Button
                                 type="button"
-                                variant="outline" 
+                                variant="outline"
                                 onClick={() => navigate('/patients')}
                                 className="w-full sm:w-auto"
                             >
-                                Cancel
+                                Zrušiť
                             </Button>
-                            <Button 
+                            <Button
                                 type="submit"
                                 disabled={loading}
                                 className="w-full sm:w-auto"
                             >
                                 <Save className="mr-2 h-4 w-4" />
-                                {loading ? 'Saving...' : isEditing ? 'Update Patient' : 'Save Patient'}
+                                {loading ? 'Ukladám...' : isEditing ? 'Uložiť zmeny' : 'Uložiť pacienta'}
                             </Button>
                         </div>
                     </form>

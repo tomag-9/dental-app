@@ -4,7 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.core.views import LabViewSet, UserViewSet
+from apps.core.views import DashboardStatsView, LabViewSet, UserViewSet
 from apps.crm.views import ClinicViewSet, DoctorViewSet, PatientViewSet
 from apps.finance.views import InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
 from apps.inventory.views import WarehouseItemViewSet
@@ -22,6 +22,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Root API endpoints
     path("api/", include(root_router.urls)),
+    path("api/dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
     # Nested app routes
     path("api/core/", include("apps.core.urls")),
     path("api/crm/", include("apps.crm.urls")),

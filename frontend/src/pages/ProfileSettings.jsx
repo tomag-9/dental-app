@@ -30,29 +30,29 @@ export default function ProfileSettings() {
         setSuccess('');
 
         if (!formData.currentPassword) {
-            setError('Current password is required');
+            setError('Aktuálne heslo je povinné');
             return;
         }
 
         if (!formData.newPassword) {
-            setError('New password is required');
+            setError('Nové heslo je povinné');
             return;
         }
 
         if (formData.newPassword !== formData.confirmPassword) {
-            setError('Passwords do not match');
+            setError('Heslá sa nezhodujú');
             return;
         }
 
         setLoading(true);
         try {
             await api.put('/users/me/', { password: formData.newPassword });
-            setSuccess('Password updated successfully');
+            setSuccess('Heslo bolo úspešne zmenené.');
             setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
         } catch (err) {
             console.error('Failed to change password:', err);
             const detail = err?.response?.data?.detail;
-            setError(typeof detail === 'string' ? detail : 'Failed to change password');
+            setError(typeof detail === 'string' ? detail : 'Nepodarilo sa zmeniť heslo.');
         } finally {
             setLoading(false);
         }
@@ -72,7 +72,7 @@ export default function ProfileSettings() {
             if (response?.data) {
                 updateUser(response.data);
             }
-            setSuccess('Profile updated successfully');
+            setSuccess('Profil bol úspešne aktualizovaný.');
         } catch (err) {
             console.error('Failed to update profile:', err);
             const apiData = err.response?.data;
@@ -85,9 +85,9 @@ export default function ProfileSettings() {
                         return `${field}: ${message}`;
                     })
                     .join(' | ');
-                setError(firstError || 'Failed to update profile');
+                setError(firstError || 'Nepodarilo sa aktualizovať profil.');
             } else {
-                setError('Failed to update profile');
+                setError('Nepodarilo sa aktualizovať profil.');
             }
         } finally {
             setLoading(false);
@@ -97,8 +97,8 @@ export default function ProfileSettings() {
     return (
         <div className="space-y-6 max-w-2xl">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Account Settings</h2>
-                <p className="text-muted-foreground">Manage your personal account information.</p>
+                <h2 className="text-2xl font-bold tracking-tight">Nastavenia účtu</h2>
+                <p className="text-muted-foreground">Spravujte svoje osobné údaje.</p>
             </div>
 
             {error && (
@@ -116,24 +116,24 @@ export default function ProfileSettings() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Profile Information</CardTitle>
+                    <CardTitle>Informácie o profile</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleUpdateProfile} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Display Name</label>
+                                <label className="block text-sm font-medium mb-2">Prezývka</label>
                                 <input
                                     type="text"
                                     name="nickname"
                                     value={formData.nickname}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Your display name"
+                                    placeholder="vaša prezývka"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Email</label>
+                                <label className="block text-sm font-medium mb-2">E-mail</label>
                                 <input
                                     type="email"
                                     name="email"
@@ -150,12 +150,12 @@ export default function ProfileSettings() {
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Save Profile
+                                        Uložiť profil
                                     </>
                                 )}
                             </Button>
@@ -166,12 +166,12 @@ export default function ProfileSettings() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Change Password</CardTitle>
+                    <CardTitle>Zmena hesla</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleChangePassword} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium mb-2">Current Password</label>
+                            <label className="block text-sm font-medium mb-2">Aktuálne heslo</label>
                             <input
                                 type="password"
                                 name="currentPassword"
@@ -184,7 +184,7 @@ export default function ProfileSettings() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">New Password</label>
+                                <label className="block text-sm font-medium mb-2">Nové heslo</label>
                                 <input
                                     type="password"
                                     name="newPassword"
@@ -195,7 +195,7 @@ export default function ProfileSettings() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Confirm Password</label>
+                                <label className="block text-sm font-medium mb-2">Potvrdiť heslo</label>
                                 <input
                                     type="password"
                                     name="confirmPassword"
@@ -212,12 +212,12 @@ export default function ProfileSettings() {
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Updating...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Update Password
+                                        Zmeniť heslo
                                     </>
                                 )}
                             </Button>

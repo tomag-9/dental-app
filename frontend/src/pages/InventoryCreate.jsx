@@ -44,7 +44,7 @@ export default function InventoryCreate() {
             });
         } catch (err) {
             console.error('Failed to fetch item:', err);
-            setError('Failed to load item');
+            setError('Nepodarilo sa načítať položku.');
         } finally {
             setLoading(false);
         }
@@ -66,7 +66,7 @@ export default function InventoryCreate() {
         setError('');
 
         if (!formData.name.trim()) {
-            setError('Item name is required');
+            setError('Názov položky je povinný.');
             return;
         }
 
@@ -95,9 +95,9 @@ export default function InventoryCreate() {
             console.error('Failed to save item:', err);
             const errorMsg = err.response?.data?.detail;
             if (typeof errorMsg === 'string' && errorMsg.includes('SKU')) {
-                setError('SKU must be unique within your lab');
+                setError('SKU musí byť jedinečné v rámci laboratória.');
             } else {
-                setError(errorMsg || 'Failed to save item');
+                setError(errorMsg || 'Nepodarilo sa uložiť položku.');
             }
         } finally {
             setLoading(false);
@@ -116,12 +116,12 @@ export default function InventoryCreate() {
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        {isEditing ? 'Edit Inventory Item' : 'New Inventory Item'}
+                        {isEditing ? 'Upraviť položku skladu' : 'Nová položka skladu'}
                     </h1>
                     <p className="text-muted-foreground">
                         {isEditing
-                            ? 'Update item information.'
-                            : 'Add a new material or supply to inventory.'}
+                            ? 'Úprava informácií o položke.'
+                            : 'Pridanie nového materiálu alebo zásoby do skladu.'}
                     </p>
                 </div>
             </div>
@@ -134,13 +134,13 @@ export default function InventoryCreate() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Item Details</CardTitle>
+                    <CardTitle>Detaily položky</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">
-                                Item Name <span className="text-destructive">*</span>
+                                Názov položky <span className="text-destructive">*</span>
                             </label>
                             <input
                                 type="text"
@@ -169,7 +169,7 @@ export default function InventoryCreate() {
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Category</label>
+                                <label className="block text-sm font-medium mb-2">Kategória</label>
                                 <input
                                     type="text"
                                     name="category"
@@ -184,7 +184,7 @@ export default function InventoryCreate() {
                         <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Quantity <span className="text-destructive">*</span>
+                                    Množstvo <span className="text-destructive">*</span>
                                 </label>
                                 <input
                                     type="number"
@@ -197,7 +197,7 @@ export default function InventoryCreate() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Unit</label>
+                                <label className="block text-sm font-medium mb-2">Jednotka</label>
                                 <select
                                     name="unit"
                                     value={formData.unit}
@@ -210,7 +210,7 @@ export default function InventoryCreate() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Min. Threshold</label>
+                                <label className="block text-sm font-medium mb-2">Min. zásoba</label>
                                 <input
                                     type="number"
                                     name="min_threshold"
@@ -221,14 +221,14 @@ export default function InventoryCreate() {
                                     placeholder="10"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Low stock alert
+                                    Upozornenie na nízky stav
                                 </p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Location</label>
+                                <label className="block text-sm font-medium mb-2">Umiestnenie</label>
                                 <input
                                     type="text"
                                     name="location"
@@ -239,7 +239,7 @@ export default function InventoryCreate() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Cost Price (€)</label>
+                                <label className="block text-sm font-medium mb-2">Nákupná cena (€)</label>
                                 <input
                                     type="number"
                                     name="cost_price"
@@ -253,7 +253,7 @@ export default function InventoryCreate() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Notes</label>
+                            <label className="block text-sm font-medium mb-2">Poznámky</label>
                             <textarea
                                 name="notes"
                                 value={formData.notes}
@@ -270,18 +270,18 @@ export default function InventoryCreate() {
                                 variant="outline"
                                 onClick={() => navigate('/inventory')}
                             >
-                                Cancel
+                                Zrušiť
                             </Button>
                             <Button type="submit" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Save Item
+                                        Uložiť položku
                                     </>
                                 )}
                             </Button>

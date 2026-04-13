@@ -103,11 +103,11 @@ export default function DoctorCreate() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Meno</label>
+                                <label className="block text-sm font-medium mb-1">Meno <span className="text-destructive">*</span></label>
                                 <input name="first_name" value={formData.first_name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Priezvisko</label>
+                                <label className="block text-sm font-medium mb-1">Priezvisko <span className="text-destructive">*</span></label>
                                 <input name="last_name" value={formData.last_name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
                             </div>
                         </div>
@@ -134,7 +134,10 @@ export default function DoctorCreate() {
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-6 flex justify-end gap-3">
+                        <Button type="button" variant="outline" onClick={() => navigate('/doctors')}>
+                            Zrušiť
+                        </Button>
                         <Button onClick={handleSubmit} disabled={loading}>
                             <Save className="mr-2 h-4 w-4" />
                             {loading ? 'Ukladám...' : isEditing ? 'Uložiť zmeny' : 'Uložiť lekára'}

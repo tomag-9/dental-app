@@ -48,7 +48,7 @@ export default function SuperadminDashboard() {
         inactiveSubscriptions: inactive
       });
     } catch (err) {
-      setError('Failed to load dashboard data: ' + (err.response?.data?.detail || err.message));
+      setError('Nepodarilo sa načítať dáta: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -109,7 +109,7 @@ export default function SuperadminDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-bold">Superadmin Dashboard</h1>
+        <h1 className="text-4xl font-bold">Administrátorský panel</h1>
       </div>
 
       {error && (
@@ -123,25 +123,25 @@ export default function SuperadminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={Building2}
-          title="Total Labs"
+          title="Celkom laboratórií"
           value={stats.totalLabs}
           color="bg-blue-100 text-blue-600"
         />
         <StatCard
           icon={Users}
-          title="Total Users"
+          title="Celkom používateľov"
           value={stats.totalUsers}
           color="bg-green-100 text-green-600"
         />
         <StatCard
           icon={CheckCircle2}
-          title="Active Subscriptions"
+          title="Aktívne predplatné"
           value={stats.activeSubscriptions}
           color="bg-emerald-100 text-emerald-600"
         />
         <StatCard
           icon={XCircle}
-          title="Inactive Subscriptions"
+          title="Neaktívne predplatné"
           value={stats.inactiveSubscriptions}
           color="bg-red-100 text-red-600"
         />
@@ -149,12 +149,12 @@ export default function SuperadminDashboard() {
 
       {/* Labs Table */}
       <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-6">Labs Overview</h2>
+        <h2 className="text-2xl font-bold mb-6">Prehľad laboratórií</h2>
 
         {labs.length === 0 ? (
           <div className="text-center py-12">
             <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No labs found</p>
+            <p className="text-gray-600">Žiadne laboratóriá</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -162,13 +162,13 @@ export default function SuperadminDashboard() {
               <thead>
                 <tr className="border-b-2 border-gray-200">
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">City</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Users</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Plan</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Created</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Názov</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Mesto</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">E-mail</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Použ.</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Plán</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Stav</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Vytvorené</th>
                 </tr>
               </thead>
               <tbody>

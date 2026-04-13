@@ -54,7 +54,7 @@ export default function SuperadminSubscriptions() {
       }
       setSubscriptions(subsData);
     } catch (err) {
-      setError('Failed to load subscriptions: ' + (err.response?.data?.detail || err.message));
+      setError('Nepodarilo sa načítať predplatné: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -98,11 +98,11 @@ export default function SuperadminSubscriptions() {
   const getPlanPrice = (plan) => {
     switch (plan) {
       case 'basic':
-        return '$29.99/mo';
+        return '29,99 €/mes';
       case 'premium':
-        return '$99.99/mo';
+        return '99,99 €/mes';
       case 'free':
-        return 'Free';
+        return 'Zadarmo';
       default:
         return '-';
     }
@@ -119,7 +119,7 @@ export default function SuperadminSubscriptions() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-4xl font-bold">Subscriptions Management</h1>
+        <h1 className="text-4xl font-bold">Správa predplatného</h1>
       </div>
 
       {error && (
@@ -134,7 +134,7 @@ export default function SuperadminSubscriptions() {
         <Search className="w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by lab name or plan..."
+          placeholder="Hľadať podľa laboratória alebo plánu..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="flex-1 outline-none"
@@ -144,10 +144,10 @@ export default function SuperadminSubscriptions() {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Subscriptions', value: subscriptions.length },
-          { label: 'Free Plans', value: subscriptions.filter(s => s.plan === 'free').length },
-          { label: 'Basic Plans', value: subscriptions.filter(s => s.plan === 'basic').length },
-          { label: 'Premium Plans', value: subscriptions.filter(s => s.plan === 'premium').length }
+          { label: 'Celkom predplatných', value: subscriptions.length },
+          { label: 'Free plán', value: subscriptions.filter(s => s.plan === 'free').length },
+          { label: 'Basic plán', value: subscriptions.filter(s => s.plan === 'basic').length },
+          { label: 'Premium plán', value: subscriptions.filter(s => s.plan === 'premium').length }
         ].map(stat => (
           <Card key={stat.label} className="p-4">
             <p className="text-sm text-gray-600">{stat.label}</p>
@@ -158,12 +158,12 @@ export default function SuperadminSubscriptions() {
 
       {/* Subscriptions Table */}
       <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-6">Subscriptions List</h2>
+        <h2 className="text-2xl font-bold mb-6">Zoznam predplatného</h2>
 
         {filteredSubscriptions.length === 0 ? (
           <div className="text-center py-12">
             <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No subscriptions found</p>
+            <p className="text-gray-600">Žiadne predplatné</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -171,12 +171,12 @@ export default function SuperadminSubscriptions() {
               <thead>
                 <tr className="border-b-2 border-gray-200">
                   <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Lab</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Plan</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Price</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Created</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Updated</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Laboratórium</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Plán</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Cena</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Stav</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Vytvorené</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Aktualizované</th>
                 </tr>
               </thead>
               <tbody>
@@ -184,7 +184,7 @@ export default function SuperadminSubscriptions() {
                   <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 text-gray-900">{sub.id}</td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{sub.lab_name || 'N/A'}</div>
+                      <div className="font-medium text-gray-900">{sub.lab_name || '-'}</div>
                       {sub.lab_id && <div className="text-xs text-gray-500">Lab ID: {sub.lab_id}</div>}
                     </td>
                     <td className="py-3 px-4">
@@ -216,32 +216,32 @@ export default function SuperadminSubscriptions() {
 
       {/* Plan Details Legend */}
       <Card className="p-6">
-        <h3 className="text-lg font-bold mb-4">Plan Details</h3>
+        <h3 className="text-lg font-bold mb-4">Detaily plánov</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <div className="font-medium text-gray-900 mb-2">Free Plan</div>
+            <div className="font-medium text-gray-900 mb-2">Free plán</div>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Up to 1 user</li>
-              <li>• Basic features</li>
-              <li>• 30-day data retention</li>
+              <li>• Max. 1 používateľ</li>
+              <li>• Základné funkcie</li>
+              <li>• Uchovanie dát 30 dní</li>
             </ul>
           </div>
           <div>
-            <div className="font-medium text-gray-900 mb-2">Basic Plan ($29.99/mo)</div>
+            <div className="font-medium text-gray-900 mb-2">Basic plán (29,99 €/mes)</div>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Up to 5 users</li>
-              <li>• All core features</li>
-              <li>• Email support</li>
-              <li>• Unlimited data retention</li>
+              <li>• Max. 5 používateľov</li>
+              <li>• Všetky základné funkcie</li>
+              <li>• Podpora e-mailom</li>
+              <li>• Neobmedzené uchovanie dát</li>
             </ul>
           </div>
           <div>
-            <div className="font-medium text-gray-900 mb-2">Premium Plan ($99.99/mo)</div>
+            <div className="font-medium text-gray-900 mb-2">Premium plán (99,99 €/mes)</div>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Unlimited users</li>
-              <li>• All features</li>
-              <li>• Priority support</li>
-              <li>• API access</li>
+              <li>• Neobmedzený počet používateľov</li>
+              <li>• Všetky funkcie</li>
+              <li>• Prioritná podpora</li>
+              <li>• Prístup k API</li>
             </ul>
           </div>
         </div>

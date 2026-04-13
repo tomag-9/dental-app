@@ -1,9 +1,9 @@
 import { AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 
-export default function ErrorState({ 
-  title = 'Something went wrong',
-  message = 'An error occurred while loading the data.',
+export default function ErrorState({
+  title = 'Nastala chyba',
+  message = 'Nastala chyba pri načítaní dát.',
   onRetry = null,
   details = null
 }) {
@@ -27,7 +27,7 @@ export default function ErrorState({
               className="border-red-300 hover:bg-red-100"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Try Again
+              Skúsiť znova
             </Button>
           )}
         </div>
