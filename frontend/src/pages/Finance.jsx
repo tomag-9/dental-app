@@ -61,7 +61,7 @@ export default function Finance() {
     ];
 
     const maxRevenue = stats?.monthly_revenue
-        ? Math.max(...stats.monthly_revenue.map((m) => m.revenue), 1)
+        ? Math.max(...stats.monthly_revenue.map((m) => Number(m.revenue)), 1)
         : 1;
 
     return (
@@ -110,22 +110,25 @@ export default function Finance() {
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-end gap-2 h-44 pt-4">
-                            {stats.monthly_revenue.map((item) => (
+                            {stats.monthly_revenue.map((item) => {
+                                const rev = Number(item.revenue);
+                                return (
                                 <div key={item.month} className="flex-1 flex flex-col items-center gap-1">
                                     <span className="text-xs text-muted-foreground">
-                                        {item.revenue > 0 ? `${item.revenue.toFixed(0)} €` : ''}
+                                        {rev > 0 ? `${rev.toFixed(0)} €` : ''}
                                     </span>
                                     <div
                                         className="w-full bg-primary rounded-t-sm min-h-[4px]"
                                         style={{
-                                            height: `${Math.max(4, (item.revenue / maxRevenue) * 140)}px`,
+                                            height: `${Math.max(4, (rev / maxRevenue) * 140)}px`,
                                         }}
                                     />
                                     <span className="text-xs text-muted-foreground text-center leading-tight">
                                         {item.month}
                                     </span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>

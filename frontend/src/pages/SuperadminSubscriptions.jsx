@@ -69,9 +69,9 @@ export default function SuperadminSubscriptions() {
     switch (plan) {
       case 'free':
         return 'bg-gray-100 text-gray-800';
-      case 'basic':
+      case 'pro':
         return 'bg-blue-100 text-blue-800';
-      case 'premium':
+      case 'enterprise':
         return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -97,9 +97,9 @@ export default function SuperadminSubscriptions() {
 
   const getPlanPrice = (plan) => {
     switch (plan) {
-      case 'basic':
+      case 'pro':
         return '29,99 €/mes';
-      case 'premium':
+      case 'enterprise':
         return '99,99 €/mes';
       case 'free':
         return 'Zadarmo';
@@ -146,8 +146,8 @@ export default function SuperadminSubscriptions() {
         {[
           { label: 'Celkom predplatných', value: subscriptions.length },
           { label: 'Free plán', value: subscriptions.filter(s => s.plan === 'free').length },
-          { label: 'Basic plán', value: subscriptions.filter(s => s.plan === 'basic').length },
-          { label: 'Premium plán', value: subscriptions.filter(s => s.plan === 'premium').length }
+          { label: 'Pro plán', value: subscriptions.filter(s => s.plan === 'pro').length },
+          { label: 'Enterprise plán', value: subscriptions.filter(s => s.plan === 'enterprise').length }
         ].map(stat => (
           <Card key={stat.label} className="p-4">
             <p className="text-sm text-gray-600">{stat.label}</p>
@@ -227,7 +227,7 @@ export default function SuperadminSubscriptions() {
             </ul>
           </div>
           <div>
-            <div className="font-medium text-gray-900 mb-2">Basic plán (29,99 €/mes)</div>
+            <div className="font-medium text-gray-900 mb-2">Pro plán (29,99 €/mes)</div>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• Max. 5 používateľov</li>
               <li>• Všetky základné funkcie</li>
@@ -236,7 +236,7 @@ export default function SuperadminSubscriptions() {
             </ul>
           </div>
           <div>
-            <div className="font-medium text-gray-900 mb-2">Premium plán (99,99 €/mes)</div>
+            <div className="font-medium text-gray-900 mb-2">Enterprise plán (99,99 €/mes)</div>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• Neobmedzený počet používateľov</li>
               <li>• Všetky funkcie</li>

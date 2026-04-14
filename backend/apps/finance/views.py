@@ -361,7 +361,7 @@ def _month_window(dt):
 
 
 def _months_ago(n):
-    today = date.today()
+    today = timezone.localdate()
     month = today.month - n
     year = today.year
     while month <= 0:
@@ -392,7 +392,7 @@ class FinanceStatsView(APIView):
         )
         pending_invoices = qs.filter(status="issued").count()
 
-        today = date.today()
+        today = timezone.localdate()
         this_start, this_end = _month_window(today)
         last_month = _months_ago(1)
         last_start, last_end = _month_window(last_month)
@@ -436,13 +436,13 @@ class FinanceStatsView(APIView):
             monthly_revenue.append(
                 {
                     "month": month_date.strftime("%b %Y"),
-                    "revenue": float(rev),
+                    "revenue": str(rev),
                 }
             )
 
         return Response(
             {
-                "total_revenue": float(total_revenue),
+                "total_revenue": str(total_revenue),
                 "pending_invoices": pending_invoices,
                 "monthly_growth_pct": round(growth_pct, 1),
                 "monthly_revenue": monthly_revenue,

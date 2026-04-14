@@ -516,3 +516,70 @@ class WarehouseContractTests(APITestCase):
         ]
         for field in required_fields:
             self.assertIn(field, item, f"Missing required field: {field}")
+
+
+class DashboardStatsContractTests(APITestCase):
+    """Contract tests for GET /api/dashboard/stats/."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Stats Lab")
+        self.admin = User.objects.create_user(
+            username="stats_admin",
+            email="stats_admin@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab,
+        )
+        self.superadmin = User.objects.create_user(
+            username="stats_superadmin",
+            email="stats_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+
+    def test_response_contract(self):
+        """GET /api/dashboard/stats/ must return the expected fields."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/dashboard/stats/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        required = [
+            "total_patients",
+            "active_jobs",
+            "completed_jobs",
+            "total_revenue",
+            "recent_jobs",
+            "recent_invoices",
+        ]
+        for field in required:
+            self.assertIn(field, response.data, f"Missing field: {field}")
+
+        self.assertIsInstance(response.data["total_patients"], int)
+        self.assertIsInstance(response.data["active_jobs"], int)
+        self.assertIsInstance(response.data["completed_jobs"], int)
+        self.assertIsInstance(response.data["recent_jobs"], list)
+        self.assertIsInstance(response.data["recent_invoices"], list)
+
+    def test_unauthenticated_denied(self):
+        """Unauthenticated requests must be rejected."""
+        response = self.client.get("/api/dashboard/stats/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_no_lab_user_denied(self):
+        """Users without a lab association must receive 403."""
+        no_lab = User.objects.create_user(
+            username="no_lab_stats",
+            email="no_lab_stats@example.com",
+            password="password123",
+            role="user",
+        )
+        self.client.force_authenticate(user=no_lab)
+        response = self.client.get("/api/dashboard/stats/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superadmin_receives_all_data(self):
+        """Superadmin must get a 200 response (sees all labs)."""
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get("/api/dashboard/stats/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
