@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react';
 
-export default function LoadingState({ message = 'Loading...', size = 'md' }) {
+export default function LoadingState({ message = 'Načítavam...', size = 'md' }) {
   const sizeClasses = {
     sm: 'w-6 h-6',
     md: 'w-8 h-8',

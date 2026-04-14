@@ -31,7 +31,7 @@ export default function UsersSettings() {
             setUsers(response.data);
         } catch (err) {
             console.error('Failed to fetch users:', err);
-            setError('Failed to load users');
+            setError('Nepodarilo sa načítať používateľov.');
         } finally {
             setIsLoading(false);
         }
@@ -42,7 +42,7 @@ export default function UsersSettings() {
         setError('');
 
         if (!formData.nickname && !formData.email) {
-            setError('Please provide either nickname or email');
+            setError('Zadajte prezývku alebo e-mail.');
             return;
         }
 
@@ -58,7 +58,7 @@ export default function UsersSettings() {
             setShowNewUserForm(false);
         } catch (err) {
             console.error('Failed to create user:', err);
-            setError(err.response?.data?.detail || 'Failed to create user');
+            setError(err.response?.data?.detail || 'Nepodarilo sa vytvoriť používateľa.');
         }
     };
 
@@ -70,7 +70,7 @@ export default function UsersSettings() {
             await fetchUsers();
         } catch (err) {
             console.error('Failed to delete user:', err);
-            setError(err.response?.data?.detail || 'Failed to delete user');
+            setError(err.response?.data?.detail || 'Nepodarilo sa odstrániť používateľa.');
         } finally {
             setUserToDelete(null);
         }
@@ -85,11 +85,11 @@ export default function UsersSettings() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Team Members</h2>
-                    <p className="text-muted-foreground">Manage lab users and their roles.</p>
+                    <h2 className="text-2xl font-bold tracking-tight">Členovia tímu</h2>
+                    <p className="text-muted-foreground">Správa používateľov laboratória a ich rolí.</p>
                 </div>
                 <Button onClick={() => setShowNewUserForm(!showNewUserForm)}>
-                    <Plus className="mr-2 h-4 w-4" /> Add User
+                    <Plus className="mr-2 h-4 w-4" /> Pridať používateľa
                 </Button>
             </div>
 
@@ -102,13 +102,13 @@ export default function UsersSettings() {
             {showNewUserForm && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Add New User</CardTitle>
+                        <CardTitle>Pridať nového používateľa</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleAddUser} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Nickname</label>
+                                    <label className="block text-sm font-medium mb-2">Prezývka</label>
                                     <input
                                         type="text"
                                         value={formData.nickname}
@@ -118,7 +118,7 @@ export default function UsersSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Email</label>
+                                    <label className="block text-sm font-medium mb-2">E-mail</label>
                                     <input
                                         type="email"
                                         value={formData.email}
@@ -130,7 +130,7 @@ export default function UsersSettings() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Password</label>
+                                    <label className="block text-sm font-medium mb-2">Heslo</label>
                                     <input
                                         type="password"
                                         value={formData.password}
@@ -141,21 +141,21 @@ export default function UsersSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Role</label>
+                                    <label className="block text-sm font-medium mb-2">Rola</label>
                                     <select
                                         value={formData.role}
                                         onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
                                         className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <option value="user">User</option>
+                                        <option value="user">Používateľ</option>
                                         <option value="admin">Admin</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="flex gap-3">
-                                <Button type="submit">Save User</Button>
+                                <Button type="submit">Uložiť používateľa</Button>
                                 <Button type="button" variant="outline" onClick={() => setShowNewUserForm(false)}>
-                                    Cancel
+                                    Zrušiť
                                 </Button>
                             </div>
                         </form>
@@ -166,11 +166,11 @@ export default function UsersSettings() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>All Users ({filteredUsers.length})</CardTitle>
+                        <CardTitle>Všetci používatelia ({filteredUsers.length})</CardTitle>
                         <div className="relative w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <input
-                                placeholder="Search users..."
+                                placeholder="Hľadať používateľov..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -185,18 +185,18 @@ export default function UsersSettings() {
                         </div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            No users found.
+                            Žiadni používatelia sa nenašli.
                         </div>
                     ) : (
                         <div className="rounded-md border">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="px-4 py-3 font-medium text-left">Name</th>
-                                        <th className="px-4 py-3 font-medium text-left">Email</th>
-                                        <th className="px-4 py-3 font-medium text-left">Role</th>
-                                        <th className="px-4 py-3 font-medium text-left">Status</th>
-                                        <th className="px-4 py-3 font-medium text-right">Actions</th>
+                                        <th className="px-4 py-3 font-medium text-left">Meno</th>
+                                        <th className="px-4 py-3 font-medium text-left">E-mail</th>
+                                        <th className="px-4 py-3 font-medium text-left">Rola</th>
+                                        <th className="px-4 py-3 font-medium text-left">Stav</th>
+                                        <th className="px-4 py-3 font-medium text-right">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -218,12 +218,12 @@ export default function UsersSettings() {
                                                     {user.is_active ? (
                                                         <>
                                                             <Check className="h-4 w-4 text-green-600" />
-                                                            <span className="text-green-700">Active</span>
+                                                            <span className="text-green-700">Aktívny</span>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <X className="h-4 w-4 text-red-600" />
-                                                            <span className="text-red-700">Inactive</span>
+                                                            <span className="text-red-700">Neaktívny</span>
                                                         </>
                                                     )}
                                                 </span>
@@ -249,10 +249,10 @@ export default function UsersSettings() {
 
             <ConfirmDialog
                 open={!!userToDelete}
-                title="Delete user"
-                message="Are you sure you want to delete this user?"
-                confirmText="Delete"
-                cancelText="Cancel"
+                title="Odstrániť používateľa"
+                message="Naozaj chcete odstrániť tohto používateľa?"
+                confirmText="Odstrániť"
+                cancelText="Zrušiť"
                 destructive
                 onConfirm={handleDeleteUser}
                 onCancel={() => setUserToDelete(null)}

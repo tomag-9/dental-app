@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
-from apps.finance.models import PriceList, Subscription
+from apps.finance.models import Invoice, PriceList, Subscription
 from apps.jobs.models import Job, Technician
 
 
@@ -432,3 +432,91 @@ class PriceListCrudApiTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class FinanceStatsViewTests(APITestCase):
+    """Tests for GET /api/finance/stats/."""
+
+    def setUp(self):
+        self.lab_a = Lab.objects.create(name="Finance Lab A")
+        self.lab_b = Lab.objects.create(name="Finance Lab B")
+        self.admin_a = User.objects.create_user(
+            username="fin_admin_a",
+            email="fin_admin_a@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab_a,
+        )
+        self.admin_b = User.objects.create_user(
+            username="fin_admin_b",
+            email="fin_admin_b@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab_b,
+        )
+        self.superadmin = User.objects.create_user(
+            username="fin_superadmin",
+            email="fin_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+
+    def _get_stats(self, user):
+        self.client.force_authenticate(user=user)
+        return self.client.get("/api/finance/stats/")
+
+    def test_response_contract(self):
+        """Response must contain all required fields with correct types."""
+        response = self._get_stats(self.admin_a)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        required = ["total_revenue", "pending_invoices", "monthly_growth_pct", "monthly_revenue"]
+        for field in required:
+            self.assertIn(field, response.data, f"Missing field: {field}")
+
+        self.assertIsInstance(response.data["pending_invoices"], int)
+        self.assertIsInstance(response.data["monthly_revenue"], list)
+        self.assertEqual(len(response.data["monthly_revenue"]), 6)
+
+        for entry in response.data["monthly_revenue"]:
+            self.assertIn("month", entry)
+            self.assertIn("revenue", entry)
+            # Revenue must be a string (Decimal-safe serialization)
+            self.assertIsInstance(entry["revenue"], str)
+
+    def test_unauthenticated_denied(self):
+        response = self.client.get("/api/finance/stats/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_no_lab_user_denied(self):
+        no_lab = User.objects.create_user(
+            username="fin_no_lab",
+            email="fin_no_lab@example.com",
+            password="password123",
+            role="user",
+        )
+        self.client.force_authenticate(user=no_lab)
+        response = self.client.get("/api/finance/stats/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_lab_scoping(self):
+        """Lab A admin must not see lab B invoice revenue."""
+        clinic_b = Clinic.objects.create(lab=self.lab_b, name="Clinic B")
+        invoice_b = Invoice.objects.create(
+            lab=self.lab_b,
+            clinic=clinic_b,
+            number="INV-B-001",
+            status="paid",
+            total_amount="500.00",
+        )
+
+        response = self._get_stats(self.admin_a)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Lab A has no paid invoices — revenue must be zero
+        self.assertEqual(response.data["total_revenue"], "0.00")
+
+    def test_superadmin_sees_all_labs(self):
+        """Superadmin must receive 200 and aggregate across all labs."""
+        response = self._get_stats(self.superadmin)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)

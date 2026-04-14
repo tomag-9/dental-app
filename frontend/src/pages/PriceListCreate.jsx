@@ -36,7 +36,7 @@ export default function PriceListCreate() {
             });
         } catch (err) {
             console.error('Failed to fetch item:', err);
-            setError('Failed to load item');
+            setError('Nepodarilo sa načítať položku.');
         } finally {
             setLoading(false);
         }
@@ -68,15 +68,15 @@ export default function PriceListCreate() {
 
         // Validate required fields
         if (!formData.code.trim()) {
-            setError('Code is required');
+            setError('Kód je povinný.');
             return;
         }
         if (!formData.description.trim()) {
-            setError('Description is required');
+            setError('Popis je povinný.');
             return;
         }
         if (!formData.price || parseFloat(formData.price) <= 0) {
-            setError('Price must be greater than 0');
+            setError('Cena musí byť väčšia ako 0.');
             return;
         }
 
@@ -99,7 +99,7 @@ export default function PriceListCreate() {
             navigate('/price-list');
         } catch (err) {
             console.error('Failed to save item:', err);
-            setError(err.response?.data?.detail || 'Failed to save item');
+            setError(err.response?.data?.detail || 'Nepodarilo sa uložiť položku.');
         } finally {
             setLoading(false);
         }
@@ -117,12 +117,12 @@ export default function PriceListCreate() {
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        {isEditing ? 'Edit Price List Item' : 'New Price List Item'}
+                        {isEditing ? 'Upraviť položku cenníka' : 'Nová položka cenníka'}
                     </h1>
                     <p className="text-muted-foreground">
                         {isEditing
-                            ? 'Update price information.'
-                            : 'Add a new service or procedure to the price list.'}
+                            ? 'Úprava cenovej položky.'
+                            : 'Pridanie novej služby alebo výkonu do cenníka.'}
                     </p>
                 </div>
             </div>
@@ -135,14 +135,14 @@ export default function PriceListCreate() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Item Information</CardTitle>
+                    <CardTitle>Informácie o položke</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Code <span className="text-destructive">*</span>
+                                    Kód <span className="text-destructive">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -154,12 +154,12 @@ export default function PriceListCreate() {
                                     required
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Unique code for this service
+                                    Jedinečný kód pre túto službu
                                 </p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Price <span className="text-destructive">*</span>
+                                    Cena <span className="text-destructive">*</span>
                                 </label>
                                 <div className="flex items-center">
                                     <span className="text-muted-foreground mr-2">€</span>
@@ -180,7 +180,7 @@ export default function PriceListCreate() {
 
                         <div>
                             <label className="block text-sm font-medium mb-2">
-                                Description <span className="text-destructive">*</span>
+                                Popis <span className="text-destructive">*</span>
                             </label>
                             <input
                                 type="text"
@@ -196,7 +196,7 @@ export default function PriceListCreate() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">
-                                    Valid From
+                                    Platný od
                                 </label>
                                 <input
                                     type="date"
@@ -217,14 +217,14 @@ export default function PriceListCreate() {
                                             className="w-4 h-4 rounded border-input cursor-pointer"
                                         />
                                         <span className="text-sm font-medium">
-                                            Has expiry date
+                                            Má dátum platnosti
                                         </span>
                                     </label>
                                 </div>
                                 {formData.hasExpiry && (
                                     <div>
                                         <label className="block text-sm font-medium mb-2">
-                                            Valid Until
+                                            Platný do
                                         </label>
                                         <input
                                             type="date"
@@ -244,18 +244,18 @@ export default function PriceListCreate() {
                                 variant="outline"
                                 onClick={() => navigate('/price-list')}
                             >
-                                Cancel
+                                Zrušiť
                             </Button>
                             <Button type="submit" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Save Item
+                                        Uložiť položku
                                     </>
                                 )}
                             </Button>
@@ -266,13 +266,13 @@ export default function PriceListCreate() {
 
             <Card className="bg-muted/50">
                 <CardHeader>
-                    <CardTitle className="text-base">Information</CardTitle>
+                    <CardTitle className="text-base">Informácie</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground">
                     <ul className="list-disc list-inside space-y-1">
-                        <li>Code must be unique in your price list</li>
-                        <li>Price is displayed with 2 decimal places</li>
-                        <li>Validity dates are optional and can be used to track seasonal pricing</li>
+                        <li>Kód musí byť jedinečný v rámci cenníka</li>
+                        <li>Cena sa zobrazuje s 2 desatinnými miestami</li>
+                        <li>Dátumy platnosti sú voliteľné a môžu slúžiť na sledovanie sezónnych cien</li>
                     </ul>
                 </CardContent>
             </Card>

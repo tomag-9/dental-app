@@ -53,7 +53,7 @@ export default function LabSettings() {
             }
         } catch (err) {
             console.error('Failed to fetch lab settings:', err);
-            setError('Failed to load lab settings');
+            setError('Nepodarilo sa načítať nastavenia laboratória.');
         } finally {
             setLoading(false);
         }
@@ -70,23 +70,23 @@ export default function LabSettings() {
         setSuccess('');
 
         if (!formData.name.trim()) {
-            setError('Lab name is required');
+            setError('Názov laboratória je povinný.');
             return;
         }
 
         if (!labId) {
-            setError('No lab found. Cannot save settings.');
+            setError('Laboratórium sa nenašlo. Nastavenia nie je možné uložiť.');
             return;
         }
 
         setLoading(true);
         try {
             await api.patch(`/labs/${labId}/`, formData);
-            setSuccess('Lab settings saved successfully');
+            setSuccess('Nastavenia laboratória boli úspešne uložené.');
         } catch (err) {
             console.error('Failed to update lab:', err);
             const detail = err?.response?.data?.detail;
-            setError(typeof detail === 'string' ? detail : 'Failed to update lab settings');
+            setError(typeof detail === 'string' ? detail : 'Nepodarilo sa aktualizovať nastavenia laboratória.');
         } finally {
             setLoading(false);
         }
@@ -95,8 +95,8 @@ export default function LabSettings() {
     return (
         <div className="space-y-6 max-w-3xl">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Lab Information</h2>
-                <p className="text-muted-foreground">Configure your dental laboratory details.</p>
+                <h2 className="text-2xl font-bold tracking-tight">Informácie o laboratóriu</h2>
+                <p className="text-muted-foreground">Nastavte údaje vášho dentálneho laboratória.</p>
             </div>
 
             {error && (
@@ -114,13 +114,13 @@ export default function LabSettings() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Basic Information</CardTitle>
+                    <CardTitle>Základné informácie</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">
-                                Lab Name <span className="text-destructive">*</span>
+                                Názov laboratória <span className="text-destructive">*</span>
                             </label>
                             <input
                                 type="text"
@@ -135,7 +135,7 @@ export default function LabSettings() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Email</label>
+                                <label className="block text-sm font-medium mb-2">E-mail</label>
                                 <input
                                     type="email"
                                     name="email"
@@ -146,7 +146,7 @@ export default function LabSettings() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Phone</label>
+                                <label className="block text-sm font-medium mb-2">Telefón</label>
                                 <input
                                     type="tel"
                                     name="phone"
@@ -159,7 +159,7 @@ export default function LabSettings() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-2">Website</label>
+                            <label className="block text-sm font-medium mb-2">Webová stránka</label>
                             <input
                                 type="url"
                                 name="website"
@@ -171,9 +171,9 @@ export default function LabSettings() {
                         </div>
 
                         <div className="pt-4 border-t">
-                            <h3 className="font-medium mb-4">Address</h3>
+                            <h3 className="font-medium mb-4">Adresa</h3>
                             <div>
-                                <label className="block text-sm font-medium mb-2">Address</label>
+                                <label className="block text-sm font-medium mb-2">Adresa</label>
                                 <input
                                     type="text"
                                     name="address"
@@ -186,7 +186,7 @@ export default function LabSettings() {
 
                             <div className="grid grid-cols-3 gap-4 mt-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">City</label>
+                                    <label className="block text-sm font-medium mb-2">Mesto</label>
                                     <input
                                         type="text"
                                         name="city"
@@ -197,7 +197,7 @@ export default function LabSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Postal Code</label>
+                                    <label className="block text-sm font-medium mb-2">PSČ</label>
                                     <input
                                         type="text"
                                         name="postal_code"
@@ -208,7 +208,7 @@ export default function LabSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Country</label>
+                                    <label className="block text-sm font-medium mb-2">Krajina</label>
                                     <input
                                         type="text"
                                         name="country"
@@ -222,10 +222,10 @@ export default function LabSettings() {
                         </div>
 
                         <div className="pt-4 border-t">
-                            <h3 className="font-medium mb-4">Tax & Banking</h3>
+                            <h3 className="font-medium mb-4">Daňové a bankové údaje</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Tax ID (IČO)</label>
+                                    <label className="block text-sm font-medium mb-2">IČO</label>
                                     <input
                                         type="text"
                                         name="tax_id"
@@ -236,7 +236,7 @@ export default function LabSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">VAT ID (IČ DPH)</label>
+                                    <label className="block text-sm font-medium mb-2">IČ DPH</label>
                                     <input
                                         type="text"
                                         name="vat_id"
@@ -247,7 +247,7 @@ export default function LabSettings() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Bank Account (IBAN)</label>
+                                    <label className="block text-sm font-medium mb-2">Bankový účet (IBAN)</label>
                                     <input
                                         type="text"
                                         name="bank_account"
@@ -276,12 +276,12 @@ export default function LabSettings() {
                                 {loading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
+                                        Ukladám...
                                     </>
                                 ) : (
                                     <>
                                         <Save className="mr-2 h-4 w-4" />
-                                        Save Settings
+                                        Uložiť nastavenia
                                     </>
                                 )}
                             </Button>

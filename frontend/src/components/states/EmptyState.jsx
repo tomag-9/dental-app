@@ -1,8 +1,8 @@
 import { Inbox } from 'lucide-react';
 
-export default function EmptyState({ 
-  title = 'No data found',
-  description = 'Get started by creating your first item.',
+export default function EmptyState({
+  title = 'Žiadne záznamy',
+  description = 'Začnite vytvorením prvej položky.',
   icon = Inbox,
   action = null
 }) {

@@ -102,7 +102,7 @@ export default function ClinicCreate() {
                 <CardContent>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Názov kliniky</label>
+                            <label className="block text-sm font-medium mb-1">Názov kliniky <span className="text-destructive">*</span></label>
                             <input name="name" value={formData.name} onChange={handleChange} className="w-full p-2 border rounded-md" required />
                         </div>
 
@@ -145,7 +145,10 @@ export default function ClinicCreate() {
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end">
+                    <div className="mt-6 flex justify-end gap-3">
+                        <Button type="button" variant="outline" onClick={() => navigate('/clinics')}>
+                            Zrušiť
+                        </Button>
                         <Button onClick={handleSubmit} disabled={loading}>
                             <Save className="mr-2 h-4 w-4" />
                             {loading ? 'Ukladám...' : isEditing ? 'Uložiť zmeny' : 'Uložiť kliniku'}

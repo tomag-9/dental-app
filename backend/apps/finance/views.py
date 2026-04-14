@@ -1,7 +1,10 @@
+import calendar
+from datetime import date
 from decimal import Decimal
 from io import BytesIO
 
 from django.db import transaction
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from reportlab.graphics import renderPDF, renderSVG
@@ -14,6 +17,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
@@ -348,3 +352,99 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             )
 
         return Response(SubscriptionSerializer(subscription).data)
+
+
+def _month_window(dt):
+    first = dt.replace(day=1)
+    last = dt.replace(day=calendar.monthrange(dt.year, dt.month)[1])
+    return first, last
+
+
+def _months_ago(n):
+    today = timezone.localdate()
+    month = today.month - n
+    year = today.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    return date(year, month, 1)
+
+
+class FinanceStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        lab_id = getattr(user, "lab_id", None)
+
+        if _is_superadmin(user):
+            qs = Invoice.objects.all()
+        elif lab_id:
+            qs = Invoice.objects.filter(lab_id=lab_id)
+        else:
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        total_revenue = (
+            qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0.00")
+        )
+        pending_invoices = qs.filter(status="issued").count()
+
+        today = timezone.localdate()
+        this_start, this_end = _month_window(today)
+        last_month = _months_ago(1)
+        last_start, last_end = _month_window(last_month)
+
+        this_month_rev = (
+            qs.filter(
+                status="paid",
+                paid_at__date__gte=this_start,
+                paid_at__date__lte=this_end,
+            ).aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0.00")
+        )
+        last_month_rev = (
+            qs.filter(
+                status="paid",
+                paid_at__date__gte=last_start,
+                paid_at__date__lte=last_end,
+            ).aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0.00")
+        )
+
+        if last_month_rev > 0:
+            growth_pct = float(
+                (this_month_rev - last_month_rev) / last_month_rev * 100
+            )
+        else:
+            growth_pct = 0.0
+
+        monthly_revenue = []
+        for i in range(5, -1, -1):
+            month_date = _months_ago(i)
+            m_start, m_end = _month_window(month_date)
+            rev = (
+                qs.filter(
+                    status="paid",
+                    paid_at__date__gte=m_start,
+                    paid_at__date__lte=m_end,
+                ).aggregate(total=Sum("total_amount"))["total"]
+                or Decimal("0.00")
+            )
+            monthly_revenue.append(
+                {
+                    "month": month_date.strftime("%b %Y"),
+                    "revenue": str(rev),
+                }
+            )
+
+        return Response(
+            {
+                "total_revenue": str(total_revenue),
+                "pending_invoices": pending_invoices,
+                "monthly_growth_pct": round(growth_pct, 1),
+                "monthly_revenue": monthly_revenue,
+            }
+        )

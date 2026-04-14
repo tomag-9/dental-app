@@ -29,7 +29,7 @@ export default function SuperadminLabs() {
       }
       setLabs(labsData);
     } catch (err) {
-      setError('Failed to load labs: ' + (err.response?.data?.detail || err.message));
+      setError('Nepodarilo sa načítať laboratóriá: ' + (err.response?.data?.detail || err.message));
     } finally {
       setLoading(false);
     }
@@ -78,7 +78,7 @@ export default function SuperadminLabs() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-4xl font-bold">Labs Management</h1>
+        <h1 className="text-4xl font-bold">Správa laboratórií</h1>
       </div>
 
       {error && (
@@ -104,7 +104,7 @@ export default function SuperadminLabs() {
       {filteredLabs.length === 0 ? (
         <Card className="p-12 text-center">
           <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">No labs found</p>
+          <p className="text-gray-600">Žiadne laboratóriá</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -169,11 +169,11 @@ export default function SuperadminLabs() {
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                   <div>
-                    <p className="text-xs text-gray-500">Users</p>
+                    <p className="text-xs text-gray-500">Použ.</p>
                     <p className="text-lg font-bold text-gray-900">{lab.user_count || 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Created</p>
+                    <p className="text-xs text-gray-500">Vytvorené</p>
                     <p className="text-sm font-medium text-gray-900">
                       {lab.created_at ? new Date(lab.created_at).toLocaleDateString() : '-'}
                     </p>
@@ -183,9 +183,9 @@ export default function SuperadminLabs() {
                 {/* Tax & Banking Info */}
                 {(lab.tax_id || lab.vat_id || lab.bank_account) && (
                   <div className="bg-gray-50 p-3 rounded-lg text-xs space-y-1">
-                    {lab.tax_id && <div><span className="font-medium">Tax ID:</span> {lab.tax_id}</div>}
-                    {lab.vat_id && <div><span className="font-medium">VAT ID:</span> {lab.vat_id}</div>}
-                    {lab.bank_account && <div><span className="font-medium">Bank:</span> {lab.bank_account}</div>}
+                    {lab.tax_id && <div><span className="font-medium">IČO:</span> {lab.tax_id}</div>}
+                    {lab.vat_id && <div><span className="font-medium">DIČ:</span> {lab.vat_id}</div>}
+                    {lab.bank_account && <div><span className="font-medium">Banka:</span> {lab.bank_account}</div>}
                   </div>
                 )}
               </div>

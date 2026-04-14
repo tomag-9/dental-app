@@ -185,9 +185,9 @@ export default function Inventory() {
                 return entry;
             });
 
-            for (const entry of records) {
-                if (!entry.name) continue;
-                const payload = {
+            const items = records
+                .filter((entry) => entry.name)
+                .map((entry) => ({
                     name: entry.name,
                     sku: entry.sku || null,
                     quantity: Number(entry.quantity || 0),
@@ -197,14 +197,14 @@ export default function Inventory() {
                     location: entry.location || null,
                     cost_price: entry.cost_price ? Number(entry.cost_price) : null,
                     notes: entry.notes || null,
-                };
-                await api.post('/warehouse/', payload);
-            }
+                }));
 
+            await api.post('/warehouse/import/', items);
             await fetchItems();
         } catch (err) {
             console.error('Failed to import CSV:', err);
-            setError('Nepodarilo sa importovať CSV súbor.');
+            const detail = err.response?.data?.detail;
+            setError(typeof detail === 'string' ? detail : 'Nepodarilo sa importovať CSV súbor.');
         } finally {
             setIsImporting(false);
             event.target.value = '';

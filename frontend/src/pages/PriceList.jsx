@@ -26,7 +26,7 @@ export default function PriceList() {
             setItems(response.data);
         } catch (err) {
             console.error('Failed to fetch price list:', err);
-            setError('Failed to load price list');
+            setError('Nepodarilo sa načítať cenník.');
         } finally {
             setIsLoading(false);
         }
@@ -39,7 +39,7 @@ export default function PriceList() {
             await fetchPriceList();
         } catch (err) {
             console.error('Failed to delete item:', err);
-            setError('Failed to delete item');
+            setError('Nepodarilo sa vymazať položku.');
         } finally {
             setItemToDelete(null);
         }
@@ -106,8 +106,8 @@ export default function PriceList() {
             <body>
                 <header>
                     <div>
-                        <h1>Price List</h1>
-                        <div class="date">Generated on ${new Date().toLocaleDateString('en-US', {
+                        <h1>Cenník</h1>
+                        <div class="date">Vygenerované dňa ${new Date().toLocaleDateString('sk-SK', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
@@ -117,10 +117,10 @@ export default function PriceList() {
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Code</th>
-                            <th style="width: 45%;">Description</th>
-                            <th style="width: 20%;">Price</th>
-                            <th style="width: 20%;">Valid Until</th>
+                            <th style="width: 15%;">Kód</th>
+                            <th style="width: 45%;">Popis</th>
+                            <th style="width: 20%;">Cena</th>
+                            <th style="width: 20%;">Platný do</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -129,7 +129,7 @@ export default function PriceList() {
                                 <td><strong>${item.code}</strong></td>
                                 <td>${item.description}</td>
                                 <td class="price">€${parseFloat(item.price).toFixed(2)}</td>
-                                <td class="expires">${item.valid_to ? new Date(item.valid_to).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
+                                <td class="expires">${item.valid_to ? new Date(item.valid_to).toLocaleDateString('sk-SK', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -141,7 +141,7 @@ export default function PriceList() {
         try {
             printHtmlDocument(html);
         } catch {
-            setError('Failed to open print preview');
+            setError('Nepodarilo sa otvoriť náhľad tlače.');
         }
     };
 
@@ -154,18 +154,18 @@ export default function PriceList() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Price List</h1>
-                    <p className="text-muted-foreground">Manage dental service pricing.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Cenník</h1>
+                    <p className="text-muted-foreground">Správa cien dentálnych výkonov.</p>
                 </div>
                 <div className="flex gap-2">
                     {items.length > 0 && (
                         <Button variant="outline" onClick={handlePrint}>
-                            <Printer className="mr-2 h-4 w-4" /> Print
+                            <Printer className="mr-2 h-4 w-4" /> Tlačiť
                         </Button>
                     )}
                     <Link to="/price-list/new">
                         <Button>
-                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                            <Plus className="mr-2 h-4 w-4" /> Pridať položku
                         </Button>
                     </Link>
                 </div>
@@ -180,11 +180,11 @@ export default function PriceList() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>All Items</CardTitle>
+                        <CardTitle>Všetky položky</CardTitle>
                         <div className="relative w-64">
                             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                             <input
-                                placeholder="Search by code or description..."
+                                placeholder="Hľadať podľa kódu alebo popisu..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
@@ -200,19 +200,19 @@ export default function PriceList() {
                     ) : filteredItems.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
                             {items.length === 0
-                                ? 'No price list items found. Add your first item to get started.'
-                                : 'No items match your search.'}
+                                ? 'Cenník je prázdny. Pridajte prvú položku.'
+                                : 'Žiadne položky nevyhovujú vyhľadávaniu.'}
                         </div>
                     ) : (
                         <div className="rounded-md border overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="px-4 py-3 font-medium text-left">Code</th>
-                                        <th className="px-4 py-3 font-medium text-left">Description</th>
-                                        <th className="px-4 py-3 font-medium text-right">Price</th>
-                                        <th className="px-4 py-3 font-medium text-center">Valid Until</th>
-                                        <th className="px-4 py-3 font-medium text-right">Actions</th>
+                                        <th className="px-4 py-3 font-medium text-left">Kód</th>
+                                        <th className="px-4 py-3 font-medium text-left">Popis</th>
+                                        <th className="px-4 py-3 font-medium text-right">Cena</th>
+                                        <th className="px-4 py-3 font-medium text-center">Platný do</th>
+                                        <th className="px-4 py-3 font-medium text-right">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -230,7 +230,7 @@ export default function PriceList() {
                                             <td className="px-4 py-3 text-center">
                                                 {item.valid_to ? (
                                                     <span className="inline-block px-2 py-1 bg-muted rounded text-xs">
-                                                        {new Date(item.valid_to).toLocaleDateString('en-US', {
+                                                        {new Date(item.valid_to).toLocaleDateString('sk-SK', {
                                                             year: 'numeric',
                                                             month: 'short',
                                                             day: 'numeric'

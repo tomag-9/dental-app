@@ -1,12 +1,14 @@
 from datetime import timedelta
+from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.finance.models import Subscription
@@ -40,6 +42,104 @@ def _build_unique_username(base_value):
         idx += 1
         candidate = f"{base}_{idx}"
     return candidate
+
+
+class DashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.crm.models import Patient
+        from apps.finance.models import Invoice
+        from apps.jobs.models import Job
+
+        user = request.user
+        lab_id = getattr(user, "lab_id", None)
+
+        if _is_superadmin(user):
+            patients_qs = Patient.objects.all()
+            jobs_qs = Job.objects.select_related("patient").order_by("-created_at")
+            invoices_qs = Invoice.objects.select_related("clinic").order_by("-created_at")
+        elif lab_id:
+            patients_qs = Patient.objects.filter(lab_id=lab_id)
+            jobs_qs = (
+                Job.objects.filter(lab_id=lab_id)
+                .select_related("patient")
+                .order_by("-created_at")
+            )
+            invoices_qs = (
+                Invoice.objects.filter(lab_id=lab_id)
+                .select_related("clinic")
+                .order_by("-created_at")
+            )
+        else:
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        active_statuses = ("new", "in_progress")
+        done_statuses = (
+            "completed",
+            "finished_factured",
+            "finished_unfactured",
+            "closed",
+        )
+
+        total_patients = patients_qs.count()
+        active_jobs = jobs_qs.filter(status__in=active_statuses).count()
+        completed_jobs = jobs_qs.filter(status__in=done_statuses).count()
+        total_revenue = (
+            invoices_qs.filter(status="paid").aggregate(total=Sum("total_amount"))[
+                "total"
+            ]
+            or Decimal("0.00")
+        )
+
+        recent_jobs_data = []
+        for job in jobs_qs[:5]:
+            patient = job.patient
+            recent_jobs_data.append(
+                {
+                    "id": job.id,
+                    "status": job.status,
+                    "due_date": job.due_date,
+                    "description": job.description,
+                    "patient_details": (
+                        {
+                            "first_name": patient.first_name if patient else "",
+                            "last_name": patient.last_name if patient else "",
+                        }
+                        if patient
+                        else None
+                    ),
+                }
+            )
+
+        recent_invoices_data = []
+        for inv in invoices_qs[:5]:
+            recent_invoices_data.append(
+                {
+                    "id": inv.id,
+                    "number": inv.number,
+                    "status": inv.status,
+                    "total_amount": str(inv.total_amount),
+                    "clinic_name": inv.clinic.name if inv.clinic else None,
+                    "created_at": (
+                        inv.created_at.isoformat() if inv.created_at else None
+                    ),
+                    "issued_at": inv.issued_at.isoformat() if inv.issued_at else None,
+                }
+            )
+
+        return Response(
+            {
+                "total_patients": total_patients,
+                "active_jobs": active_jobs,
+                "completed_jobs": completed_jobs,
+                "total_revenue": str(total_revenue),
+                "recent_jobs": recent_jobs_data,
+                "recent_invoices": recent_invoices_data,
+            }
+        )
 
 
 class LabViewSet(viewsets.ModelViewSet):

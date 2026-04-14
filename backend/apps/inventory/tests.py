@@ -180,3 +180,98 @@ class WarehouseItemCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
+
+
+class WarehouseBulkImportTests(APITestCase):
+    """Tests for POST /warehouse/import/ and /warehouse/import-partial/."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Bulk Lab")
+        self.admin = User.objects.create_user(
+            username="bulk_admin",
+            email="bulk_admin@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab,
+        )
+        self.no_lab_user = User.objects.create_user(
+            username="bulk_no_lab",
+            email="bulk_no_lab@example.com",
+            password="password123",
+            role="user",
+        )
+        self.import_url = reverse("warehouseitem-bulk-import")
+        self.import_partial_url = reverse("warehouseitem-bulk-import-partial")
+
+    def _valid_items(self):
+        return [
+            {"name": "Item A", "sku": "SKU-A", "quantity": "10.00", "unit": "pcs", "cost_price": "5.50"},
+            {"name": "Item B", "sku": "SKU-B", "quantity": "20.00", "unit": "pcs"},
+        ]
+
+    def test_bulk_import_happy_path(self):
+        """All valid items are created atomically."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(self.import_url, self._valid_items(), format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["imported"], 2)
+        self.assertEqual(WarehouseItem.objects.filter(lab=self.lab).count(), 2)
+
+    def test_bulk_import_validation_error_rolls_back(self):
+        """Any invalid row causes the entire import to fail (no rows created)."""
+        self.client.force_authenticate(user=self.admin)
+        items = self._valid_items()
+        items.append({"quantity": "bad"})  # missing required name
+
+        response = self.client.post(self.import_url, items, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("errors", response.data)
+        self.assertEqual(WarehouseItem.objects.filter(lab=self.lab).count(), 0)
+
+    def test_bulk_import_lab_scoping(self):
+        """Imported items are assigned to the authenticated user's lab."""
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(self.import_url, self._valid_items(), format="json")
+
+        items = WarehouseItem.objects.filter(lab=self.lab)
+        self.assertEqual(items.count(), 2)
+        for item in items:
+            self.assertEqual(item.lab_id, self.lab.id)
+
+    def test_bulk_import_no_lab_denied(self):
+        """Users without a lab must receive 403."""
+        self.client.force_authenticate(user=self.no_lab_user)
+        response = self.client.post(self.import_url, self._valid_items(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bulk_import_requires_list(self):
+        """Sending a dict instead of a list returns 400."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(self.import_url, {"name": "x"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_bulk_import_partial_skips_invalid(self):
+        """Partial import skips invalid rows and imports the valid ones."""
+        self.client.force_authenticate(user=self.admin)
+        items = self._valid_items()
+        items.append({"quantity": "bad"})  # invalid row
+
+        response = self.client.post(self.import_partial_url, items, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["imported"], 2)
+        self.assertEqual(response.data["skipped"], 1)
+        self.assertEqual(WarehouseItem.objects.filter(lab=self.lab).count(), 2)
+
+    def test_bulk_import_decimal_precision(self):
+        """Decimal fields are stored without float rounding artifacts."""
+        self.client.force_authenticate(user=self.admin)
+        items = [{"name": "Precise Item", "quantity": "1.10", "cost_price": "9.99"}]
+
+        self.client.post(self.import_url, items, format="json")
+
+        item = WarehouseItem.objects.get(lab=self.lab, name="Precise Item")
+        self.assertEqual(str(item.quantity), "1.10")
+        self.assertEqual(str(item.cost_price), "9.99")
