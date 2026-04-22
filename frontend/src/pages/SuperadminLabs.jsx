@@ -67,6 +67,32 @@ export default function SuperadminLabs() {
     }
   };
 
+  const formatPlanLabel = (plan) => {
+    switch (plan) {
+      case 'free':
+        return 'ZDARMA';
+      case 'basic':
+        return 'ZÁKLAD';
+      case 'premium':
+        return 'PREMIUM';
+      default:
+        return 'ZDARMA';
+    }
+  };
+
+  const formatStatusLabel = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Aktívne';
+      case 'inactive':
+        return 'Neaktívne';
+      case 'trial':
+        return 'Skúšobné';
+      default:
+        return 'Neaktívne';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -121,10 +147,10 @@ export default function SuperadminLabs() {
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Badge className={getPlanColor(lab.subscription_plan)}>
-                      {(lab.subscription_plan || 'free').toUpperCase()}
+                      {formatPlanLabel(lab.subscription_plan)}
                     </Badge>
                     <Badge className={getStatusColor(lab.subscription_status)}>
-                      {lab.subscription_status || 'inactive'}
+                      {formatStatusLabel(lab.subscription_status)}
                     </Badge>
                   </div>
                 </div>

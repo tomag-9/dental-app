@@ -108,6 +108,36 @@ export default function SuperadminSubscriptions() {
     }
   };
 
+  const formatPlanLabel = (plan) => {
+    switch (plan) {
+      case 'free':
+        return 'ZDARMA';
+      case 'pro':
+        return 'PRO';
+      case 'enterprise':
+        return 'ENTERPRISE';
+      default:
+        return 'ZDARMA';
+    }
+  };
+
+  const formatStatusLabel = (status) => {
+    switch (status) {
+      case 'active':
+        return 'AKTÍVNE';
+      case 'inactive':
+        return 'NEAKTÍVNE';
+      case 'trial':
+        return 'SKÚŠOBNÉ';
+      case 'expired':
+        return 'EXPIROVANÉ';
+      case 'cancelled':
+        return 'ZRUŠENÉ';
+      default:
+        return 'NEAKTÍVNE';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -145,8 +175,8 @@ export default function SuperadminSubscriptions() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Celkom predplatných', value: subscriptions.length },
-          { label: 'Free plán', value: subscriptions.filter(s => s.plan === 'free').length },
-          { label: 'Pro plán', value: subscriptions.filter(s => s.plan === 'pro').length },
+          { label: 'Plán zdarma', value: subscriptions.filter(s => s.plan === 'free').length },
+          { label: 'Plán Pro', value: subscriptions.filter(s => s.plan === 'pro').length },
           { label: 'Enterprise plán', value: subscriptions.filter(s => s.plan === 'enterprise').length }
         ].map(stat => (
           <Card key={stat.label} className="p-4">
@@ -185,11 +215,11 @@ export default function SuperadminSubscriptions() {
                     <td className="py-3 px-4 text-gray-900">{sub.id}</td>
                     <td className="py-3 px-4">
                       <div className="font-medium text-gray-900">{sub.lab_name || '-'}</div>
-                      {sub.lab_id && <div className="text-xs text-gray-500">Lab ID: {sub.lab_id}</div>}
+                      {sub.lab_id && <div className="text-xs text-gray-500">ID laboratória: {sub.lab_id}</div>}
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={getPlanColor(sub.plan)}>
-                        {(sub.plan || 'free').toUpperCase()}
+                        {formatPlanLabel(sub.plan)}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 font-medium text-gray-900">
@@ -197,7 +227,7 @@ export default function SuperadminSubscriptions() {
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={getStatusColor(sub.status)}>
-                        {(sub.status || 'inactive').toUpperCase()}
+                        {formatStatusLabel(sub.status)}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-gray-600 text-sm">
@@ -219,7 +249,7 @@ export default function SuperadminSubscriptions() {
         <h3 className="text-lg font-bold mb-4">Detaily plánov</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <div className="font-medium text-gray-900 mb-2">Free plán</div>
+            <div className="font-medium text-gray-900 mb-2">Plán zdarma</div>
             <ul className="text-sm text-gray-600 space-y-1">
               <li>• Max. 1 používateľ</li>
               <li>• Základné funkcie</li>

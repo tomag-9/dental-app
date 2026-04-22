@@ -98,6 +98,7 @@ export default function ClinicCreate() {
             <Card>
                 <CardHeader>
                     <CardTitle>Údaje kliniky</CardTitle>
+                    <p className="text-sm text-muted-foreground">Povinné polia sú označené symbolom *</p>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">

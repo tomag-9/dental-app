@@ -188,7 +188,7 @@ export default function PriceListCreate() {
                                 value={formData.description}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Crown preparation"
+                                placeholder="Preparácia korunky"
                                 required
                             />
                         </div>

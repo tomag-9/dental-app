@@ -14,7 +14,7 @@ export default function LabSettings() {
         address: '',
         city: '',
         postal_code: '',
-        country: 'Slovakia',
+        country: 'Slovensko',
         phone: '',
         email: '',
         website: '',
@@ -41,7 +41,7 @@ export default function LabSettings() {
                     address: lab.address || '',
                     city: lab.city || '',
                     postal_code: lab.postal_code || '',
-                    country: lab.country || 'Slovakia',
+                    country: lab.country || 'Slovensko',
                     phone: lab.phone || '',
                     email: lab.email || '',
                     website: lab.website || '',
@@ -142,7 +142,7 @@ export default function LabSettings() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="lab@example.com"
+                                    placeholder="lab@priklad.sk"
                                 />
                             </div>
                             <div>
@@ -166,7 +166,7 @@ export default function LabSettings() {
                                 value={formData.website}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="https://example.com"
+                                    placeholder="https://vaselaboratorium.sk"
                             />
                         </div>
 
@@ -180,7 +180,7 @@ export default function LabSettings() {
                                     value={formData.address}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="123 Main Street"
+                                    placeholder="Hlavná 123"
                                 />
                             </div>
 
@@ -215,7 +215,7 @@ export default function LabSettings() {
                                         value={formData.country}
                                         onChange={handleChange}
                                         className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                        placeholder="Slovakia"
+                                        placeholder="Slovensko"
                                     />
                                 </div>
                             </div>

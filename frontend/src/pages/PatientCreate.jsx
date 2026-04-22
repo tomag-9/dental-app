@@ -99,6 +99,7 @@ export default function PatientCreate() {
             <Card>
                 <CardHeader>
                     <CardTitle>Osobné údaje</CardTitle>
+                    <p className="text-sm text-muted-foreground">Povinné polia sú označené symbolom *</p>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">

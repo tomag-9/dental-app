@@ -67,6 +67,19 @@ export default function SuperadminDashboard() {
     }
   };
 
+  const formatStatusLabel = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Aktívne';
+      case 'inactive':
+        return 'Neaktívne';
+      case 'trial':
+        return 'Skúšobné';
+      default:
+        return 'Neaktívne';
+    }
+  };
+
   const getPlanColor = (plan) => {
     switch (plan) {
       case 'free':
@@ -77,6 +90,19 @@ export default function SuperadminDashboard() {
         return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatPlanLabel = (plan) => {
+    switch (plan) {
+      case 'free':
+        return 'ZDARMA';
+      case 'basic':
+        return 'ZÁKLAD';
+      case 'premium':
+        return 'PREMIUM';
+      default:
+        return 'ZDARMA';
     }
   };
 
@@ -185,12 +211,12 @@ export default function SuperadminDashboard() {
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={getPlanColor(lab.subscription_plan)}>
-                        {(lab.subscription_plan || 'free').toUpperCase()}
+                        {formatPlanLabel(lab.subscription_plan)}
                       </Badge>
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={getStatusColor(lab.subscription_status)}>
-                        {lab.subscription_status || 'inactive'}
+                        {formatStatusLabel(lab.subscription_status)}
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-gray-600">

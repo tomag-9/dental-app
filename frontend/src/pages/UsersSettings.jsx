@@ -124,7 +124,7 @@ export default function UsersSettings() {
                                         value={formData.email}
                                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                                         className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                        placeholder="john@example.com"
+                                        placeholder="jan@priklad.sk"
                                     />
                                 </div>
                             </div>
@@ -203,7 +203,7 @@ export default function UsersSettings() {
                                     {filteredUsers.map((user) => (
                                         <tr key={user.id} className="border-t hover:bg-muted/50 transition-colors">
                                             <td className="px-4 py-3 font-medium">
-                                                {user.nickname || user.email?.split('@')[0] || `User #${user.id}`}
+                                                {user.nickname || user.email?.split('@')[0] || `Používateľ #${user.id}`}
                                             </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {user.email || '-'}

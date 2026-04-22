@@ -148,7 +148,7 @@ export default function InventoryCreate() {
                                 value={formData.name}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Composite resin A2"
+                                    placeholder="Kompozitná živica A2"
                                 required
                             />
                         </div>
@@ -165,7 +165,7 @@ export default function InventoryCreate() {
                                     placeholder="CR-A2-001"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Unique stock keeping unit (optional)
+                                    Jedinečný skladový kód (voliteľné)
                                 </p>
                             </div>
                             <div>
@@ -176,7 +176,7 @@ export default function InventoryCreate() {
                                     value={formData.category}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Resins"
+                                    placeholder="Živice"
                                 />
                             </div>
                         </div>
@@ -235,7 +235,7 @@ export default function InventoryCreate() {
                                     value={formData.location}
                                     onChange={handleChange}
                                     className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                    placeholder="Shelf A3"
+                                    placeholder="Polica A3"
                                 />
                             </div>
                             <div>
@@ -259,7 +259,7 @@ export default function InventoryCreate() {
                                 value={formData.notes}
                                 onChange={handleChange}
                                 className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Additional notes about this item..."
+                                placeholder="Doplňujúce poznámky k položke..."
                                 rows="3"
                             />
                         </div>

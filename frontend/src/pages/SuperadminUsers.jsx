@@ -84,6 +84,19 @@ export default function SuperadminUsers() {
     }
   };
 
+  const formatRoleLabel = (role) => {
+    switch (role) {
+      case 'superadmin':
+        return 'Superadmin';
+      case 'admin':
+        return 'Admin';
+      case 'user':
+        return 'Používateľ';
+      default:
+        return 'Používateľ';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -241,7 +254,7 @@ export default function SuperadminUsers() {
                     <td className="py-3 px-4 text-gray-600">{user.email}</td>
                     <td className="py-3 px-4">
                       <Badge className={getRoleColor(user.role)}>
-                        {(user.role || 'user').toUpperCase()}
+                        {formatRoleLabel(user.role)}
                       </Badge>
                     </td>
                     <td className="py-3 px-4">

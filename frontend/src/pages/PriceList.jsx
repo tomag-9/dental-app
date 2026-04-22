@@ -50,7 +50,7 @@ export default function PriceList() {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Price List</title>
+                <title>Cenník</title>
                 <style>
                     body {
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
