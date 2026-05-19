@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
+    Activity,
     LayoutDashboard,
     Users,
     Briefcase,
@@ -17,7 +18,8 @@ import {
     Shield,
     CreditCard,
     ChevronDown,
-    ChevronRight
+    ChevronRight,
+    LogOut,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import useAuthStore from '../../store/auth';
@@ -25,7 +27,6 @@ import { Logo, LogoMark } from '../brand/Logo';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
-    const [expandSuperadmin, setExpandSuperadmin] = useState(false);
     const [expandFinance, setExpandFinance] = useState(true);
     const [expandMasterData, setExpandMasterData] = useState(true);
     const logout = useAuthStore(state => state.logout);
@@ -47,7 +48,7 @@ export default function Sidebar() {
         .join('') || 'P';
 
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(user?.role);
-    const mainLinks = [
+    const tenantMainLinks = [
         { name: 'Nástenka', to: '/', icon: LayoutDashboard },
         { name: 'Práce', to: '/jobs', icon: Briefcase },
         { name: 'Pacienti', to: '/patients', icon: Users },
@@ -64,10 +65,10 @@ export default function Sidebar() {
     ];
 
     const superadminLinks = [
-        { name: 'Nástenka', to: '/superadmin/dashboard', icon: LayoutDashboard },
+        { name: 'Prehľad', to: '/superadmin/dashboard', icon: Activity },
+        { name: 'Tenanti', to: '/superadmin/labs', icon: Building },
         { name: 'Používatelia', to: '/superadmin/users', icon: Users },
-        { name: 'Laboratóriá', to: '/superadmin/labs', icon: Building },
-        { name: 'Predplatné', to: '/superadmin/subscriptions', icon: CreditCard },
+        { name: 'Platformová fakt.', to: '/superadmin/subscriptions', icon: CreditCard },
     ];
 
     const isSuperadmin = user?.role === 'superadmin';
@@ -93,7 +94,7 @@ export default function Sidebar() {
             </div>
 
             <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-                {mainLinks.map((link) => (
+                {!isSuperadmin && tenantMainLinks.map((link) => (
                     <NavLink
                         key={link.to}
                         to={link.to}
@@ -108,7 +109,7 @@ export default function Sidebar() {
                     </NavLink>
                 ))}
 
-                {isAdminOrSuperadmin && (
+                {!isSuperadmin && isAdminOrSuperadmin && (
                     <div>
                         <button
                             type="button"
@@ -148,7 +149,7 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {isAdminOrSuperadmin && (
+                {!isSuperadmin && isAdminOrSuperadmin && (
                     <div className="pt-2">
                         <button
                             type="button"
@@ -184,36 +185,25 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {isSuperadmin && (
-                    <>
-                        <div className="my-4 px-3">
-                            <button
-                                onClick={() => setExpandSuperadmin(!expandSuperadmin)}
-                                className={cn(
-                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm",
-                                    collapsed && "justify-center"
-                                )}
-                            >
-                                <Shield size={20} />
-                                {!collapsed && <span className="font-semibold">Superadmin</span>}
-                            </button>
-                        </div>
+                {isSuperadmin && superadminLinks.map((link) => (
+                    <NavLink
+                        key={link.to}
+                        to={link.to}
+                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center")}
+                    >
+                        <link.icon size={20} />
+                        {!collapsed && <span>{link.name}</span>}
+                    </NavLink>
+                ))}
 
-                        {expandSuperadmin && (
-                            <div className="space-y-1 ml-2 pl-2 border-l border-[#d4cfc5]">
-                                {superadminLinks.map((link) => (
-                                    <NavLink
-                                        key={link.to}
-                                        to={link.to}
-                                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center")}
-                                    >
-                                        <link.icon size={18} />
-                                        {!collapsed && <span>{link.name}</span>}
-                                    </NavLink>
-                                ))}
-                            </div>
-                        )}
-                    </>
+                {isSuperadmin && (
+                    <NavLink
+                        to="/settings"
+                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center", "mt-auto")}
+                    >
+                        <Shield size={20} />
+                        {!collapsed && <span>Môj profil</span>}
+                    </NavLink>
                 )}
             </nav>
 
@@ -226,7 +216,10 @@ export default function Sidebar() {
                         <div className="overflow-hidden flex-1">
                             <p className="text-sm font-medium truncate text-foreground">{displayName}</p>
                             <p className="text-xs text-[var(--color-sidebar-muted)] truncate">{roleLabel}</p>
-                            <button onClick={logout} className="text-xs text-primary hover:underline">Odhlásiť sa</button>
+                            <button onClick={logout} className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                <LogOut className="h-3 w-3" />
+                                Odhlásiť sa
+                            </button>
                         </div>
                     )}
                 </div>
