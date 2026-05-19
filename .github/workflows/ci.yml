@@ -12,8 +12,22 @@ jobs:
     name: Full Project Checks
     steps:
     - uses: actions/checkout@v4
-    - name: Run checks
-      run: ./check-all.sh
+    - name: Validate Docker Compose config
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml config --quiet
+    - name: Build Docker images
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml build backend frontend
+    - name: Run backend tests
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test --noinput --verbosity=2
+    - name: Run backend contract tests
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
+    - name: Run backend flake8
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend flake8 apps --max-line-length=100 --exclude=migrations
+    - name: Run backend black check
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend black --check apps
+    - name: Run frontend lint
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm frontend npm run lint
+    - name: Run frontend build
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm frontend npm run build
     - name: Cleanup Docker containers
       if: always()
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml down --remove-orphans
