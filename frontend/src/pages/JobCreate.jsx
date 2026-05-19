@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/Badge';
 import ToothMap from '../components/dental/ToothMap';
 import api from '../lib/api';
 import { getApiErrorMessage, normalizeListResponse } from '../lib/utils';
+import { parseQuickEntry } from '../lib/dentalNotation';
 
 function SearchableSelect({
     label,
@@ -146,6 +147,7 @@ export default function JobCreate() {
     const [toothColor, setToothColor] = useState('');
     const [toothData, setToothData] = useState({});
     const [items, setItems] = useState([{ price_list_code: '', tooth: '', quantity: 1 }]);
+    const [quickEntry, setQuickEntry] = useState('');
 
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
@@ -294,6 +296,25 @@ export default function JobCreate() {
     const addItem = () => setItems((prev) => [...prev, { price_list_code: '', tooth: '', quantity: 1 }]);
     const removeItem = (index) => setItems((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
 
+    const addQuickEntry = () => {
+        const parsed = parseQuickEntry(quickEntry);
+        if (!parsed) {
+            showToast('Použite tvar napr. 26 KOR-ZIR 1 alebo 45-47 MOS-3Z 3.');
+            return;
+        }
+        if (!priceList.some((price) => price.code === parsed.price_list_code)) {
+            showToast(`Kód ${parsed.price_list_code} nie je v cenníku.`);
+            return;
+        }
+        setItems((prev) => {
+            const emptyIndex = prev.findIndex((item) => !item.price_list_code);
+            if (emptyIndex === -1) return [...prev, parsed];
+            return prev.map((item, index) => (index === emptyIndex ? parsed : item));
+        });
+        setToothData((prev) => ({ ...prev, [parsed.tooth]: parsed.price_list_code }));
+        setQuickEntry('');
+    };
+
     const goToNextStep = () => {
         if (currentStep === 1 && (!patientId || !clinicId)) {
             showToast('Pacient a klinika sú povinné polia.');
@@ -413,6 +434,24 @@ export default function JobCreate() {
 
                     {currentStep === 2 && (
                         <div className="space-y-5">
+                            <div className="flex flex-col gap-2 rounded-lg border border-[#b0ddd5] bg-[var(--color-accent-teal-bg)] p-3 sm:flex-row sm:items-center">
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold uppercase text-[var(--color-accent-teal-text)]">Rýchle zadanie</label>
+                                    <input
+                                        value={quickEntry}
+                                        onChange={(event) => setQuickEntry(event.target.value)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                addQuickEntry();
+                                            }
+                                        }}
+                                        placeholder="26 KOR-ZIR 1 alebo 45-47 MOS-3Z 3"
+                                        className="mt-1 h-10 w-full rounded-md border border-[#b0ddd5] bg-white px-3 font-mono text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                                    />
+                                </div>
+                                <Button type="button" onClick={addQuickEntry}>Pridať</Button>
+                            </div>
                             <div className="overflow-hidden rounded-lg border border-[var(--color-card-border)]">
                                 <div className="grid grid-cols-[1fr_90px_80px_110px_40px] gap-2 bg-secondary px-3 py-2 text-xs font-bold uppercase text-[var(--color-sidebar-text)]">
                                     <span>Výkon</span>
@@ -425,11 +464,17 @@ export default function JobCreate() {
                                     const priceItem = priceList.find((entry) => entry.code === item.price_list_code);
                                     return (
                                         <div key={`${index}-${item.price_list_code}`} className="grid grid-cols-[1fr_90px_80px_110px_40px] items-center gap-2 border-t border-[#f0ede5] px-3 py-2">
-                                            <select value={item.price_list_code} onChange={(event) => updateItem(index, 'price_list_code', event.target.value)} className="h-9 min-w-0 rounded-md border border-border bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+                                            <select value={item.price_list_code} onChange={(event) => {
+                                                updateItem(index, 'price_list_code', event.target.value);
+                                                if (item.tooth && event.target.value) setToothData((prev) => ({ ...prev, [item.tooth]: event.target.value }));
+                                            }} className="h-9 min-w-0 rounded-md border border-border bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
                                                 <option value="">Vyberte výkon</option>
                                                 {priceList.map((price) => <option key={price.id} value={price.code}>{price.code} - {price.description}</option>)}
                                             </select>
-                                            <input value={item.tooth} onChange={(event) => updateItem(index, 'tooth', event.target.value)} placeholder="11" className="h-9 rounded-md border border-border bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                                            <input value={item.tooth} onChange={(event) => {
+                                                updateItem(index, 'tooth', event.target.value);
+                                                if (item.price_list_code && event.target.value) setToothData((prev) => ({ ...prev, [event.target.value]: item.price_list_code }));
+                                            }} placeholder="11" className="h-9 rounded-md border border-border bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                                             <input type="number" min="1" value={item.quantity} onChange={(event) => updateItem(index, 'quantity', event.target.value)} className="h-9 rounded-md border border-border bg-white px-2 text-center text-sm outline-none focus:ring-2 focus:ring-primary/30" />
                                             <div className="text-right text-sm font-semibold text-foreground">{formatMoney(priceItem?.price)}</div>
                                             <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)} disabled={items.length === 1} className="text-destructive">

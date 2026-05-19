@@ -7,6 +7,7 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
+from .dental import validate_tooth_range
 from .models import Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
@@ -31,6 +32,13 @@ class JobItemSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "description", "unit_price", "total", "created_at")
+
+    def validate_tooth(self, value):
+        if value and not validate_tooth_range(value):
+            raise serializers.ValidationError(
+                "Use canonical FDI tooth notation, for example 26 or 45-47."
+            )
+        return value
 
 
 class JobTimelineEventSerializer(serializers.ModelSerializer):

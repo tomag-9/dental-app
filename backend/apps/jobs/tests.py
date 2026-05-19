@@ -417,6 +417,27 @@ class JobValidationApiTests(APITestCase):
             JobTimelineEvent.objects.filter(job=job, event="created").exists()
         )
 
+    def test_create_job_rejects_invalid_fdi_tooth_item(self):
+        """Nested items must use valid FDI tooth or same-arch ranges."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "CROWN",
+                    "tooth": "99",
+                    "quantity": 1,
+                }
+            ],
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("FDI", str(response.data))
+
     def test_transition_status_validates_flow_and_records_timeline(self):
         """Status changes must use the transition endpoint and write audit events."""
         self.client.force_authenticate(user=self.admin_a)
