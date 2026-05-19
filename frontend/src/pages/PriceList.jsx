@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { printHtmlDocument } from '../lib/browserActions';
+import { escapeHtml, normalizeListResponse } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -14,23 +15,23 @@ export default function PriceList() {
     const [error, setError] = useState('');
     const [itemToDelete, setItemToDelete] = useState(null);
 
-    useEffect(() => {
-        fetchPriceList();
-    }, []);
-
-    const fetchPriceList = async () => {
+    const fetchPriceList = useCallback(async () => {
         setIsLoading(true);
         setError('');
         try {
             const response = await api.get('/finance/price-list/');
-            setItems(response.data);
+            setItems(normalizeListResponse(response.data));
         } catch (err) {
             console.error('Failed to fetch price list:', err);
             setError('Nepodarilo sa načítať cenník.');
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPriceList();
+    }, [fetchPriceList]);
 
     const confirmDelete = async () => {
         if (!itemToDelete) return;
@@ -126,10 +127,10 @@ export default function PriceList() {
                     <tbody>
                         ${filteredItems.map(item => `
                             <tr>
-                                <td><strong>${item.code}</strong></td>
-                                <td>${item.description}</td>
+                                <td><strong>${escapeHtml(item.code)}</strong></td>
+                                <td>${escapeHtml(item.description)}</td>
                                 <td class="price">€${parseFloat(item.price).toFixed(2)}</td>
-                                <td class="expires">${item.valid_to ? new Date(item.valid_to).toLocaleDateString('sk-SK', { year: 'numeric', month: 'short', day: 'numeric' }) : '-'}</td>
+                                <td class="expires">${escapeHtml(item.valid_to ? new Date(item.valid_to).toLocaleDateString('sk-SK', { year: 'numeric', month: 'short', day: 'numeric' }) : '-')}</td>
                             </tr>
                         `).join('')}
                     </tbody>

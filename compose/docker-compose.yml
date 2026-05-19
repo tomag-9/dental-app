@@ -1,0 +1,55 @@
+name: dental-app
+
+services:
+  backend:
+    build:
+      context: ../backend
+    command: python manage.py runserver 0.0.0.0:8810
+    volumes:
+      - ../backend:/app
+    ports:
+      - "${BACKEND_PORT:-8810}:8810"
+    environment:
+      - DEBUG=${DEBUG:-1}
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost 127.0.0.1 [::1] backend}
+      - SQL_ENGINE=${SQL_ENGINE:-django.db.backends.postgresql}
+      - SQL_DATABASE=${SQL_DATABASE:-dental_db}
+      - SQL_USER=${SQL_USER:-hello_django}
+      - SQL_PASSWORD=${SQL_PASSWORD:-hello_django}
+      - SQL_HOST=${SQL_HOST:-db}
+      - SQL_PORT=${SQL_PORT:-5432}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5280,http://127.0.0.1:5280}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-hello_django}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hello_django}
+      - POSTGRES_DB=${POSTGRES_DB:-dental_db}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hello_django} -d ${POSTGRES_DB:-dental_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5280}:5280"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8810}
+
+volumes:
+  postgres_data:

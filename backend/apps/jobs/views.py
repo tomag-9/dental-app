@@ -1,49 +1,31 @@
 from rest_framework import permissions, serializers, viewsets
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
+
+from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
 
 from .models import Job, Technician, Vacation
 from .serializers import JobSerializer, TechnicianSerializer, VacationSerializer
 
 
-def _is_superadmin(user):
-    return (
-        getattr(user, "is_superuser", False)
-        or getattr(user, "role", None) == "superadmin"
-    )
-
-
-class TechnicianViewSet(viewsets.ModelViewSet):
+class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Technician.objects.all()
     serializer_class = TechnicianSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            return Technician.objects.filter(lab=user.lab)
-        return Technician.objects.none()
+        return self.get_tenant_scoped_queryset(Technician.objects.all())
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
 
-class JobViewSet(viewsets.ModelViewSet):
+class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        qs = (
-            Job.objects.all()
-            if _is_superadmin(user)
-            else (
-                Job.objects.filter(lab=user.lab)
-                if hasattr(user, "lab") and user.lab
-                else Job.objects.none()
-            )
-        )
+        qs = self.get_tenant_scoped_queryset(Job.objects.all())
 
         # Patient filtering
         patient_id = self.request.query_params.get("patient_id")
@@ -71,10 +53,7 @@ class VacationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         # Match legacy behavior: superadmins can view all vacations.
-        if (
-            getattr(user, "is_superuser", False)
-            or getattr(user, "role", None) == "superadmin"
-        ):
+        if is_superadmin(user):
             return Vacation.objects.all()
         if hasattr(user, "lab") and user.lab:
             return Vacation.objects.filter(lab=user.lab)
@@ -82,10 +61,7 @@ class VacationViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
-        if (
-            getattr(user, "is_superuser", False)
-            or getattr(user, "role", None) == "superadmin"
-        ):
+        if is_superadmin(user):
             serializer.save()
             return
         if not (hasattr(user, "lab") and user.lab):

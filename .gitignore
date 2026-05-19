@@ -30,8 +30,8 @@ backend/venv/
 # Environment files (keep examples)
 .env
 .env.*
-!.env.dev.example
-!.env.prod.example
+env/*.env
+!env/*.env.example
 
 # Misc
 instance/
@@ -42,7 +42,7 @@ backend/alembic/env.py
 check-all.sh
 rebuild-dev.sh
 
-frontend_legacy/
-backend_legacy/
 # Added by code-review-graph
 .code-review-graph/
+.claude/
+.design/

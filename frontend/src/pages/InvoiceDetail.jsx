@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { downloadBlobFile } from '../lib/browserActions';
+import { normalizeListResponse } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, Loader2, Download, AlertCircle } from 'lucide-react';
@@ -21,12 +22,6 @@ export default function InvoiceDetail() {
         job_ids: [],
     });
     const [selectedJobs, setSelectedJobs] = useState([]);
-
-    const normalizeListResponse = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.results)) return responseData.results;
-        return [];
-    };
 
     const loadInvoice = useCallback(async () => {
         setLoading(true);
@@ -61,27 +56,27 @@ export default function InvoiceDetail() {
         }
     }, [formData.clinic_id]);
 
+    const loadClinics = useCallback(async () => {
+        try {
+            const response = await api.get('/crm/clinics/');
+            setClinics(normalizeListResponse(response.data));
+        } catch (err) {
+            console.error('Failed to fetch clinics:', err);
+        }
+    }, []);
+
     useEffect(() => {
         loadClinics();
         if (!isCreating) {
             loadInvoice();
         }
-    }, [id, isCreating, loadInvoice]);
+    }, [isCreating, loadClinics, loadInvoice]);
 
     useEffect(() => {
         if (formData.clinic_id) {
             loadJobsForClinic();
         }
     }, [formData.clinic_id, loadJobsForClinic]);
-
-    const loadClinics = async () => {
-        try {
-            const response = await api.get('/crm/clinics/');
-            setClinics(response.data);
-        } catch (err) {
-            console.error('Failed to fetch clinics:', err);
-        }
-    };
 
     const handleJobToggle = (jobId) => {
         const newJobIds = selectedJobs.includes(jobId)

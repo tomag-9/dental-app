@@ -1,7 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import FinanceStatsView, InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
+from .views import (
+    FinanceStatsView,
+    InvoiceViewSet,
+    PriceListViewSet,
+    SubscriptionViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"invoices", InvoiceViewSet)

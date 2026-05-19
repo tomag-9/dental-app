@@ -24,15 +24,15 @@ A web application for Slovak dental laboratories: manage patients, jobs (dental 
 
 ```bash
 # Start everything (backend + frontend + postgres)
-docker compose up
+docker compose --env-file env/dev.env.example -f compose/docker-compose.yml up
 
 # Or rebuild from scratch
 ./rebuild-dev
 
 # Seed demo data
-docker compose exec backend python manage.py runscript seed_data
+docker compose --env-file env/dev.env.example -f compose/docker-compose.yml exec backend python manage.py runscript seed_data
 # or
-docker compose exec backend python seed_data.py
+docker compose --env-file env/dev.env.example -f compose/docker-compose.yml exec backend python seed_data.py
 ```
 
 Default credentials after seeding: `admin` / `admin` and `user` / `user`.
@@ -45,7 +45,7 @@ Swagger docs: http://localhost:8000/api/docs/
 
 ```bash
 # Backend (Django)
-docker compose exec backend python manage.py test --verbosity=2
+docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test --noinput --verbosity=2
 
 # Frontend (lint + build check — no Jest tests yet)
 cd frontend && npm run lint && npm run build

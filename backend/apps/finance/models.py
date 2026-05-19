@@ -9,7 +9,7 @@ class PriceList(models.Model):
     lab = models.ForeignKey(
         Lab, on_delete=models.CASCADE, related_name="price_list_items"
     )
-    code = models.CharField(max_length=50, unique=True, null=False)
+    code = models.CharField(max_length=50, null=False)
     description = models.CharField(max_length=255, null=False)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
     valid_from = models.DateField(null=True, blank=True)
@@ -18,6 +18,14 @@ class PriceList(models.Model):
 
     def __str__(self):
         return f"{self.code} - {self.price}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lab", "code"],
+                name="unique_pricelist_code_per_lab",
+            )
+        ]
 
 
 class Invoice(models.Model):

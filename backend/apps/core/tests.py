@@ -164,3 +164,39 @@ class CoreUserFlowsApiTests(APITestCase):
         by_name = {item["name"]: item for item in response.data}
         self.assertIn("Lab A", by_name)
         self.assertEqual(by_name["Lab A"]["subscription_status"], "active")
+
+    def test_regular_user_cannot_update_lab_settings(self):
+        self.client.force_authenticate(user=self.user_a)
+        response = self.client.patch(
+            f"/api/core/labs/{self.lab_a.id}/",
+            {"name": "Changed by user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.lab_a.refresh_from_db()
+        self.assertEqual(self.lab_a.name, "Lab A")
+
+    def test_admin_can_update_own_lab_settings(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.patch(
+            f"/api/core/labs/{self.lab_a.id}/",
+            {"city": "Bratislava"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.lab_a.refresh_from_db()
+        self.assertEqual(self.lab_a.city, "Bratislava")
+
+    def test_admin_cannot_update_other_lab_settings(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.patch(
+            f"/api/core/labs/{self.lab_b.id}/",
+            {"city": "Kosice"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.lab_b.refresh_from_db()
+        self.assertIsNone(self.lab_b.city)

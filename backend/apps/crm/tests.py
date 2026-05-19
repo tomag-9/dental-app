@@ -110,12 +110,20 @@ class PatientCrudApiTests(APITestCase):
 
     def setUp(self):
         self.lab = Lab.objects.create(name="Test Lab")
+        self.lab_b = Lab.objects.create(name="Other Lab")
         self.user = User.objects.create_user(
             username="testuser",
             email="test@example.com",
             password="password123",
             role="admin",
             lab=self.lab,
+        )
+        self.superadmin = User.objects.create_user(
+            username="patient_superadmin",
+            email="patient_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
         )
 
     def test_create_patient(self):
@@ -158,6 +166,43 @@ class PatientCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+
+    def test_superadmin_lists_patients_across_labs(self):
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Alice",
+            last_name="Smith",
+            birth_number="900101/1234",
+        )
+        Patient.objects.create(
+            lab=self.lab_b,
+            first_name="Bob",
+            last_name="Jones",
+            birth_number="900101/1234",
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(reverse("patient-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_duplicate_birth_number_allowed_across_labs(self):
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Alice",
+            last_name="Smith",
+            birth_number="900101/1234",
+        )
+
+        patient = Patient.objects.create(
+            lab=self.lab_b,
+            first_name="Bob",
+            last_name="Jones",
+            birth_number="900101/1234",
+        )
+
+        self.assertEqual(patient.birth_number, "900101/1234")
 
     def test_get_patient(self):
         """Test retrieving a specific patient."""
@@ -224,6 +269,7 @@ class ClinicCrudApiTests(APITestCase):
 
     def setUp(self):
         self.lab = Lab.objects.create(name="Test Lab")
+        self.lab_b = Lab.objects.create(name="Other Lab")
         self.user = User.objects.create_user(
             username="testuser",
             email="clinic_test@example.com",
@@ -260,6 +306,16 @@ class ClinicCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+
+    def test_duplicate_ico_allowed_across_labs(self):
+        Clinic.objects.create(lab=self.lab, name="Clinic A", ico="12345678")
+        clinic = Clinic.objects.create(
+            lab=self.lab_b,
+            name="Clinic B",
+            ico="12345678",
+        )
+
+        self.assertEqual(clinic.ico, "12345678")
 
     def test_get_clinic(self):
         """Test retrieving a specific clinic."""

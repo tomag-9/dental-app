@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Loader2, AlertCircle } from 'lucide-react';
 import api from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { normalizeListResponse } from '../lib/utils';
 
 const daysOfWeek = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
 
@@ -16,16 +17,6 @@ export default function Calendar() {
   const [vacation, setVacation] = useState({ start: '', end: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const normalizeListResponse = (responseData) => {
-    if (Array.isArray(responseData)) return responseData;
-    if (Array.isArray(responseData?.results)) return responseData.results;
-    return [];
-  };
-
   const toISODateString = (value) => {
     if (!value) return null;
     const date = value instanceof Date ? value : new Date(value);
@@ -35,7 +26,7 @@ export default function Calendar() {
 
   const formatMonthYear = (date) => date.toLocaleDateString('sk-SK', { month: 'long', year: 'numeric' });
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -74,7 +65,11 @@ export default function Calendar() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const handleDateClick = (date) => {
     setVacation({

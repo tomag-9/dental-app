@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
 import { downloadBlobFile } from '../lib/browserActions';
+import { escapeCsvCell, normalizeListResponse } from '../lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
@@ -18,17 +19,7 @@ export default function Inventory() {
     const [statusFilter, setStatusFilter] = useState('all');
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        fetchItems();
-    }, []);
-
-    const normalizeListResponse = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.results)) return responseData.results;
-        return [];
-    };
-
-    const fetchItems = async () => {
+    const fetchItems = useCallback(async () => {
         setIsLoading(true);
         setError('');
         try {
@@ -40,7 +31,11 @@ export default function Inventory() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchItems();
+    }, [fetchItems]);
 
     const getStockStatus = (item) => {
         if (item.quantity <= 0) return 'OUT';
@@ -107,11 +102,6 @@ export default function Inventory() {
             'notes',
         ];
 
-        const escapeCsv = (value) => {
-            const text = (value ?? '').toString().replace(/"/g, '""');
-            return `"${text}"`;
-        };
-
         const rows = filteredItems.map((item) => [
             item.name,
             item.sku,
@@ -124,7 +114,7 @@ export default function Inventory() {
             item.notes,
         ]);
 
-        const csv = [headers.join(','), ...rows.map((row) => row.map(escapeCsv).join(','))].join('\n');
+        const csv = [headers.join(','), ...rows.map((row) => row.map(escapeCsvCell).join(','))].join('\n');
         downloadBlobFile(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), 'sklad-export.csv');
     };
 

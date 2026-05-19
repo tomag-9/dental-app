@@ -34,6 +34,13 @@ class WarehouseItemCrudApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.superadmin = User.objects.create_user(
+            username="warehouse_superadmin",
+            email="warehouse_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
 
     def test_create_warehouse_item(self):
         """Test creating a new warehouse item."""
@@ -181,6 +188,26 @@ class WarehouseItemCrudApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
+    def test_superadmin_can_list_items_across_labs(self):
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Item A1",
+            sku="SKU-A1",
+            quantity=10,
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_b,
+            name="Item B1",
+            sku="SKU-B1",
+            quantity=20,
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(reverse("warehouseitem-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
 
 class WarehouseBulkImportTests(APITestCase):
     """Tests for POST /warehouse/import/ and /warehouse/import-partial/."""
@@ -205,7 +232,13 @@ class WarehouseBulkImportTests(APITestCase):
 
     def _valid_items(self):
         return [
-            {"name": "Item A", "sku": "SKU-A", "quantity": "10.00", "unit": "pcs", "cost_price": "5.50"},
+            {
+                "name": "Item A",
+                "sku": "SKU-A",
+                "quantity": "10.00",
+                "unit": "pcs",
+                "cost_price": "5.50",
+            },
             {"name": "Item B", "sku": "SKU-B", "quantity": "20.00", "unit": "pcs"},
         ]
 

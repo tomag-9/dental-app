@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.finance.models import Subscription
 
+from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
 from .models import Lab, User
 from .serializers import (
     LabSerializer,
@@ -21,17 +22,6 @@ from .serializers import (
     SignupResponseSerializer,
     UserSerializer,
 )
-
-
-def _is_superadmin(user):
-    return bool(
-        getattr(user, "is_superuser", False)
-        or getattr(user, "role", None) == "superadmin"
-    )
-
-
-def _is_admin_or_superadmin(user):
-    return _is_superadmin(user) or getattr(user, "role", None) == "admin"
 
 
 def _build_unique_username(base_value):
@@ -55,10 +45,12 @@ class DashboardStatsView(APIView):
         user = request.user
         lab_id = getattr(user, "lab_id", None)
 
-        if _is_superadmin(user):
+        if is_superadmin(user):
             patients_qs = Patient.objects.all()
             jobs_qs = Job.objects.select_related("patient").order_by("-created_at")
-            invoices_qs = Invoice.objects.select_related("clinic").order_by("-created_at")
+            invoices_qs = Invoice.objects.select_related("clinic").order_by(
+                "-created_at"
+            )
         elif lab_id:
             patients_qs = Patient.objects.filter(lab_id=lab_id)
             jobs_qs = (
@@ -87,12 +79,9 @@ class DashboardStatsView(APIView):
         total_patients = patients_qs.count()
         active_jobs = jobs_qs.filter(status__in=active_statuses).count()
         completed_jobs = jobs_qs.filter(status__in=done_statuses).count()
-        total_revenue = (
-            invoices_qs.filter(status="paid").aggregate(total=Sum("total_amount"))[
-                "total"
-            ]
-            or Decimal("0.00")
-        )
+        total_revenue = invoices_qs.filter(status="paid").aggregate(
+            total=Sum("total_amount")
+        )["total"] or Decimal("0.00")
 
         recent_jobs_data = []
         for job in jobs_qs[:5]:
@@ -149,15 +138,33 @@ class LabViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if _is_superadmin(user):
+        if is_superadmin(user):
             return Lab.objects.all()
         if getattr(user, "lab", None):
             return Lab.objects.filter(id=user.lab_id)
         return Lab.objects.none()
 
+    def create(self, request, *args, **kwargs):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Only superadmin can create labs")
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        assert_lab_write_allowed(request.user)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        assert_lab_write_allowed(request.user)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Only superadmin can delete labs")
+        return super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=["get"], url_path="superadmin/all")
     def superadmin_all(self, request):
-        if not _is_superadmin(request.user):
+        if not is_superadmin(request.user):
             raise PermissionDenied("Superadmin only endpoint")
 
         labs = Lab.objects.annotate(user_count=Count("users")).all()
@@ -186,11 +193,11 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _assert_can_manage_users(self, requester):
-        if not _is_admin_or_superadmin(requester):
+        if not is_admin_or_superadmin(requester):
             raise PermissionDenied("Only admin or superadmin can manage users")
 
     def _assert_in_scope_or_superadmin(self, requester, target):
-        if _is_superadmin(requester):
+        if is_superadmin(requester):
             return
         if getattr(requester, "lab_id", None) != getattr(target, "lab_id", None):
             raise PermissionDenied("Cannot manage users from another lab")
@@ -207,9 +214,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if _is_superadmin(user):
+        if is_superadmin(user):
             return User.objects.all()
-        if _is_admin_or_superadmin(user) and getattr(user, "lab", None):
+        if is_admin_or_superadmin(user) and getattr(user, "lab", None):
             return User.objects.filter(lab=user.lab).exclude(role="superadmin")
         return User.objects.none()
 
@@ -250,7 +257,7 @@ class UserViewSet(viewsets.ModelViewSet):
         requester = self.request.user
         self._assert_can_manage_users(requester)
         # Keep non-superadmins within their own lab and prevent role escalation.
-        if not _is_superadmin(requester):
+        if not is_superadmin(requester):
             role = serializer.validated_data.get("role")
             if role == "superadmin":
                 raise PermissionDenied("Only superadmin can assign superadmin role")
@@ -365,7 +372,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         target_role = data.get("role")
         if target_role and target_role != user.role:
-            if target_role == "superadmin" and not _is_superadmin(user):
+            if target_role == "superadmin" and not is_superadmin(user):
                 raise PermissionDenied("Only superadmin can assign superadmin role")
             if target_role == "admin" and user.role not in ("admin", "superadmin"):
                 raise PermissionDenied("Only admin/superadmin can assign admin role")
@@ -379,7 +386,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="superadmin/all")
     def superadmin_all(self, request):
-        if not _is_superadmin(request.user):
+        if not is_superadmin(request.user):
             raise PermissionDenied("Superadmin only endpoint")
 
         result = []
@@ -405,7 +412,7 @@ class UserViewSet(viewsets.ModelViewSet):
         url_path=r"superadmin/(?P<target_user_id>[^/.]+)/toggle-active",
     )
     def toggle_active(self, request, target_user_id=None):
-        if not _is_superadmin(request.user):
+        if not is_superadmin(request.user):
             raise PermissionDenied("Superadmin only endpoint")
 
         try:

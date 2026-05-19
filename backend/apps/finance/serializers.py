@@ -9,6 +9,22 @@ class PriceListSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ["lab"]
 
+    def validate(self, attrs):
+        request = self.context.get("request")
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
+        code = attrs.get("code", getattr(self.instance, "code", None))
+        if lab and code:
+            qs = PriceList.objects.filter(lab=lab, code=code)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"code": "Price-list code already exists for this lab."}
+                )
+        return attrs
+
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     class Meta:
