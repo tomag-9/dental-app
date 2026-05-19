@@ -124,9 +124,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         )
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 
-    def _record_timeline(
-        self, job, event, note=None, from_status=None, to_status=None
-    ):
+    def _record_timeline(self, job, event, note=None, from_status=None, to_status=None):
         JobTimelineEvent.objects.create(
             job=job,
             actor=self.request.user if self.request.user.is_authenticated else None,

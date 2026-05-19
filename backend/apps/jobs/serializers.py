@@ -127,7 +127,9 @@ class JobSerializer(serializers.ModelSerializer):
                 )
 
         if items:
-            valid_codes = set(self._price_list_queryset().values_list("code", flat=True))
+            valid_codes = set(
+                self._price_list_queryset().values_list("code", flat=True)
+            )
             invalid_codes = [
                 item.get("price_list_code")
                 for item in items
@@ -247,7 +249,9 @@ class JobSerializer(serializers.ModelSerializer):
 
 
 class JobStatusTransitionSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=[choice[0] for choice in Job.STATUS_CHOICES])
+    status = serializers.ChoiceField(
+        choices=[choice[0] for choice in Job.STATUS_CHOICES]
+    )
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 

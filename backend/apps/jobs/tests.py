@@ -6,7 +6,20 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import PriceList
+from apps.jobs.dental import expand_fdi_range, validate_tooth_range
 from apps.jobs.models import Job, JobItem, JobTimelineEvent, Technician, Vacation
+
+
+class DentalNotationTests(APITestCase):
+    def test_expand_fdi_range_accepts_single_tooth_and_same_arch_ranges(self):
+        self.assertEqual(expand_fdi_range("26"), ["26"])
+        self.assertCountEqual(expand_fdi_range("45-47"), ["45", "46", "47"])
+        self.assertCountEqual(expand_fdi_range("47–45"), ["45", "46", "47"])
+
+    def test_expand_fdi_range_rejects_invalid_or_cross_arch_ranges(self):
+        self.assertEqual(expand_fdi_range("99"), [])
+        self.assertEqual(expand_fdi_range("18-48"), [])
+        self.assertFalse(validate_tooth_range("31-11"))
 
 
 class VacationApiTests(APITestCase):
@@ -437,6 +450,29 @@ class JobValidationApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("FDI", str(response.data))
+
+    def test_create_job_accepts_bridge_tooth_range_item(self):
+        """Bridge items can target a valid same-arch FDI range."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "BRIDGE",
+                    "tooth": "45-47",
+                    "quantity": 3,
+                }
+            ],
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertEqual(item.tooth, "45-47")
+        self.assertEqual(item.quantity, 3)
 
     def test_transition_status_validates_flow_and_records_timeline(self):
         """Status changes must use the transition endpoint and write audit events."""
