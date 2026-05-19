@@ -32,15 +32,30 @@ class TenantScopedQuerysetMixin:
     def save_with_request_lab(self, serializer):
         user = self.request.user
         if is_superadmin(user):
-            if serializer.validated_data.get(self.lab_filter_field):
-                serializer.save()
-                return
-            raise ValidationError("Lab must be provided")
+            lab = serializer.validated_data.get(self.lab_filter_field)
+            if lab is None:
+                lab = self._get_lab_from_request_data()
+            serializer.save(**{self.lab_filter_field: lab})
+            return
 
         lab = getattr(user, "lab", None)
         if not lab:
             raise ValidationError("User is not assigned to any lab")
         serializer.save(**{self.lab_filter_field: lab})
+
+    def _get_lab_from_request_data(self):
+        from apps.core.models import Lab
+
+        lab_id = self.request.data.get(
+            self.lab_filter_field,
+            self.request.data.get(f"{self.lab_filter_field}_id"),
+        )
+        if not lab_id:
+            raise ValidationError({self.lab_filter_field: "Lab must be provided"})
+        try:
+            return Lab.objects.get(pk=lab_id)
+        except (TypeError, ValueError, Lab.DoesNotExist):
+            raise ValidationError({self.lab_filter_field: "Invalid lab"})
 
 
 def assert_lab_write_allowed(user):

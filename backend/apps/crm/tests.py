@@ -144,6 +144,22 @@ class PatientCrudApiTests(APITestCase):
         self.assertEqual(response.data["birth_number"], "910101/1111")
         self.assertEqual(response.data["lab"], self.lab.id)
 
+    def test_superadmin_can_create_patient_for_selected_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            reverse("patient-list"),
+            {
+                "lab": self.lab_b.id,
+                "first_name": "Super",
+                "last_name": "Patient",
+                "birth_number": "991212/1234",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
+
     def test_list_patients(self):
         """Test listing patients."""
         Patient.objects.create(
@@ -277,6 +293,13 @@ class ClinicCrudApiTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.superadmin = User.objects.create_user(
+            username="clinic_superadmin",
+            email="clinic_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
 
     def test_create_clinic(self):
         """Test creating a new clinic."""
@@ -293,6 +316,17 @@ class ClinicCrudApiTests(APITestCase):
         self.assertEqual(response.data["name"], "New Clinic")
         self.assertEqual(response.data["address"], "1 Test Rd")
         self.assertEqual(response.data["lab"], self.lab.id)
+
+    def test_superadmin_can_create_clinic_for_selected_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            reverse("clinic-list"),
+            {"lab": self.lab_b.id, "name": "Super Clinic", "ico": "87654321"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
 
     def test_list_clinics(self):
         """Test listing clinics."""
@@ -316,6 +350,12 @@ class ClinicCrudApiTests(APITestCase):
         )
 
         self.assertEqual(clinic.ico, "12345678")
+
+    def test_blank_ico_allowed_multiple_times_within_lab(self):
+        Clinic.objects.create(lab=self.lab, name="Clinic A", ico="")
+        clinic = Clinic.objects.create(lab=self.lab, name="Clinic B", ico="")
+
+        self.assertEqual(clinic.ico, "")
 
     def test_get_clinic(self):
         """Test retrieving a specific clinic."""

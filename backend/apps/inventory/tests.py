@@ -66,6 +66,22 @@ class WarehouseItemCrudApiTests(APITestCase):
         self.assertEqual(float(response.data["quantity"]), 50.0)
         self.assertEqual(response.data["lab"], self.lab_a.id)
 
+    def test_superadmin_can_create_warehouse_item_for_selected_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            reverse("warehouseitem-list"),
+            {
+                "lab": self.lab_b.id,
+                "name": "Superadmin item",
+                "sku": "SUPER-001",
+                "quantity": 5,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
+
     def test_list_warehouse_items(self):
         """Test listing warehouse items scoped to lab."""
         WarehouseItem.objects.create(

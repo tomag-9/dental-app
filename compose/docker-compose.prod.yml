@@ -38,7 +38,7 @@ services:
   frontend:
     image: ${REGISTRY_HOST}/dental-app/frontend:${FRONTEND_TAG:-nightly}
     ports:
-      - "${FRONTEND_PORT:-80}:5280"
+      - "${FRONTEND_PORT:-80}:80"
     depends_on:
       - backend
 

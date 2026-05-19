@@ -1,5 +1,5 @@
 from django.db import migrations, models
-from django.db.models import Count
+from django.db.models import Count, Q
 
 
 def check_duplicate_lab_values(apps, schema_editor):
@@ -45,6 +45,7 @@ class Migration(migrations.Migration):
             model_name="clinic",
             constraint=models.UniqueConstraint(
                 fields=("lab", "ico"),
+                condition=Q(ico__isnull=False) & ~Q(ico=""),
                 name="unique_clinic_ico_per_lab",
             ),
         ),

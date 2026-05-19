@@ -335,6 +335,22 @@ class PriceListCrudApiTests(APITestCase):
         self.assertEqual(float(response.data["price"]), 12.5)
         self.assertEqual(response.data["lab"], self.lab_a.id)
 
+    def test_superadmin_can_create_price_list_item_for_selected_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            reverse("pricelist-list"),
+            {
+                "lab": self.lab_b.id,
+                "code": "SUPER-001",
+                "description": "Superadmin item",
+                "price": 99.0,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
+
     def test_list_price_list_items(self):
         """Test listing price list items scoped to lab."""
         PriceList.objects.create(

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 from apps.core.models import Lab
 
@@ -20,6 +21,7 @@ class Clinic(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["lab", "ico"],
+                condition=Q(ico__isnull=False) & ~Q(ico=""),
                 name="unique_clinic_ico_per_lab",
             )
         ]

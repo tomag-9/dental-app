@@ -12,7 +12,7 @@ on:
 
 jobs:
   test-backend:
-    runs-on: [self-hosted, Linux]
+    runs-on: [self-hosted, linux]
 
     steps:
       - name: Checkout repository
