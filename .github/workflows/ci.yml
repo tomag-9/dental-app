@@ -47,7 +47,7 @@ jobs:
   docker-build:
     needs: [quality-check]
     runs-on: [self-hosted]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     name: Build Docker Images
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -67,7 +67,7 @@ jobs:
       with:
         username: ${{ env.DOCKER_USERNAME }}
         password: ${{ env.DOCKER_PASSWORD }}
-      if: env.DOCKER_USERNAME != '' && env.DOCKER_REGISTRY != ''
+      if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Build Backend Image
       uses: docker/build-push-action@v4
       with:
@@ -75,7 +75,7 @@ jobs:
         file: backend/Dockerfile
         push: false
         tags: local/dental-backend:latest
-      if: env.DOCKER_USERNAME == '' || env.DOCKER_REGISTRY == ''
+      if: env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' || env.DOCKER_REGISTRY == ''
     - name: Build and Push Backend (with credentials)
       uses: docker/build-push-action@v4
       with:
@@ -83,7 +83,7 @@ jobs:
         file: backend/Dockerfile
         push: true
         tags: ${{ env.DOCKER_REGISTRY }}/dental-backend:latest
-      if: env.DOCKER_USERNAME != '' && env.DOCKER_REGISTRY != ''
+      if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Build Frontend Image
       uses: docker/build-push-action@v4
       with:
@@ -91,7 +91,7 @@ jobs:
         file: frontend/Dockerfile
         push: false
         tags: local/dental-frontend:latest
-      if: env.DOCKER_USERNAME == '' || env.DOCKER_REGISTRY == ''
+      if: env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' || env.DOCKER_REGISTRY == ''
     - name: Build and Push Frontend (with credentials)
       uses: docker/build-push-action@v4
       with:
@@ -99,7 +99,7 @@ jobs:
         file: frontend/Dockerfile
         push: true
         tags: ${{ env.DOCKER_REGISTRY }}/dental-frontend:latest
-      if: env.DOCKER_USERNAME != '' && env.DOCKER_REGISTRY != ''
+      if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Cleanup Docker containers
       if: always()
       run: |
