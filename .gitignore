@@ -44,3 +44,5 @@ rebuild-dev.sh
 
 frontend_legacy/
 backend_legacy/
+# Added by code-review-graph
+.code-review-graph/

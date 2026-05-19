@@ -10,13 +10,21 @@ const api = axios.create({
 let isRefreshing = false;
 let pendingRequests = [];
 
-const resolvePendingRequests = (newToken) => {
-    pendingRequests.forEach((callback) => callback(newToken));
+const resolvePendingRequests = (newToken, refreshError = null) => {
+    pendingRequests.forEach((callback) => callback(newToken, refreshError));
     pendingRequests = [];
 };
 
-const rejectPendingRequests = () => {
-    pendingRequests = [];
+const clearAuthStorage = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh');
+    localStorage.removeItem('user');
+};
+
+const redirectToLogin = () => {
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+    }
 };
 
 // Add a request interceptor to include the token
@@ -45,12 +53,8 @@ api.interceptors.response.use(
         const isRefreshCall = originalRequest?.url?.includes('/token/refresh/');
 
         if (!refreshToken || isRefreshCall) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh');
-            localStorage.removeItem('user');
-            if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-                window.location.assign('/login');
-            }
+            clearAuthStorage();
+            redirectToLogin();
             return Promise.reject(error);
         }
 
@@ -61,7 +65,11 @@ api.interceptors.response.use(
 
         if (isRefreshing) {
             return new Promise((resolve, reject) => {
-                pendingRequests.push((newToken) => {
+                pendingRequests.push((newToken, refreshError) => {
+                    if (refreshError) {
+                        reject(refreshError);
+                        return;
+                    }
                     if (!newToken) {
                         reject(error);
                         return;
@@ -88,13 +96,12 @@ api.interceptors.response.use(
             resolvePendingRequests(newAccessToken);
             return api(originalRequest);
         } catch (refreshError) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refresh');
-            localStorage.removeItem('user');
-            rejectPendingRequests();
-            if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-                window.location.assign('/login');
+            const refreshStatus = refreshError?.response?.status;
+            if (refreshStatus === 401 || refreshStatus === 403) {
+                clearAuthStorage();
+                redirectToLogin();
             }
+            resolvePendingRequests(null, refreshError);
             return Promise.reject(refreshError);
         } finally {
             isRefreshing = false;

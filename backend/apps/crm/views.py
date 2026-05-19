@@ -23,6 +23,11 @@ class ClinicViewSet(viewsets.ModelViewSet):
         if hasattr(self.request.user, "lab"):
             serializer.save(lab=self.request.user.lab)
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["include_doctors"] = self.action == "retrieve"
+        return context
+
 
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
@@ -32,7 +37,11 @@ class DoctorViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, "lab") and user.lab:
-            return Doctor.objects.filter(lab=user.lab)
+            queryset = Doctor.objects.filter(lab=user.lab)
+            clinic_id = self.request.query_params.get("clinic")
+            if clinic_id:
+                queryset = queryset.filter(clinic_id=clinic_id)
+            return queryset
         return Doctor.objects.none()
 
     def perform_create(self, serializer):

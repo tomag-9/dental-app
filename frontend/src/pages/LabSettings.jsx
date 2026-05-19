@@ -3,6 +3,7 @@ import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Save, Loader2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function LabSettings() {
     const [loading, setLoading] = useState(true);
@@ -287,6 +288,20 @@ export default function LabSettings() {
                             </Button>
                         </div>
                     </form>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Kliniky a lekári</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                        Správa kliník je prepojená s lekármi. Lekárov môžete pridávať priamo v detaile kliniky.
+                    </p>
+                    <Link to="/clinics">
+                        <Button variant="outline">Otvoriť správu kliník</Button>
+                    </Link>
                 </CardContent>
             </Card>
         </div>

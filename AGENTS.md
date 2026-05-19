@@ -1,4 +1,4 @@
-# CLAUDE.md — Dental Lab Management App
+# AGENTS.md — Dental Lab Management App
 
 ## Project overview
 
@@ -70,20 +70,6 @@ App-scoped routers: `/api/crm/`, `/api/jobs/`, `/api/finance/`, `/api/inventory/
 - Superadmin users (`role == "superadmin"`) bypass lab filters and see all data.
 - Job status flow: `new` → `in_progress` → `completed` / `cancelled`. When invoiced, finance views additionally set `finished_factured`, `finished_unfactured`, or `closed` (see `apps/finance/views.py:_sync_jobs_for_invoice_status`).
 
-## Known incomplete areas (open issues)
-
-| # | Area | Status |
-|---|---|---|
-| #34 | Job status mismatch in finance views | **Fixed** — migration `0004_add_billing_job_statuses` added |
-| #35 | LabSettings save was a placeholder | **Fixed** — now calls `PATCH /api/labs/<id>/` |
-| #36 | Password change in ProfileSettings | **Fixed** — now calls `PUT /api/users/me/` |
-| #37 | Finance dashboard is a stub | Open — needs real stats endpoint |
-| #38 | Dashboard loads all data for 4 stats | Open — needs `/api/dashboard/stats/` |
-| #39 | Inventory CSV import is sequential | Open — needs bulk import endpoint |
-| #40 | Mixed Slovak/English UI | Open — language decision needed |
-| #41 | Wrong repo URL in root package.json | **Fixed** |
-| #42 | Stale branches on GitHub | Open — delete manually |
-| #43 | Missing CLAUDE.md | **Fixed** (this file) |
 
 ## Documentation
 
@@ -92,6 +78,20 @@ The `doc/` directory contains:
 - `testing.md` — testing strategy
 - `test_coverage.md` — test coverage summary
 - `github_actions_fix.md` — notes on CI pipeline
+
+
+## Agent Workflows
+
+This repo includes Claude Code skills in `.claude/skills/`. Codex can read these as normal project files.
+
+When a task matches one of these workflows, read the relevant file first:
+
+- Code review: `.claude/skills/review-changes.md`
+- Safe refactoring: `.claude/skills/refactor-safely.md`
+- Debugging: `.claude/skills/debug-issue.md`
+- Codebase exploration: `.claude/skills/explore-codebase.md`
+
+Treat these files as shared workflow guidance, but prefer the current task instructions if they conflict.
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
