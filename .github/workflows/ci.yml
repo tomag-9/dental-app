@@ -11,26 +11,38 @@ jobs:
     runs-on: [self-hosted]
     name: Full Project Checks
     steps:
+    - name: Prepare workspace
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE"
+        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
+      with:
+        clean: false
     - name: Validate Docker Compose config
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml config --quiet
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml config --quiet
     - name: Build Docker images
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml build backend frontend
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend frontend
     - name: Run backend tests
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test --noinput --verbosity=2
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test --noinput --verbosity=2
     - name: Run backend contract tests
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
     - name: Run backend flake8
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend flake8 apps --max-line-length=100 --exclude=migrations
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend flake8 apps --max-line-length=100 --exclude=migrations
     - name: Run backend black check
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend black --check apps
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend black --check apps
     - name: Run frontend lint
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm frontend npm run lint
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm frontend npm run build
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run build
     - name: Cleanup Docker containers
       if: always()
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml down --remove-orphans
+      run: |
+        if [ -f env/dev.env.example ]; then
+          docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v --remove-orphans
+        else
+          docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        fi
 
   docker-build:
     needs: [quality-check]
@@ -42,7 +54,14 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
     steps:
+    - name: Prepare workspace
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE"
+        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
+      with:
+        clean: false
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -83,4 +102,5 @@ jobs:
       if: env.DOCKER_USERNAME != '' && env.DOCKER_REGISTRY != ''
     - name: Cleanup Docker containers
       if: always()
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.yml down --remove-orphans
+      run: |
+        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f

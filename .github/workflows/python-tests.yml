@@ -15,18 +15,30 @@ jobs:
     runs-on: [self-hosted]
 
     steps:
+      - name: Prepare workspace
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE"
+          docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+          docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: false
 
       - name: Build backend image
         run: |
-          docker compose --env-file env/dev.env.example -f compose/docker-compose.yml build backend
+          docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
 
       - name: Run backend tests (Django)
         run: |
-          docker compose --env-file env/dev.env.example -f compose/docker-compose.yml run --rm backend python manage.py test --noinput --verbosity=2
+          docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test --noinput --verbosity=2
 
       - name: Cleanup Docker containers
         if: always()
         run: |
-          docker compose --env-file env/dev.env.example -f compose/docker-compose.yml down --remove-orphans
+          if [ -f env/dev.env.example ]; then
+            docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v --remove-orphans
+          else
+            docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+          fi
