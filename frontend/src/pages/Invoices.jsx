@@ -61,11 +61,11 @@ export default function Invoices() {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'draft': return 'bg-gray-100 text-gray-800';
-            case 'issued': return 'bg-blue-100 text-blue-800';
+            case 'draft': return 'bg-[var(--color-status-draft-bg)] text-foreground';
+            case 'issued': return 'bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]';
             case 'paid': return 'bg-green-100 text-green-800';
             case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            default: return 'bg-[var(--color-status-draft-bg)] text-foreground';
         }
     };
 
@@ -126,7 +126,7 @@ export default function Invoices() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-sky-300 text-sm"
+                            className="px-3 py-2 border border-border bg-white rounded-lg focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm"
                         >
                             <option value="all">Všetky stavy</option>
                             <option value="draft">Koncept</option>
@@ -140,7 +140,7 @@ export default function Invoices() {
                                 placeholder="Hľadať faktúry..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-10 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-blue-400 focus:border-sky-300"
+                                className="flex h-10 w-full rounded-lg border border-border bg-white px-3 py-2 pl-10 text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary"
                             />
                         </div>
                     </div>
@@ -158,29 +158,29 @@ export default function Invoices() {
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="bg-sky-100 border-b-2 border-sky-200">
+                                <thead className="border-b border-[var(--color-table-border)] bg-[var(--color-table-header)]">
                                     <tr>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700">Číslo faktúry</th>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden md:table-cell">Klinika</th>
-                                        <th className="px-4 py-3 font-medium text-left text-gray-700 hidden lg:table-cell">Pacienti</th>
-                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Suma</th>
-                                        <th className="px-4 py-3 font-medium text-center text-gray-700">Stav</th>
-                                        <th className="px-4 py-3 font-medium text-right text-gray-700">Akcie</th>
+                                        <th className="px-4 py-3 font-medium text-left text-[var(--color-sidebar-text)]">Číslo faktúry</th>
+                                        <th className="px-4 py-3 font-medium text-left text-[var(--color-sidebar-text)] hidden md:table-cell">Klinika</th>
+                                        <th className="px-4 py-3 font-medium text-left text-[var(--color-sidebar-text)] hidden lg:table-cell">Pacienti</th>
+                                        <th className="px-4 py-3 font-medium text-right text-[var(--color-sidebar-text)]">Suma</th>
+                                        <th className="px-4 py-3 font-medium text-center text-[var(--color-sidebar-text)]">Stav</th>
+                                        <th className="px-4 py-3 font-medium text-right text-[var(--color-sidebar-text)]">Akcie</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-sky-200">
+                                <tbody className="divide-y divide-[var(--color-table-border)]">
                                     {filteredInvoices.map((invoice) => (
-                                        <tr key={invoice.id} className="hover:bg-sky-50 transition-colors">
-                                            <td className="px-4 py-3 font-medium text-blue-600">
+                                        <tr key={invoice.id} className="transition-colors hover:bg-[var(--color-table-hover)]">
+                                            <td className="px-4 py-3 font-medium text-primary">
                                                 {invoice.number}
                                             </td>
                                             <td className="px-4 py-3 hidden md:table-cell">
                                                 {invoice.clinic_name || '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">
+                                            <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">
                                                 {(invoice.patient_names || []).join(', ') || '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-gray-900">
+                                            <td className="px-4 py-3 text-right font-medium text-foreground">
                                                 {parseFloat(invoice.total_amount).toFixed(2)} €
                                             </td>
                                             <td className="px-4 py-3 text-center">

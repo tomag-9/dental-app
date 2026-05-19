@@ -14,7 +14,7 @@ export default function ResponsiveTable({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -28,16 +28,16 @@ export default function ResponsiveTable({
       {/* Mobile View - Cards */}
       <div className="space-y-4 md:hidden">
         {data.map((item, idx) => (
-          <div key={idx} className="border border-gray-200 rounded-lg p-4 space-y-3">
+          <div key={idx} className="space-y-3 rounded-md border border-[var(--color-card-border)] bg-card p-4 shadow-sm">
             {renderMobileCard(item)}
           </div>
         ))}
       </div>
 
       {/* Desktop View - Table */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden overflow-x-auto rounded-md border border-[var(--color-table-border)] bg-card md:block">
         <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 border-b-2 border-gray-200 text-gray-700">
+          <thead className="border-b border-[var(--color-table-border)] bg-[var(--color-table-header)] text-[var(--color-sidebar-text)]">
             <tr>
               {columns.map((col) => (
                 <th
@@ -49,9 +49,9 @@ export default function ResponsiveTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-[var(--color-table-border)]">
             {data.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50 transition-colors">
+              <tr key={idx} className="transition-colors hover:bg-[var(--color-table-hover)]">
                 {renderDesktopRow(item)}
               </tr>
             ))}

@@ -135,7 +135,7 @@ export default function Calendar() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -197,7 +197,7 @@ export default function Calendar() {
         </div>
 
         {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1 rounded-lg bg-sky-50 p-2 border border-sky-200">
+        <div className="grid grid-cols-7 gap-1 rounded-lg bg-white p-2 border border-border">
           {days.map((day, idx) => {
             const dayEvents = getEventsForDate(day);
             const isCurrentMonth = day && isSameMonth(day, currentDate);
@@ -208,9 +208,9 @@ export default function Calendar() {
                 key={idx}
                 onClick={() => day && isCurrentMonth && handleDateClick(day)}
                 className={`
-                  min-h-24 p-2 rounded border border-sky-200 cursor-pointer transition-colors
-                  ${!day || !isCurrentMonth ? 'bg-sky-100/50' : 'bg-sky-50 hover:bg-sky-100'}
-                  ${isToday ? 'ring-1 ring-blue-400 border-blue-300' : ''}
+                  min-h-24 p-2 rounded border border-border cursor-pointer transition-colors
+                  ${!day || !isCurrentMonth ? 'bg-secondary' : 'bg-white hover:bg-[var(--color-table-header)]'}
+                  ${isToday ? 'ring-1 ring-primary border-primary' : ''}
                 `}
               >
                 {day && (
@@ -224,7 +224,7 @@ export default function Calendar() {
                           key={event.id}
                           className={`
                             text-xs px-1.5 py-0.5 rounded truncate font-medium
-                            ${event.type === 'vacation' ? 'bg-violet-500/30 text-violet-100 border border-violet-300/40' : 'bg-blue-500/30 text-blue-100 border border-blue-300/40'}
+                            ${event.type === 'vacation' ? 'border border-purple-200 bg-[var(--color-accent-purple-bg)] text-[var(--color-accent-purple-text)]' : 'border border-primary/30 bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]'}
                           `}
                           title={event.title}
                         >
@@ -255,7 +255,7 @@ export default function Calendar() {
                   type="datetime-local"
                   value={vacation.start}
                   onChange={e => setVacation(v => ({ ...v, start: e.target.value }))}
-                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
               </div>
 
@@ -267,7 +267,7 @@ export default function Calendar() {
                   type="datetime-local"
                   value={vacation.end}
                   onChange={e => setVacation(v => ({ ...v, end: e.target.value }))}
-                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
               </div>
 
@@ -280,7 +280,7 @@ export default function Calendar() {
                   placeholder="napr. Letná dovolenka"
                   value={vacation.description}
                   onChange={e => setVacation(v => ({ ...v, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-sky-200 rounded-lg bg-sky-50 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-white text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
               </div>
             </div>

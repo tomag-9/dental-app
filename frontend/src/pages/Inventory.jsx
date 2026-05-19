@@ -45,10 +45,10 @@ export default function Inventory() {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'OUT': return 'bg-rose-500/20 text-rose-100 border border-rose-400/40';
-            case 'LOW': return 'bg-amber-500/20 text-amber-100 border border-amber-400/40';
-            case 'OK': return 'bg-emerald-500/20 text-emerald-100 border border-emerald-400/40';
-            default: return 'bg-primary/20 text-primary-foreground border border-primary/40';
+            case 'OUT': return 'border border-red-200 bg-[var(--color-status-cancelled-bg)] text-[var(--color-status-cancelled-text)]';
+            case 'LOW': return 'border border-amber-200 bg-[var(--color-accent-amber-bg)] text-[var(--color-accent-amber-text)]';
+            case 'OK': return 'border border-green-200 bg-[var(--color-status-paid-bg)] text-[var(--color-status-paid-text)]';
+            default: return 'border border-[var(--color-card-border)] bg-white text-foreground';
         }
     };
 
@@ -249,7 +249,7 @@ export default function Inventory() {
             {(lowStockCount > 0 || outOfStockCount > 0) && (
                 <div className="grid gap-4 md:grid-cols-2">
                     {outOfStockCount > 0 && (
-                        <Card className="border-destructive/60 bg-destructive/15">
+                        <Card className="border-red-200 bg-[var(--color-status-cancelled-bg)]">
                             <CardContent className="pt-6 flex items-start gap-3">
                                 <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                                 <div>
@@ -260,9 +260,9 @@ export default function Inventory() {
                         </Card>
                     )}
                     {lowStockCount > 0 && (
-                        <Card className="border-amber-400/60 bg-amber-500/15">
+                        <Card className="border-amber-200 bg-[var(--color-accent-amber-bg)]">
                             <CardContent className="pt-6 flex items-start gap-3">
-                                <AlertTriangle className="h-5 w-5 text-amber-200 flex-shrink-0 mt-0.5" />
+                                <AlertTriangle className="h-5 w-5 text-[var(--color-accent-amber-text)] flex-shrink-0 mt-0.5" />
                                 <div>
                                     <p className="font-semibold text-foreground">{lowStockCount} položiek má nízky stav</p>
                                     <p className="text-sm text-foreground/85">Pod minimálnym limitom</p>
@@ -288,7 +288,7 @@ export default function Inventory() {
                                 <select
                                     value={categoryFilter}
                                     onChange={(e) => setCategoryFilter(e.target.value)}
-                                    className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                                    className="rounded-md border border-border bg-white px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                                 >
                                     <option value="all">Všetky kategórie</option>
                                     {categories.map(cat => (
@@ -299,7 +299,7 @@ export default function Inventory() {
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-3 py-2 border border-sky-200 bg-sky-50 rounded-md shadow-sm text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                                className="rounded-md border border-border bg-white px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                             >
                                 <option value="all">Všetky stavy</option>
                                 <option value="OK">Skladom</option>
@@ -312,7 +312,7 @@ export default function Inventory() {
                                     placeholder="Hľadať položky..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-2 pl-8 text-sm shadow-sm transition-colors placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                                    className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 pl-8 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                                 />
                             </div>
                         </div>
@@ -330,9 +330,9 @@ export default function Inventory() {
                                 : 'Žiadne položky nevyhovujú hľadaniu.'}
                         </div>
                     ) : (
-                        <div className="rounded-md border border-sky-200 overflow-x-auto">
+                        <div className="overflow-x-auto rounded-md border border-[var(--color-table-border)] bg-card">
                             <table className="w-full text-sm">
-                                <thead className="bg-sky-100">
+                                <thead className="bg-[var(--color-table-header)] text-[var(--color-sidebar-text)]">
                                     <tr>
                                         <th className="px-4 py-3 font-medium text-left">Názov položky</th>
                                         <th className="px-4 py-3 font-medium text-left">SKU</th>
@@ -347,7 +347,7 @@ export default function Inventory() {
                                     {filteredItems.map((item) => {
                                         const status = getStockStatus(item);
                                         return (
-                                            <tr key={item.id} className="border-t border-sky-100 hover:bg-sky-50 transition-colors">
+                                            <tr key={item.id} className="border-t border-[var(--color-table-border)] transition-colors hover:bg-[var(--color-table-hover)]">
                                                 <td className="px-4 py-3 font-medium">
                                                     {item.name}
                                                 </td>

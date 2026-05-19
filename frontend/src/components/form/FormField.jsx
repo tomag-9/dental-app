@@ -14,11 +14,11 @@ export default function FormField({
   className = ''
 }) {
   const inputClasses = `
-    w-full px-3 py-2 border border-input rounded-lg bg-card text-foreground
-    placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:border-transparent
-    disabled:bg-muted disabled:cursor-not-allowed disabled:opacity-50
-    transition-colors text-sm
-    ${error ? 'border-destructive focus:ring-destructive' : ''}
+    w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-foreground shadow-sm
+    placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30
+    disabled:bg-secondary disabled:cursor-not-allowed disabled:opacity-70
+    transition-colors
+    ${error ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}
     ${className}
   `;
 

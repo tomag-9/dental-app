@@ -44,13 +44,13 @@ export default function SuperadminLabs() {
   const getPlanColor = (plan) => {
     switch (plan) {
       case 'free':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
       case 'basic':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]';
       case 'premium':
         return 'bg-purple-100 text-purple-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
     }
   };
 
@@ -63,7 +63,7 @@ export default function SuperadminLabs() {
       case 'trial':
         return 'bg-yellow-100 text-yellow-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
     }
   };
 
@@ -96,7 +96,7 @@ export default function SuperadminLabs() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -115,22 +115,22 @@ export default function SuperadminLabs() {
       )}
 
       {/* Search */}
-      <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-lg px-4 py-2">
+      <div className="flex items-center gap-2 bg-white border border-border rounded-lg px-4 py-2">
         <Search className="w-5 h-5 text-slate-500" />
         <input
           type="text"
           placeholder="Hľadať podľa názvu, mesta alebo e-mailu..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 outline-none bg-transparent placeholder:text-slate-500"
+          className="flex-1 bg-white outline-none placeholder:text-muted-foreground"
         />
       </div>
 
       {/* Labs Grid */}
       {filteredLabs.length === 0 ? (
         <Card className="p-12 text-center">
-          <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600">Žiadne laboratóriá</p>
+          <AlertCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">Žiadne laboratóriá</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -141,8 +141,8 @@ export default function SuperadminLabs() {
                 <div className="border-b pb-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">{lab.name}</h3>
-                      <p className="text-sm text-gray-500">ID: {lab.id}</p>
+                      <h3 className="text-xl font-bold text-foreground">{lab.name}</h3>
+                      <p className="text-sm text-muted-foreground">ID: {lab.id}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
@@ -158,34 +158,34 @@ export default function SuperadminLabs() {
                 {/* Contact Info */}
                 <div className="space-y-2 text-sm">
                   {lab.city && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <MapPin className="w-4 h-4 flex-shrink-0" />
                       <span>{lab.city}</span>
                     </div>
                   )}
                   
                   {lab.email && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <Mail className="w-4 h-4 flex-shrink-0" />
-                      <a href={`mailto:${lab.email}`} className="hover:text-blue-600">
+                      <a href={`mailto:${lab.email}`} className="hover:text-primary">
                         {lab.email}
                       </a>
                     </div>
                   )}
 
                   {lab.phone && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="w-4 h-4 flex-shrink-0" />
-                      <a href={`tel:${lab.phone}`} className="hover:text-blue-600">
+                      <a href={`tel:${lab.phone}`} className="hover:text-primary">
                         {lab.phone}
                       </a>
                     </div>
                   )}
 
                   {lab.website && (
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       <Globe className="w-4 h-4 flex-shrink-0" />
-                      <a href={lab.website} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
+                      <a href={lab.website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
                         {lab.website}
                       </a>
                     </div>
@@ -195,12 +195,12 @@ export default function SuperadminLabs() {
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t">
                   <div>
-                    <p className="text-xs text-gray-500">Použ.</p>
-                    <p className="text-lg font-bold text-gray-900">{lab.user_count || 0}</p>
+                    <p className="text-xs text-muted-foreground">Použ.</p>
+                    <p className="text-lg font-bold text-foreground">{lab.user_count || 0}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Vytvorené</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-muted-foreground">Vytvorené</p>
+                    <p className="text-sm font-medium text-foreground">
                       {lab.created_at ? new Date(lab.created_at).toLocaleDateString() : '-'}
                     </p>
                   </div>
@@ -208,7 +208,7 @@ export default function SuperadminLabs() {
 
                 {/* Tax & Banking Info */}
                 {(lab.tax_id || lab.vat_id || lab.bank_account) && (
-                  <div className="bg-gray-50 p-3 rounded-lg text-xs space-y-1">
+                  <div className="bg-[var(--color-table-hover)] p-3 rounded-lg text-xs space-y-1">
                     {lab.tax_id && <div><span className="font-medium">IČO:</span> {lab.tax_id}</div>}
                     {lab.vat_id && <div><span className="font-medium">DIČ:</span> {lab.vat_id}</div>}
                     {lab.bank_account && <div><span className="font-medium">Banka:</span> {lab.bank_account}</div>}

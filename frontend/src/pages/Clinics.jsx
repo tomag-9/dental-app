@@ -54,7 +54,7 @@ export default function Clinics() {
                                 placeholder="Hľadať kliniky..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 pl-8 text-sm shadow-sm transition-colors file:border-0 file:bg-white file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
                     </div>
@@ -62,7 +62,7 @@ export default function Clinics() {
                 <CardContent>
                     <div className="rounded-md border">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-muted/50 text-muted-foreground">
+                            <thead className="bg-[var(--color-table-header)] text-muted-foreground">
                                 <tr>
                                     <th className="px-4 py-3 font-medium">Názov</th>
                                     <th className="px-4 py-3 font-medium">Kontakt</th>
@@ -85,7 +85,7 @@ export default function Clinics() {
                                     </tr>
                                 ) : (
                                     filteredClinics.map((clinic) => (
-                                        <tr key={clinic.id} className="hover:bg-muted/50">
+                                        <tr key={clinic.id} className="hover:bg-[var(--color-table-header)]">
                                             <td className="px-4 py-3 font-medium">{clinic.name}</td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 <div className="flex flex-col">

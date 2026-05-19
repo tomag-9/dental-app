@@ -393,7 +393,7 @@ export default function Topbar() {
                                 value={query}
                                 onChange={(event) => setQuery(event.target.value)}
                                 placeholder={isSuperadmin ? 'Hľadať tenantov, používateľov, stránky...' : 'Hľadať pacientov, práce, faktúry, stránky...'}
-                                className="h-9 flex-1 border-0 bg-transparent px-0 text-sm shadow-none focus:shadow-none"
+                                className="h-9 flex-1 border-0 bg-card px-0 text-sm shadow-none focus:shadow-none"
                             />
                             <button type="button" className="rounded border border-border bg-[#fbfaf6] px-2 py-1 text-[11px] text-muted-foreground" onClick={() => setSearchOpen(false)}>
                                 esc

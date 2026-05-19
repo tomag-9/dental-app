@@ -76,11 +76,11 @@ export default function SuperadminUsers() {
       case 'superadmin':
         return 'bg-red-100 text-red-800';
       case 'admin':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]';
       case 'user':
         return 'bg-green-100 text-green-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
     }
   };
 
@@ -100,7 +100,7 @@ export default function SuperadminUsers() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -129,33 +129,33 @@ export default function SuperadminUsers() {
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--color-sidebar-text)] mb-1">
                   Prezývka
                 </label>
                 <input
                   type="text"
                   value={formData.nickname}
                   onChange={e => setFormData({ ...formData, nickname: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--color-sidebar-text)] mb-1">
                   E-mail
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--color-sidebar-text)] mb-1">
                   Heslo
                 </label>
                 <div className="relative">
@@ -163,13 +163,13 @@ export default function SuperadminUsers() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-border bg-white px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-2.5 text-muted-foreground hover:text-muted-foreground"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -177,13 +177,13 @@ export default function SuperadminUsers() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[var(--color-sidebar-text)] mb-1">
                   Rola
                 </label>
                 <select
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-border bg-white px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   <option value="user">Používateľ</option>
                   <option value="admin">Admin</option>
@@ -210,14 +210,14 @@ export default function SuperadminUsers() {
       )}
 
       {/* Search */}
-      <div className="flex items-center gap-2 bg-sky-50 border border-sky-200 rounded-lg px-4 py-2">
+      <div className="flex items-center gap-2 bg-white border border-border rounded-lg px-4 py-2">
         <Search className="w-5 h-5 text-slate-500" />
         <input
           type="text"
           placeholder="Hľadať podľa prezývky alebo e-mailu..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 outline-none bg-transparent placeholder:text-slate-500"
+          className="flex-1 bg-white outline-none placeholder:text-muted-foreground"
         />
       </div>
 
@@ -227,31 +227,31 @@ export default function SuperadminUsers() {
 
         {filteredUsers.length === 0 ? (
           <div className="text-center py-12">
-            <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">Žiadni používatelia</p>
+            <AlertCircle className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground">Žiadni používatelia</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Prezývka</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">E-mail</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Rola</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Stav</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Vytvorené</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Akcie</th>
+                <tr className="border-b-2 border-[var(--color-table-border)]">
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">ID</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Prezývka</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">E-mail</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Rola</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Stav</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Vytvorené</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Akcie</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map(user => (
-                  <tr key={user.id} className="border-b border-sky-100 hover:bg-sky-50">
-                    <td className="py-3 px-4 text-gray-900">{user.id}</td>
+                  <tr key={user.id} className="border-b border-[var(--color-table-border)] transition-colors hover:bg-[var(--color-table-hover)]">
+                    <td className="py-3 px-4 text-foreground">{user.id}</td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{user.nickname || '-'}</div>
+                      <div className="font-medium text-foreground">{user.nickname || '-'}</div>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">{user.email}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-4">
                       <Badge className={getRoleColor(user.role)}>
                         {formatRoleLabel(user.role)}
@@ -262,7 +262,7 @@ export default function SuperadminUsers() {
                         {user.is_active ? 'Aktívny' : 'Neaktívny'}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">
+                    <td className="py-3 px-4 text-muted-foreground">
                       {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
                     </td>
                     <td className="py-3 px-4">
