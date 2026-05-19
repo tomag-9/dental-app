@@ -550,6 +550,7 @@ class DashboardStatsContractTests(APITestCase):
             "total_revenue",
             "recent_jobs",
             "recent_invoices",
+            "today_schedule",
         ]
         for field in required:
             self.assertIn(field, response.data, f"Missing field: {field}")
@@ -559,6 +560,7 @@ class DashboardStatsContractTests(APITestCase):
         self.assertIsInstance(response.data["completed_jobs"], int)
         self.assertIsInstance(response.data["recent_jobs"], list)
         self.assertIsInstance(response.data["recent_invoices"], list)
+        self.assertIsInstance(response.data["today_schedule"], list)
 
     def test_unauthenticated_denied(self):
         """Unauthenticated requests must be rejected."""

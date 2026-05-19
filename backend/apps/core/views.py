@@ -82,6 +82,7 @@ class DashboardStatsView(APIView):
         total_revenue = invoices_qs.filter(status="paid").aggregate(
             total=Sum("total_amount")
         )["total"] or Decimal("0.00")
+        today = timezone.localdate()
 
         recent_jobs_data = []
         for job in jobs_qs[:5]:
@@ -119,6 +120,26 @@ class DashboardStatsView(APIView):
                 }
             )
 
+        today_schedule_data = []
+        for job in jobs_qs.filter(due_date=today).exclude(
+            status__in=("completed", "cancelled", "finished_factured", "closed")
+        )[:6]:
+            patient = job.patient
+            patient_name = (
+                f"{patient.first_name} {patient.last_name}".strip()
+                if patient
+                else "Neznámy pacient"
+            )
+            today_schedule_data.append(
+                {
+                    "id": job.id,
+                    "type": "job",
+                    "time": "Dnes",
+                    "title": f"Termín odovzdania #{job.id} - {patient_name}",
+                    "status": job.status,
+                }
+            )
+
         return Response(
             {
                 "total_patients": total_patients,
@@ -127,6 +148,7 @@ class DashboardStatsView(APIView):
                 "total_revenue": str(total_revenue),
                 "recent_jobs": recent_jobs_data,
                 "recent_invoices": recent_invoices_data,
+                "today_schedule": today_schedule_data,
             }
         )
 
