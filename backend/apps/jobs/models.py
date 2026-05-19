@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.core.models import Lab
@@ -27,6 +28,12 @@ class Job(models.Model):
         ("finished_unfactured", "Finished – Unfactured"),
         ("closed", "Closed"),
     )
+    PRIORITY_CHOICES = (
+        ("low", "Low"),
+        ("normal", "Normal"),
+        ("high", "High"),
+        ("urgent", "Urgent"),
+    )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="jobs")
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name="jobs")
@@ -49,6 +56,9 @@ class Job(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
+    priority = models.CharField(
+        max_length=20, choices=PRIORITY_CHOICES, default="normal"
+    )
 
     procedure_codes = models.JSONField(blank=True, null=True)  # List of codes
     procedure_quantities = models.JSONField(blank=True, null=True)  # Dict {code: qty}
@@ -71,6 +81,54 @@ class Job(models.Model):
 
     def __str__(self):
         return f"Job {self.id} - {self.patient}"
+
+
+class JobItem(models.Model):
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
+    price_list_code = models.CharField(max_length=50)
+    description = models.CharField(max_length=255)
+    tooth = models.CharField(max_length=20, blank=True, null=True)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        self.total = self.quantity * self.unit_price
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.job_id} - {self.price_list_code}"
+
+
+class JobTimelineEvent(models.Model):
+    EVENT_CHOICES = (
+        ("created", "Created"),
+        ("updated", "Updated"),
+        ("status_changed", "Status changed"),
+        ("assigned", "Assigned"),
+        ("deleted", "Deleted"),
+    )
+
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="timeline")
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="job_timeline_events",
+    )
+    event = models.CharField(max_length=40, choices=EVENT_CHOICES)
+    note = models.TextField(blank=True, null=True)
+    from_status = models.CharField(max_length=20, blank=True, null=True)
+    to_status = models.CharField(max_length=20, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.job_id} - {self.event}"
 
 
 class Vacation(models.Model):
