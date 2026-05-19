@@ -1,34 +1,36 @@
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Patients from './pages/Patients';
-import PatientCreate from './pages/PatientCreate';
-import Jobs from './pages/Jobs';
-import JobCreate from './pages/JobCreate';
-import JobDetail from './pages/JobDetail';
-import Clinics from './pages/Clinics';
-import ClinicCreate from './pages/ClinicCreate';
-import Doctors from './pages/Doctors';
-import DoctorCreate from './pages/DoctorCreate';
-import Technicians from './pages/Technicians';
-import TechnicianCreate from './pages/TechnicianCreate';
-import Finance from './pages/Finance';
-import PriceList from './pages/PriceList';
-import PriceListCreate from './pages/PriceListCreate';
-import Invoices from './pages/Invoices';
-import InvoiceDetail from './pages/InvoiceDetail';
 import InvoiceErrorBoundary from './components/InvoiceErrorBoundary';
-import Inventory from './pages/Inventory';
-import InventoryCreate from './pages/InventoryCreate';
-import Settings from './pages/Settings';
-import Calendar from './pages/Calendar';
-import SuperadminDashboard from './pages/SuperadminDashboard';
-import SuperadminUsers from './pages/SuperadminUsers';
-import SuperadminLabs from './pages/SuperadminLabs';
-import SuperadminSubscriptions from './pages/SuperadminSubscriptions';
 import ProtectedRoute from './components/ProtectedRoute';
 import useAuthStore from './store/auth';
+
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Patients = lazy(() => import('./pages/Patients'));
+const PatientCreate = lazy(() => import('./pages/PatientCreate'));
+const Jobs = lazy(() => import('./pages/Jobs'));
+const JobCreate = lazy(() => import('./pages/JobCreate'));
+const JobDetail = lazy(() => import('./pages/JobDetail'));
+const Clinics = lazy(() => import('./pages/Clinics'));
+const ClinicCreate = lazy(() => import('./pages/ClinicCreate'));
+const Doctors = lazy(() => import('./pages/Doctors'));
+const DoctorCreate = lazy(() => import('./pages/DoctorCreate'));
+const Technicians = lazy(() => import('./pages/Technicians'));
+const TechnicianCreate = lazy(() => import('./pages/TechnicianCreate'));
+const Finance = lazy(() => import('./pages/Finance'));
+const PriceList = lazy(() => import('./pages/PriceList'));
+const PriceListCreate = lazy(() => import('./pages/PriceListCreate'));
+const Invoices = lazy(() => import('./pages/Invoices'));
+const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const InventoryCreate = lazy(() => import('./pages/InventoryCreate'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const SuperadminDashboard = lazy(() => import('./pages/SuperadminDashboard'));
+const SuperadminUsers = lazy(() => import('./pages/SuperadminUsers'));
+const SuperadminLabs = lazy(() => import('./pages/SuperadminLabs'));
+const SuperadminSubscriptions = lazy(() => import('./pages/SuperadminSubscriptions'));
 
 function HomeRoute() {
   const user = useAuthStore((state) => state.user);
@@ -41,8 +43,9 @@ function HomeRoute() {
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+      <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Načítavam...</div>}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
@@ -113,7 +116,8 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

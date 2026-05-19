@@ -2,26 +2,23 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.access import TenantScopedQuerysetMixin
 from apps.jobs.models import Job
 
 from .models import Clinic, Doctor, Patient
 from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 
 
-class ClinicViewSet(viewsets.ModelViewSet):
+class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Clinic.objects.all()
     serializer_class = ClinicSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            return Clinic.objects.filter(lab=user.lab)
-        return Clinic.objects.none()
+        return self.get_tenant_scoped_queryset(Clinic.objects.all())
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -29,40 +26,32 @@ class ClinicViewSet(viewsets.ModelViewSet):
         return context
 
 
-class DoctorViewSet(viewsets.ModelViewSet):
+class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            queryset = Doctor.objects.filter(lab=user.lab)
-            clinic_id = self.request.query_params.get("clinic")
-            if clinic_id:
-                queryset = queryset.filter(clinic_id=clinic_id)
-            return queryset
-        return Doctor.objects.none()
+        queryset = self.get_tenant_scoped_queryset(Doctor.objects.all())
+        clinic_id = self.request.query_params.get("clinic")
+        if clinic_id:
+            queryset = queryset.filter(clinic_id=clinic_id)
+        return queryset
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
 
-class PatientViewSet(viewsets.ModelViewSet):
+class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            return Patient.objects.filter(lab=user.lab)
-        return Patient.objects.none()
+        return self.get_tenant_scoped_queryset(Patient.objects.all())
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
     @action(detail=True, methods=["get"], url_path="cumulative_tooth_map")
     def cumulative_tooth_map(self, request, pk=None):

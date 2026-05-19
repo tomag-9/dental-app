@@ -309,6 +309,13 @@ class PriceListCrudApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.superadmin = User.objects.create_user(
+            username="pricelist_superadmin",
+            email="pricelist_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
 
     def test_create_price_list_item(self):
         """Test creating a new price list item."""
@@ -327,6 +334,22 @@ class PriceListCrudApiTests(APITestCase):
         self.assertEqual(response.data["description"], "Test item")
         self.assertEqual(float(response.data["price"]), 12.5)
         self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_superadmin_can_create_price_list_item_for_selected_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            reverse("pricelist-list"),
+            {
+                "lab": self.lab_b.id,
+                "code": "SUPER-001",
+                "description": "Superadmin item",
+                "price": 99.0,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
 
     def test_list_price_list_items(self):
         """Test listing price list items scoped to lab."""
@@ -356,6 +379,61 @@ class PriceListCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)  # Only lab_a items
+
+    def test_superadmin_lists_price_list_items_across_labs(self):
+        PriceList.objects.create(
+            lab=self.lab_a,
+            code="ITEM-A1",
+            description="Item A1",
+            price=10.0,
+        )
+        PriceList.objects.create(
+            lab=self.lab_b,
+            code="ITEM-B1",
+            description="Item B1",
+            price=30.0,
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(reverse("pricelist-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+
+    def test_duplicate_price_list_code_allowed_across_labs(self):
+        PriceList.objects.create(
+            lab=self.lab_a,
+            code="DUP",
+            description="Lab A item",
+            price=10.0,
+        )
+
+        self.client.force_authenticate(user=self.admin_b)
+        response = self.client.post(
+            reverse("pricelist-list"),
+            {"code": "DUP", "description": "Lab B item", "price": 20.0},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_b.id)
+
+    def test_duplicate_price_list_code_rejected_within_lab(self):
+        PriceList.objects.create(
+            lab=self.lab_a,
+            code="DUP",
+            description="Lab A item",
+            price=10.0,
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(
+            reverse("pricelist-list"),
+            {"code": "DUP", "description": "Second item", "price": 20.0},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_get_price_list_item(self):
         """Test retrieving a specific price list item."""
@@ -471,7 +549,12 @@ class FinanceStatsViewTests(APITestCase):
         response = self._get_stats(self.admin_a)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        required = ["total_revenue", "pending_invoices", "monthly_growth_pct", "monthly_revenue"]
+        required = [
+            "total_revenue",
+            "pending_invoices",
+            "monthly_growth_pct",
+            "monthly_revenue",
+        ]
         for field in required:
             self.assertIn(field, response.data, f"Missing field: {field}")
 
@@ -503,7 +586,7 @@ class FinanceStatsViewTests(APITestCase):
     def test_lab_scoping(self):
         """Lab A admin must not see lab B invoice revenue."""
         clinic_b = Clinic.objects.create(lab=self.lab_b, name="Clinic B")
-        invoice_b = Invoice.objects.create(
+        Invoice.objects.create(
             lab=self.lab_b,
             clinic=clinic_b,
             number="INV-B-001",

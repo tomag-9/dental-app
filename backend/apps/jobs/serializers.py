@@ -1,17 +1,11 @@
 from rest_framework import serializers
 
+from apps.core.access import is_superadmin
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
 from .models import Job, Technician, Vacation
-
-
-def _is_superadmin(user):
-    return (
-        getattr(user, "is_superuser", False)
-        or getattr(user, "role", None) == "superadmin"
-    )
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
@@ -40,7 +34,16 @@ class JobSerializer(serializers.ModelSerializer):
         if not value:
             return value
 
-        valid_codes = set(PriceList.objects.values_list("code", flat=True))
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        queryset = PriceList.objects.all()
+        if user and not is_superadmin(user):
+            lab_id = getattr(user, "lab_id", None)
+            if not lab_id:
+                raise serializers.ValidationError("User is not assigned to any lab")
+            queryset = queryset.filter(lab_id=lab_id)
+
+        valid_codes = set(queryset.values_list("code", flat=True))
         invalid_codes = [code for code in value if code not in valid_codes]
         if invalid_codes:
             raise serializers.ValidationError(
@@ -67,10 +70,10 @@ class JobSerializer(serializers.ModelSerializer):
             return data
 
         user = request.user
-        is_superadmin = _is_superadmin(user)
+        user_is_superadmin = is_superadmin(user)
 
         # Validate entity consistency for non-superadmins
-        if not is_superadmin and hasattr(user, "lab") and user.lab:
+        if not user_is_superadmin and hasattr(user, "lab") and user.lab:
             user_lab_id = user.lab.id
 
             # Check all referenced entities

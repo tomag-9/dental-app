@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save, Search, Check, ChevronsUpDown } from 'lucide-react';
 import ToothMap from '../components/dental/ToothMap';
 import api from '../lib/api';
+import { getApiErrorMessage, normalizeListResponse } from '../lib/utils';
 
 function SearchableSelect({
     label,
@@ -151,12 +152,6 @@ export default function JobCreate() {
         'C1', 'C2', 'C3', 'C4',
         'D1', 'D2', 'D3', 'D4',
     ];
-
-    const normalizeListResponse = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.results)) return responseData.results;
-        return [];
-    };
 
     const normalizeText = (value) => String(value ?? '').toLowerCase();
 
@@ -404,20 +399,6 @@ export default function JobCreate() {
         }
     }, [selectedTechnician, technicianQuery]);
 
-    const getApiError = (err, fallbackMessage) => {
-        const payload = err?.response?.data;
-        if (typeof payload?.detail === 'string') return payload.detail;
-        if (payload && typeof payload === 'object') {
-            return Object.entries(payload)
-                .map(([field, value]) => {
-                    const text = Array.isArray(value) ? value.join(', ') : String(value);
-                    return `${field}: ${text}`;
-                })
-                .join(' | ');
-        }
-        return fallbackMessage;
-    };
-
     const addProcedure = () => {
         if (!selectedProcedureCode) return;
         const qty = Math.max(1, Number(selectedProcedureQty) || 1);
@@ -481,7 +462,7 @@ export default function JobCreate() {
             navigate('/jobs');
         } catch (err) {
             console.error(err);
-            setError(getApiError(err, isEditing ? 'Nepodarilo sa upraviť prácu' : 'Nepodarilo sa vytvoriť prácu'));
+            setError(getApiErrorMessage(err, isEditing ? 'Nepodarilo sa upraviť prácu' : 'Nepodarilo sa vytvoriť prácu'));
         } finally {
             setLoading(false);
         }

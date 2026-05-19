@@ -3,24 +3,22 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.access import TenantScopedQuerysetMixin
+
 from .models import WarehouseItem
 from .serializers import WarehouseItemImportSerializer, WarehouseItemSerializer
 
 
-class WarehouseItemViewSet(viewsets.ModelViewSet):
+class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = WarehouseItem.objects.all()
     serializer_class = WarehouseItemSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            return WarehouseItem.objects.filter(lab=user.lab)
-        return WarehouseItem.objects.none()
+        return self.get_tenant_scoped_queryset(WarehouseItem.objects.all())
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
     @action(detail=False, methods=["post"], url_path="import")
     def bulk_import(self, request):

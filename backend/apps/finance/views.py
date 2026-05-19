@@ -19,6 +19,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
@@ -32,27 +33,16 @@ from .serializers import (
 )
 
 
-def _is_superadmin(user):
-    return bool(
-        getattr(user, "is_superuser", False)
-        or getattr(user, "role", None) == "superadmin"
-    )
-
-
-class PriceListViewSet(viewsets.ModelViewSet):
+class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = PriceList.objects.all()
     serializer_class = PriceListSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if hasattr(user, "lab") and user.lab:
-            return PriceList.objects.filter(lab=user.lab)
-        return PriceList.objects.none()
+        return self.get_tenant_scoped_queryset(PriceList.objects.all())
 
     def perform_create(self, serializer):
-        if hasattr(self.request.user, "lab"):
-            serializer.save(lab=self.request.user.lab)
+        self.save_with_request_lab(serializer)
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
@@ -98,7 +88,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         qs = Invoice.objects.select_related("clinic", "lab").prefetch_related(
             "items__job__patient"
         )
-        if _is_superadmin(user):
+        if is_superadmin(user):
             return qs
         if getattr(user, "lab_id", None):
             return qs.filter(lab_id=user.lab_id)
@@ -117,7 +107,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             )
 
         user = request.user
-        if not _is_superadmin(user) and clinic.lab_id != getattr(user, "lab_id", None):
+        if not is_superadmin(user) and clinic.lab_id != getattr(user, "lab_id", None):
             raise PermissionDenied("Forbidden")
 
         jobs = list(Job.objects.filter(id__in=data["job_ids"]).select_related("lab"))
@@ -303,11 +293,11 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _assert_superadmin(self, user):
-        if not _is_superadmin(user):
+        if not is_superadmin(user):
             raise PermissionDenied("Superadmin only endpoint")
 
     def get_queryset(self):
-        if _is_superadmin(self.request.user):
+        if is_superadmin(self.request.user):
             return Subscription.objects.all()
         return Subscription.objects.none()
 
@@ -377,7 +367,7 @@ class FinanceStatsView(APIView):
         user = request.user
         lab_id = getattr(user, "lab_id", None)
 
-        if _is_superadmin(user):
+        if is_superadmin(user):
             qs = Invoice.objects.all()
         elif lab_id:
             qs = Invoice.objects.filter(lab_id=lab_id)
@@ -386,10 +376,9 @@ class FinanceStatsView(APIView):
                 {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
             )
 
-        total_revenue = (
-            qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"]
-            or Decimal("0.00")
-        )
+        total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))[
+            "total"
+        ] or Decimal("0.00")
         pending_invoices = qs.filter(status="issued").count()
 
         today = timezone.localdate()
@@ -397,27 +386,19 @@ class FinanceStatsView(APIView):
         last_month = _months_ago(1)
         last_start, last_end = _month_window(last_month)
 
-        this_month_rev = (
-            qs.filter(
-                status="paid",
-                paid_at__date__gte=this_start,
-                paid_at__date__lte=this_end,
-            ).aggregate(total=Sum("total_amount"))["total"]
-            or Decimal("0.00")
-        )
-        last_month_rev = (
-            qs.filter(
-                status="paid",
-                paid_at__date__gte=last_start,
-                paid_at__date__lte=last_end,
-            ).aggregate(total=Sum("total_amount"))["total"]
-            or Decimal("0.00")
-        )
+        this_month_rev = qs.filter(
+            status="paid",
+            paid_at__date__gte=this_start,
+            paid_at__date__lte=this_end,
+        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+        last_month_rev = qs.filter(
+            status="paid",
+            paid_at__date__gte=last_start,
+            paid_at__date__lte=last_end,
+        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         if last_month_rev > 0:
-            growth_pct = float(
-                (this_month_rev - last_month_rev) / last_month_rev * 100
-            )
+            growth_pct = float((this_month_rev - last_month_rev) / last_month_rev * 100)
         else:
             growth_pct = 0.0
 
@@ -425,14 +406,11 @@ class FinanceStatsView(APIView):
         for i in range(5, -1, -1):
             month_date = _months_ago(i)
             m_start, m_end = _month_window(month_date)
-            rev = (
-                qs.filter(
-                    status="paid",
-                    paid_at__date__gte=m_start,
-                    paid_at__date__lte=m_end,
-                ).aggregate(total=Sum("total_amount"))["total"]
-                or Decimal("0.00")
-            )
+            rev = qs.filter(
+                status="paid",
+                paid_at__date__gte=m_start,
+                paid_at__date__lte=m_end,
+            ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
             monthly_revenue.append(
                 {
                     "month": month_date.strftime("%b %Y"),

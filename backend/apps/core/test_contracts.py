@@ -7,7 +7,6 @@ removed or renamed, preventing accidental breaking changes.
 """
 
 from django.urls import reverse
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -15,7 +14,7 @@ from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceItem, PriceList, Subscription
 from apps.inventory.models import WarehouseItem
-from apps.jobs.models import Job, Technician, Vacation
+from apps.jobs.models import Job, Technician
 
 
 class UserAuthContractTests(APITestCase):

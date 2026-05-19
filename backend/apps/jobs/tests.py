@@ -251,6 +251,26 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Invalid procedure codes", str(response.data))
 
+    def test_create_job_rejects_procedure_code_from_other_lab(self):
+        """Procedure code validation must use the request user's lab."""
+        self.client.force_authenticate(user=self.admin_b)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_b.id,
+            "clinic": self.clinic_b.id,
+            "doctor": self.doctor_b.id,
+            "technician": self.technician_b.id,
+            "price": 150.0,
+            "procedure_codes": ["CROWN"],
+            "procedure_quantities": {"CROWN": 1},
+            "description": "Other lab price-list code",
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Invalid procedure codes", str(response.data))
+
     def test_create_job_with_mismatched_codes_and_quantities_returns_400(self):
         """Procedure codes and quantities must match."""
         self.client.force_authenticate(user=self.admin_a)
@@ -380,6 +400,13 @@ class TechnicianApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.superadmin = User.objects.create_user(
+            username="tech_superadmin",
+            email="tech_superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
 
         self.tech_a = Technician.objects.create(
             lab=self.lab_a,
@@ -445,3 +472,10 @@ class TechnicianApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], self.tech_a.id)
+
+    def test_superadmin_lists_technicians_across_labs(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(reverse("technician-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)

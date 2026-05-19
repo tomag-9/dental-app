@@ -62,6 +62,22 @@ class ClinicSerializer(serializers.ModelSerializer):
 
         return validated_data
 
+    def validate(self, attrs):
+        request = self.context.get("request")
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
+        ico = attrs.get("ico", getattr(self.instance, "ico", None))
+        if lab and ico:
+            qs = Clinic.objects.filter(lab=lab, ico=ico)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {"ico": "Clinic IČO already exists for this lab."}
+                )
+        return attrs
+
     def create(self, validated_data):
         validated_data = self._merge_contact_fields(validated_data)
         return super().create(validated_data)
@@ -155,3 +171,25 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = "__all__"
         read_only_fields = ["lab"]
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
+        birth_number = attrs.get(
+            "birth_number", getattr(self.instance, "birth_number", None)
+        )
+        if lab and birth_number:
+            qs = Patient.objects.filter(lab=lab, birth_number=birth_number)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError(
+                    {
+                        "birth_number": (
+                            "Patient birth number already exists for this lab."
+                        )
+                    }
+                )
+        return attrs

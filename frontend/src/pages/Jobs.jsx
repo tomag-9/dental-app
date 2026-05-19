@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { Plus, Loader2, Search, Edit2, Eye, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../lib/api';
 import { Link } from 'react-router-dom';
+import { normalizeListResponse } from '../lib/utils';
 
 const statusLabel = {
     new: 'Nové',
@@ -29,17 +30,7 @@ export default function Jobs() {
         cancelled: true,
     });
 
-    useEffect(() => {
-        fetchJobs();
-    }, []);
-
-    const normalizeListResponse = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.results)) return responseData.results;
-        return [];
-    };
-
-    const fetchJobs = async () => {
+    const fetchJobs = useCallback(async () => {
         setIsLoading(true);
         setError('');
         try {
@@ -51,7 +42,11 @@ export default function Jobs() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchJobs();
+    }, [fetchJobs]);
 
     const confirmDelete = async () => {
         if (!jobToDelete) return;
