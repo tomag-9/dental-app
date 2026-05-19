@@ -8,7 +8,7 @@ on:
 
 jobs:
   quality-check:
-    runs-on: [self-hosted, Linux, X64, docker-org-runner-01]
+    runs-on: [self-hosted, Linux]
     name: Full Project Checks
     steps:
     - uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
 
   docker-build:
     needs: [quality-check]
-    runs-on: [self-hosted, Linux, X64, docker-org-runner-01]
+    runs-on: [self-hosted, Linux]
     if: github.event_name == 'push'
     name: Build Docker Images
     env:
