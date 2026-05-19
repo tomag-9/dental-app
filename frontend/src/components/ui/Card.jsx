@@ -4,7 +4,7 @@ export function Card({ className, ...props }) {
     return (
         <div
             className={cn(
-                "rounded-xl border border-sky-200 bg-sky-50 text-slate-900 shadow-sm",
+                "rounded-xl border border-[var(--color-card-border)] bg-card text-card-foreground shadow-sm",
                 className
             )}
             {...props}
@@ -17,7 +17,7 @@ export function CardHeader({ className, ...props }) {
 }
 
 export function CardTitle({ className, ...props }) {
-    return <h3 className={cn("text-2xl font-semibold leading-none tracking-tight", className)} {...props} />;
+    return <h3 className={cn("text-2xl font-semibold leading-none tracking-tight text-foreground", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }) {

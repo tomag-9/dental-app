@@ -2,11 +2,11 @@ import { cn } from '../../lib/utils';
 
 export function Button({ className, variant = 'primary', size = 'md', ...props }) {
     const variants = {
-        primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm',
-        secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
-        outline: 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50',
-        ghost: 'text-slate-600 hover:bg-slate-100',
-        destructive: 'bg-red-600 text-white hover:bg-red-700',
+        primary: 'bg-primary text-primary-foreground hover:bg-[var(--color-primary-light)] shadow-sm',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-[#e7e2d4]',
+        outline: 'border border-border bg-white text-foreground hover:bg-[#fbfaf6]',
+        ghost: 'text-[var(--color-sidebar-text)] hover:bg-secondary hover:text-primary',
+        destructive: 'border border-[#f5c0bb] bg-[#fde8e6] text-destructive hover:bg-destructive hover:text-destructive-foreground',
     };
 
     const sizes = {

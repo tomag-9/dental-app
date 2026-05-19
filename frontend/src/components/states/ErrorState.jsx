@@ -8,14 +8,14 @@ export default function ErrorState({
   details = null
 }) {
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-8">
+    <div className="rounded-lg border border-[#f5c0bb] bg-[#fde8e6] p-8">
       <div className="flex gap-4">
-        <AlertCircle className="w-8 h-8 text-red-600 flex-shrink-0 mt-0.5" />
+        <AlertCircle className="w-8 h-8 text-destructive flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h3 className="font-semibold text-red-900 mb-1">{title}</h3>
-          <p className="text-sm text-red-700 mb-4">{message}</p>
+          <h3 className="font-semibold text-foreground mb-1">{title}</h3>
+          <p className="text-sm text-destructive mb-4">{message}</p>
           {details && (
-            <div className="bg-white rounded px-3 py-2 text-xs text-gray-600 font-mono mb-4 overflow-auto max-h-24">
+            <div className="bg-white rounded px-3 py-2 text-xs text-muted-foreground font-mono mb-4 overflow-auto max-h-24">
               {details}
             </div>
           )}
@@ -24,7 +24,7 @@ export default function ErrorState({
               onClick={onRetry}
               variant="outline"
               size="sm"
-              className="border-red-300 hover:bg-red-100"
+              className="border-[#f5c0bb] hover:bg-[#fff4f2]"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Skúsiť znova

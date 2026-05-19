@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import useAuthStore from '../../store/auth';
+import { Logo, LogoMark } from '../brand/Logo';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
@@ -72,19 +73,20 @@ export default function Sidebar() {
     const isSuperadmin = user?.role === 'superadmin';
 
     const navBase = "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm";
-    const navActive = "bg-blue-400/25 text-blue-100 font-medium";
-    const navInactive = "text-slate-200 hover:bg-slate-500/40 hover:text-white";
+    const navActive = "bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)] font-semibold";
+    const navInactive = "text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)]";
 
     return (
         <div className={cn(
-            "h-screen border-r border-slate-500/50 bg-slate-600 text-slate-100 shadow-md transition-all duration-300 flex flex-col z-20",
+            "h-screen border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] text-[var(--color-sidebar-text)] shadow-md transition-all duration-300 flex flex-col z-20",
             collapsed ? "w-20" : "w-64"
         )}>
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-500/50 bg-slate-600/90">
-                {!collapsed && <span className="font-bold text-xl text-blue-200">DentalLab</span>}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-sidebar-border)]">
+                {!collapsed && <Logo markSize={24} wordmarkSize={17} />}
+                {collapsed && <LogoMark size={24} />}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="p-2 rounded-md text-slate-300 hover:bg-slate-500/50 hover:text-white"
+                    className="p-2 rounded-md text-[var(--color-sidebar-muted)] hover:bg-[#e7e2d4] hover:text-primary"
                 >
                     {collapsed ? <Menu size={20} /> : <X size={20} />}
                 </button>
@@ -112,7 +114,7 @@ export default function Sidebar() {
                             type="button"
                             onClick={() => setExpandFinance((prev) => !prev)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm',
                                 collapsed && 'justify-center'
                             )}
                         >
@@ -126,7 +128,7 @@ export default function Sidebar() {
                         </button>
 
                         {!collapsed && expandFinance && (
-                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
+                            <div className="mt-1 ml-2 pl-2 border-l border-[#d4cfc5] space-y-1">
                                 <NavLink
                                     to="/finance"
                                     className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive)}
@@ -152,7 +154,7 @@ export default function Sidebar() {
                             type="button"
                             onClick={() => setExpandMasterData((prev) => !prev)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm',
                                 collapsed && 'justify-center'
                             )}
                         >
@@ -166,7 +168,7 @@ export default function Sidebar() {
                         </button>
 
                         {!collapsed && expandMasterData && (
-                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
+                            <div className="mt-1 ml-2 pl-2 border-l border-[#d4cfc5] space-y-1">
                                 {masterDataLinks.map((link) => (
                                     <NavLink
                                         key={link.to}
@@ -188,7 +190,7 @@ export default function Sidebar() {
                             <button
                                 onClick={() => setExpandSuperadmin(!expandSuperadmin)}
                                 className={cn(
-                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm",
+                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm",
                                     collapsed && "justify-center"
                                 )}
                             >
@@ -198,7 +200,7 @@ export default function Sidebar() {
                         </div>
 
                         {expandSuperadmin && (
-                            <div className="space-y-1 ml-2 pl-2 border-l border-slate-500">
+                            <div className="space-y-1 ml-2 pl-2 border-l border-[#d4cfc5]">
                                 {superadminLinks.map((link) => (
                                     <NavLink
                                         key={link.to}
@@ -215,16 +217,16 @@ export default function Sidebar() {
                 )}
             </nav>
 
-            <div className="p-4 border-t border-slate-500/50 bg-slate-600/90">
+            <div className="p-4 border-t border-[var(--color-sidebar-border)]">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-400/30 border border-blue-300/50 flex items-center justify-center text-blue-100 font-bold">
+                    <div className="w-10 h-10 rounded-full bg-[var(--color-primary-subtle)] border border-[#b0ddd5] flex items-center justify-center text-[var(--color-primary-dark)] font-bold">
                         {initials}
                     </div>
                     {!collapsed && (
                         <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-medium truncate text-slate-100">{displayName}</p>
-                            <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
-                            <button onClick={logout} className="text-xs text-blue-200 hover:underline">Odhlásiť sa</button>
+                            <p className="text-sm font-medium truncate text-foreground">{displayName}</p>
+                            <p className="text-xs text-[var(--color-sidebar-muted)] truncate">{roleLabel}</p>
+                            <button onClick={logout} className="text-xs text-primary hover:underline">Odhlásiť sa</button>
                         </div>
                     )}
                 </div>
