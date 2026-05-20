@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import AuditLog, Lab, Notification, User
+from .models import AuditLog, Lab, Notification, TeamInvitation, User
 
 
 class LabSerializer(serializers.ModelSerializer):
@@ -91,6 +91,80 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+
+class TeamInvitationSerializer(serializers.ModelSerializer):
+    lab_name = serializers.CharField(source="lab.name", read_only=True)
+    invited_by_username = serializers.SerializerMethodField()
+    accepted_by_username = serializers.SerializerMethodField()
+    token = serializers.CharField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = TeamInvitation
+        fields = (
+            "id",
+            "lab",
+            "lab_name",
+            "email",
+            "role",
+            "token",
+            "status",
+            "is_expired",
+            "invited_by",
+            "invited_by_username",
+            "accepted_by",
+            "accepted_by_username",
+            "expires_at",
+            "accepted_at",
+            "created_at",
+        )
+        read_only_fields = (
+            "token",
+            "status",
+            "is_expired",
+            "invited_by",
+            "accepted_by",
+            "expires_at",
+            "accepted_at",
+            "created_at",
+        )
+
+    def get_invited_by_username(self, obj):
+        return obj.invited_by.username if obj.invited_by else None
+
+    def get_accepted_by_username(self, obj):
+        return obj.accepted_by.username if obj.accepted_by else None
+
+    def validate_role(self, value):
+        if value == "superadmin":
+            raise serializers.ValidationError("Cannot invite superadmin users.")
+        return value
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        lab = attrs.get("lab") or getattr(user, "lab", None)
+        email = attrs.get("email")
+        if lab and email:
+            pending = TeamInvitation.objects.filter(
+                lab=lab,
+                email__iexact=email,
+                status="pending",
+            )
+            if self.instance:
+                pending = pending.exclude(pk=self.instance.pk)
+            if pending.exists():
+                raise serializers.ValidationError(
+                    {"email": "Pending invitation already exists for this email."}
+                )
+        return attrs
+
+
+class TeamInvitationAcceptSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=64)
+    username = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, required=False, min_length=6)
 
 
 class MeUpdateSerializer(serializers.Serializer):

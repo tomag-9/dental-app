@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import AuditLog, Lab, User
+from apps.core.models import AuditLog, Lab, TeamInvitation, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceItem, PriceList, Subscription
 from apps.inventory.models import WarehouseItem
@@ -165,6 +165,55 @@ class AuditLogContractTests(APITestCase):
         ):
             self.assertIn(field, item)
         self.assertEqual(item["action"], "lab.updated")
+
+
+class TeamInvitationContractTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Invite Lab")
+        self.admin = User.objects.create_user(
+            username="invite_admin",
+            email="invite-admin@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab,
+        )
+        TeamInvitation.objects.create(
+            lab=self.lab,
+            email="invited@example.com",
+            role="technician",
+            token="contract-token",
+            invited_by=self.admin,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+
+    def test_team_invitation_list_response_contract(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get("/api/core/team-invitations/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = response.data[0]
+        for field in (
+            "id",
+            "lab",
+            "lab_name",
+            "email",
+            "role",
+            "token",
+            "status",
+            "is_expired",
+            "invited_by",
+            "invited_by_username",
+            "accepted_by",
+            "accepted_by_username",
+            "expires_at",
+            "accepted_at",
+            "created_at",
+        ):
+            self.assertIn(field, item)
+        self.assertEqual(item["email"], "invited@example.com")
+        self.assertEqual(item["status"], "pending")
+        self.assertFalse(item["is_expired"])
 
 
 class JobContractTests(APITestCase):

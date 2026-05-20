@@ -1,7 +1,8 @@
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import AuditLog, Lab, Notification, User
+from apps.core.models import AuditLog, Lab, Notification, TeamInvitation, User
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
 from apps.jobs.models import Job
@@ -210,6 +211,115 @@ class CoreUserFlowsApiTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_create_team_invitation_for_own_lab(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.post(
+            "/api/core/team-invitations/",
+            {
+                "email": "new.member@example.com",
+                "role": "technician",
+                "lab": self.lab_b.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        invitation = TeamInvitation.objects.get(email="new.member@example.com")
+        self.assertEqual(invitation.lab_id, self.lab_a.id)
+        self.assertEqual(invitation.role, "technician")
+        self.assertEqual(invitation.invited_by_id, self.admin_a.id)
+        self.assertEqual(response.data["status"], "pending")
+        self.assertTrue(response.data["token"])
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="team_invitation.created",
+                entity_id=str(invitation.id),
+            ).exists()
+        )
+
+    def test_duplicate_pending_team_invitation_rejected(self):
+        TeamInvitation.objects.create(
+            lab=self.lab_a,
+            email="duplicate@example.com",
+            role="user",
+            token="duplicate-token",
+            invited_by=self.admin_a,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.post(
+            "/api/core/team-invitations/",
+            {"email": "duplicate@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_regular_user_cannot_create_team_invitation(self):
+        self.client.force_authenticate(user=self.user_a)
+
+        response = self.client.post(
+            "/api/core/team-invitations/",
+            {"email": "blocked@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_team_invitation_accept_creates_user(self):
+        invitation = TeamInvitation.objects.create(
+            lab=self.lab_a,
+            email="accepted@example.com",
+            role="user",
+            token="accept-token",
+            invited_by=self.admin_a,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+
+        response = self.client.post(
+            f"/api/core/team-invitations/{invitation.id}/accept/",
+            {
+                "token": "accept-token",
+                "username": "accepted_user",
+                "password": "password123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = User.objects.get(email="accepted@example.com")
+        self.assertEqual(user.lab_id, self.lab_a.id)
+        self.assertEqual(user.role, "user")
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.status, "accepted")
+        self.assertEqual(invitation.accepted_by_id, user.id)
+
+    def test_team_invitation_list_is_scoped_to_lab(self):
+        own = TeamInvitation.objects.create(
+            lab=self.lab_a,
+            email="own@example.com",
+            role="user",
+            token="own-token",
+            invited_by=self.admin_a,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        TeamInvitation.objects.create(
+            lab=self.lab_b,
+            email="other@example.com",
+            role="user",
+            token="other-token",
+            invited_by=self.admin_b,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.get("/api/core/team-invitations/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in response.data], [own.id])
 
     def test_superadmin_labs_all_includes_stats(self):
         Subscription.objects.create(

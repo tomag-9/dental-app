@@ -9,6 +9,7 @@ from .views import (
     LabViewSet,
     NotificationViewSet,
     PermissionsView,
+    TeamInvitationViewSet,
     UserViewSet,
 )
 
@@ -17,6 +18,7 @@ router.register(r"labs", LabViewSet)
 router.register(r"users", UserViewSet)
 router.register(r"notifications", NotificationViewSet)
 router.register(r"audit-logs", AuditLogViewSet)
+router.register(r"team-invitations", TeamInvitationViewSet)
 
 urlpatterns = [
     path("search/", GlobalSearchView.as_view(), name="global-search"),

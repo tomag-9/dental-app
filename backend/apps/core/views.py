@@ -1,12 +1,13 @@
 from datetime import timedelta
 from decimal import Decimal
+import secrets
 
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -14,7 +15,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.finance.models import Subscription
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
-from .models import AuditLog, Lab, Notification, User
+from .models import AuditLog, Lab, Notification, TeamInvitation, User
 from .serializers import (
     AuditLogSerializer,
     LabSerializer,
@@ -22,6 +23,8 @@ from .serializers import (
     NotificationSerializer,
     SignupRequestSerializer,
     SignupResponseSerializer,
+    TeamInvitationAcceptSerializer,
+    TeamInvitationSerializer,
     UserSerializer,
 )
 
@@ -537,6 +540,157 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         if not is_superadmin(self.request.user):
             raise PermissionDenied("Superadmin only endpoint")
         return AuditLog.objects.select_related("actor", "lab").all()
+
+
+class TeamInvitationViewSet(viewsets.ModelViewSet):
+    queryset = TeamInvitation.objects.all()
+    serializer_class = TeamInvitationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == "accept":
+            return [permissions.AllowAny()]
+        return super().get_permissions()
+
+    def get_queryset(self):
+        qs = TeamInvitation.objects.select_related("lab", "invited_by", "accepted_by")
+        user = self.request.user
+        if is_superadmin(user):
+            return qs
+        if is_admin_or_superadmin(user) and getattr(user, "lab_id", None):
+            return qs.filter(lab_id=user.lab_id)
+        return qs.none()
+
+    def _assert_can_manage_invitations(self, user):
+        if not is_admin_or_superadmin(user):
+            raise PermissionDenied("Only admin or superadmin can manage invitations")
+
+    def create(self, request, *args, **kwargs):
+        self._assert_can_manage_invitations(request.user)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self._assert_can_manage_invitations(request.user)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        self._assert_can_manage_invitations(request.user)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        self._assert_can_manage_invitations(request.user)
+        return super().destroy(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        lab = serializer.validated_data.get("lab")
+        if is_superadmin(user):
+            if lab is None:
+                raise ValidationError({"lab": "Lab must be provided"})
+        else:
+            lab = user.lab
+        invitation = serializer.save(
+            lab=lab,
+            invited_by=user,
+            token=secrets.token_urlsafe(32),
+            status="pending",
+            expires_at=timezone.now() + timedelta(days=7),
+        )
+        _write_audit_log(
+            self.request,
+            action="team_invitation.created",
+            entity_type="team_invitation",
+            entity_id=invitation.id,
+            lab=invitation.lab,
+            description=f"Invitation sent to {invitation.email}",
+            metadata={"role": invitation.role},
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.AllowAny])
+    @transaction.atomic
+    def accept(self, request, pk=None):
+        invitation = TeamInvitation.objects.select_related("lab").filter(pk=pk).first()
+        if invitation is None:
+            return Response(
+                {"detail": "Invitation not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = TeamInvitationAcceptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if data["token"] != invitation.token:
+            raise PermissionDenied("Invalid invitation token")
+        if invitation.status != "pending":
+            raise ValidationError({"detail": "Invitation is not pending"})
+        if invitation.expires_at <= timezone.now():
+            invitation.status = "expired"
+            invitation.save(update_fields=["status"])
+            raise ValidationError({"detail": "Invitation has expired"})
+
+        user = User.objects.filter(email__iexact=invitation.email).first()
+        if user:
+            if user.lab_id and user.lab_id != invitation.lab_id:
+                raise ValidationError({"email": "User already belongs to another lab"})
+            user.lab = invitation.lab
+            user.role = invitation.role
+            user.is_active = True
+            user.save(update_fields=["lab", "role", "is_active"])
+        else:
+            password = data.get("password")
+            if not password:
+                raise ValidationError({"password": "Password is required"})
+            username = _build_unique_username(
+                data.get("username") or invitation.email.split("@")[0]
+            )
+            user = User.objects.create_user(
+                username=username,
+                email=invitation.email,
+                password=password,
+                role=invitation.role,
+                lab=invitation.lab,
+                is_active=True,
+            )
+
+        invitation.status = "accepted"
+        invitation.accepted_by = user
+        invitation.accepted_at = timezone.now()
+        invitation.save(update_fields=["status", "accepted_by", "accepted_at"])
+        AuditLog.objects.create(
+            actor=user,
+            lab=invitation.lab,
+            action="team_invitation.accepted",
+            entity_type="team_invitation",
+            entity_id=str(invitation.id),
+            description=f"Invitation accepted by {user.email}",
+            metadata={"role": invitation.role},
+            ip_address=_client_ip(request),
+        )
+        return Response(
+            {
+                "invitation": TeamInvitationSerializer(invitation).data,
+                "user": UserSerializer(user).data,
+            }
+        )
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        self._assert_can_manage_invitations(request.user)
+        invitation = self.get_object()
+        if invitation.status != "pending":
+            raise ValidationError(
+                {"detail": "Only pending invitations can be cancelled"}
+            )
+        invitation.status = "cancelled"
+        invitation.save(update_fields=["status"])
+        _write_audit_log(
+            request,
+            action="team_invitation.cancelled",
+            entity_type="team_invitation",
+            entity_id=invitation.id,
+            lab=invitation.lab,
+            description=f"Invitation cancelled for {invitation.email}",
+        )
+        return Response(self.get_serializer(invitation).data)
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
