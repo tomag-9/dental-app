@@ -1,11 +1,37 @@
 // Topbar.jsx — Molaris global app header
 // Sits above each main page: global search, notifications, quick-add, command palette
 
+const ICON_BY_TYPE = {
+  job: 'briefcase',
+  patient: 'user',
+  invoice: 'fileText',
+  page: 'dashboard',
+  action: 'plus',
+  deadline: 'alertCircle',
+  stock: 'package',
+  team: 'user',
+  system: 'bell',
+};
+
+const COLOR_BY_TYPE = {
+  job: '#0d7c6b',
+  invoice: '#16a34a',
+  deadline: '#d97706',
+  stock: '#c0392b',
+  team: '#2563eb',
+  system: '#6b7280',
+};
+
 function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, onCreateClinic, onCreateDoctor }) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [addOpen, setAddOpen] = React.useState(false);
   const [q, setQ] = React.useState('');
+  const [searchItems, setSearchItems] = React.useState([]);
+  const [searchLoading, setSearchLoading] = React.useState(false);
+  const [notifItems, setNotifItems] = React.useState([]);
+  const [notifLoading, setNotifLoading] = React.useState(false);
+  const [unreadCount, setUnreadCount] = React.useState(0);
 
   // Close popovers on outside click
   React.useEffect(() => {
@@ -24,14 +50,149 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const notifications = [
+  const fallbackNotifications = [
     { id: 1, type: 'job',      icon: 'briefcase',  color: '#0d7c6b', title: 'Nová práca pridelená',  desc: '#13 — Lucia Šimková (Klinika Bratislava)', time: 'pred 8 min', unread: true },
     { id: 2, type: 'invoice',  icon: 'euro',       color: '#16a34a', title: 'Faktúra zaplatená',     desc: 'INV-2025-012 · 1 240,00 €',               time: 'pred 1 h',   unread: true },
     { id: 3, type: 'deadline', icon: 'alertCircle',color: '#d97706', title: 'Blížiaci sa termín',    desc: '#11 Peter Horváth — 12. 5. 2025',          time: 'pred 3 h',   unread: true },
     { id: 4, type: 'stock',    icon: 'package',    color: '#c0392b', title: 'Nízky stav skladu',     desc: 'Akrylát ružový (88 g, min 100)',           time: 'včera',      unread: false },
     { id: 5, type: 'team',     icon: 'user',       color: '#2563eb', title: 'Nový člen tímu',         desc: 'Tereza H. prijala pozvánku',               time: 'včera',      unread: false },
   ];
-  const unreadCount = notifications.filter(n => n.unread).length;
+
+
+
+  const mapPathToNavigate = (url) => {
+    if (!url) return null;
+    const path = url.split('?')[0];
+    if (path.startsWith('/jobs/')) {
+      const id = parseInt(path.replace('/jobs/', '').replace('/', ''), 10);
+      return Number.isFinite(id) ? { type: 'job', id } : { type: 'page', route: 'jobs' };
+    }
+    if (path.startsWith('/patients/')) return { type: 'page', route: 'patients' };
+    if (path.startsWith('/invoices/')) return { type: 'page', route: 'invoices' };
+    if (path.startsWith('/clinics')) return { type: 'page', route: 'clinics' };
+    if (path.startsWith('/doctors')) return { type: 'page', route: 'doctors' };
+    if (path.startsWith('/jobs')) return { type: 'page', route: 'jobs' };
+    if (path.startsWith('/dashboard')) return { type: 'page', route: 'dashboard' };
+    if (path.startsWith('/calendar')) return { type: 'page', route: 'calendar' };
+    if (path.startsWith('/inventory')) return { type: 'page', route: 'inventory' };
+    if (path.startsWith('/settings')) return { type: 'page', route: 'settings' };
+    return null;
+  };
+
+  const handleSearchAction = (item, onClose) => {
+    if (item.type === 'action') {
+      if (item.id === 'action:new-job') onNewJob && onNewJob();
+      if (item.id === 'action:new-patient') onNewPatient && onNewPatient();
+      if (item.id === 'action:new-invoice') onNewInvoice && onNewInvoice();
+      onClose();
+      return;
+    }
+    if (item.type === 'job' && item.object_id && onOpenJob) {
+      onOpenJob(item.object_id);
+      onClose();
+      return;
+    }
+    const target = mapPathToNavigate(item.url);
+    if (target && target.type === 'job' && onOpenJob) {
+      onOpenJob(target.id);
+      onClose();
+      return;
+    }
+    if (target && target.type === 'page' && onNavigate) {
+      onNavigate(target.route);
+      onClose();
+      return;
+    }
+    onClose();
+  };
+
+  const formatDateLabel = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString('sk-SK');
+  };
+
+  React.useEffect(() => {
+    let alive = true;
+    const loadCount = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.fetchUnreadCount) return;
+      try {
+        const result = await window.MolarisAPI.fetchUnreadCount();
+        if (!alive) return;
+        setUnreadCount(result.unread_count || 0);
+      } catch {
+        if (!alive) return;
+        setUnreadCount(fallbackNotifications.filter(n => n.unread).length);
+      }
+    };
+    loadCount();
+    return () => { alive = false; };
+  }, []);
+
+  React.useEffect(() => {
+    let alive = true;
+    if (!notifOpen) return () => { alive = false; };
+    const loadNotifications = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.fetchNotifications) {
+        setNotifItems(fallbackNotifications);
+        return;
+      }
+      setNotifLoading(true);
+      try {
+        const data = await window.MolarisAPI.fetchNotifications();
+        if (!alive) return;
+        const mapped = (data || []).map((item) => ({
+          id: item.id,
+          type: item.type || 'system',
+          icon: ICON_BY_TYPE[item.type] || 'bell',
+          color: COLOR_BY_TYPE[item.type] || '#6b7280',
+          title: item.title,
+          desc: item.message || '',
+          time: formatDateLabel(item.created_at),
+          unread: !item.read_at,
+          url: item.url,
+          raw: item,
+        }));
+        setNotifItems(mapped);
+        setUnreadCount(mapped.filter((item) => item.unread).length);
+      } catch {
+        if (!alive) return;
+        setNotifItems(fallbackNotifications);
+        setUnreadCount(fallbackNotifications.filter((item) => item.unread).length);
+      } finally {
+        if (!alive) return;
+        setNotifLoading(false);
+      }
+    };
+    loadNotifications();
+    return () => { alive = false; };
+  }, [notifOpen]);
+
+  React.useEffect(() => {
+    let alive = true;
+    if (!searchOpen) return () => { alive = false; };
+    const loadSearch = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.searchGlobal) {
+        setSearchItems([]);
+        return;
+      }
+      setSearchLoading(true);
+      try {
+        const data = await window.MolarisAPI.searchGlobal(q, 10);
+        if (!alive) return;
+        setSearchItems(data.results || []);
+      } catch {
+        if (!alive) return;
+        setSearchItems([]);
+      } finally {
+        if (!alive) return;
+        setSearchLoading(false);
+      }
+    };
+    const handle = setTimeout(loadSearch, 180);
+    return () => { alive = false; clearTimeout(handle); };
+  }, [searchOpen, q]);
 
   const stop = e => e.stopPropagation();
 
@@ -125,11 +286,18 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
           React.createElement('div', { style: { padding: '12px 14px', borderBottom: '1px solid #f0ede5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
             React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, fontSize: 13, color: '#1a2320' } }, 'Notifikácie'),
             React.createElement('button', {
+              onClick: async () => {
+                if (!window.MolarisAPI || !window.MolarisAPI.markAllNotificationsRead) return;
+                await window.MolarisAPI.markAllNotificationsRead();
+                setNotifItems((current) => current.map((item) => ({ ...item, unread: false })));
+                setUnreadCount(0);
+              },
               style: { background: 'none', border: 'none', color: '#0d7c6b', fontSize: 11.5, cursor: 'pointer', fontWeight: 600, fontFamily: 'Manrope,sans-serif' }
             }, 'Označiť ako prečítané')
           ),
           React.createElement('div', { style: { maxHeight: 400, overflowY: 'auto' } },
-            ...notifications.map((n, i) => React.createElement('div', {
+            notifLoading && React.createElement('div', { style: { padding: '16px 14px', fontSize: 12, color: '#8a9490' } }, 'Načítavam notifikácie...'),
+            !notifLoading && (notifItems.length ? notifItems : fallbackNotifications).map((n, i) => React.createElement('div', {
               key: n.id,
               style: {
                 display: 'flex', gap: 10, padding: '12px 14px',
@@ -139,6 +307,16 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
               },
               onMouseEnter: e => e.currentTarget.style.background = '#f0ede5',
               onMouseLeave: e => e.currentTarget.style.background = n.unread ? '#fbfaf6' : '#fff',
+              onClick: async () => {
+                if (n.raw && window.MolarisAPI && window.MolarisAPI.markNotificationRead) {
+                  await window.MolarisAPI.markNotificationRead(n.raw.id);
+                  setNotifItems((current) => current.map((item) => item.id === n.id ? { ...item, unread: false } : item));
+                  setUnreadCount((count) => Math.max(0, count - 1));
+                }
+                const target = mapPathToNavigate(n.url);
+                if (target && target.type === 'job' && onOpenJob) onOpenJob(target.id);
+                if (target && target.type === 'page' && onNavigate) onNavigate(target.route);
+              }
             },
               React.createElement('div', { style: { width: 30, height: 30, borderRadius: 8, background: n.color + '22', color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
                 React.createElement(Icon, { name: n.icon, size: 14 })
@@ -148,7 +326,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
                   React.createElement('span', { style: { fontSize: 12.5, fontWeight: 600, color: '#1a2320' } }, n.title),
                   n.unread && React.createElement('span', { style: { width: 6, height: 6, borderRadius: '50%', background: '#0d7c6b', marginTop: 6, flexShrink: 0 } })
                 ),
-                React.createElement('div', { style: { fontSize: 11.5, color: '#5a6b66', marginTop: 2, lineHeight: 1.4 } }, n.desc),
+                React.createElement('div', { style: { fontSize: 11.5, color: '#5a6b66', marginTop: 2, lineHeight: 1.4 } }, n.desc || '—'),
                 React.createElement('div', { style: { fontSize: 10.5, color: '#8a9490', marginTop: 4 } }, n.time)
               )
             ))
@@ -166,7 +344,10 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     searchOpen && React.createElement(CommandPalette, {
       onClose: () => setSearchOpen(false),
       query: q, onQueryChange: setQ,
-      onNavigate, onOpenJob
+      onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice,
+      items: searchItems,
+      loading: searchLoading,
+      onAction: handleSearchAction,
     })
   );
 }
@@ -209,34 +390,25 @@ function PopoverDivider() {
 }
 
 // ─── Command palette ───────────────────────────────────────────────
-function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob }) {
+function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, items, loading, onAction }) {
   const inputRef = React.useRef(null);
   React.useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
 
-  const items = [
-    // Jobs
-    { id: 'j12', kind: 'job',     label: '#12 — Mária Kováčová',  sub: 'Mostík zirkón · v priebehu',  icon: 'briefcase',  action: () => { onOpenJob(12); onClose(); } },
-    { id: 'j11', kind: 'job',     label: '#11 — Peter Horváth',   sub: 'Korunka · nová',              icon: 'briefcase',  action: () => { onOpenJob(11); onClose(); } },
-    { id: 'j10', kind: 'job',     label: '#10 — Jana Blahová',    sub: 'Snímateľná protéza · nová',   icon: 'briefcase',  action: () => { onOpenJob(10); onClose(); } },
-    // Patients
-    { id: 'p1', kind: 'patient',  label: 'Mária Kováčová',         sub: '8512151234 · 4 práce',        icon: 'user',       action: () => { onNavigate('patients'); onClose(); } },
-    { id: 'p2', kind: 'patient',  label: 'Peter Horváth',          sub: '9001041234 · 2 práce',        icon: 'user',       action: () => { onNavigate('patients'); onClose(); } },
-    // Invoices
-    { id: 'i14',kind: 'invoice',  label: 'INV-2025-014',           sub: 'Klinika Bratislava · 1 240 €',icon: 'fileText',   action: () => { onNavigate('invoices'); onClose(); } },
-    { id: 'i12',kind: 'invoice',  label: 'INV-2025-012',           sub: 'Zaplatená · 1 240 €',          icon: 'fileText',   action: () => { onNavigate('invoices'); onClose(); } },
-    // Navigation
-    { id: 'n1', kind: 'page',     label: 'Prejsť na Nástenku',     sub: 'Dashboard',                    icon: 'dashboard',  action: () => { onNavigate('dashboard'); onClose(); } },
-    { id: 'n2', kind: 'page',     label: 'Prejsť na Kalendár',     sub: 'Termíny a stretnutia',         icon: 'calendar',   action: () => { onNavigate('calendar'); onClose(); } },
-    { id: 'n3', kind: 'page',     label: 'Prejsť na Sklad',        sub: 'Inventár materiálu',           icon: 'package',    action: () => { onNavigate('inventory'); onClose(); } },
-    { id: 'n4', kind: 'page',     label: 'Prejsť na Nastavenia',   sub: 'Profil a integrácie',          icon: 'settings',   action: () => { onNavigate('settings'); onClose(); } },
-    // Quick actions
-    { id: 'a1', kind: 'action',   label: 'Vytvoriť novú prácu',    sub: 'Klávesová skratka',            icon: 'plus',       action: onClose },
-    { id: 'a2', kind: 'action',   label: 'Exportovať faktúry',     sub: 'CSV / XLSX',                   icon: 'download',   action: onClose },
-  ];
+  const normalizedItems = (items || []).map((item) => {
+    const type = item.type || 'page';
+    return {
+      id: item.id,
+      kind: type,
+      label: item.label,
+      sub: item.subtitle || '',
+      icon: ICON_BY_TYPE[type] || 'search',
+      action: () => onAction(item, onClose),
+    };
+  });
 
   const filtered = query
-    ? items.filter(i => `${i.label} ${i.sub}`.toLowerCase().includes(query.toLowerCase()))
-    : items;
+    ? normalizedItems.filter(i => `${i.label} ${i.sub}`.toLowerCase().includes(query.toLowerCase()))
+    : normalizedItems;
 
   const groups = { job: 'Práce', patient: 'Pacienti', invoice: 'Faktúry', page: 'Stránky', action: 'Akcie' };
   const grouped = Object.keys(groups).map(k => ({ key: k, label: groups[k], items: filtered.filter(i => i.kind === k) })).filter(g => g.items.length);
@@ -262,7 +434,8 @@ function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob }
         }, 'esc')
       ),
       React.createElement('div', { style: { maxHeight: '52vh', overflowY: 'auto' } },
-        filtered.length === 0
+        loading && React.createElement('div', { style: { padding: 24, textAlign: 'center', color: '#8a9490', fontSize: 12.5 } }, 'Načítavam výsledky...'),
+        !loading && filtered.length === 0
           ? React.createElement('div', { style: { padding: 30, textAlign: 'center', color: '#8a9490', fontSize: 13 } }, 'Žiadne výsledky pre „', query, '".')
           : grouped.map(g => React.createElement('div', { key: g.key },
               React.createElement('div', { style: { padding: '10px 18px 4px', fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.06em' } }, g.label),

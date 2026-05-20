@@ -98,6 +98,33 @@
     return invoice;
   }
 
+  async function searchGlobal(query, limit = 8) {
+    const qs = new URLSearchParams();
+    if (query) qs.set('q', query);
+    if (limit) qs.set('limit', String(limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return request(`/search/${suffix}`);
+  }
+
+  async function fetchNotifications(limit = 8) {
+    const qs = new URLSearchParams();
+    if (limit) qs.set('limit', String(limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return request(`/notifications/${suffix}`);
+  }
+
+  async function fetchUnreadCount() {
+    return request('/notifications/unread-count/');
+  }
+
+  async function markNotificationRead(id) {
+    return request(`/notifications/${id}/mark-read/`, { method: 'POST' });
+  }
+
+  async function markAllNotificationsRead() {
+    return request('/notifications/mark-all-read/', { method: 'POST' });
+  }
+
   function authUrl(path) {
     return `${API_BASE}${path}`;
   }
@@ -349,6 +376,11 @@
     createRecord,
     transitionJobStatus,
     updateInvoiceStatus,
+    searchGlobal,
+    fetchNotifications,
+    fetchUnreadCount,
+    markNotificationRead,
+    markAllNotificationsRead,
     authUrl,
     downloadInvoicePdf,
     logout,
