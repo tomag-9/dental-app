@@ -37,7 +37,7 @@ docker compose --env-file env/dev.env.example -f compose/docker-compose.yml exec
 
 Default credentials after seeding: `admin` / `admin` and `user` / `user`.
 
-Frontend dev server: http://localhost:5173  
+Frontend dev server: http://localhost:5367  
 Backend API: http://localhost:8000/api/  
 Swagger docs: http://localhost:8000/api/docs/
 

@@ -1,0 +1,129 @@
+// Dashboard.jsx — Molaris Dashboard (refreshed)
+
+function Dashboard({ onNavigate, onOpenJob }) {
+  const workspace = window.MolarisAPI.useWorkspace();
+  const apiStats = workspace.stats;
+  const stats = [
+    { label: 'Počet pacientov', value: String(apiStats ? apiStats.total_patients : 142), icon: 'users', tone: 'teal', sub: '+8 tento mesiac' },
+    { label: 'Aktívne práce',   value: String(apiStats ? apiStats.active_jobs : 23), icon: 'briefcase', tone: 'amber', sub: '5 v termíne dnes' },
+    { label: 'Tržby',           value: apiStats ? `${Number(apiStats.total_revenue || 0).toLocaleString('sk-SK')} €` : '8 420 €', icon: 'euro', tone: 'green', delta: '+12 %' },
+    { label: 'Dokončené',       value: String(apiStats ? apiStats.completed_jobs : 89), icon: 'checkCircle', tone: 'purple', sub: 'celkom' },
+  ];
+
+  const recentJobs = [
+    { id: 12, patient: 'Mária Kováčová', type: 'Mostík zirkón',     status: 'progress', statusLabel: 'V priebehu', due: '15. 5. 2025' },
+    { id: 11, patient: 'Peter Horváth',  type: 'Korunka',           status: 'new',      statusLabel: 'Nová',       due: '12. 5. 2025' },
+    { id: 10, patient: 'Jana Blahová',   type: 'Snímateľná prot.',  status: 'new',      statusLabel: 'Nová',       due: '8. 5. 2025'  },
+    { id: 9,  patient: 'Tomáš Varga',    type: 'Implantát',         status: 'done',     statusLabel: 'Dokončená',  due: '3. 5. 2025'  },
+  ];
+  const visibleRecentJobs = workspace.jobs && workspace.jobs.length
+    ? workspace.jobs.slice(0, 4).map(j => ({ id: j.id, patient: j.patient, type: j.type, status: j.status === 'in_progress' ? 'progress' : j.status === 'completed' ? 'done' : j.status, statusLabel: j.status, due: j.due }))
+    : recentJobs;
+
+  const recentInvoices = [
+    { number: 'INV-2025-014', clinic: 'Klinika Bratislava', status: 'issued', statusLabel: 'Vystavená', amount: '1 240,00 €', date: '2. máj' },
+    { number: 'INV-2025-013', clinic: 'ZubMed Košice',      status: 'issued', statusLabel: 'Vystavená', amount: '890,00 €',   date: '30. apr' },
+    { number: 'INV-2025-012', clinic: 'Klinika Bratislava', status: 'paid',   statusLabel: 'Zaplatená', amount: '1 240,00 €', date: '28. apr' },
+  ];
+
+  const todaySchedule = [
+    { time: '09:00', title: 'Frézovanie #12 — Kováčová',        type: 'job' },
+    { time: '11:00', title: 'Konzultácia — Klinika BA',          type: 'meeting' },
+    { time: '14:00', title: 'Modelovanie #11 — Horváth',         type: 'job' },
+    { time: '16:30', title: 'Odber dojmu — kuriér',              type: 'pickup' },
+  ];
+  const typeDot = { job: '#0d7c6b', meeting: '#2563eb', pickup: '#d97706' };
+
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+    React.createElement(PageHeader, {
+      title: 'Dobré ráno, Ján',
+      subtitle: 'Pondelok 12. mája 2026 · Prehľad vášho laboratória.',
+      actions: [
+        React.createElement(Button, { key: 'r', variant: 'outline' }, React.createElement(Icon, { name: 'refreshCw', size: 13 }), 'Obnoviť'),
+        React.createElement(Button, { key: 'n', onClick: () => onNavigate('jobs') }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
+      ]
+    }),
+
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+      ...stats.map(s => React.createElement(StatCard, { key: s.label, ...s }))
+    ),
+
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '5fr 4fr 3fr', gap: 16, alignItems: 'flex-start' } },
+      // Recent jobs
+      React.createElement(Card, null,
+        React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+          React.createElement(CardTitle, null, 'Posledné práce'),
+          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => onNavigate('jobs') }, 'Všetky', React.createElement(Icon, { name: 'arrowRight', size: 12 }))
+        ),
+        React.createElement(CardContent, { style: { paddingTop: 0 } },
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+            ...visibleRecentJobs.map((j, i) => React.createElement('div', {
+              key: j.id,
+              onClick: () => onOpenJob && onOpenJob(j.id),
+              style: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5', cursor: 'pointer', transition: 'background .1s', borderRadius: 6 },
+              onMouseEnter: e => e.currentTarget.style.background = '#fbfaf6',
+              onMouseLeave: e => e.currentTarget.style.background = 'transparent',
+            },
+              React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace', fontSize: 11.5, fontWeight: 700, color: '#0d7c6b', minWidth: 36 } }, `#${j.id}`),
+              React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+                React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1a2320' } }, j.patient),
+                React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490', marginTop: 1 } }, j.type, ' · termín ', j.due)
+              ),
+              React.createElement(Badge, { color: j.status }, j.statusLabel),
+              React.createElement(Icon, { name: 'chevronRight', size: 14, color: '#b0bdb9' })
+            ))
+          )
+        )
+      ),
+
+      // Recent invoices
+      React.createElement(Card, null,
+        React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+          React.createElement(CardTitle, null, 'Posledné faktúry'),
+          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => onNavigate('invoices') }, 'Všetky', React.createElement(Icon, { name: 'arrowRight', size: 12 }))
+        ),
+        React.createElement(CardContent, { style: { paddingTop: 0 } },
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+            ...recentInvoices.map((inv, i) => React.createElement('div', {
+              key: inv.number,
+              style: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
+            },
+              React.createElement('div', { style: { flex: 1, minWidth: 0 } },
+                React.createElement('div', { style: { fontSize: 11.5, fontFamily: 'ui-monospace, monospace', color: '#0d7c6b', fontWeight: 600 } }, inv.number),
+                React.createElement('div', { style: { fontSize: 12, color: '#5a6b66', marginTop: 2 } }, inv.clinic, ' · ', inv.date)
+              ),
+              React.createElement('div', { style: { textAlign: 'right' } },
+                React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320' } }, inv.amount),
+                React.createElement('div', { style: { marginTop: 4 } }, React.createElement(Badge, { color: inv.status }, inv.statusLabel))
+              )
+            ))
+          )
+        )
+      ),
+
+      // Today
+      React.createElement(Card, null,
+        React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+          React.createElement(CardTitle, null, 'Dnes'),
+          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => onNavigate('calendar') }, 'Kalendár', React.createElement(Icon, { name: 'arrowRight', size: 12 }))
+        ),
+        React.createElement(CardContent, { style: { paddingTop: 0 } },
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
+            ...todaySchedule.map((t, i) => React.createElement('div', {
+              key: i,
+              style: { display: 'flex', gap: 10, padding: '10px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
+            },
+              React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: 44 } },
+                React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 12, fontWeight: 700, color: '#1a2320' } }, t.time),
+              ),
+              React.createElement('div', { style: { width: 6, height: 6, borderRadius: '50%', background: typeDot[t.type], marginTop: 7, flexShrink: 0 } }),
+              React.createElement('div', { style: { flex: 1, fontSize: 12.5, color: '#1a2320', lineHeight: 1.4 } }, t.title)
+            ))
+          )
+        )
+      )
+    )
+  );
+}
+
+Object.assign(window, { Dashboard });
