@@ -216,6 +216,29 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertEqual(response.data["status"], "issued")
         self.assertEqual(response.data["clinic_name"], "Clinic A")
         self.assertIn("Alice Patient", response.data["patient_names"])
+        self.assertEqual(response.data["subtotal_amount"], "320.00")
+        self.assertEqual(response.data["vat_amount"], "0.00")
+        self.assertFalse(response.data["is_overdue"])
+        self.assertEqual(response.data["days_overdue"], 0)
+        self.assertEqual(
+            response.data["related_jobs"],
+            [
+                {
+                    "id": self.job_a1.id,
+                    "status": "finished_factured",
+                    "description": "Crowns",
+                    "patient_name": "Alice Patient",
+                    "due_date": None,
+                },
+                {
+                    "id": self.job_a2.id,
+                    "status": "finished_factured",
+                    "description": "Repair",
+                    "patient_name": "Alice Patient",
+                    "due_date": None,
+                },
+            ],
+        )
         self.assertGreaterEqual(len(response.data["items"]), 2)
 
         self.job_a1.refresh_from_db()
@@ -287,6 +310,23 @@ class InvoiceLifecycleApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["clinic_name"], "Clinic B")
+
+    def test_invoice_serializer_exposes_overdue_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        create_resp = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a2.id]},
+            format="json",
+        )
+        invoice = Invoice.objects.get(id=create_resp.data["id"])
+        invoice.due_date = timezone.localdate() - timezone.timedelta(days=3)
+        invoice.save(update_fields=["due_date"])
+
+        response = self.client.get(f"/api/finance/invoices/{invoice.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["is_overdue"])
+        self.assertEqual(response.data["days_overdue"], 3)
 
 
 class PriceListCrudApiTests(APITestCase):

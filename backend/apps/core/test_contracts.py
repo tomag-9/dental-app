@@ -257,10 +257,15 @@ class InvoiceContractTests(APITestCase):
             "number",
             "status",
             "total_amount",
+            "subtotal_amount",
+            "vat_amount",
+            "is_overdue",
+            "days_overdue",
             "created_at",
             "clinic_name",
             "patient_names",
             "items",
+            "related_jobs",
         ]
         for field in required_fields:
             self.assertIn(field, response.data, f"Missing required field: {field}")
@@ -269,6 +274,9 @@ class InvoiceContractTests(APITestCase):
         self.assertEqual(response.data["clinic_name"], "Test Clinic")
         self.assertIsInstance(response.data["patient_names"], list)
         self.assertIn("Jane Patient", response.data["patient_names"])
+        self.assertIsInstance(response.data["related_jobs"], list)
+        self.assertFalse(response.data["is_overdue"])
+        self.assertEqual(response.data["vat_amount"], "0.00")
 
         # Items must be included
         self.assertGreater(len(response.data["items"]), 0)
@@ -316,8 +324,12 @@ class InvoiceContractTests(APITestCase):
         # Enriched fields must be present
         self.assertIn("clinic_name", invoice_data)
         self.assertIn("patient_names", invoice_data)
+        self.assertIn("related_jobs", invoice_data)
+        self.assertIn("is_overdue", invoice_data)
+        self.assertIn("days_overdue", invoice_data)
         self.assertEqual(invoice_data["clinic_name"], "Test Clinic")
         self.assertIsInstance(invoice_data["patient_names"], list)
+        self.assertIsInstance(invoice_data["related_jobs"], list)
 
 
 class PatientContractTests(APITestCase):
