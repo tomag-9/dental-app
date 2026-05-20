@@ -45,3 +45,5 @@ rebuild-dev.sh
 .code-review-graph/
 .claude/
 .design/
+
+tasks.md
