@@ -382,6 +382,11 @@ class FinanceStatsView(APIView):
         pending_invoices = qs.filter(status="issued").count()
 
         today = timezone.localdate()
+        overdue_qs = qs.filter(status="issued", due_date__lt=today)
+        overdue_amount = overdue_qs.aggregate(total=Sum("total_amount"))[
+            "total"
+        ] or Decimal("0.00")
+
         this_start, this_end = _month_window(today)
         last_month = _months_ago(1)
         last_start, last_end = _month_window(last_month)
@@ -418,10 +423,40 @@ class FinanceStatsView(APIView):
                 }
             )
 
+        paid_invoices = qs.filter(status="paid", paid_at__isnull=False)
+        payment_days = []
+        for invoice in paid_invoices:
+            start = invoice.issued_at or invoice.created_at
+            if start and invoice.paid_at:
+                payment_days.append((invoice.paid_at.date() - start.date()).days)
+        average_payment_days = (
+            round(sum(payment_days) / len(payment_days), 1) if payment_days else 0.0
+        )
+
+        top_clinics = []
+        top_clinic_rows = (
+            qs.filter(status="paid")
+            .values("clinic_id", "clinic__name")
+            .annotate(revenue=Sum("total_amount"))
+            .order_by("-revenue", "clinic__name")[:5]
+        )
+        for row in top_clinic_rows:
+            top_clinics.append(
+                {
+                    "clinic_id": row["clinic_id"],
+                    "clinic_name": row["clinic__name"],
+                    "revenue": f"{row['revenue'] or Decimal('0.00'):.2f}",
+                }
+            )
+
         return Response(
             {
                 "total_revenue": str(total_revenue),
                 "pending_invoices": pending_invoices,
+                "overdue_invoices": overdue_qs.count(),
+                "overdue_amount": f"{overdue_amount:.2f}",
+                "average_payment_days": average_payment_days,
+                "top_clinics": top_clinics,
                 "monthly_growth_pct": round(growth_pct, 1),
                 "monthly_revenue": monthly_revenue,
             }

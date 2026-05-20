@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -552,6 +553,10 @@ class FinanceStatsViewTests(APITestCase):
         required = [
             "total_revenue",
             "pending_invoices",
+            "overdue_invoices",
+            "overdue_amount",
+            "average_payment_days",
+            "top_clinics",
             "monthly_growth_pct",
             "monthly_revenue",
         ]
@@ -559,6 +564,10 @@ class FinanceStatsViewTests(APITestCase):
             self.assertIn(field, response.data, f"Missing field: {field}")
 
         self.assertIsInstance(response.data["pending_invoices"], int)
+        self.assertIsInstance(response.data["overdue_invoices"], int)
+        self.assertIsInstance(response.data["overdue_amount"], str)
+        self.assertIsInstance(response.data["average_payment_days"], float)
+        self.assertIsInstance(response.data["top_clinics"], list)
         self.assertIsInstance(response.data["monthly_revenue"], list)
         self.assertEqual(len(response.data["monthly_revenue"]), 6)
 
@@ -603,3 +612,76 @@ class FinanceStatsViewTests(APITestCase):
         """Superadmin must receive 200 and aggregate across all labs."""
         response = self._get_stats(self.superadmin)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_overdue_average_payment_and_top_clinics(self):
+        clinic_a = Clinic.objects.create(lab=self.lab_a, name="Clinic A")
+        clinic_b = Clinic.objects.create(lab=self.lab_a, name="Clinic B")
+        other_lab_clinic = Clinic.objects.create(lab=self.lab_b, name="Other Lab")
+        now = timezone.now()
+
+        Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic_a,
+            number="INV-PAID-A",
+            status="paid",
+            total_amount="100.00",
+            issued_at=now - timezone.timedelta(days=8),
+            paid_at=now - timezone.timedelta(days=2),
+        )
+        Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic_a,
+            number="INV-PAID-B",
+            status="paid",
+            total_amount="50.00",
+            issued_at=now - timezone.timedelta(days=5),
+            paid_at=now - timezone.timedelta(days=1),
+        )
+        Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic_b,
+            number="INV-PAID-C",
+            status="paid",
+            total_amount="25.00",
+            issued_at=now - timezone.timedelta(days=3),
+            paid_at=now - timezone.timedelta(days=1),
+        )
+        Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic_b,
+            number="INV-OVERDUE",
+            status="issued",
+            total_amount="80.00",
+            due_date=timezone.localdate() - timezone.timedelta(days=1),
+        )
+        Invoice.objects.create(
+            lab=self.lab_b,
+            clinic=other_lab_clinic,
+            number="INV-OTHER-LAB",
+            status="paid",
+            total_amount="999.00",
+            issued_at=now - timezone.timedelta(days=3),
+            paid_at=now,
+        )
+
+        response = self._get_stats(self.admin_a)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["overdue_invoices"], 1)
+        self.assertEqual(response.data["overdue_amount"], "80.00")
+        self.assertEqual(response.data["average_payment_days"], 4.0)
+        self.assertEqual(
+            response.data["top_clinics"],
+            [
+                {
+                    "clinic_id": clinic_a.id,
+                    "clinic_name": "Clinic A",
+                    "revenue": "150.00",
+                },
+                {
+                    "clinic_id": clinic_b.id,
+                    "clinic_name": "Clinic B",
+                    "revenue": "25.00",
+                },
+            ],
+        )
