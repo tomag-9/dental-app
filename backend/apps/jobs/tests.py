@@ -689,6 +689,42 @@ class TechnicianApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], self.tech_a.id)
+        self.assertEqual(response.data[0]["jobs_count"], 0)
+        self.assertEqual(response.data[0]["active_jobs"], 0)
+        self.assertEqual(response.data[0]["jobs_this_month"], 0)
+
+    def test_technician_aggregates_workload(self):
+        patient = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Tech",
+            last_name="Patient",
+            birth_number="960101/1111",
+        )
+        clinic = Clinic.objects.create(lab=self.lab_a, name="Tech Clinic")
+        Job.objects.create(
+            lab=self.lab_a,
+            patient=patient,
+            clinic=clinic,
+            technician=self.tech_a,
+            status="in_progress",
+            description="Active technician job",
+        )
+        Job.objects.create(
+            lab=self.lab_a,
+            patient=patient,
+            clinic=clinic,
+            technician=self.tech_a,
+            status="completed",
+            description="Completed technician job",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get(reverse("technician-detail", args=[self.tech_a.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["jobs_count"], 2)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["jobs_this_month"], 2)
 
     def test_superadmin_lists_technicians_across_labs(self):
         self.client.force_authenticate(user=self.superadmin)

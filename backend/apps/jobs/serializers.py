@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.access import is_superadmin
@@ -12,10 +13,45 @@ from .models import Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
+    jobs_count = serializers.SerializerMethodField()
+    active_jobs = serializers.SerializerMethodField()
+    jobs_this_month = serializers.SerializerMethodField()
+
     class Meta:
         model = Technician
-        fields = "__all__"
-        read_only_fields = ["lab", "created_at"]
+        fields = (
+            "id",
+            "lab",
+            "first_name",
+            "last_name",
+            "title_before",
+            "title_after",
+            "contact_info",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "jobs_this_month",
+        )
+        read_only_fields = [
+            "lab",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "jobs_this_month",
+        ]
+
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+    def get_active_jobs(self, obj):
+        return obj.jobs.filter(status__in=("new", "in_progress")).count()
+
+    def get_jobs_this_month(self, obj):
+        today = timezone.localdate()
+        return obj.jobs.filter(
+            created_at__year=today.year,
+            created_at__month=today.month,
+        ).count()
 
 
 class JobItemSerializer(serializers.ModelSerializer):

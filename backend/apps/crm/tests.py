@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.finance.models import Invoice, InvoiceItem
 from apps.jobs.models import Job, Technician
 
 
@@ -162,7 +163,7 @@ class PatientCrudApiTests(APITestCase):
 
     def test_list_patients(self):
         """Test listing patients."""
-        Patient.objects.create(
+        patient = Patient.objects.create(
             lab=self.lab,
             first_name="Alice",
             last_name="Smith",
@@ -182,6 +183,56 @@ class PatientCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+        by_id = {item["id"]: item for item in response.data}
+        self.assertEqual(by_id[patient.id]["jobs_count"], 0)
+        self.assertEqual(by_id[patient.id]["active_jobs"], 0)
+        self.assertEqual(by_id[patient.id]["ytd_revenue"], "0.00")
+
+    def test_patient_aggregates_jobs_and_revenue(self):
+        clinic = Clinic.objects.create(lab=self.lab, name="Clinic A")
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Alice",
+            last_name="Smith",
+            birth_number="900101/1234",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="in_progress",
+            description="Active job",
+        )
+        Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="completed",
+            description="Done job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=clinic,
+            number="CRM-PAT-001",
+            status="paid",
+            total_amount="120.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="120.00",
+        )
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse("patient-detail", args=[patient.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["jobs_count"], 2)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "120.00")
 
     def test_superadmin_lists_patients_across_labs(self):
         Patient.objects.create(
@@ -360,6 +411,41 @@ class ClinicCrudApiTests(APITestCase):
     def test_get_clinic(self):
         """Test retrieving a specific clinic."""
         clinic = Clinic.objects.create(lab=self.lab, name="Test Clinic")
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Clinic",
+            last_name="Patient",
+            birth_number="940101/1111",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="new",
+            description="Active clinic job",
+        )
+        Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="completed",
+            description="Done clinic job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=clinic,
+            number="CRM-CLINIC-001",
+            status="paid",
+            total_amount="75.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="75.00",
+        )
 
         self.client.force_authenticate(user=self.user)
         url = reverse("clinic-detail", args=[clinic.id])
@@ -368,6 +454,9 @@ class ClinicCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["name"], "Test Clinic")
+        self.assertEqual(response.data["jobs_count"], 2)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "75.00")
 
     def test_update_clinic(self):
         """Test updating a clinic."""
@@ -463,6 +552,35 @@ class DoctorCrudApiTests(APITestCase):
             first_name="Test",
             last_name="Doctor",
         )
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Doctor",
+            last_name="Patient",
+            birth_number="950101/1111",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=self.clinic,
+            doctor=doctor,
+            status="in_progress",
+            description="Active doctor job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="CRM-DOCTOR-001",
+            status="paid",
+            total_amount="90.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="90.00",
+        )
 
         self.client.force_authenticate(user=self.user)
         url = reverse("doctor-detail", args=[doctor.id])
@@ -471,6 +589,9 @@ class DoctorCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["first_name"], "Test")
+        self.assertEqual(response.data["jobs_count"], 1)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "90.00")
 
     def test_update_doctor(self):
         """Test updating a doctor."""

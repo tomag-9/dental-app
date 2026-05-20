@@ -1,6 +1,30 @@
+from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Clinic, Doctor, Patient
+
+ACTIVE_JOB_STATUSES = ("new", "in_progress")
+
+
+def _year_start():
+    today = timezone.localdate()
+    return today.replace(month=1, day=1)
+
+
+def _paid_invoice_revenue_for_jobs(jobs):
+    from apps.finance.models import InvoiceItem
+
+    job_ids = jobs.values_list("id", flat=True)
+    total = (
+        InvoiceItem.objects.filter(
+            job_id__in=job_ids,
+            invoice__status="paid",
+            invoice__paid_at__date__gte=_year_start(),
+        ).aggregate(total=Sum("line_total"))["total"]
+        or 0
+    )
+    return f"{total:.2f}"
 
 
 class ClinicSerializer(serializers.ModelSerializer):
@@ -11,6 +35,9 @@ class ClinicSerializer(serializers.ModelSerializer):
     zip_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     doctor_count = serializers.IntegerField(source="doctors.count", read_only=True)
     doctors = serializers.SerializerMethodField(read_only=True)
+    jobs_count = serializers.SerializerMethodField()
+    active_jobs = serializers.SerializerMethodField()
+    ytd_revenue = serializers.SerializerMethodField()
 
     class Meta:
         model = Clinic
@@ -31,8 +58,19 @@ class ClinicSerializer(serializers.ModelSerializer):
             "zip_code",
             "doctor_count",
             "doctors",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
         ]
-        read_only_fields = ["lab", "created_at", "doctor_count", "doctors"]
+        read_only_fields = [
+            "lab",
+            "created_at",
+            "doctor_count",
+            "doctors",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
+        ]
 
     def _merge_contact_fields(self, validated_data):
         contact_info = dict(validated_data.get("contact_info") or {})
@@ -108,11 +146,23 @@ class ClinicSerializer(serializers.ModelSerializer):
             for doctor in obj.doctors.order_by("last_name", "first_name")
         ]
 
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+    def get_active_jobs(self, obj):
+        return obj.jobs.filter(status__in=ACTIVE_JOB_STATUSES).count()
+
+    def get_ytd_revenue(self, obj):
+        return _paid_invoice_revenue_for_jobs(obj.jobs.all())
+
 
 class DoctorSerializer(serializers.ModelSerializer):
     clinic_name = serializers.ReadOnlyField(source="clinic.name", allow_null=True)
     email = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    jobs_count = serializers.SerializerMethodField()
+    active_jobs = serializers.SerializerMethodField()
+    ytd_revenue = serializers.SerializerMethodField()
 
     class Meta:
         model = Doctor
@@ -129,8 +179,17 @@ class DoctorSerializer(serializers.ModelSerializer):
             "created_at",
             "email",
             "phone",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
         ]
-        read_only_fields = ["lab", "created_at"]
+        read_only_fields = [
+            "lab",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
+        ]
 
     def validate_clinic(self, clinic):
         request = self.context.get("request")
@@ -165,12 +224,25 @@ class DoctorSerializer(serializers.ModelSerializer):
         data["phone"] = data.get("phone") or contact_info.get("phone") or ""
         return data
 
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+    def get_active_jobs(self, obj):
+        return obj.jobs.filter(status__in=ACTIVE_JOB_STATUSES).count()
+
+    def get_ytd_revenue(self, obj):
+        return _paid_invoice_revenue_for_jobs(obj.jobs.all())
+
 
 class PatientSerializer(serializers.ModelSerializer):
+    jobs_count = serializers.SerializerMethodField()
+    active_jobs = serializers.SerializerMethodField()
+    ytd_revenue = serializers.SerializerMethodField()
+
     class Meta:
         model = Patient
         fields = "__all__"
-        read_only_fields = ["lab"]
+        read_only_fields = ["lab", "jobs_count", "active_jobs", "ytd_revenue"]
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -193,3 +265,12 @@ class PatientSerializer(serializers.ModelSerializer):
                     }
                 )
         return attrs
+
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+    def get_active_jobs(self, obj):
+        return obj.jobs.filter(status__in=ACTIVE_JOB_STATUSES).count()
+
+    def get_ytd_revenue(self, obj):
+        return _paid_invoice_revenue_for_jobs(obj.jobs.all())
