@@ -191,6 +191,55 @@ class GlobalSearchView(APIView):
         return Response({"query": query, "results": results})
 
 
+def _role_permission_payload(user):
+    role = getattr(user, "role", "user") or "user"
+    superadmin = is_superadmin(user)
+    admin = is_admin_or_superadmin(user)
+
+    navigation = [
+        ("dashboard", "Nástenka", "/dashboard", "dashboard", True),
+        ("jobs", "Práce", "/jobs", "briefcase", True),
+        ("calendar", "Kalendár", "/calendar", "calendar", True),
+        ("patients", "Pacienti", "/patients", "user", role != "technician"),
+        ("crm", "CRM", "/clinics", "building", role != "technician"),
+        ("finance", "Finance", "/finance", "euro", admin),
+        ("inventory", "Sklad", "/inventory", "package", admin),
+        ("settings", "Nastavenia", "/settings", "settings", admin),
+        ("superadmin", "Superadmin", "/superadmin", "shield", superadmin),
+    ]
+    actions = {
+        "create_job": True,
+        "create_patient": role != "technician",
+        "create_invoice": admin,
+        "manage_inventory": admin,
+        "manage_team": admin,
+        "manage_platform": superadmin,
+    }
+
+    return {
+        "role": role,
+        "is_superadmin": superadmin,
+        "navigation": [
+            {
+                "id": item_id,
+                "label": label,
+                "path": path,
+                "icon": icon,
+                "allowed": allowed,
+            }
+            for item_id, label, path, icon, allowed in navigation
+        ],
+        "actions": actions,
+    }
+
+
+class PermissionsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(_role_permission_payload(request.user))
+
+
 class DashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

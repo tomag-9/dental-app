@@ -9,6 +9,7 @@ from apps.core.views import (
     GlobalSearchView,
     LabViewSet,
     NotificationViewSet,
+    PermissionsView,
     UserViewSet,
 )
 from apps.finance.views import InvoiceViewSet
@@ -30,6 +31,7 @@ urlpatterns = [
     path("api/", include(root_router.urls)),
     path("api/dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
     path("api/search/", GlobalSearchView.as_view(), name="global-search-root"),
+    path("api/permissions/", PermissionsView.as_view(), name="permissions-root"),
     # Nested app routes
     path("api/core/", include("apps.core.urls")),
     path("api/crm/", include("apps.crm.urls")),

@@ -368,3 +368,43 @@ class CoreUserFlowsApiTests(APITestCase):
         other.refresh_from_db()
         self.assertIsNotNone(own.read_at)
         self.assertIsNone(other.read_at)
+
+    def test_permissions_endpoint_returns_admin_navigation_contract(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get("/api/permissions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["role"], "admin")
+        navigation = {item["id"]: item for item in response.data["navigation"]}
+        self.assertTrue(navigation["finance"]["allowed"])
+        self.assertTrue(navigation["settings"]["allowed"])
+        self.assertFalse(navigation["superadmin"]["allowed"])
+        self.assertTrue(response.data["actions"]["create_invoice"])
+
+    def test_permissions_endpoint_limits_technician_navigation(self):
+        technician = User.objects.create_user(
+            username="permissions_tech",
+            email="permissions-tech@example.com",
+            password="password123",
+            role="technician",
+            lab=self.lab_a,
+        )
+
+        self.client.force_authenticate(user=technician)
+        response = self.client.get("/api/core/permissions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        navigation = {item["id"]: item for item in response.data["navigation"]}
+        self.assertTrue(navigation["jobs"]["allowed"])
+        self.assertFalse(navigation["finance"]["allowed"])
+        self.assertFalse(response.data["actions"]["create_patient"])
+
+    def test_permissions_endpoint_exposes_superadmin_platform_access(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get("/api/permissions/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        navigation = {item["id"]: item for item in response.data["navigation"]}
+        self.assertTrue(response.data["is_superadmin"])
+        self.assertTrue(navigation["superadmin"]["allowed"])
+        self.assertTrue(response.data["actions"]["manage_platform"])
