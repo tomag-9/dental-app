@@ -363,6 +363,59 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], self.job_a.id)
 
+    def test_list_jobs_filters_by_status_priority_and_search(self):
+        Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient_a,
+            clinic=self.clinic_a,
+            doctor=self.doctor_a,
+            technician=self.technician_a,
+            status="in_progress",
+            priority="urgent",
+            description="Urgent zircon bridge",
+        )
+        Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient_a,
+            clinic=self.clinic_a,
+            doctor=self.doctor_a,
+            technician=self.technician_a,
+            status="cancelled",
+            priority="urgent",
+            description="Cancelled zircon bridge",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get(
+            reverse("job-list"),
+            {
+                "status": "new,in_progress",
+                "priority": "urgent",
+                "search": "zircon",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["status"], "in_progress")
+        self.assertEqual(response.data[0]["priority"], "urgent")
+
+    def test_list_jobs_search_matches_related_patient_and_clinic(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        patient_response = self.client.get(reverse("job-list"), {"q": "John"})
+        clinic_response = self.client.get(reverse("job-list"), {"search": "Clinic A"})
+        other_lab_response = self.client.get(reverse("job-list"), {"search": "Jane"})
+
+        self.assertEqual(patient_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(clinic_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(other_lab_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["id"] for item in patient_response.data], [self.job_a.id]
+        )
+        self.assertEqual([item["id"] for item in clinic_response.data], [self.job_a.id])
+        self.assertEqual(other_lab_response.data, [])
+
     def test_list_jobs_all_for_superadmin(self):
         """Superadmin should see all jobs across labs."""
         self.client.force_authenticate(user=self.superadmin)

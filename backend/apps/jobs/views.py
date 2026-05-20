@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
@@ -53,6 +54,38 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             qs = qs.filter(patient_id=patient_id)
             if not qs.exists():
                 raise NotFound(f"No jobs found for patient_id: {patient_id}")
+
+        status_filter = self.request.query_params.get("status")
+        if status_filter:
+            statuses = [
+                value.strip() for value in status_filter.split(",") if value.strip()
+            ]
+            qs = qs.filter(status__in=statuses)
+
+        priority = self.request.query_params.get("priority")
+        if priority:
+            qs = qs.filter(priority=priority)
+
+        search = (
+            self.request.query_params.get("search")
+            or self.request.query_params.get("q")
+            or ""
+        ).strip()
+        if search:
+            search_filter = (
+                Q(description__icontains=search)
+                | Q(status__icontains=search)
+                | Q(patient__first_name__icontains=search)
+                | Q(patient__last_name__icontains=search)
+                | Q(clinic__name__icontains=search)
+                | Q(doctor__first_name__icontains=search)
+                | Q(doctor__last_name__icontains=search)
+                | Q(technician__first_name__icontains=search)
+                | Q(technician__last_name__icontains=search)
+            )
+            if search.isdigit():
+                search_filter |= Q(id=int(search))
+            qs = qs.filter(search_filter)
 
         return qs
 
