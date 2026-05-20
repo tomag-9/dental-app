@@ -76,6 +76,30 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(put_response.status_code, status.HTTP_200_OK)
         self.assertEqual(put_response.data["nickname"], "new_nick")
 
+    def test_me_put_updates_notification_preferences(self):
+        self.client.force_authenticate(user=self.user_a)
+        payload = {
+            "notification_preferences": {
+                "email": True,
+                "in_app": True,
+                "deadline_days": 3,
+                "types": {"jobs": True, "finance": False},
+            }
+        }
+
+        response = self.client.put("/api/core/users/me/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["notification_preferences"],
+            payload["notification_preferences"],
+        )
+        self.user_a.refresh_from_db()
+        self.assertEqual(
+            self.user_a.notification_preferences,
+            payload["notification_preferences"],
+        )
+
     def test_me_put_hashes_password_and_keeps_sensitive_fields_unchanged(self):
         self.client.force_authenticate(user=self.user_a)
 

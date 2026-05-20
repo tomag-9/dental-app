@@ -785,6 +785,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if "last_name" in data:
             user.last_name = data["last_name"]
 
+        if "notification_preferences" in data:
+            user.notification_preferences = data["notification_preferences"] or {}
+
         target_role = data.get("role")
         if target_role and target_role != user.role:
             if target_role == "superadmin" and not is_superadmin(user):

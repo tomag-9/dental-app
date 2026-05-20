@@ -102,7 +102,15 @@ class UserAuthContractTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Critical fields
-        required_fields = ["id", "username", "email", "role", "lab", "is_active"]
+        required_fields = [
+            "id",
+            "username",
+            "email",
+            "role",
+            "lab",
+            "is_active",
+            "notification_preferences",
+        ]
         for field in required_fields:
             self.assertIn(field, response.data, f"Missing required field: {field}")
 
@@ -111,6 +119,7 @@ class UserAuthContractTests(APITestCase):
         self.assertIsInstance(response.data["username"], str)
         self.assertIsInstance(response.data["role"], str)
         self.assertIsInstance(response.data["is_active"], bool)
+        self.assertIsInstance(response.data["notification_preferences"], dict)
 
 
 class AuditLogContractTests(APITestCase):

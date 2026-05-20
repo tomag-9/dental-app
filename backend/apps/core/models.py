@@ -43,6 +43,7 @@ class User(AbstractUser):
     lab = models.ForeignKey(
         Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
+    notification_preferences = models.JSONField(default=dict, blank=True)
 
     # Required for custom user model
     REQUIRED_FIELDS = ["email"]

@@ -27,6 +27,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "is_active",
+            "notification_preferences",
             "date_joined",
         )
         read_only_fields = ("date_joined",)
@@ -104,6 +105,7 @@ class MeUpdateSerializer(serializers.Serializer):
     )
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    notification_preferences = serializers.JSONField(required=False)
 
 
 class SignupRequestSerializer(serializers.Serializer):
