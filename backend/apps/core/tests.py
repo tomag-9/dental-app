@@ -636,3 +636,38 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertTrue(response.data["is_superadmin"])
         self.assertTrue(navigation["superadmin"]["allowed"])
         self.assertTrue(response.data["actions"]["manage_platform"])
+
+    def test_system_health_is_superadmin_only(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.get("/api/system-health/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_system_health_returns_platform_metrics(self):
+        TeamInvitation.objects.create(
+            lab=self.lab_a,
+            email="health@example.com",
+            role="user",
+            token="health-token",
+            invited_by=self.admin_a,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.admin_a,
+            title="Unread",
+        )
+        self.client.force_authenticate(user=self.superadmin)
+
+        response = self.client.get("/api/core/system-health/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "ok")
+        self.assertIn("generated_at", response.data)
+        self.assertEqual(response.data["checks"][0]["service"], "database")
+        self.assertEqual(response.data["checks"][0]["status"], "ok")
+        self.assertGreaterEqual(response.data["metrics"]["labs"], 2)
+        self.assertGreaterEqual(response.data["metrics"]["users"], 4)
+        self.assertEqual(response.data["metrics"]["pending_invitations"], 1)
+        self.assertEqual(response.data["metrics"]["unread_notifications"], 1)

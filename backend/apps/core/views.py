@@ -2,7 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 import secrets
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import permissions, status, viewsets
@@ -272,6 +272,58 @@ class PermissionsView(APIView):
 
     def get(self, request):
         return Response(_role_permission_payload(request.user))
+
+
+class SystemHealthView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Superadmin only endpoint")
+
+        checks = []
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            database_status = "ok"
+        except Exception as exc:
+            database_status = "error"
+            checks.append(
+                {
+                    "service": "database",
+                    "status": "error",
+                    "detail": str(exc),
+                }
+            )
+        else:
+            checks.append(
+                {
+                    "service": "database",
+                    "status": "ok",
+                    "detail": "PostgreSQL connection is available",
+                }
+            )
+
+        lab_count = Lab.objects.count()
+        user_count = User.objects.count()
+        pending_invites = TeamInvitation.objects.filter(status="pending").count()
+        unread_notifications = Notification.objects.filter(read_at__isnull=True).count()
+        overall_status = "ok" if database_status == "ok" else "degraded"
+
+        return Response(
+            {
+                "status": overall_status,
+                "generated_at": timezone.now().isoformat(),
+                "checks": checks,
+                "metrics": {
+                    "labs": lab_count,
+                    "users": user_count,
+                    "pending_invitations": pending_invites,
+                    "unread_notifications": unread_notifications,
+                },
+            }
+        )
 
 
 class DashboardStatsView(APIView):

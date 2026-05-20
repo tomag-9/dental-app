@@ -11,6 +11,7 @@ from apps.core.views import (
     LabViewSet,
     NotificationViewSet,
     PermissionsView,
+    SystemHealthView,
     TeamInvitationViewSet,
     UserViewSet,
 )
@@ -37,6 +38,7 @@ urlpatterns = [
     path("api/dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
     path("api/search/", GlobalSearchView.as_view(), name="global-search-root"),
     path("api/permissions/", PermissionsView.as_view(), name="permissions-root"),
+    path("api/system-health/", SystemHealthView.as_view(), name="system-health-root"),
     path("api/calendar/", CalendarView.as_view(), name="calendar"),
     # Nested app routes
     path("api/core/", include("apps.core.urls")),

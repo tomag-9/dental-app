@@ -216,6 +216,34 @@ class TeamInvitationContractTests(APITestCase):
         self.assertFalse(item["is_expired"])
 
 
+class SystemHealthContractTests(APITestCase):
+    def setUp(self):
+        self.superadmin = User.objects.create_user(
+            username="health_superadmin",
+            email="health-superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+
+    def test_system_health_response_contract(self):
+        self.client.force_authenticate(user=self.superadmin)
+
+        response = self.client.get("/api/core/system-health/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("status", response.data)
+        self.assertIn("generated_at", response.data)
+        self.assertIn("checks", response.data)
+        self.assertIn("metrics", response.data)
+        self.assertIn("labs", response.data["metrics"])
+        self.assertIn("users", response.data["metrics"])
+        self.assertIn("pending_invitations", response.data["metrics"])
+        self.assertIn("unread_notifications", response.data["metrics"])
+        self.assertIsInstance(response.data["checks"], list)
+        self.assertIsInstance(response.data["metrics"]["labs"], int)
+
+
 class JobContractTests(APITestCase):
     """Contract tests for job endpoints."""
 
