@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import Lab, User
+from apps.core.models import Lab, Notification, User
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
 from apps.jobs.models import Job
@@ -304,3 +304,67 @@ class CoreUserFlowsApiTests(APITestCase):
             "page:superadmin",
             {item["id"] for item in self.client.get("/api/search/").data["results"]},
         )
+
+    def test_notifications_are_scoped_to_recipient(self):
+        own = Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.admin_a,
+            type="job",
+            title="New job assigned",
+            message="#12",
+        )
+        Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.user_a,
+            type="system",
+            title="Other user notification",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get("/api/notifications/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in response.data], [own.id])
+
+    def test_notification_mark_read_and_unread_count(self):
+        notification = Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.admin_a,
+            type="invoice",
+            title="Invoice paid",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        count_response = self.client.get("/api/notifications/unread-count/")
+        mark_response = self.client.post(
+            f"/api/notifications/{notification.id}/mark-read/"
+        )
+        next_count_response = self.client.get("/api/notifications/unread-count/")
+
+        self.assertEqual(count_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(count_response.data["unread_count"], 1)
+        self.assertEqual(mark_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mark_response.data["is_read"])
+        self.assertEqual(next_count_response.data["unread_count"], 0)
+
+    def test_notification_mark_all_read_updates_only_visible_notifications(self):
+        own = Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.admin_a,
+            title="Own",
+        )
+        other = Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.user_a,
+            title="Other",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post("/api/notifications/mark-all-read/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["updated"], 1)
+        own.refresh_from_db()
+        other.refresh_from_db()
+        self.assertIsNotNone(own.read_at)
+        self.assertIsNone(other.read_at)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Lab, User
+from .models import Lab, Notification, User
 
 
 class LabSerializer(serializers.ModelSerializer):
@@ -47,6 +47,26 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
             user.save()
         return user
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    is_read = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = Notification
+        fields = (
+            "id",
+            "lab",
+            "recipient",
+            "type",
+            "title",
+            "message",
+            "url",
+            "is_read",
+            "read_at",
+            "created_at",
+        )
+        read_only_fields = ("is_read", "read_at", "created_at")
 
 
 class MeUpdateSerializer(serializers.Serializer):

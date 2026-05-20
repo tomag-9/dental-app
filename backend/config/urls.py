@@ -8,6 +8,7 @@ from apps.core.views import (
     DashboardStatsView,
     GlobalSearchView,
     LabViewSet,
+    NotificationViewSet,
     UserViewSet,
 )
 from apps.finance.views import InvoiceViewSet
@@ -19,6 +20,7 @@ root_router = DefaultRouter()
 root_router.register(r"invoices", InvoiceViewSet)
 root_router.register(r"users", UserViewSet)
 root_router.register(r"labs", LabViewSet)
+root_router.register(r"notifications", NotificationViewSet)
 root_router.register(r"vacations", VacationViewSet)
 root_router.register(r"warehouse", WarehouseItemViewSet)
 

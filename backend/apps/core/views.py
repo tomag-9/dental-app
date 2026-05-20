@@ -14,10 +14,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.finance.models import Subscription
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
-from .models import Lab, User
+from .models import Lab, Notification, User
 from .serializers import (
     LabSerializer,
     MeUpdateSerializer,
+    NotificationSerializer,
     SignupRequestSerializer,
     SignupResponseSerializer,
     UserSerializer,
@@ -363,6 +364,53 @@ class LabViewSet(viewsets.ModelViewSet):
                 }
             )
         return Response(result)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = Notification.objects.select_related("lab", "recipient")
+        if is_superadmin(self.request.user):
+            return qs
+        return qs.filter(recipient=self.request.user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if is_superadmin(user):
+            recipient = serializer.validated_data.get("recipient") or user
+            lab = serializer.validated_data.get("lab") or getattr(
+                recipient, "lab", None
+            )
+            serializer.save(recipient=recipient, lab=lab)
+            return
+
+        serializer.save(recipient=user, lab=getattr(user, "lab", None))
+
+    @action(detail=True, methods=["post"], url_path="mark-read")
+    def mark_read(self, request, pk=None):
+        notification = self.get_object()
+        if notification.read_at is None:
+            notification.read_at = timezone.now()
+            notification.save(update_fields=["read_at"])
+        return Response(self.get_serializer(notification).data)
+
+    @action(detail=False, methods=["post"], url_path="mark-all-read")
+    def mark_all_read(self, request):
+        updated = (
+            self.get_queryset()
+            .filter(read_at__isnull=True)
+            .update(read_at=timezone.now())
+        )
+        return Response({"updated": updated})
+
+    @action(detail=False, methods=["get"], url_path="unread-count")
+    def unread_count(self, request):
+        return Response(
+            {"unread_count": self.get_queryset().filter(read_at__isnull=True).count()}
+        )
 
 
 class UserViewSet(viewsets.ModelViewSet):

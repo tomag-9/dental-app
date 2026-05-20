@@ -44,3 +44,43 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Notification(models.Model):
+    TYPE_CHOICES = (
+        ("job", "Job"),
+        ("invoice", "Invoice"),
+        ("deadline", "Deadline"),
+        ("stock", "Stock"),
+        ("team", "Team"),
+        ("system", "System"),
+    )
+
+    lab = models.ForeignKey(
+        Lab,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    recipient = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    type = models.CharField(max_length=30, choices=TYPE_CHOICES, default="system")
+    title = models.CharField(max_length=255)
+    message = models.TextField(blank=True, null=True)
+    url = models.CharField(max_length=255, blank=True, null=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    @property
+    def is_read(self):
+        return self.read_at is not None
+
+    def __str__(self):
+        return f"{self.recipient_id}: {self.title}"
