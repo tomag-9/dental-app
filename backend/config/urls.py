@@ -14,7 +14,7 @@ from apps.core.views import (
 )
 from apps.finance.views import InvoiceViewSet
 from apps.inventory.views import WarehouseItemViewSet
-from apps.jobs.views import VacationViewSet
+from apps.jobs.views import CalendarEventViewSet, CalendarView, VacationViewSet
 
 # Root-level router for commonly accessed endpoints
 root_router = DefaultRouter()
@@ -23,6 +23,7 @@ root_router.register(r"users", UserViewSet)
 root_router.register(r"labs", LabViewSet)
 root_router.register(r"notifications", NotificationViewSet)
 root_router.register(r"vacations", VacationViewSet)
+root_router.register(r"calendar-events", CalendarEventViewSet)
 root_router.register(r"warehouse", WarehouseItemViewSet)
 
 urlpatterns = [
@@ -32,6 +33,7 @@ urlpatterns = [
     path("api/dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
     path("api/search/", GlobalSearchView.as_view(), name="global-search-root"),
     path("api/permissions/", PermissionsView.as_view(), name="permissions-root"),
+    path("api/calendar/", CalendarView.as_view(), name="calendar"),
     # Nested app routes
     path("api/core/", include("apps.core.urls")),
     path("api/crm/", include("apps.crm.urls")),

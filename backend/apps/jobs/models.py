@@ -142,3 +142,38 @@ class Vacation(models.Model):
 
     def __str__(self):
         return f"Vacation {self.id}: {self.start} - {self.end}"
+
+
+class CalendarEvent(models.Model):
+    EVENT_TYPE_CHOICES = (
+        ("meeting", "Meeting"),
+        ("pickup", "Pickup"),
+        ("delivery", "Delivery"),
+        ("deadline", "Deadline"),
+        ("other", "Other"),
+    )
+
+    lab = models.ForeignKey(
+        Lab, on_delete=models.CASCADE, related_name="calendar_events"
+    )
+    title = models.CharField(max_length=255)
+    event_type = models.CharField(
+        max_length=30, choices=EVENT_TYPE_CHOICES, default="other"
+    )
+    start = models.DateTimeField(null=False)
+    end = models.DateTimeField(null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    related_job = models.ForeignKey(
+        Job,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calendar_events",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["start", "id"]
+
+    def __str__(self):
+        return f"{self.event_type}: {self.title}"

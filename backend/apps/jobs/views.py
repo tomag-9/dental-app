@@ -1,13 +1,17 @@
 from django.db.models import Q
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
 
-from .models import Job, JobTimelineEvent, Technician, Vacation
+from .models import CalendarEvent, Job, JobTimelineEvent, Technician, Vacation
 from .serializers import (
+    CalendarEventSerializer,
     JobSerializer,
     JobStatusTransitionSerializer,
     TechnicianSerializer,
@@ -190,3 +194,129 @@ class VacationViewSet(viewsets.ModelViewSet):
         if not (hasattr(user, "lab") and user.lab):
             raise serializers.ValidationError("User is not assigned to a lab")
         serializer.save(lab=user.lab)
+
+
+class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    queryset = CalendarEvent.objects.all()
+    serializer_class = CalendarEventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.get_tenant_scoped_queryset(
+            CalendarEvent.objects.select_related("related_job").order_by("start", "id")
+        )
+
+    def _validate_related_job_scope(self, serializer):
+        related_job = serializer.validated_data.get("related_job")
+        if not related_job or is_superadmin(self.request.user):
+            return
+        if related_job.lab_id != getattr(self.request.user, "lab_id", None):
+            raise ValidationError("Related job must belong to your lab")
+
+    def perform_create(self, serializer):
+        self._validate_related_job_scope(serializer)
+        self.save_with_request_lab(serializer)
+
+    def perform_update(self, serializer):
+        self._validate_related_job_scope(serializer)
+        serializer.save()
+
+
+def _calendar_window(request):
+    today = timezone.localdate()
+    start_date = parse_date(request.query_params.get("start", "")) or today
+    end_date = parse_date(request.query_params.get("end", "")) or (
+        start_date + timezone.timedelta(days=30)
+    )
+    if end_date < start_date:
+        raise ValidationError("end must be on or after start")
+    return start_date, end_date
+
+
+class CalendarView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _tenant_filter(self, model):
+        user = self.request.user
+        if is_superadmin(user):
+            return model.objects.all()
+        lab_id = getattr(user, "lab_id", None)
+        if lab_id:
+            return model.objects.filter(lab_id=lab_id)
+        return model.objects.none()
+
+    def get(self, request):
+        start_date, end_date = _calendar_window(request)
+
+        events = []
+        jobs = (
+            self._tenant_filter(Job)
+            .select_related("patient", "clinic")
+            .filter(due_date__gte=start_date, due_date__lte=end_date)
+            .exclude(status__in=("cancelled", "closed"))
+        )
+        for job in jobs:
+            patient_name = (
+                f"{job.patient.first_name} {job.patient.last_name}".strip()
+                if job.patient_id
+                else ""
+            )
+            events.append(
+                {
+                    "id": f"job:{job.id}",
+                    "source": "job",
+                    "type": "deadline",
+                    "title": f"Job #{job.id} - {patient_name}".strip(),
+                    "start": job.due_date.isoformat(),
+                    "end": job.due_date.isoformat(),
+                    "status": job.status,
+                    "job_id": job.id,
+                    "clinic_name": job.clinic.name if job.clinic_id else "",
+                }
+            )
+
+        vacations = self._tenant_filter(Vacation).filter(
+            start__date__lte=end_date,
+            end__date__gte=start_date,
+        )
+        for vacation in vacations:
+            events.append(
+                {
+                    "id": f"vacation:{vacation.id}",
+                    "source": "vacation",
+                    "type": "vacation",
+                    "title": vacation.description or "Vacation",
+                    "start": vacation.start.isoformat(),
+                    "end": vacation.end.isoformat(),
+                    "status": None,
+                    "job_id": None,
+                    "clinic_name": "",
+                }
+            )
+
+        calendar_events = self._tenant_filter(CalendarEvent).filter(
+            Q(end__isnull=True, start__date__gte=start_date, start__date__lte=end_date)
+            | Q(end__isnull=False, start__date__lte=end_date, end__date__gte=start_date)
+        )
+        for event in calendar_events:
+            events.append(
+                {
+                    "id": f"event:{event.id}",
+                    "source": "calendar_event",
+                    "type": event.event_type,
+                    "title": event.title,
+                    "start": event.start.isoformat(),
+                    "end": event.end.isoformat() if event.end else None,
+                    "status": None,
+                    "job_id": event.related_job_id,
+                    "clinic_name": "",
+                }
+            )
+
+        return Response(
+            {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat(),
+                "events": sorted(events, key=lambda item: (item["start"], item["id"])),
+            }
+        )

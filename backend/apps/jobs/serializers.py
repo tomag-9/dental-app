@@ -9,7 +9,7 @@ from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSeri
 from apps.finance.models import PriceList
 
 from .dental import validate_tooth_range
-from .models import Job, JobItem, JobTimelineEvent, Technician, Vacation
+from .models import CalendarEvent, Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
@@ -295,3 +295,10 @@ class VacationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vacation
         fields = "__all__"
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarEvent
+        fields = "__all__"
+        read_only_fields = ["lab", "created_at"]
