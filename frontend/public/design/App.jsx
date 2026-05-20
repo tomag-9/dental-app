@@ -22,6 +22,14 @@ function App() {
   const [newJobOpen, setNewJobOpen] = React.useState(false);
   const [createType, setCreateType] = React.useState(null);
 
+  React.useEffect(() => {
+    const onUserUpdate = (event) => {
+      if (event && event.detail) setUser(event.detail);
+    };
+    window.addEventListener('molaris-user-updated', onUserUpdate);
+    return () => window.removeEventListener('molaris-user-updated', onUserUpdate);
+  }, []);
+
   // Safety: if the role somehow flips at runtime, land on a page the sidebar can show.
   React.useEffect(() => {
     const isSa = user && user.role === 'superadmin';

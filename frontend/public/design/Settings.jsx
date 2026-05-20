@@ -2,6 +2,30 @@
 
 function Settings({ onNavigate, user }) {
   const [tab, setTab] = React.useState('profile');
+  const [me, setMe] = React.useState(user || null);
+  const [lab, setLab] = React.useState((user && user.lab) || null);
+  const [loading, setLoading] = React.useState(false);
+  const [profileForm, setProfileForm] = React.useState({ first_name: '', last_name: '', email: '', nickname: '', phone: '', position: '' });
+  const [labForm, setLabForm] = React.useState({
+    id: null,
+    name: '',
+    tax_id: '',
+    vat_id: '',
+    address: '',
+    bank_account: '',
+    invoice_prefix: 'INV',
+    invoice_due_days: 14,
+    vat_rate: 0,
+    payment_method: 'bank_transfer',
+    invoice_default_note: '',
+  });
+  const [notifPrefs, setNotifPrefs] = React.useState({});
+  const [profileStatus, setProfileStatus] = React.useState('');
+  const [labStatus, setLabStatus] = React.useState('');
+  const [billingStatus, setBillingStatus] = React.useState('');
+  const [notifStatus, setNotifStatus] = React.useState('');
+  const [securityStatus, setSecurityStatus] = React.useState('');
+  const [securityForm, setSecurityForm] = React.useState({ current: '', next: '', confirm: '' });
   const tabs = [
     { value: 'profile',     label: 'Profil',     icon: 'user' },
     { value: 'lab',         label: 'Laboratórium',icon: 'building' },
@@ -10,6 +34,161 @@ function Settings({ onNavigate, user }) {
     { value: 'billing',     label: 'Fakturácia', icon: 'receipt' },
     { value: 'security',    label: 'Bezpečnosť', icon: 'shield' },
   ];
+
+  React.useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.fetchMe) return;
+      setLoading(true);
+      try {
+        const data = await window.MolarisAPI.fetchMe();
+        if (!alive) return;
+        setMe(data);
+        setLab(data.lab_details || null);
+      } catch {
+        if (!alive) return;
+        setProfileStatus('Nepodarilo sa načítať profil.');
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  React.useEffect(() => {
+    if (!me) return;
+    setProfileForm((current) => ({
+      ...current,
+      first_name: me.first_name || '',
+      last_name: me.last_name || '',
+      email: me.email || '',
+      nickname: me.nickname || '',
+    }));
+    setNotifPrefs(me.notification_preferences || {});
+  }, [me]);
+
+  React.useEffect(() => {
+    if (!lab) return;
+    setLabForm((current) => ({
+      ...current,
+      id: lab.id,
+      name: lab.name || '',
+      tax_id: lab.tax_id || '',
+      vat_id: lab.vat_id || '',
+      address: lab.address || '',
+      bank_account: lab.bank_account || '',
+      invoice_prefix: lab.invoice_prefix || 'INV',
+      invoice_due_days: lab.invoice_due_days || 14,
+      vat_rate: Number(lab.vat_rate || 0),
+      payment_method: lab.payment_method || 'bank_transfer',
+      invoice_default_note: lab.invoice_default_note || '',
+    }));
+  }, [lab]);
+
+  const syncLocalUser = (updatedUser) => {
+    if (!updatedUser) return;
+    const name = [updatedUser.first_name, updatedUser.last_name].filter(Boolean).join(' ') || updatedUser.nickname || updatedUser.username;
+    const initials = name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U';
+    const saved = {
+      id: updatedUser.id,
+      name: name || 'Používateľ',
+      email: updatedUser.email || '',
+      username: updatedUser.username,
+      role: updatedUser.role || 'admin',
+      initials,
+      lab: updatedUser.lab_details || null,
+    };
+    localStorage.setItem('molaris.user', JSON.stringify(saved));
+    window.dispatchEvent(new CustomEvent('molaris-user-updated', { detail: saved }));
+  };
+
+  const handleProfileSave = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.updateMe) return;
+    setProfileStatus('');
+    try {
+      const payload = {
+        first_name: profileForm.first_name,
+        last_name: profileForm.last_name,
+        email: profileForm.email,
+        nickname: profileForm.nickname || null,
+      };
+      const updated = await window.MolarisAPI.updateMe(payload);
+      setMe(updated);
+      syncLocalUser(updated);
+      setProfileStatus('Zmeny uložené.');
+    } catch {
+      setProfileStatus('Uloženie zlyhalo.');
+    }
+  };
+
+  const handleLabSave = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.updateLab) return;
+    setLabStatus('');
+    try {
+      const payload = {
+        name: labForm.name,
+        tax_id: labForm.tax_id,
+        vat_id: labForm.vat_id,
+        address: labForm.address,
+        bank_account: labForm.bank_account,
+      };
+      const updated = await window.MolarisAPI.updateLab(labForm.id, payload);
+      setLab(updated);
+      setLabStatus('Zmeny uložené.');
+    } catch {
+      setLabStatus('Uloženie zlyhalo.');
+    }
+  };
+
+  const handleBillingSave = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.updateLab) return;
+    setBillingStatus('');
+    try {
+      const payload = {
+        invoice_prefix: labForm.invoice_prefix,
+        invoice_due_days: Number(labForm.invoice_due_days || 0),
+        vat_rate: Number(labForm.vat_rate || 0),
+        payment_method: labForm.payment_method,
+        invoice_default_note: labForm.invoice_default_note || '',
+      };
+      const updated = await window.MolarisAPI.updateLab(labForm.id, payload);
+      setLab(updated);
+      setBillingStatus('Zmeny uložené.');
+    } catch {
+      setBillingStatus('Uloženie zlyhalo.');
+    }
+  };
+
+  const handleNotifSave = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.updateMe) return;
+    setNotifStatus('');
+    try {
+      const updated = await window.MolarisAPI.updateMe({ notification_preferences: notifPrefs });
+      setMe(updated);
+      syncLocalUser(updated);
+      setNotifStatus('Zmeny uložené.');
+    } catch {
+      setNotifStatus('Uloženie zlyhalo.');
+    }
+  };
+
+  const handlePasswordSave = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.updateMe) return;
+    setSecurityStatus('');
+    if (!securityForm.next || securityForm.next !== securityForm.confirm) {
+      setSecurityStatus('Nové heslo sa nezhoduje.');
+      return;
+    }
+    try {
+      await window.MolarisAPI.updateMe({ password: securityForm.next });
+      setSecurityForm({ current: '', next: '', confirm: '' });
+      setSecurityStatus('Heslo bolo zmenené.');
+    } catch {
+      setSecurityStatus('Zmena hesla zlyhala.');
+    }
+  };
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
@@ -42,12 +221,39 @@ function Settings({ onNavigate, user }) {
         )
       ),
       // Panel
-      tab === 'profile' && React.createElement(ProfilePanel, null),
-      tab === 'lab' && React.createElement(LabPanel, null),
+      tab === 'profile' && React.createElement(ProfilePanel, {
+        form: profileForm,
+        onChange: setProfileForm,
+        onSave: handleProfileSave,
+        status: profileStatus,
+        loading,
+      }),
+      tab === 'lab' && React.createElement(LabPanel, {
+        form: labForm,
+        onChange: setLabForm,
+        onSave: handleLabSave,
+        status: labStatus,
+        loading,
+      }),
       tab === 'team' && React.createElement(TeamPanel, null),
-      tab === 'notifications' && React.createElement(NotificationsPanel, null),
-      tab === 'billing' && React.createElement(BillingPanel, null),
-      tab === 'security' && React.createElement(SecurityPanel, null),
+      tab === 'notifications' && React.createElement(NotificationsPanel, {
+        preferences: notifPrefs,
+        onChange: setNotifPrefs,
+        onSave: handleNotifSave,
+        status: notifStatus,
+      }),
+      tab === 'billing' && React.createElement(BillingPanel, {
+        form: labForm,
+        onChange: setLabForm,
+        onSave: handleBillingSave,
+        status: billingStatus,
+      }),
+      tab === 'security' && React.createElement(SecurityPanel, {
+        form: securityForm,
+        onChange: setSecurityForm,
+        onSave: handlePasswordSave,
+        status: securityStatus,
+      }),
     )
   );
 }
@@ -68,7 +274,7 @@ function PanelFooter({ children }) {
   return React.createElement('div', { style: { padding: '14px 22px', borderTop: '1px solid #f0ede5', background: '#fbfaf6', display: 'flex', justifyContent: 'flex-end', gap: 8, borderBottomLeftRadius: 12, borderBottomRightRadius: 12 } }, children);
 }
 
-function ProfilePanel() {
+function ProfilePanel({ form, onChange, onSave, status, loading }) {
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Profil používateľa', desc: 'Vaše osobné údaje a kontakt.' }),
     React.createElement(PanelBody, null,
@@ -80,40 +286,42 @@ function ProfilePanel() {
         )
       ),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'Meno', value: 'Ján', onChange: () => {} }),
-        React.createElement(FormField, { label: 'Priezvisko', value: 'Novák', onChange: () => {} })
+        React.createElement(FormField, { label: 'Meno', value: form.first_name, onChange: (e) => onChange({ ...form, first_name: e.target.value }) }),
+        React.createElement(FormField, { label: 'Priezvisko', value: form.last_name, onChange: (e) => onChange({ ...form, last_name: e.target.value }) })
       ),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'E-mail', value: 'jan.novak@molaris.sk', onChange: () => {}, type: 'email' }),
-        React.createElement(FormField, { label: 'Telefón', value: '+421 905 111 222', onChange: () => {} })
+        React.createElement(FormField, { label: 'E-mail', value: form.email, onChange: (e) => onChange({ ...form, email: e.target.value }), type: 'email' }),
+        React.createElement(FormField, { label: 'Telefón', value: form.phone, onChange: (e) => onChange({ ...form, phone: e.target.value }) })
       ),
-      React.createElement(FormField, { label: 'Pozícia', value: 'Senior technik / Administrátor', onChange: () => {} })
+      React.createElement(FormField, { label: 'Pozícia', value: form.position, onChange: (e) => onChange({ ...form, position: e.target.value }) })
     ),
     React.createElement(PanelFooter, null,
+      React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490' } }, status || (loading ? 'Načítavam...' : '')),
       React.createElement(Button, { variant: 'outline' }, 'Zrušiť'),
-      React.createElement(Button, null, 'Uložiť zmeny')
+      React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')
     )
   );
 }
 
-function LabPanel() {
+function LabPanel({ form, onChange, onSave, status, loading }) {
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Laboratórium', desc: 'Identifikačné a fakturačné údaje laboratória.' }),
     React.createElement(PanelBody, null,
-      React.createElement(FormField, { label: 'Názov laboratória', value: 'Molaris s.r.o.', onChange: () => {} }),
+      React.createElement(FormField, { label: 'Názov laboratória', value: form.name, onChange: (e) => onChange({ ...form, name: e.target.value }) }),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'IČO', value: '12345678', onChange: () => {} }),
-        React.createElement(FormField, { label: 'DIČ', value: '2024567891', onChange: () => {} })
+        React.createElement(FormField, { label: 'IČO', value: form.tax_id, onChange: (e) => onChange({ ...form, tax_id: e.target.value }) }),
+        React.createElement(FormField, { label: 'DIČ', value: form.vat_id, onChange: (e) => onChange({ ...form, vat_id: e.target.value }) })
       ),
-      React.createElement(FormField, { label: 'Adresa', value: 'Záhradnícka 95, 821 08 Bratislava', onChange: () => {} }),
+      React.createElement(FormField, { label: 'Adresa', value: form.address, onChange: (e) => onChange({ ...form, address: e.target.value }) }),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'IBAN', value: 'SK68 1100 0000 0029 4012 3456', onChange: () => {} }),
-        React.createElement(FormField, { label: 'Mena', type: 'select', value: 'EUR', onChange: () => {}, options: [{ value: 'EUR', label: 'EUR (€)' }, { value: 'CZK', label: 'CZK (Kč)' }] })
+        React.createElement(FormField, { label: 'IBAN', value: form.bank_account, onChange: (e) => onChange({ ...form, bank_account: e.target.value }) }),
+        React.createElement(FormField, { label: 'Mena', type: 'select', value: 'EUR', onChange: () => {}, options: [{ value: 'EUR', label: 'EUR (€)' }], disabled: true })
       )
     ),
     React.createElement(PanelFooter, null,
+      React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490' } }, status || (loading ? 'Načítavam...' : '')),
       React.createElement(Button, { variant: 'outline' }, 'Zrušiť'),
-      React.createElement(Button, null, 'Uložiť zmeny')
+      React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')
     )
   );
 }
@@ -150,14 +358,19 @@ function TeamPanel() {
   );
 }
 
-function NotificationsPanel() {
+function NotificationsPanel({ preferences, onChange, onSave, status }) {
   const notifs = [
-    { key: 'new_job',   label: 'Nová práca',           desc: 'Pri vytvorení novej zákazky',         email: true,  app: true },
-    { key: 'job_due',   label: 'Blížiaci sa termín',   desc: '24 h pred termínom odovzdania',       email: true,  app: true },
-    { key: 'inv_paid',  label: 'Zaplatená faktúra',     desc: 'Po prijatí platby',                   email: false, app: true },
-    { key: 'low_stock', label: 'Nízky stav skladu',     desc: 'Položka pod minimálny stav',          email: true,  app: false },
-    { key: 'weekly',    label: 'Týždenný súhrn',        desc: 'Pondelok ráno, sumár predošlého tž.', email: true,  app: false },
+    { key: 'new_job',   label: 'Nová práca',           desc: 'Pri vytvorení novej zákazky' },
+    { key: 'job_due',   label: 'Blížiaci sa termín',   desc: '24 h pred termínom odovzdania' },
+    { key: 'inv_paid',  label: 'Zaplatená faktúra',     desc: 'Po prijatí platby' },
+    { key: 'low_stock', label: 'Nízky stav skladu',     desc: 'Položka pod minimálny stav' },
+    { key: 'weekly',    label: 'Týždenný súhrn',        desc: 'Pondelok ráno, sumár predošlého tž.' },
   ];
+  const readPref = (key, channel) => {
+    const pref = preferences && preferences[key];
+    if (!pref || typeof pref !== 'object') return false;
+    return Boolean(pref[channel]);
+  };
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Notifikácie', desc: 'Vyberte si, kedy chcete dostávať upozornenia.' }),
     React.createElement('div', { style: { padding: 22 } },
@@ -175,19 +388,36 @@ function NotificationsPanel() {
             React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1a2320' } }, n.label),
             React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490', marginTop: 1 } }, n.desc)
           ),
-          React.createElement(Toggle, { value: n.email }),
-          React.createElement(Toggle, { value: n.app })
+          React.createElement(Toggle, {
+            value: readPref(n.key, 'email'),
+            onChange: (value) => onChange({
+              ...preferences,
+              [n.key]: { ...preferences[n.key], email: value, app: readPref(n.key, 'app') }
+            })
+          }),
+          React.createElement(Toggle, {
+            value: readPref(n.key, 'app'),
+            onChange: (value) => onChange({
+              ...preferences,
+              [n.key]: { ...preferences[n.key], app: value, email: readPref(n.key, 'email') }
+            })
+          })
         ))
       )
+    ),
+    React.createElement(PanelFooter, null,
+      React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490' } }, status || ''),
+      React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')
     )
   );
 }
 
-function Toggle({ value }) {
+function Toggle({ value, onChange }) {
   const [v, setV] = React.useState(value);
+  React.useEffect(() => { setV(value); }, [value]);
   return React.createElement('div', { style: { display: 'flex', justifyContent: 'center' } },
     React.createElement('button', {
-      onClick: () => setV(!v),
+      onClick: () => { const next = !v; setV(next); onChange && onChange(next); },
       style: {
         width: 36, height: 20, borderRadius: 10, border: 'none', cursor: 'pointer',
         background: v ? '#0d7c6b' : '#d4cfc5', position: 'relative', transition: 'background .15s', padding: 0
@@ -200,39 +430,40 @@ function Toggle({ value }) {
   );
 }
 
-function BillingPanel() {
+function BillingPanel({ form, onChange, onSave, status }) {
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Fakturácia', desc: 'Predvolené nastavenia pre vystavovanie faktúr.' }),
     React.createElement(PanelBody, null,
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'Predpona čísla faktúry', value: 'INV-', onChange: () => {} }),
-        React.createElement(FormField, { label: 'Splatnosť (dní)', value: '14', onChange: () => {}, type: 'number' })
+        React.createElement(FormField, { label: 'Predpona čísla faktúry', value: form.invoice_prefix, onChange: (e) => onChange({ ...form, invoice_prefix: e.target.value }) }),
+        React.createElement(FormField, { label: 'Splatnosť (dní)', value: String(form.invoice_due_days || ''), onChange: (e) => onChange({ ...form, invoice_due_days: e.target.value }), type: 'number' })
       ),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'Sadzba DPH (%)', value: '20', onChange: () => {}, type: 'number' }),
-        React.createElement(FormField, { label: 'Spôsob platby', type: 'select', value: 'transfer', onChange: () => {}, options: [
-          { value: 'transfer', label: 'Bankový prevod' }, { value: 'cash', label: 'Hotovosť' }, { value: 'card', label: 'Platobná karta' }
+        React.createElement(FormField, { label: 'Sadzba DPH (%)', value: String(form.vat_rate || ''), onChange: (e) => onChange({ ...form, vat_rate: e.target.value }), type: 'number' }),
+        React.createElement(FormField, { label: 'Spôsob platby', type: 'select', value: form.payment_method, onChange: (e) => onChange({ ...form, payment_method: e.target.value }), options: [
+          { value: 'bank_transfer', label: 'Bankový prevod' }, { value: 'cash', label: 'Hotovosť' }, { value: 'card', label: 'Platobná karta' }
         ] })
       ),
-      React.createElement(FormField, { label: 'Predvolená poznámka na faktúre', type: 'textarea', value: 'Ďakujeme za spoluprácu. Faktúru uhraďte do termínu splatnosti na uvedený účet.', onChange: () => {} })
+      React.createElement(FormField, { label: 'Predvolená poznámka na faktúre', type: 'textarea', value: form.invoice_default_note, onChange: (e) => onChange({ ...form, invoice_default_note: e.target.value }) })
     ),
     React.createElement(PanelFooter, null,
+      React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490' } }, status || ''),
       React.createElement(Button, { variant: 'outline' }, 'Zrušiť'),
-      React.createElement(Button, null, 'Uložiť zmeny')
+      React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')
     )
   );
 }
 
-function SecurityPanel() {
+function SecurityPanel({ form, onChange, onSave, status }) {
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Bezpečnosť', desc: 'Heslo a dvojfázové overenie.' }),
     React.createElement(PanelBody, null,
       React.createElement('div', null,
         React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 8px' } }, 'Zmena hesla'),
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 } },
-          React.createElement(FormField, { label: 'Súčasné heslo', type: 'password', value: '', onChange: () => {} }),
-          React.createElement(FormField, { label: 'Nové heslo', type: 'password', value: '', onChange: () => {} }),
-          React.createElement(FormField, { label: 'Potvrdiť heslo', type: 'password', value: '', onChange: () => {} })
+          React.createElement(FormField, { label: 'Súčasné heslo', type: 'password', value: form.current, onChange: (e) => onChange({ ...form, current: e.target.value }) }),
+          React.createElement(FormField, { label: 'Nové heslo', type: 'password', value: form.next, onChange: (e) => onChange({ ...form, next: e.target.value }) }),
+          React.createElement(FormField, { label: 'Potvrdiť heslo', type: 'password', value: form.confirm, onChange: (e) => onChange({ ...form, confirm: e.target.value }) })
         )
       ),
       React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },
@@ -250,6 +481,10 @@ function SecurityPanel() {
           ),
           React.createElement('span', { style: { color: '#8a9490' } }, 'Posledná aktivita: práve teraz')
         )
+      ),
+      React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
+        React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490', alignSelf: 'center' } }, status || ''),
+        React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')
       )
     )
   );

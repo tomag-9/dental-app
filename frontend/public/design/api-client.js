@@ -106,6 +106,25 @@
     return request(`/search/${suffix}`);
   }
 
+  async function fetchMe() {
+    return request('/core/users/me/');
+  }
+
+  async function updateMe(payload) {
+    return request('/core/users/me/', {
+      method: 'PUT',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
+  async function updateLab(id, payload) {
+    if (!id) throw new Error('Lab ID is required');
+    return request(`/core/labs/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
   async function fetchNotifications(limit = 8) {
     const qs = new URLSearchParams();
     if (limit) qs.set('limit', String(limit));
@@ -381,6 +400,9 @@
     fetchUnreadCount,
     markNotificationRead,
     markAllNotificationsRead,
+    fetchMe,
+    updateMe,
+    updateLab,
     authUrl,
     downloadInvoicePdf,
     logout,
