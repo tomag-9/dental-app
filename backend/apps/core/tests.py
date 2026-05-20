@@ -122,6 +122,45 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertTrue(self.user_a.is_active)
         self.assertEqual(self.user_a.username, "user_a")
 
+    def test_password_change_requires_current_password(self):
+        self.client.force_authenticate(user=self.user_a)
+
+        response = self.client.post(
+            "/api/core/users/me/password/",
+            {
+                "current_password": "wrong-password",
+                "new_password": "new_password_456",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.user_a.refresh_from_db()
+        self.assertTrue(self.user_a.check_password("password123"))
+
+    def test_password_change_updates_password_and_audits(self):
+        self.client.force_authenticate(user=self.user_a)
+
+        response = self.client.post(
+            "/api/core/users/me/password/",
+            {
+                "current_password": "password123",
+                "new_password": "new_password_456",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user_a.refresh_from_db()
+        self.assertTrue(self.user_a.check_password("new_password_456"))
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="user.password_changed",
+                entity_type="user",
+                entity_id=str(self.user_a.id),
+            ).exists()
+        )
+
     def test_me_put_rejects_duplicate_email(self):
         self.client.force_authenticate(user=self.admin_a)
         response = self.client.put(

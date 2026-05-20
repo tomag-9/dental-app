@@ -182,6 +182,11 @@ class MeUpdateSerializer(serializers.Serializer):
     notification_preferences = serializers.JSONField(required=False)
 
 
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=6)
+
+
 class SignupRequestSerializer(serializers.Serializer):
     lab_name = serializers.CharField(max_length=255)
     lab_address = serializers.CharField(

@@ -21,6 +21,7 @@ from .serializers import (
     LabSerializer,
     MeUpdateSerializer,
     NotificationSerializer,
+    PasswordChangeSerializer,
     SignupRequestSerializer,
     SignupResponseSerializer,
     TeamInvitationAcceptSerializer,
@@ -955,6 +956,31 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.save()
         return Response(UserSerializer(user).data)
+
+    @action(detail=False, methods=["post"], url_path="me/password")
+    def change_password(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        user = request.user
+
+        if not user.check_password(data["current_password"]):
+            return Response(
+                {"current_password": "Current password is incorrect"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(data["new_password"])
+        user.save(update_fields=["password"])
+        _write_audit_log(
+            request,
+            action="user.password_changed",
+            entity_type="user",
+            entity_id=user.id,
+            lab=user.lab,
+            description=f"User {user.username} changed password",
+        )
+        return Response({"detail": "Password changed"})
 
     @action(detail=False, methods=["get"], url_path="superadmin/all")
     def superadmin_all(self, request):
