@@ -191,6 +191,28 @@ class CoreUserFlowsApiTests(APITestCase):
         self.lab_a.refresh_from_db()
         self.assertEqual(self.lab_a.city, "Bratislava")
 
+    def test_admin_can_update_own_lab_billing_defaults(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.patch(
+            f"/api/core/labs/{self.lab_a.id}/",
+            {
+                "invoice_prefix": "MOL",
+                "invoice_due_days": 21,
+                "vat_rate": "20.00",
+                "payment_method": "cash",
+                "invoice_default_note": "Dakujeme za spolupracu.",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.lab_a.refresh_from_db()
+        self.assertEqual(self.lab_a.invoice_prefix, "MOL")
+        self.assertEqual(self.lab_a.invoice_due_days, 21)
+        self.assertEqual(str(self.lab_a.vat_rate), "20.00")
+        self.assertEqual(self.lab_a.payment_method, "cash")
+        self.assertEqual(self.lab_a.invoice_default_note, "Dakujeme za spolupracu.")
+
     def test_admin_cannot_update_other_lab_settings(self):
         self.client.force_authenticate(user=self.admin_a)
         response = self.client.patch(

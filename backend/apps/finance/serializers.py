@@ -1,3 +1,5 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -95,10 +97,19 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return sorted(patient_names)
 
     def get_subtotal_amount(self, obj):
-        return f"{obj.total_amount:.2f}"
+        vat_rate = Decimal(str(getattr(obj.lab, "vat_rate", 0) or 0))
+        total = Decimal(str(obj.total_amount or 0))
+        if vat_rate <= 0:
+            return f"{total:.2f}"
+        divisor = Decimal("1") + (vat_rate / Decimal("100"))
+        subtotal = (total / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"{subtotal:.2f}"
 
     def get_vat_amount(self, obj):
-        return "0.00"
+        total = Decimal(str(obj.total_amount or 0))
+        subtotal = Decimal(self.get_subtotal_amount(obj))
+        vat = (total - subtotal).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return f"{vat:.2f}"
 
     def get_is_overdue(self, obj):
         return bool(

@@ -52,8 +52,15 @@ class UserAuthContractTests(APITestCase):
         # Lab object fields
         self.assertIn("id", response.data["lab"])
         self.assertIn("name", response.data["lab"])
+        self.assertIn("invoice_prefix", response.data["lab"])
+        self.assertIn("invoice_due_days", response.data["lab"])
+        self.assertIn("vat_rate", response.data["lab"])
+        self.assertIn("payment_method", response.data["lab"])
+        self.assertIn("invoice_default_note", response.data["lab"])
         self.assertIsInstance(response.data["lab"]["id"], int)
         self.assertEqual(response.data["lab"]["name"], "New Lab")
+        self.assertEqual(response.data["lab"]["invoice_prefix"], "INV")
+        self.assertEqual(response.data["lab"]["invoice_due_days"], 14)
 
         # User object fields
         self.assertIn("id", response.data["user"])

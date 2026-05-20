@@ -246,6 +246,31 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertEqual(self.job_a1.status, "finished_factured")
         self.assertEqual(self.job_a2.status, "finished_factured")
 
+    def test_create_invoice_uses_lab_billing_defaults(self):
+        self.lab_a.invoice_prefix = "MOL"
+        self.lab_a.invoice_due_days = 21
+        self.lab_a.vat_rate = "20.00"
+        self.lab_a.save(
+            update_fields=["invoice_prefix", "invoice_due_days", "vat_rate"]
+        )
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a2.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["number"].startswith("MOL-"))
+        self.assertEqual(
+            response.data["due_date"],
+            (timezone.localdate() + timezone.timedelta(days=21)).isoformat(),
+        )
+        self.assertEqual(response.data["subtotal_amount"], "80.00")
+        self.assertEqual(response.data["vat_amount"], "16.00")
+        self.assertEqual(response.data["total_amount"], "96.00")
+
     def test_status_transition_syncs_job_statuses(self):
         self.client.force_authenticate(user=self.admin_a)
 

@@ -73,10 +73,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def _invoice_number(self):
-        count = Invoice.objects.count() + 1
+    def _invoice_number(self, lab):
+        count = Invoice.objects.filter(lab=lab).count() + 1
         stamp = timezone.now().strftime("%Y%m%d%H%M%S")
-        return f"INV-{stamp}-{count:04d}"
+        prefix = (getattr(lab, "invoice_prefix", None) or "INV").strip() or "INV"
+        return f"{prefix}-{stamp}-{count:04d}"
 
     def _sync_jobs_for_invoice_status(self, invoice, new_status):
         job_ids = (
@@ -148,15 +149,19 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             )
 
         now = timezone.now()
+        due_date = timezone.localdate() + timezone.timedelta(
+            days=clinic.lab.invoice_due_days
+        )
         invoice = Invoice.objects.create(
             clinic=clinic,
             lab_id=clinic.lab_id,
-            number=self._invoice_number(),
+            number=self._invoice_number(clinic.lab),
             status="issued",
             issued_at=now,
+            due_date=due_date,
         )
 
-        total = Decimal("0.00")
+        subtotal = Decimal("0.00")
         for job in jobs:
             procedures = job.procedure_codes or []
             quantities = job.procedure_quantities or {}
@@ -172,7 +177,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     unit_price=unit_price,
                     line_total=unit_price * quantity,
                 )
-                total += item.line_total
+                subtotal += item.line_total
                 continue
 
             for code in procedures:
@@ -190,9 +195,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                     unit_price=unit_price,
                     line_total=unit_price * quantity,
                 )
-                total += item.line_total
+                subtotal += item.line_total
 
-        invoice.total_amount = total
+        vat_rate = Decimal(str(clinic.lab.vat_rate or 0))
+        vat_amount = (subtotal * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
+        invoice.total_amount = subtotal + vat_amount
         invoice.save(update_fields=["total_amount"])
 
         # Legacy parity: creating/issuing an invoice marks linked jobs as factured.
