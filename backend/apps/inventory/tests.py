@@ -224,6 +224,77 @@ class WarehouseItemCrudApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
+    def test_stats_are_scoped_to_authenticated_lab(self):
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="In stock",
+            category="Materials",
+            quantity="10.00",
+            min_threshold="3.00",
+            cost_price="2.50",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Low stock",
+            category="Materials",
+            quantity="2.00",
+            min_threshold="5.00",
+            cost_price="10.00",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Out of stock",
+            category="Tools",
+            quantity="0.00",
+            min_threshold="1.00",
+            cost_price="7.00",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_b,
+            name="Other lab stock",
+            category="Materials",
+            quantity="100.00",
+            min_threshold="5.00",
+            cost_price="1.00",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get(reverse("warehouseitem-stats"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_items"], 3)
+        self.assertEqual(response.data["total_value"], "45.00")
+        self.assertEqual(response.data["low_stock_count"], 1)
+        self.assertEqual(response.data["out_of_stock_count"], 1)
+        self.assertEqual(
+            response.data["categories"],
+            [
+                {"category": "Materials", "count": 2},
+                {"category": "Tools", "count": 1},
+            ],
+        )
+
+    def test_superadmin_stats_include_all_labs(self):
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Item A",
+            quantity="1.00",
+            cost_price="5.00",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_b,
+            name="Item B",
+            quantity="2.00",
+            cost_price="3.00",
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(reverse("warehouseitem-stats"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_items"], 2)
+        self.assertEqual(response.data["total_value"], "11.00")
+
 
 class WarehouseBulkImportTests(APITestCase):
     """Tests for POST /warehouse/import/ and /warehouse/import-partial/."""
