@@ -552,6 +552,56 @@ class PriceListCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_duplicate_price_list_item_creates_copy_in_same_lab(self):
+        item = PriceList.objects.create(
+            lab=self.lab_a,
+            code="CROWN",
+            description="Zircon crown",
+            price=150.0,
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(reverse("pricelist-duplicate", args=[item.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["lab"], self.lab_a.id)
+        self.assertEqual(response.data["code"], "CROWN-COPY")
+        self.assertEqual(response.data["description"], "Zircon crown")
+        self.assertEqual(float(response.data["price"]), 150.0)
+
+    def test_duplicate_price_list_item_generates_unique_copy_code(self):
+        item = PriceList.objects.create(
+            lab=self.lab_a,
+            code="CROWN",
+            description="Zircon crown",
+            price=150.0,
+        )
+        PriceList.objects.create(
+            lab=self.lab_a,
+            code="CROWN-COPY",
+            description="Existing copy",
+            price=150.0,
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(reverse("pricelist-duplicate", args=[item.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["code"], "CROWN-COPY-2")
+
+    def test_duplicate_price_list_item_respects_lab_scope(self):
+        item_b = PriceList.objects.create(
+            lab=self.lab_b,
+            code="LAB-B",
+            description="Other lab item",
+            price=10.0,
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(reverse("pricelist-duplicate", args=[item_b.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 class FinanceStatsViewTests(APITestCase):
     """Tests for GET /api/finance/stats/."""

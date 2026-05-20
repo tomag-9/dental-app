@@ -44,6 +44,29 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         self.save_with_request_lab(serializer)
 
+    @action(detail=True, methods=["post"], url_path="duplicate")
+    def duplicate(self, request, pk=None):
+        item = self.get_object()
+        base_code = f"{item.code}-COPY"
+        code = base_code
+        suffix = 2
+        while PriceList.objects.filter(lab=item.lab, code=code).exists():
+            code = f"{base_code}-{suffix}"
+            suffix += 1
+
+        duplicate = PriceList.objects.create(
+            lab=item.lab,
+            code=code,
+            description=item.description,
+            price=item.price,
+            valid_from=item.valid_from,
+            valid_to=item.valid_to,
+        )
+        return Response(
+            self.get_serializer(duplicate).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     queryset = Invoice.objects.all()
