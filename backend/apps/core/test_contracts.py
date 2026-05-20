@@ -568,6 +568,9 @@ class DashboardStatsContractTests(APITestCase):
             "active_jobs",
             "completed_jobs",
             "total_revenue",
+            "current_period",
+            "monthly_totals",
+            "deltas",
             "recent_jobs",
             "recent_invoices",
             "today_schedule",
@@ -578,9 +581,44 @@ class DashboardStatsContractTests(APITestCase):
         self.assertIsInstance(response.data["total_patients"], int)
         self.assertIsInstance(response.data["active_jobs"], int)
         self.assertIsInstance(response.data["completed_jobs"], int)
+        self.assertIsInstance(response.data["current_period"], dict)
+        self.assertIn("start", response.data["current_period"])
+        self.assertIn("end", response.data["current_period"])
+        self.assertIsInstance(response.data["monthly_totals"], dict)
+        self.assertIn("new_patients", response.data["monthly_totals"])
+        self.assertIn("new_jobs", response.data["monthly_totals"])
+        self.assertIn("revenue", response.data["monthly_totals"])
+        self.assertIsInstance(response.data["deltas"], dict)
+        self.assertIn("new_patients", response.data["deltas"])
+        self.assertIn("new_jobs", response.data["deltas"])
+        self.assertIn("revenue", response.data["deltas"])
         self.assertIsInstance(response.data["recent_jobs"], list)
         self.assertIsInstance(response.data["recent_invoices"], list)
         self.assertIsInstance(response.data["today_schedule"], list)
+
+    def test_monthly_period_totals_include_current_month_activity(self):
+        Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=self.clinic,
+            status="new",
+        )
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="DASH-MONTH-001",
+            status="paid",
+            total_amount="99.00",
+            paid_at=timezone.now(),
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/dashboard/stats/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(response.data["monthly_totals"]["new_patients"], 1)
+        self.assertGreaterEqual(response.data["monthly_totals"]["new_jobs"], 1)
+        self.assertEqual(response.data["monthly_totals"]["revenue"], "99.00")
 
     def test_today_schedule_contains_due_open_jobs_only(self):
         """Today schedule must include due open jobs and exclude completed ones."""

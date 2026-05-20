@@ -289,6 +289,41 @@ class DashboardStatsView(APIView):
             total=Sum("total_amount")
         )["total"] or Decimal("0.00")
         today = timezone.localdate()
+        period_start = today.replace(day=1)
+        if period_start.month == 1:
+            previous_period_start = period_start.replace(
+                year=period_start.year - 1, month=12
+            )
+        else:
+            previous_period_start = period_start.replace(month=period_start.month - 1)
+        previous_period_end = period_start - timedelta(days=1)
+
+        monthly_patients = patients_qs.filter(
+            created_at__date__gte=period_start,
+            created_at__date__lte=today,
+        ).count()
+        previous_monthly_patients = patients_qs.filter(
+            created_at__date__gte=previous_period_start,
+            created_at__date__lte=previous_period_end,
+        ).count()
+        monthly_jobs = jobs_qs.filter(
+            created_at__date__gte=period_start,
+            created_at__date__lte=today,
+        ).count()
+        previous_monthly_jobs = jobs_qs.filter(
+            created_at__date__gte=previous_period_start,
+            created_at__date__lte=previous_period_end,
+        ).count()
+        monthly_revenue = invoices_qs.filter(
+            status="paid",
+            paid_at__date__gte=period_start,
+            paid_at__date__lte=today,
+        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+        previous_monthly_revenue = invoices_qs.filter(
+            status="paid",
+            paid_at__date__gte=previous_period_start,
+            paid_at__date__lte=previous_period_end,
+        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         recent_jobs_data = []
         for job in jobs_qs[:5]:
@@ -352,6 +387,20 @@ class DashboardStatsView(APIView):
                 "active_jobs": active_jobs,
                 "completed_jobs": completed_jobs,
                 "total_revenue": str(total_revenue),
+                "current_period": {
+                    "start": period_start.isoformat(),
+                    "end": today.isoformat(),
+                },
+                "monthly_totals": {
+                    "new_patients": monthly_patients,
+                    "new_jobs": monthly_jobs,
+                    "revenue": f"{monthly_revenue:.2f}",
+                },
+                "deltas": {
+                    "new_patients": monthly_patients - previous_monthly_patients,
+                    "new_jobs": monthly_jobs - previous_monthly_jobs,
+                    "revenue": f"{monthly_revenue - previous_monthly_revenue:.2f}",
+                },
                 "recent_jobs": recent_jobs_data,
                 "recent_invoices": recent_invoices_data,
                 "today_schedule": today_schedule_data,
