@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import Lab, Notification, User
+from apps.core.models import AuditLog, Lab, Notification, User
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
 from apps.jobs.models import Job
@@ -128,6 +128,39 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(toggle_response.status_code, status.HTTP_200_OK)
         self.user_a.refresh_from_db()
         self.assertFalse(self.user_a.is_active)
+        self.assertTrue(
+            AuditLog.objects.filter(
+                action="user.toggle_active",
+                entity_type="user",
+                entity_id=str(self.user_a.id),
+            ).exists()
+        )
+
+    def test_superadmin_can_list_audit_logs(self):
+        AuditLog.objects.create(
+            actor=self.superadmin,
+            lab=self.lab_a,
+            action="lab.updated",
+            entity_type="lab",
+            entity_id=str(self.lab_a.id),
+            description="Lab updated",
+            metadata={"fields": ["city"]},
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get("/api/core/audit-logs/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["action"], "lab.updated")
+        self.assertEqual(response.data[0]["actor_username"], "superadmin")
+        self.assertEqual(response.data[0]["lab_name"], "Lab A")
+        self.assertEqual(response.data[0]["metadata"], {"fields": ["city"]})
+
+    def test_regular_user_cannot_list_audit_logs(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get("/api/core/audit-logs/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_non_superadmin_cannot_access_superadmin_user_endpoints(self):
         self.client.force_authenticate(user=self.admin_a)

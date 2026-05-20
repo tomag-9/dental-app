@@ -14,8 +14,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.finance.models import Subscription
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
-from .models import Lab, Notification, User
+from .models import AuditLog, Lab, Notification, User
 from .serializers import (
+    AuditLogSerializer,
     LabSerializer,
     MeUpdateSerializer,
     NotificationSerializer,
@@ -23,6 +24,35 @@ from .serializers import (
     SignupResponseSerializer,
     UserSerializer,
 )
+
+
+def _client_ip(request):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+def _write_audit_log(
+    request,
+    *,
+    action,
+    entity_type="",
+    entity_id="",
+    lab=None,
+    description="",
+    metadata=None,
+):
+    return AuditLog.objects.create(
+        actor=request.user if getattr(request, "user", None).is_authenticated else None,
+        lab=lab,
+        action=action,
+        entity_type=entity_type,
+        entity_id=str(entity_id) if entity_id else "",
+        description=description,
+        metadata=metadata or {},
+        ip_address=_client_ip(request),
+    )
 
 
 def _build_unique_username(base_value):
@@ -439,6 +469,40 @@ class LabViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Only superadmin can delete labs")
         return super().destroy(request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        lab = serializer.save()
+        _write_audit_log(
+            self.request,
+            action="lab.created",
+            entity_type="lab",
+            entity_id=lab.id,
+            lab=lab,
+            description=f"Lab {lab.name} created",
+        )
+
+    def perform_update(self, serializer):
+        lab = serializer.save()
+        _write_audit_log(
+            self.request,
+            action="lab.updated",
+            entity_type="lab",
+            entity_id=lab.id,
+            lab=lab,
+            description=f"Lab {lab.name} updated",
+            metadata={"fields": sorted(self.request.data.keys())},
+        )
+
+    def perform_destroy(self, instance):
+        _write_audit_log(
+            self.request,
+            action="lab.deleted",
+            entity_type="lab",
+            entity_id=instance.id,
+            lab=instance,
+            description=f"Lab {instance.name} deleted",
+        )
+        instance.delete()
+
     @action(detail=False, methods=["get"], url_path="superadmin/all")
     def superadmin_all(self, request):
         if not is_superadmin(request.user):
@@ -462,6 +526,17 @@ class LabViewSet(viewsets.ModelViewSet):
                 }
             )
         return Response(result)
+
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = AuditLog.objects.all()
+    serializer_class = AuditLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        if not is_superadmin(self.request.user):
+            raise PermissionDenied("Superadmin only endpoint")
+        return AuditLog.objects.select_related("actor", "lab").all()
 
 
 class NotificationViewSet(viewsets.ModelViewSet):
@@ -585,9 +660,25 @@ class UserViewSet(viewsets.ModelViewSet):
             role = serializer.validated_data.get("role")
             if role == "superadmin":
                 raise PermissionDenied("Only superadmin can assign superadmin role")
-            serializer.save(lab=requester.lab)
+            user = serializer.save(lab=requester.lab)
+            _write_audit_log(
+                self.request,
+                action="user.created",
+                entity_type="user",
+                entity_id=user.id,
+                lab=user.lab,
+                description=f"User {user.username} created",
+            )
             return
-        serializer.save()
+        user = serializer.save()
+        _write_audit_log(
+            self.request,
+            action="user.created",
+            entity_type="user",
+            entity_id=user.id,
+            lab=user.lab,
+            description=f"User {user.username} created",
+        )
 
     @action(
         detail=False,
@@ -748,4 +839,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
         target.is_active = not target.is_active
         target.save(update_fields=["is_active"])
+        _write_audit_log(
+            request,
+            action="user.toggle_active",
+            entity_type="user",
+            entity_id=target.id,
+            lab=target.lab,
+            description=f"User {target.username} active={target.is_active}",
+            metadata={"is_active": target.is_active},
+        )
         return Response({"id": target.id, "is_active": target.is_active})

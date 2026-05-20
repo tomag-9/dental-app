@@ -89,3 +89,33 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.recipient_id}: {self.title}"
+
+
+class AuditLog(models.Model):
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+    )
+    lab = models.ForeignKey(
+        Lab,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+    )
+    action = models.CharField(max_length=100)
+    entity_type = models.CharField(max_length=100, blank=True, default="")
+    entity_id = models.CharField(max_length=100, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    metadata = models.JSONField(blank=True, null=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return f"{self.action} by {self.actor_id or 'system'}"

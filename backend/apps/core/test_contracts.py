@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import Lab, User
+from apps.core.models import AuditLog, Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceItem, PriceList, Subscription
 from apps.inventory.models import WarehouseItem
@@ -111,6 +111,51 @@ class UserAuthContractTests(APITestCase):
         self.assertIsInstance(response.data["username"], str)
         self.assertIsInstance(response.data["role"], str)
         self.assertIsInstance(response.data["is_active"], bool)
+
+
+class AuditLogContractTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Audit Lab")
+        self.superadmin = User.objects.create_user(
+            username="superadmin",
+            email="superadmin-audit@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+        AuditLog.objects.create(
+            actor=self.superadmin,
+            lab=self.lab,
+            action="lab.updated",
+            entity_type="lab",
+            entity_id=str(self.lab.id),
+            description="Lab updated",
+            metadata={"fields": ["city"]},
+        )
+
+    def test_audit_log_list_response_contract(self):
+        self.client.force_authenticate(user=self.superadmin)
+
+        response = self.client.get("/api/core/audit-logs/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = response.data[0]
+        for field in (
+            "id",
+            "actor",
+            "actor_username",
+            "lab",
+            "lab_name",
+            "action",
+            "entity_type",
+            "entity_id",
+            "description",
+            "metadata",
+            "ip_address",
+            "created_at",
+        ):
+            self.assertIn(field, item)
+        self.assertEqual(item["action"], "lab.updated")
 
 
 class JobContractTests(APITestCase):

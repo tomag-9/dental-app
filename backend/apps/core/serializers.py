@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Lab, Notification, User
+from .models import AuditLog, Lab, Notification, User
 
 
 class LabSerializer(serializers.ModelSerializer):
@@ -67,6 +67,29 @@ class NotificationSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("is_read", "read_at", "created_at")
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    actor_username = serializers.CharField(source="actor.username", read_only=True)
+    lab_name = serializers.CharField(source="lab.name", read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = (
+            "id",
+            "actor",
+            "actor_username",
+            "lab",
+            "lab_name",
+            "action",
+            "entity_type",
+            "entity_id",
+            "description",
+            "metadata",
+            "ip_address",
+            "created_at",
+        )
+        read_only_fields = fields
 
 
 class MeUpdateSerializer(serializers.Serializer):

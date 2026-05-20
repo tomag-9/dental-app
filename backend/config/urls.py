@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.core.views import (
+    AuditLogViewSet,
     DashboardStatsView,
     GlobalSearchView,
     LabViewSet,
@@ -22,6 +23,7 @@ root_router.register(r"invoices", InvoiceViewSet)
 root_router.register(r"users", UserViewSet)
 root_router.register(r"labs", LabViewSet)
 root_router.register(r"notifications", NotificationViewSet)
+root_router.register(r"audit-logs", AuditLogViewSet)
 root_router.register(r"vacations", VacationViewSet)
 root_router.register(r"calendar-events", CalendarEventViewSet)
 root_router.register(r"warehouse", WarehouseItemViewSet)
