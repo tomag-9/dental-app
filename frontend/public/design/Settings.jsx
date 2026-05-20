@@ -327,12 +327,46 @@ function LabPanel({ form, onChange, onSave, status, loading }) {
 }
 
 function TeamPanel() {
-  const members = [
+  const [members, setMembers] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    if (!window.MolarisAPI || !window.MolarisAPI.fetchLabMembers) {
+      setLoading(false);
+      return;
+    }
+    window.MolarisAPI.fetchLabMembers()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data.results || []);
+        const formatted = list.map(user => {
+          const name = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Unknown';
+          const role = user.role === 'superadmin' ? 'Superadmin' : (user.role === 'admin' ? 'Administrátor' : 'Technik');
+          return {
+            id: user.id,
+            name,
+            role,
+            email: user.email || '',
+            status: user.is_active ? 'active' : 'inactive',
+          };
+        });
+        setMembers(formatted);
+      })
+      .catch(() => {
+        setMembers([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const fallbackMembers = [
     { name: 'Ján Novák',  role: 'Administrátor', email: 'jan.novak@dl.sk',   status: 'active' },
     { name: 'Anna Mrázová', role: 'Technik',      email: 'anna.m@dl.sk',     status: 'active' },
     { name: 'Marek Bartoš', role: 'Technik',      email: 'marek.b@dl.sk',    status: 'active' },
     { name: 'Tereza H.',    role: 'Junior tech.', email: 'tereza.h@dl.sk',   status: 'pending' },
   ];
+  const visibleMembers = members.length > 0 ? members : fallbackMembers;
+
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Tím a oprávnenia', desc: 'Členovia laboratória s prístupom do aplikácie.' }),
     React.createElement('div', { style: { padding: 22 } },
@@ -340,8 +374,9 @@ function TeamPanel() {
         React.createElement(Button, { size: 'sm' }, React.createElement(Icon, { name: 'plus', size: 13 }), 'Pozvať člena')
       ),
       React.createElement('div', { style: { border: '1px solid #ece7dc', borderRadius: 8, overflow: 'hidden', background: '#fff' } },
-        ...members.map((m, i) => React.createElement('div', {
-          key: i,
+        loading ? React.createElement('div', { style: { padding: 16, textAlign: 'center', color: '#8a9490' } }, 'Načítavam...')
+        : visibleMembers.map((m, i) => React.createElement('div', {
+          key: m.id || i,
           style: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
         },
           React.createElement('div', { style: { width: 32, height: 32, borderRadius: '50%', background: '#d4f0eb', color: '#085c4e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 11, fontWeight: 700 } }, m.name.split(' ').map(n => n[0]).join('').slice(0, 2)),

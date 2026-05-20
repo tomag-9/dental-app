@@ -125,6 +125,13 @@
     });
   }
 
+  async function fetchLabMembers(limit = 100) {
+    const qs = new URLSearchParams();
+    if (limit) qs.set('limit', String(limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return request(`/users/${suffix}`);
+  }
+
   async function fetchNotifications(limit = 8) {
     const qs = new URLSearchParams();
     if (limit) qs.set('limit', String(limit));
@@ -403,6 +410,7 @@
     fetchMe,
     updateMe,
     updateLab,
+    fetchLabMembers,
     authUrl,
     downloadInvoicePdf,
     logout,
