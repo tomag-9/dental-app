@@ -54,6 +54,7 @@ class WarehouseItemCrudApiTests(APITestCase):
             "min_threshold": 10,
             "category": "Materials",
             "location": "A1",
+            "supplier": "Dental Supplier",
             "cost_price": 12.5,
             "notes": "High translucency",
         }
@@ -64,6 +65,7 @@ class WarehouseItemCrudApiTests(APITestCase):
         self.assertEqual(response.data["name"], "Zircon blocks")
         self.assertEqual(response.data["sku"], "ZIR-001")
         self.assertEqual(float(response.data["quantity"]), 50.0)
+        self.assertEqual(response.data["supplier"], "Dental Supplier")
         self.assertEqual(response.data["lab"], self.lab_a.id)
 
     def test_superadmin_can_create_warehouse_item_for_selected_lab(self):
@@ -324,6 +326,7 @@ class WarehouseBulkImportTests(APITestCase):
                 "sku": "SKU-A",
                 "quantity": "10.00",
                 "unit": "pcs",
+                "supplier": "Supplier A",
                 "cost_price": "5.50",
             },
             {"name": "Item B", "sku": "SKU-B", "quantity": "20.00", "unit": "pcs"},
@@ -395,3 +398,13 @@ class WarehouseBulkImportTests(APITestCase):
         item = WarehouseItem.objects.get(lab=self.lab, name="Precise Item")
         self.assertEqual(str(item.quantity), "1.10")
         self.assertEqual(str(item.cost_price), "9.99")
+
+    def test_bulk_import_supplier_field(self):
+        self.client.force_authenticate(user=self.admin)
+        items = [{"name": "Supplier Item", "supplier": "Dental Depot"}]
+
+        response = self.client.post(self.import_url, items, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = WarehouseItem.objects.get(lab=self.lab, name="Supplier Item")
+        self.assertEqual(item.supplier, "Dental Depot")

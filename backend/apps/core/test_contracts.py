@@ -498,6 +498,7 @@ class WarehouseContractTests(APITestCase):
             min_threshold=10,
             category="Materials",
             location="A1",
+            supplier="Dental Supplier",
             cost_price=12.5,
         )
 
@@ -521,6 +522,7 @@ class WarehouseContractTests(APITestCase):
             "min_threshold",
             "category",
             "location",
+            "supplier",
             "cost_price",
             "notes",
             "created_at",

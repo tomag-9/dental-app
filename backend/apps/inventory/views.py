@@ -112,6 +112,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                         min_threshold=s.validated_data.get("min_threshold"),
                         category=s.validated_data.get("category") or None,
                         location=s.validated_data.get("location") or None,
+                        supplier=s.validated_data.get("supplier") or None,
                         cost_price=s.validated_data.get("cost_price"),
                         notes=s.validated_data.get("notes") or None,
                     )
@@ -166,6 +167,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                         min_threshold=s.validated_data.get("min_threshold"),
                         category=s.validated_data.get("category") or None,
                         location=s.validated_data.get("location") or None,
+                        supplier=s.validated_data.get("supplier") or None,
                         cost_price=s.validated_data.get("cost_price"),
                         notes=s.validated_data.get("notes") or None,
                     )

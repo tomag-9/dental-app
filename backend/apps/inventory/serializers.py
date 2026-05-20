@@ -26,6 +26,9 @@ class WarehouseItemImportSerializer(serializers.Serializer):
     location = serializers.CharField(
         max_length=100, required=False, allow_null=True, allow_blank=True
     )
+    supplier = serializers.CharField(
+        max_length=255, required=False, allow_null=True, allow_blank=True
+    )
     cost_price = serializers.DecimalField(
         max_digits=12, decimal_places=2, required=False, allow_null=True
     )
