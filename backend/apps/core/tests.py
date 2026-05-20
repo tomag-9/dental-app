@@ -2,7 +2,9 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
-from apps.finance.models import Subscription
+from apps.crm.models import Clinic, Patient
+from apps.finance.models import Invoice, Subscription
+from apps.jobs.models import Job
 
 
 class CoreUserFlowsApiTests(APITestCase):
@@ -200,3 +202,105 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.lab_b.refresh_from_db()
         self.assertIsNone(self.lab_b.city)
+
+    def test_global_search_returns_lab_scoped_results(self):
+        clinic_a = Clinic.objects.create(lab=self.lab_a, name="Klinika A")
+        patient_a = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Mária",
+            last_name="Kováčová",
+            birth_number="8512151234",
+        )
+        job_a = Job.objects.create(
+            lab=self.lab_a,
+            patient=patient_a,
+            clinic=clinic_a,
+            description="Zirkónový mostík",
+        )
+        Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic_a,
+            number="INV-A-001",
+            total_amount="120.00",
+        )
+
+        clinic_b = Clinic.objects.create(lab=self.lab_b, name="Klinika B")
+        patient_b = Patient.objects.create(
+            lab=self.lab_b,
+            first_name="Mária",
+            last_name="Cudzia",
+            birth_number="9001011234",
+        )
+        Job.objects.create(
+            lab=self.lab_b,
+            patient=patient_b,
+            clinic=clinic_b,
+            description="Cudzia práca",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get("/api/search/?q=Mária")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_ids = {item["id"] for item in response.data["results"]}
+        self.assertIn(f"patient:{patient_a.id}", result_ids)
+        self.assertIn(f"job:{job_a.id}", result_ids)
+        self.assertNotIn(f"patient:{patient_b.id}", result_ids)
+
+    def test_global_search_returns_invoices_and_static_actions(self):
+        clinic = Clinic.objects.create(lab=self.lab_a, name="Klinika Bratislava")
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=clinic,
+            number="INV-2026-001",
+            total_amount="240.00",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        invoice_response = self.client.get("/api/core/search/?q=INV-2026")
+        action_response = self.client.get("/api/search/?q=novú prácu")
+
+        self.assertEqual(invoice_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(action_response.status_code, status.HTTP_200_OK)
+        self.assertIn(
+            f"invoice:{invoice.id}",
+            {item["id"] for item in invoice_response.data["results"]},
+        )
+        self.assertIn(
+            "action:new-job",
+            {item["id"] for item in action_response.data["results"]},
+        )
+
+    def test_global_search_denies_user_without_lab(self):
+        no_lab_user = User.objects.create_user(
+            username="no_lab_search",
+            email="no-lab-search@example.com",
+            password="password123",
+            role="user",
+        )
+
+        self.client.force_authenticate(user=no_lab_user)
+        response = self.client.get("/api/search/?q=test")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superadmin_global_search_spans_labs(self):
+        patient_b = Patient.objects.create(
+            lab=self.lab_b,
+            first_name="Peter",
+            last_name="Horvath",
+            birth_number="9001011234",
+        )
+
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get("/api/search/?q=Peter")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(
+            f"patient:{patient_b.id}",
+            {item["id"] for item in response.data["results"]},
+        )
+        self.assertIn(
+            "page:superadmin",
+            {item["id"] for item in self.client.get("/api/search/").data["results"]},
+        )
