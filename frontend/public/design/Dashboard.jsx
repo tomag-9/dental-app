@@ -3,35 +3,121 @@
 function Dashboard({ onNavigate, onOpenJob }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const apiStats = workspace.stats;
+  
+  // Format monthly stats with deltas
+  const formatMonthlyDelta = (current, previous) => {
+    const delta = current - previous;
+    return delta > 0 ? `+${delta}` : String(delta);
+  };
+  
   const stats = [
-    { label: 'Počet pacientov', value: String(apiStats ? apiStats.total_patients : 142), icon: 'users', tone: 'teal', sub: '+8 tento mesiac' },
-    { label: 'Aktívne práce',   value: String(apiStats ? apiStats.active_jobs : 23), icon: 'briefcase', tone: 'amber', sub: '5 v termíne dnes' },
-    { label: 'Tržby',           value: apiStats ? `${Number(apiStats.total_revenue || 0).toLocaleString('sk-SK')} €` : '8 420 €', icon: 'euro', tone: 'green', delta: '+12 %' },
-    { label: 'Dokončené',       value: String(apiStats ? apiStats.completed_jobs : 89), icon: 'checkCircle', tone: 'purple', sub: 'celkom' },
+    { 
+      label: 'Počet pacientov', 
+      value: String(apiStats ? apiStats.total_patients : 142), 
+      icon: 'users', 
+      tone: 'teal', 
+      sub: apiStats && apiStats.deltas ? formatMonthlyDelta(apiStats.monthly_totals.new_patients, apiStats.monthly_totals.new_patients - apiStats.deltas.new_patients) + ' tento mesiac' : '+8 tento mesiac' 
+    },
+    { 
+      label: 'Aktívne práce',   
+      value: String(apiStats ? apiStats.active_jobs : 23), 
+      icon: 'briefcase', 
+      tone: 'amber', 
+      sub: apiStats && apiStats.today_schedule ? apiStats.today_schedule.length + ' v termíne dnes' : '5 v termíne dnes' 
+    },
+    { 
+      label: 'Tržby',           
+      value: apiStats ? `${Number(apiStats.total_revenue || 0).toLocaleString('sk-SK')} €` : '8 420 €', 
+      icon: 'euro', 
+      tone: 'green',
+      delta: apiStats && apiStats.deltas ? apiStats.deltas.revenue + ' €' : '+12 %' 
+    },
+    { 
+      label: 'Dokončené',       
+      value: String(apiStats ? apiStats.completed_jobs : 89), 
+      icon: 'checkCircle', 
+      tone: 'purple', 
+      sub: 'celkom' 
+    },
   ];
 
-  const recentJobs = [
+  // Map status labels
+  const statusMap = {
+    new: { label: 'Nová', key: 'new' },
+    in_progress: { label: 'V priebehu', key: 'progress' },
+    completed: { label: 'Dokončená', key: 'done' },
+    cancelled: { label: 'Zrušená', key: 'cancelled' },
+    finished_factured: { label: 'Faktúrovaná', key: 'done' },
+    finished_unfactured: { label: 'Čaká faktúru', key: 'done' },
+    closed: { label: 'Uzavretá', key: 'done' },
+  };
+
+  // Recent jobs from backend stats
+  const recentJobsFallback = [
     { id: 12, patient: 'Mária Kováčová', type: 'Mostík zirkón',     status: 'progress', statusLabel: 'V priebehu', due: '15. 5. 2025' },
     { id: 11, patient: 'Peter Horváth',  type: 'Korunka',           status: 'new',      statusLabel: 'Nová',       due: '12. 5. 2025' },
     { id: 10, patient: 'Jana Blahová',   type: 'Snímateľná prot.',  status: 'new',      statusLabel: 'Nová',       due: '8. 5. 2025'  },
     { id: 9,  patient: 'Tomáš Varga',    type: 'Implantát',         status: 'done',     statusLabel: 'Dokončená',  due: '3. 5. 2025'  },
   ];
-  const visibleRecentJobs = workspace.jobs && workspace.jobs.length
-    ? workspace.jobs.slice(0, 4).map(j => ({ id: j.id, patient: j.patient, type: j.type, status: j.status === 'in_progress' ? 'progress' : j.status === 'completed' ? 'done' : j.status, statusLabel: j.status, due: j.due }))
-    : recentJobs;
+  const visibleRecentJobs = (apiStats && apiStats.recent_jobs && apiStats.recent_jobs.length > 0)
+    ? apiStats.recent_jobs.map(j => {
+        const statusInfo = statusMap[j.status] || { label: j.status, key: j.status };
+        const patientName = j.patient_details 
+          ? `${j.patient_details.first_name} ${j.patient_details.last_name}`.trim() 
+          : 'Neznámy pacient';
+        const dueDate = j.due_date ? new Date(j.due_date).toLocaleDateString('sk-SK') : 'Bez dátumu';
+        return {
+          id: j.id,
+          patient: patientName,
+          type: j.description || 'Práca',
+          status: statusInfo.key,
+          statusLabel: statusInfo.label,
+          due: dueDate,
+        };
+      })
+    : recentJobsFallback;
 
-  const recentInvoices = [
+  // Recent invoices from backend stats
+  const invoiceFallback = [
     { number: 'INV-2025-014', clinic: 'Klinika Bratislava', status: 'issued', statusLabel: 'Vystavená', amount: '1 240,00 €', date: '2. máj' },
     { number: 'INV-2025-013', clinic: 'ZubMed Košice',      status: 'issued', statusLabel: 'Vystavená', amount: '890,00 €',   date: '30. apr' },
     { number: 'INV-2025-012', clinic: 'Klinika Bratislava', status: 'paid',   statusLabel: 'Zaplatená', amount: '1 240,00 €', date: '28. apr' },
   ];
+  const invoiceStatusMap = {
+    draft: 'Koncept',
+    issued: 'Vystavená',
+    paid: 'Zaplatená',
+    overdue: 'Po splate',
+  };
+  const visibleRecentInvoices = (apiStats && apiStats.recent_invoices && apiStats.recent_invoices.length > 0)
+    ? apiStats.recent_invoices.map(inv => {
+        const createdDate = inv.created_at ? new Date(inv.created_at).toLocaleDateString('sk-SK') : 'N/A';
+        return {
+          number: inv.number,
+          clinic: inv.clinic_name || 'Neznáma klinika',
+          status: inv.status,
+          statusLabel: invoiceStatusMap[inv.status] || inv.status,
+          amount: `${Number(inv.total_amount || 0).toLocaleString('sk-SK')} €`,
+          date: createdDate,
+        };
+      })
+    : invoiceFallback;
 
-  const todaySchedule = [
+  // Today's schedule from backend stats
+  const todayScheduleFallback = [
     { time: '09:00', title: 'Frézovanie #12 — Kováčová',        type: 'job' },
     { time: '11:00', title: 'Konzultácia — Klinika BA',          type: 'meeting' },
     { time: '14:00', title: 'Modelovanie #11 — Horváth',         type: 'job' },
     { time: '16:30', title: 'Odber dojmu — kuriér',              type: 'pickup' },
   ];
+  const visibleTodaySchedule = (apiStats && apiStats.today_schedule && apiStats.today_schedule.length > 0)
+    ? apiStats.today_schedule.map(item => ({
+        time: item.time || 'Dnes',
+        title: item.title,
+        type: item.type || 'job',
+      }))
+    : todayScheduleFallback;
+
   const typeDot = { job: '#0d7c6b', meeting: '#2563eb', pickup: '#d97706' };
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
@@ -84,7 +170,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
         ),
         React.createElement(CardContent, { style: { paddingTop: 0 } },
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-            ...recentInvoices.map((inv, i) => React.createElement('div', {
+            ...visibleRecentInvoices.map((inv, i) => React.createElement('div', {
               key: inv.number,
               style: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
             },
@@ -109,7 +195,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
         ),
         React.createElement(CardContent, { style: { paddingTop: 0 } },
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-            ...todaySchedule.map((t, i) => React.createElement('div', {
+            ...visibleTodaySchedule.map((t, i) => React.createElement('div', {
               key: i,
               style: { display: 'flex', gap: 10, padding: '10px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
             },
