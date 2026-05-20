@@ -6,7 +6,20 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import PriceList
-from apps.jobs.models import Job, Technician, Vacation
+from apps.jobs.dental import expand_fdi_range, validate_tooth_range
+from apps.jobs.models import Job, JobItem, JobTimelineEvent, Technician, Vacation
+
+
+class DentalNotationTests(APITestCase):
+    def test_expand_fdi_range_accepts_single_tooth_and_same_arch_ranges(self):
+        self.assertEqual(expand_fdi_range("26"), ["26"])
+        self.assertCountEqual(expand_fdi_range("45-47"), ["45", "46", "47"])
+        self.assertCountEqual(expand_fdi_range("47–45"), ["45", "46", "47"])
+
+    def test_expand_fdi_range_rejects_invalid_or_cross_arch_ranges(self):
+        self.assertEqual(expand_fdi_range("99"), [])
+        self.assertEqual(expand_fdi_range("18-48"), [])
+        self.assertFalse(validate_tooth_range("31-11"))
 
 
 class VacationApiTests(APITestCase):
@@ -379,6 +392,157 @@ class JobValidationApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_create_job_with_items_snapshots_price_and_timeline(self):
+        """Nested job items should snapshot price-list data and create timeline."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "doctor": self.doctor_a.id,
+            "technician": self.technician_a.id,
+            "priority": "urgent",
+            "items": [
+                {
+                    "price_list_code": "CROWN",
+                    "tooth": "11",
+                    "quantity": 2,
+                }
+            ],
+            "description": "Nested item job",
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        job = Job.objects.get(id=response.data["id"])
+        self.assertEqual(job.priority, "urgent")
+        self.assertEqual(job.price, self.price_valid.price * 2)
+        self.assertEqual(job.procedure_codes, ["CROWN"])
+        self.assertEqual(job.procedure_quantities, {"CROWN": 2})
+        self.assertEqual(JobItem.objects.filter(job=job).count(), 1)
+        item = job.items.get()
+        self.assertEqual(item.description, self.price_valid.description)
+        self.assertEqual(item.unit_price, self.price_valid.price)
+        self.assertEqual(item.tooth, "11")
+        self.assertTrue(
+            JobTimelineEvent.objects.filter(job=job, event="created").exists()
+        )
+
+    def test_create_job_rejects_invalid_fdi_tooth_item(self):
+        """Nested items must use valid FDI tooth or same-arch ranges."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "CROWN",
+                    "tooth": "99",
+                    "quantity": 1,
+                }
+            ],
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("FDI", str(response.data))
+
+    def test_create_job_accepts_bridge_tooth_range_item(self):
+        """Bridge items can target a valid same-arch FDI range."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "BRIDGE",
+                    "tooth": "45-47",
+                    "quantity": 3,
+                }
+            ],
+        }
+
+        response = self.client.post(url, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertEqual(item.tooth, "45-47")
+        self.assertEqual(item.quantity, 3)
+
+    def test_transition_status_validates_flow_and_records_timeline(self):
+        """Status changes must use the transition endpoint and write audit events."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-transition-status", args=[self.job_a.id])
+
+        response = self.client.post(
+            url,
+            {"status": "in_progress", "note": "Začíname výrobu"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.job_a.refresh_from_db()
+        self.assertEqual(self.job_a.status, "in_progress")
+        event = JobTimelineEvent.objects.get(
+            job=self.job_a,
+            event="status_changed",
+            from_status="new",
+            to_status="in_progress",
+        )
+        self.assertEqual(event.note, "Začíname výrobu")
+        self.assertEqual(event.actor, self.admin_a)
+
+    def test_transition_status_rejects_invalid_flow(self):
+        """Invalid status jumps must be rejected."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-transition-status", args=[self.job_a.id])
+
+        response = self.client.post(url, {"status": "closed"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.job_a.refresh_from_db()
+        self.assertEqual(self.job_a.status, "new")
+
+    def test_regular_update_rejects_invalid_status_jump(self):
+        """PUT/PATCH must not bypass the validated status workflow."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-detail", args=[self.job_a.id])
+
+        response = self.client.patch(url, {"status": "closed"}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.job_a.refresh_from_db()
+        self.assertEqual(self.job_a.status, "new")
+
+    def test_delete_invoiced_job_is_blocked(self):
+        """Jobs attached to invoices are protected from deletion."""
+        from apps.finance.models import Invoice, InvoiceItem
+
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="INV-JOB-LOCK",
+            status="issued",
+            total_amount=150,
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=self.job_a,
+            description="Locked job",
+            quantity=1,
+            unit_price=150,
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.delete(reverse("job-detail", args=[self.job_a.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Job.objects.filter(id=self.job_a.id).exists())
 
 
 class TechnicianApiTests(APITestCase):

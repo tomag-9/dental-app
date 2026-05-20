@@ -147,7 +147,7 @@ export default function InventoryCreate() {
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="Kompozitná živica A2"
                                 required
                             />
@@ -161,7 +161,7 @@ export default function InventoryCreate() {
                                     name="sku"
                                     value={formData.sku}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="CR-A2-001"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -175,7 +175,7 @@ export default function InventoryCreate() {
                                     name="category"
                                     value={formData.category}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="Živice"
                                 />
                             </div>
@@ -192,7 +192,7 @@ export default function InventoryCreate() {
                                     value={formData.quantity}
                                     onChange={handleChange}
                                     step="0.01"
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="0"
                                 />
                             </div>
@@ -202,7 +202,7 @@ export default function InventoryCreate() {
                                     name="unit"
                                     value={formData.unit}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {units.map(u => (
                                         <option key={u} value={u}>{u}</option>
@@ -217,7 +217,7 @@ export default function InventoryCreate() {
                                     value={formData.min_threshold}
                                     onChange={handleChange}
                                     step="0.01"
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="10"
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -234,7 +234,7 @@ export default function InventoryCreate() {
                                     name="location"
                                     value={formData.location}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="Polica A3"
                                 />
                             </div>
@@ -246,7 +246,7 @@ export default function InventoryCreate() {
                                     value={formData.cost_price}
                                     onChange={handleChange}
                                     step="0.01"
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="0.00"
                                 />
                             </div>
@@ -258,7 +258,7 @@ export default function InventoryCreate() {
                                 name="notes"
                                 value={formData.notes}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Doplňujúce poznámky k položke..."
                                 rows="3"
                             />

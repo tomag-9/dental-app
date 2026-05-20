@@ -63,7 +63,7 @@ export default function SuperadminDashboard() {
       case 'trial':
         return 'bg-yellow-100 text-yellow-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
     }
   };
 
@@ -83,13 +83,13 @@ export default function SuperadminDashboard() {
   const getPlanColor = (plan) => {
     switch (plan) {
       case 'free':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
       case 'basic':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]';
       case 'premium':
         return 'bg-purple-100 text-purple-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-[var(--color-status-draft-bg)] text-foreground';
     }
   };
 
@@ -116,7 +116,7 @@ export default function SuperadminDashboard() {
           <IconComponent className="w-6 h-6" />
         </div>
         <div>
-          <p className="text-sm text-gray-600">{title}</p>
+          <p className="text-sm text-muted-foreground">{title}</p>
           <p className="text-3xl font-bold mt-1">{value}</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function SuperadminDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function SuperadminDashboard() {
           icon={Building2}
           title="Celkom laboratórií"
           value={stats.totalLabs}
-          color="bg-blue-100 text-blue-600"
+          color="bg-[var(--color-primary-subtle)] text-primary"
         />
         <StatCard
           icon={Users}
@@ -179,33 +179,33 @@ export default function SuperadminDashboard() {
 
         {labs.length === 0 ? (
           <div className="text-center py-12">
-            <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">Žiadne laboratóriá</p>
+            <Building2 className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+            <p className="text-muted-foreground">Žiadne laboratóriá</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">ID</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Názov</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Mesto</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">E-mail</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Použ.</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Plán</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Stav</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Vytvorené</th>
+                <tr className="border-b-2 border-[var(--color-table-border)]">
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">ID</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Názov</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Mesto</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">E-mail</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Použ.</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Plán</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Stav</th>
+                  <th className="text-left py-3 px-4 font-semibold text-[var(--color-sidebar-text)]">Vytvorené</th>
                 </tr>
               </thead>
               <tbody>
                 {labs.map(lab => (
-                  <tr key={lab.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-gray-900">{lab.id}</td>
+                  <tr key={lab.id} className="border-b border-[var(--color-table-border)] hover:bg-[var(--color-table-hover)]">
+                    <td className="py-3 px-4 text-foreground">{lab.id}</td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{lab.name}</div>
+                      <div className="font-medium text-foreground">{lab.name}</div>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">{lab.city || '-'}</td>
-                    <td className="py-3 px-4 text-gray-600">{lab.email || '-'}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{lab.city || '-'}</td>
+                    <td className="py-3 px-4 text-muted-foreground">{lab.email || '-'}</td>
                     <td className="py-3 px-4">
                       <Badge variant="outline">{lab.user_count || 0}</Badge>
                     </td>
@@ -219,7 +219,7 @@ export default function SuperadminDashboard() {
                         {formatStatusLabel(lab.subscription_status)}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">
+                    <td className="py-3 px-4 text-muted-foreground">
                       {lab.created_at ? new Date(lab.created_at).toLocaleDateString() : '-'}
                     </td>
                   </tr>

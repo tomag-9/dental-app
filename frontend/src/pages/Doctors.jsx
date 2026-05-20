@@ -55,7 +55,7 @@ export default function Doctors() {
                                 placeholder="Hľadať lekárov..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 pl-8 text-sm shadow-sm transition-colors file:border-0 file:bg-white file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
                     </div>
@@ -63,7 +63,7 @@ export default function Doctors() {
                 <CardContent>
                     <div className="rounded-md border">
                         <table className="w-full text-sm text-left">
-                            <thead className="bg-muted/50 text-muted-foreground">
+                            <thead className="bg-[var(--color-table-header)] text-muted-foreground">
                                 <tr>
                                     <th className="px-4 py-3 font-medium">Meno</th>
                                     <th className="px-4 py-3 font-medium">Klinika</th>
@@ -86,7 +86,7 @@ export default function Doctors() {
                                     </tr>
                                 ) : (
                                     filteredDoctors.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-muted/50">
+                                        <tr key={doc.id} className="hover:bg-[var(--color-table-header)]">
                                             <td className="px-4 py-3 font-medium flex items-center gap-2">
                                                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                                     <User size={14} />

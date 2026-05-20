@@ -71,12 +71,12 @@ export default function Patients() {
                 <CardHeader className="space-y-4">
                     <CardTitle>Všetci pacienti ({filteredPatients.length})</CardTitle>
                     <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <input
                             placeholder="Hľadať podľa mena alebo rodného čísla..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            className="w-full rounded-md border border-border bg-white py-2 pl-10 pr-4 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                     </div>
                 </CardHeader>
@@ -92,10 +92,10 @@ export default function Patients() {
                             <>
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <p className="font-semibold text-gray-900">
+                                        <p className="font-semibold text-foreground">
                                             {patient.first_name} {patient.last_name}
                                         </p>
-                                        <p className="text-sm text-gray-600 mt-1">
+                                        <p className="text-sm text-muted-foreground mt-1">
                                             Rodné číslo: {patient.birth_number || '-'}
                                         </p>
                                     </div>
@@ -106,13 +106,13 @@ export default function Patients() {
                                     </Link>
                                 </div>
                                 {patient.phone && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Phone className="h-4 w-4" />
                                         {patient.phone}
                                     </div>
                                 )}
                                 {patient.email && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                         <Mail className="h-4 w-4" />
                                         {patient.email}
                                     </div>
@@ -121,12 +121,12 @@ export default function Patients() {
                         )}
                         renderDesktopRow={(patient) => (
                             <>
-                                <td className="px-4 py-3 font-medium text-gray-900">
+                                <td className="px-4 py-3 font-medium text-foreground">
                                     {patient.first_name} {patient.last_name}
                                 </td>
-                                <td className="px-4 py-3 text-gray-600">{patient.birth_number}</td>
-                                <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{patient.phone || '-'}</td>
-                                <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{patient.email || '-'}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{patient.birth_number}</td>
+                                <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{patient.phone || '-'}</td>
+                                <td className="px-4 py-3 text-muted-foreground hidden lg:table-cell">{patient.email || '-'}</td>
                                 <td className="px-4 py-3 text-right">
                                     <Link to={`/patients/${patient.id}/edit`}>
                                         <Button variant="outline" size="sm">

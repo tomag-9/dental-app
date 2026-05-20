@@ -7,6 +7,7 @@ removed or renamed, preventing accidental breaking changes.
 """
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -522,6 +523,13 @@ class DashboardStatsContractTests(APITestCase):
 
     def setUp(self):
         self.lab = Lab.objects.create(name="Stats Lab")
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Stats Clinic")
+        self.patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Today",
+            last_name="Patient",
+            birth_number="900101/1111",
+        )
         self.admin = User.objects.create_user(
             username="stats_admin",
             email="stats_admin@example.com",
@@ -550,6 +558,7 @@ class DashboardStatsContractTests(APITestCase):
             "total_revenue",
             "recent_jobs",
             "recent_invoices",
+            "today_schedule",
         ]
         for field in required:
             self.assertIn(field, response.data, f"Missing field: {field}")
@@ -559,6 +568,33 @@ class DashboardStatsContractTests(APITestCase):
         self.assertIsInstance(response.data["completed_jobs"], int)
         self.assertIsInstance(response.data["recent_jobs"], list)
         self.assertIsInstance(response.data["recent_invoices"], list)
+        self.assertIsInstance(response.data["today_schedule"], list)
+
+    def test_today_schedule_contains_due_open_jobs_only(self):
+        """Today schedule must include due open jobs and exclude completed ones."""
+        due_job = Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=self.clinic,
+            due_date=timezone.localdate(),
+            status="in_progress",
+        )
+        Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=self.clinic,
+            due_date=timezone.localdate(),
+            status="completed",
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/dashboard/stats/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        schedule_ids = [item["id"] for item in response.data["today_schedule"]]
+        self.assertIn(due_job.id, schedule_ids)
+        self.assertEqual(len(response.data["today_schedule"]), 1)
+        self.assertEqual(response.data["today_schedule"][0]["type"], "job")
 
     def test_unauthenticated_denied(self):
         """Unauthenticated requests must be rejected."""

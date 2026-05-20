@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
 import useAuthStore from '../store/auth';
+import { LogoBadge } from '../components/brand/Logo';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -30,32 +31,36 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 space-y-6 animate-in fade-in zoom-in duration-500">
+        <div className="min-h-screen flex items-center justify-center px-4">
+            <div className="max-w-md w-full bg-card rounded-2xl border border-border shadow-lg p-8 space-y-6 animate-in fade-in zoom-in duration-500">
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-900">Vitajte späť</h1>
-                    <p className="text-gray-500 mt-2">Prihláste sa do svojho účtu</p>
+                    <div className="mb-4 flex justify-center">
+                        <LogoBadge size={56} radius={14} />
+                    </div>
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Molaris</div>
+                    <h1 className="text-3xl font-bold text-foreground">Vitajte späť</h1>
+                    <p className="text-muted-foreground mt-2">Prihláste sa do svojho účtu</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {error && (
-                        <div className="bg-red-50 text-red-500 text-sm p-3 rounded-md text-center">
+                        <div className="bg-[#fde8e6] border border-[#f5c0bb] text-destructive text-sm p-3 rounded-md text-center">
                             {error}
                         </div>
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Používateľské meno</label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Používateľské meno</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Mail className="h-5 w-5 text-gray-400" />
+                                <Mail className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <input
                                 name="username"
                                 type="text"
                                 value={formData.username}
                                 onChange={handleChange}
-                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary sm:text-sm"
+                                className="block w-full pl-10 pr-3 py-2 border border-input bg-card rounded-lg focus:ring-primary focus:border-primary sm:text-sm"
                                 placeholder="meno"
                                 required
                             />
@@ -63,17 +68,17 @@ export default function Login() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Heslo</label>
+                        <label className="block text-sm font-medium text-foreground mb-1">Heslo</label>
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <Lock className="h-5 w-5 text-gray-400" />
+                                <Lock className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <input
                                 name="password"
                                 type="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary focus:border-primary sm:text-sm"
+                                className="block w-full pl-10 pr-3 py-2 border border-input bg-card rounded-lg focus:ring-primary focus:border-primary sm:text-sm"
                                 placeholder="••••••••"
                                 required
                             />
@@ -83,7 +88,7 @@ export default function Login() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-colors"
+                        className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-[var(--color-primary-light)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 transition-colors"
                     >
                         {isLoading ? 'Prihlasujem...' : 'Prihlásiť sa'}
                     </button>

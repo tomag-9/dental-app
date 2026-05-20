@@ -39,7 +39,6 @@ alembic.ini
 backend/alembic.ini
 backend/alembic/env.py
 
-check-all.sh
 rebuild-dev.sh
 
 # Added by code-review-graph

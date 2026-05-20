@@ -190,7 +190,7 @@ export default function InvoiceDetail() {
             )}
 
             {!isCreating && invoice && (
-                <Card className="bg-blue-50 border-blue-200">
+                <Card className="bg-[var(--color-primary-subtle)] border-primary/30">
                     <CardHeader>
                         <CardTitle className="text-base">Akcie faktúry</CardTitle>
                     </CardHeader>
@@ -243,7 +243,7 @@ export default function InvoiceDetail() {
                             <select
                                 value={formData.clinic_id}
                                 onChange={(e) => setFormData(prev => ({ ...prev, clinic_id: e.target.value, job_ids: [] }))}
-                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 required
                             >
                                 <option value="">Vyberte kliniku</option>
@@ -272,7 +272,7 @@ export default function InvoiceDetail() {
                             ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-4">
                                     {safeJobs.map(job => (
-                                        <label key={job.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded">
+                                        <label key={job.id} className="flex items-center gap-3 cursor-pointer hover:bg-[var(--color-table-header)] p-2 rounded">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedJobs.includes(job.id)}

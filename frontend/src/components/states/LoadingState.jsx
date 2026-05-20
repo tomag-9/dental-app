@@ -15,7 +15,7 @@ export default function LoadingState({ message = 'Načítavam...', size = 'md' }
 
   return (
     <div className={`flex flex-col items-center justify-center ${containerClasses[size]} text-center`}>
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-500 mb-3`} />
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-primary mb-3`} />
       <p className="text-muted-foreground text-sm">{message}</p>
     </div>
   );

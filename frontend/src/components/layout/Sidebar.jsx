@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
+    Activity,
     LayoutDashboard,
     Users,
     Briefcase,
@@ -17,14 +18,15 @@ import {
     Shield,
     CreditCard,
     ChevronDown,
-    ChevronRight
+    ChevronRight,
+    LogOut,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import useAuthStore from '../../store/auth';
+import { Logo, LogoMark } from '../brand/Logo';
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
-    const [expandSuperadmin, setExpandSuperadmin] = useState(false);
     const [expandFinance, setExpandFinance] = useState(true);
     const [expandMasterData, setExpandMasterData] = useState(true);
     const logout = useAuthStore(state => state.logout);
@@ -46,7 +48,7 @@ export default function Sidebar() {
         .join('') || 'P';
 
     const isAdminOrSuperadmin = ['admin', 'superadmin'].includes(user?.role);
-    const mainLinks = [
+    const tenantMainLinks = [
         { name: 'Nástenka', to: '/', icon: LayoutDashboard },
         { name: 'Práce', to: '/jobs', icon: Briefcase },
         { name: 'Pacienti', to: '/patients', icon: Users },
@@ -63,35 +65,36 @@ export default function Sidebar() {
     ];
 
     const superadminLinks = [
-        { name: 'Nástenka', to: '/superadmin/dashboard', icon: LayoutDashboard },
+        { name: 'Prehľad', to: '/superadmin/dashboard', icon: Activity },
+        { name: 'Tenanti', to: '/superadmin/labs', icon: Building },
         { name: 'Používatelia', to: '/superadmin/users', icon: Users },
-        { name: 'Laboratóriá', to: '/superadmin/labs', icon: Building },
-        { name: 'Predplatné', to: '/superadmin/subscriptions', icon: CreditCard },
+        { name: 'Platformová fakt.', to: '/superadmin/subscriptions', icon: CreditCard },
     ];
 
     const isSuperadmin = user?.role === 'superadmin';
 
     const navBase = "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm";
-    const navActive = "bg-blue-400/25 text-blue-100 font-medium";
-    const navInactive = "text-slate-200 hover:bg-slate-500/40 hover:text-white";
+    const navActive = "bg-[var(--color-sidebar-active-bg)] text-[var(--color-sidebar-active-text)] font-semibold";
+    const navInactive = "text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)]";
 
     return (
         <div className={cn(
-            "h-screen border-r border-slate-500/50 bg-slate-600 text-slate-100 shadow-md transition-all duration-300 flex flex-col z-20",
+            "h-screen border-r border-[var(--color-sidebar-border)] bg-[var(--color-sidebar-bg)] text-[var(--color-sidebar-text)] shadow-md transition-all duration-300 flex flex-col z-20",
             collapsed ? "w-20" : "w-64"
         )}>
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-500/50 bg-slate-600/90">
-                {!collapsed && <span className="font-bold text-xl text-blue-200">DentalLab</span>}
+            <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-sidebar-border)]">
+                {!collapsed && <Logo markSize={24} wordmarkSize={17} />}
+                {collapsed && <LogoMark size={24} />}
                 <button
                     onClick={() => setCollapsed(!collapsed)}
-                    className="p-2 rounded-md text-slate-300 hover:bg-slate-500/50 hover:text-white"
+                    className="p-2 rounded-md text-[var(--color-sidebar-muted)] hover:bg-[#e7e2d4] hover:text-primary"
                 >
                     {collapsed ? <Menu size={20} /> : <X size={20} />}
                 </button>
             </div>
 
             <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-                {mainLinks.map((link) => (
+                {!isSuperadmin && tenantMainLinks.map((link) => (
                     <NavLink
                         key={link.to}
                         to={link.to}
@@ -106,13 +109,13 @@ export default function Sidebar() {
                     </NavLink>
                 ))}
 
-                {isAdminOrSuperadmin && (
+                {!isSuperadmin && isAdminOrSuperadmin && (
                     <div>
                         <button
                             type="button"
                             onClick={() => setExpandFinance((prev) => !prev)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm',
                                 collapsed && 'justify-center'
                             )}
                         >
@@ -126,7 +129,7 @@ export default function Sidebar() {
                         </button>
 
                         {!collapsed && expandFinance && (
-                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
+                            <div className="mt-1 ml-2 pl-2 border-l border-[#d4cfc5] space-y-1">
                                 <NavLink
                                     to="/finance"
                                     className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive)}
@@ -146,13 +149,13 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {isAdminOrSuperadmin && (
+                {!isSuperadmin && isAdminOrSuperadmin && (
                     <div className="pt-2">
                         <button
                             type="button"
                             onClick={() => setExpandMasterData((prev) => !prev)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm',
+                                'w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[var(--color-sidebar-text)] hover:bg-[#e7e2d4] hover:text-[var(--color-sidebar-active-text)] text-sm',
                                 collapsed && 'justify-center'
                             )}
                         >
@@ -166,7 +169,7 @@ export default function Sidebar() {
                         </button>
 
                         {!collapsed && expandMasterData && (
-                            <div className="mt-1 ml-2 pl-2 border-l border-slate-500 space-y-1">
+                            <div className="mt-1 ml-2 pl-2 border-l border-[#d4cfc5] space-y-1">
                                 {masterDataLinks.map((link) => (
                                     <NavLink
                                         key={link.to}
@@ -182,49 +185,41 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {isSuperadmin && (
-                    <>
-                        <div className="my-4 px-3">
-                            <button
-                                onClick={() => setExpandSuperadmin(!expandSuperadmin)}
-                                className={cn(
-                                    "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors text-slate-200 hover:bg-slate-500/40 hover:text-white text-sm",
-                                    collapsed && "justify-center"
-                                )}
-                            >
-                                <Shield size={20} />
-                                {!collapsed && <span className="font-semibold">Superadmin</span>}
-                            </button>
-                        </div>
+                {isSuperadmin && superadminLinks.map((link) => (
+                    <NavLink
+                        key={link.to}
+                        to={link.to}
+                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center")}
+                    >
+                        <link.icon size={20} />
+                        {!collapsed && <span>{link.name}</span>}
+                    </NavLink>
+                ))}
 
-                        {expandSuperadmin && (
-                            <div className="space-y-1 ml-2 pl-2 border-l border-slate-500">
-                                {superadminLinks.map((link) => (
-                                    <NavLink
-                                        key={link.to}
-                                        to={link.to}
-                                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center")}
-                                    >
-                                        <link.icon size={18} />
-                                        {!collapsed && <span>{link.name}</span>}
-                                    </NavLink>
-                                ))}
-                            </div>
-                        )}
-                    </>
+                {isSuperadmin && (
+                    <NavLink
+                        to="/settings"
+                        className={({ isActive }) => cn(navBase, isActive ? navActive : navInactive, collapsed && "justify-center", "mt-auto")}
+                    >
+                        <Shield size={20} />
+                        {!collapsed && <span>Môj profil</span>}
+                    </NavLink>
                 )}
             </nav>
 
-            <div className="p-4 border-t border-slate-500/50 bg-slate-600/90">
+            <div className="p-4 border-t border-[var(--color-sidebar-border)]">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-400/30 border border-blue-300/50 flex items-center justify-center text-blue-100 font-bold">
+                    <div className="w-10 h-10 rounded-full bg-[var(--color-primary-subtle)] border border-[#b0ddd5] flex items-center justify-center text-[var(--color-primary-dark)] font-bold">
                         {initials}
                     </div>
                     {!collapsed && (
                         <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-medium truncate text-slate-100">{displayName}</p>
-                            <p className="text-xs text-slate-400 truncate">{roleLabel}</p>
-                            <button onClick={logout} className="text-xs text-blue-200 hover:underline">Odhlásiť sa</button>
+                            <p className="text-sm font-medium truncate text-foreground">{displayName}</p>
+                            <p className="text-xs text-[var(--color-sidebar-muted)] truncate">{roleLabel}</p>
+                            <button onClick={logout} className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                <LogOut className="h-3 w-3" />
+                                Odhlásiť sa
+                            </button>
                         </div>
                     )}
                 </div>

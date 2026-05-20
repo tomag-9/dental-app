@@ -149,7 +149,7 @@ export default function PriceListCreate() {
                                     name="code"
                                     value={formData.code}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     placeholder="CROWN_PREP"
                                     required
                                 />
@@ -170,7 +170,7 @@ export default function PriceListCreate() {
                                         onChange={handleChange}
                                         step="0.01"
                                         min="0"
-                                        className="flex-1 px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex-1 px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="250.50"
                                         required
                                     />
@@ -187,7 +187,7 @@ export default function PriceListCreate() {
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
-                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Preparácia korunky"
                                 required
                             />
@@ -203,7 +203,7 @@ export default function PriceListCreate() {
                                     name="valid_from"
                                     value={formData.valid_from}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
                             </div>
                             <div>
@@ -231,7 +231,7 @@ export default function PriceListCreate() {
                                             name="valid_to"
                                             value={formData.valid_to}
                                             onChange={handleChange}
-                                            className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                            className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         />
                                     </div>
                                 )}
@@ -264,7 +264,7 @@ export default function PriceListCreate() {
                 </CardContent>
             </Card>
 
-            <Card className="bg-muted/50">
+            <Card className="bg-[var(--color-table-header)]">
                 <CardHeader>
                     <CardTitle className="text-base">Informácie</CardTitle>
                 </CardHeader>

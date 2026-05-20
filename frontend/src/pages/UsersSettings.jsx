@@ -113,7 +113,7 @@ export default function UsersSettings() {
                                         type="text"
                                         value={formData.nickname}
                                         onChange={(e) => setFormData(prev => ({ ...prev, nickname: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="john.smith"
                                     />
                                 </div>
@@ -123,7 +123,7 @@ export default function UsersSettings() {
                                         type="email"
                                         value={formData.email}
                                         onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="jan@priklad.sk"
                                     />
                                 </div>
@@ -135,7 +135,7 @@ export default function UsersSettings() {
                                         type="password"
                                         value={formData.password}
                                         onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                         placeholder="••••••••"
                                         required
                                     />
@@ -145,7 +145,7 @@ export default function UsersSettings() {
                                     <select
                                         value={formData.role}
                                         onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="w-full px-3 py-2 border border-input rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <option value="user">Používateľ</option>
                                         <option value="admin">Admin</option>
@@ -173,7 +173,7 @@ export default function UsersSettings() {
                                 placeholder="Hľadať používateľov..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
                     </div>
@@ -190,7 +190,7 @@ export default function UsersSettings() {
                     ) : (
                         <div className="rounded-md border">
                             <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
+                                <thead className="bg-[var(--color-table-header)]">
                                     <tr>
                                         <th className="px-4 py-3 font-medium text-left">Meno</th>
                                         <th className="px-4 py-3 font-medium text-left">E-mail</th>
@@ -201,7 +201,7 @@ export default function UsersSettings() {
                                 </thead>
                                 <tbody>
                                     {filteredUsers.map((user) => (
-                                        <tr key={user.id} className="border-t hover:bg-muted/50 transition-colors">
+                                        <tr key={user.id} className="border-t hover:bg-[var(--color-table-header)] transition-colors">
                                             <td className="px-4 py-3 font-medium">
                                                 {user.nickname || user.email?.split('@')[0] || `Používateľ #${user.id}`}
                                             </td>
@@ -209,7 +209,7 @@ export default function UsersSettings() {
                                                 {user.email || '-'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                                                <span className="inline-flex px-2 py-1 rounded-md text-xs font-medium bg-[var(--color-primary-subtle)] text-[var(--color-primary-dark)]">
                                                     {user.role}
                                                 </span>
                                             </td>

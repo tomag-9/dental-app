@@ -306,7 +306,7 @@ export default function ClinicCreate() {
 
                         <div className="rounded-md border">
                             <table className="w-full text-sm text-left">
-                                <thead className="bg-muted/50 text-muted-foreground">
+                                <thead className="bg-[var(--color-table-header)] text-muted-foreground">
                                     <tr>
                                         <th className="px-4 py-3 font-medium">Meno</th>
                                         <th className="px-4 py-3 font-medium">Kontakt</th>
@@ -328,7 +328,7 @@ export default function ClinicCreate() {
                                         </tr>
                                     ) : (
                                         doctors.map((doctor) => (
-                                            <tr key={doctor.id} className="hover:bg-muted/50">
+                                            <tr key={doctor.id} className="hover:bg-[var(--color-table-header)]">
                                                 <td className="px-4 py-3 font-medium">
                                                     {doctor.first_name} {doctor.last_name}
                                                 </td>

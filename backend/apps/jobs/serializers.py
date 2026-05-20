@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.core.access import is_superadmin
@@ -5,7 +7,8 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
-from .models import Job, Technician, Vacation
+from .dental import validate_tooth_range
+from .models import Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
@@ -15,11 +18,60 @@ class TechnicianSerializer(serializers.ModelSerializer):
         read_only_fields = ["lab", "created_at"]
 
 
+class JobItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobItem
+        fields = (
+            "id",
+            "price_list_code",
+            "description",
+            "tooth",
+            "quantity",
+            "unit_price",
+            "total",
+            "created_at",
+        )
+        read_only_fields = ("id", "description", "unit_price", "total", "created_at")
+
+    def validate_tooth(self, value):
+        if value and not validate_tooth_range(value):
+            raise serializers.ValidationError(
+                "Use canonical FDI tooth notation, for example 26 or 45-47."
+            )
+        return value
+
+
+class JobTimelineEventSerializer(serializers.ModelSerializer):
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobTimelineEvent
+        fields = (
+            "id",
+            "event",
+            "note",
+            "from_status",
+            "to_status",
+            "actor",
+            "actor_name",
+            "created_at",
+        )
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        if not obj.actor:
+            return ""
+        full_name = obj.actor.get_full_name()
+        return full_name or obj.actor.username
+
+
 class JobSerializer(serializers.ModelSerializer):
     patient_details = PatientSerializer(source="patient", read_only=True)
     clinic_details = ClinicSerializer(source="clinic", read_only=True)
     doctor_details = DoctorSerializer(source="doctor", read_only=True)
     technician_details = TechnicianSerializer(source="technician", read_only=True)
+    items = JobItemSerializer(many=True, required=False)
+    timeline = JobTimelineEventSerializer(many=True, read_only=True)
 
     class Meta:
         model = Job
@@ -29,11 +81,7 @@ class JobSerializer(serializers.ModelSerializer):
             "doctor": {"required": False, "allow_null": True},
         }
 
-    def validate_procedure_codes(self, value):
-        """Validate that all procedure codes exist in the price list."""
-        if not value:
-            return value
-
+    def _price_list_queryset(self):
         request = self.context.get("request")
         user = getattr(request, "user", None)
         queryset = PriceList.objects.all()
@@ -42,8 +90,14 @@ class JobSerializer(serializers.ModelSerializer):
             if not lab_id:
                 raise serializers.ValidationError("User is not assigned to any lab")
             queryset = queryset.filter(lab_id=lab_id)
+        return queryset
 
-        valid_codes = set(queryset.values_list("code", flat=True))
+    def validate_procedure_codes(self, value):
+        """Validate that all procedure codes exist in the price list."""
+        if not value:
+            return value
+
+        valid_codes = set(self._price_list_queryset().values_list("code", flat=True))
         invalid_codes = [code for code in value if code not in valid_codes]
         if invalid_codes:
             raise serializers.ValidationError(
@@ -57,11 +111,33 @@ class JobSerializer(serializers.ModelSerializer):
         # Validate procedure codes and quantities match
         procedure_codes = data.get("procedure_codes")
         procedure_quantities = data.get("procedure_quantities")
+        items = data.get("items")
 
         if procedure_codes and procedure_quantities:
             if len(procedure_codes) != len(set(procedure_quantities.keys())):
                 raise serializers.ValidationError(
                     "Procedure codes and quantities must match"
+                )
+            missing_quantities = [
+                code for code in procedure_codes if code not in procedure_quantities
+            ]
+            if missing_quantities:
+                raise serializers.ValidationError(
+                    "Procedure codes and quantities must match"
+                )
+
+        if items:
+            valid_codes = set(
+                self._price_list_queryset().values_list("code", flat=True)
+            )
+            invalid_codes = [
+                item.get("price_list_code")
+                for item in items
+                if item.get("price_list_code") not in valid_codes
+            ]
+            if invalid_codes:
+                raise serializers.ValidationError(
+                    {"items": f"Invalid procedure codes: {invalid_codes}"}
                 )
 
         # Get current user from context
@@ -117,6 +193,66 @@ class JobSerializer(serializers.ModelSerializer):
                     )
 
         return data
+
+    def _sync_items(self, job, items):
+        if items is None:
+            return
+
+        price_items = {
+            item.code: item
+            for item in self._price_list_queryset().filter(
+                code__in=[entry["price_list_code"] for entry in items]
+            )
+        }
+        JobItem.objects.filter(job=job).delete()
+
+        created_items = []
+        total = Decimal("0.00")
+        procedure_codes = []
+        procedure_quantities = {}
+
+        for entry in items:
+            code = entry["price_list_code"]
+            price_item = price_items[code]
+            quantity = max(1, int(entry.get("quantity") or 1))
+            job_item = JobItem(
+                job=job,
+                price_list_code=code,
+                description=price_item.description,
+                tooth=entry.get("tooth") or None,
+                quantity=quantity,
+                unit_price=price_item.price,
+                total=Decimal("0.00"),
+            )
+            job_item.save()
+            created_items.append(job_item)
+            total += job_item.total
+            procedure_codes.append(code)
+            procedure_quantities[code] = procedure_quantities.get(code, 0) + quantity
+
+        job.procedure_codes = procedure_codes or None
+        job.procedure_quantities = procedure_quantities or None
+        job.price = total if created_items else None
+        job.save(update_fields=["procedure_codes", "procedure_quantities", "price"])
+
+    def create(self, validated_data):
+        items = validated_data.pop("items", None)
+        job = super().create(validated_data)
+        self._sync_items(job, items)
+        return job
+
+    def update(self, instance, validated_data):
+        items = validated_data.pop("items", None)
+        job = super().update(instance, validated_data)
+        self._sync_items(job, items)
+        return job
+
+
+class JobStatusTransitionSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(
+        choices=[choice[0] for choice in Job.STATUS_CHOICES]
+    )
+    note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
 class VacationSerializer(serializers.ModelSerializer):

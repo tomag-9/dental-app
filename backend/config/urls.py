@@ -5,10 +5,9 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.core.views import DashboardStatsView, LabViewSet, UserViewSet
-from apps.crm.views import ClinicViewSet, DoctorViewSet, PatientViewSet
-from apps.finance.views import InvoiceViewSet, PriceListViewSet, SubscriptionViewSet
+from apps.finance.views import InvoiceViewSet
 from apps.inventory.views import WarehouseItemViewSet
-from apps.jobs.views import JobViewSet, TechnicianViewSet, VacationViewSet
+from apps.jobs.views import VacationViewSet
 
 # Root-level router for commonly accessed endpoints
 root_router = DefaultRouter()

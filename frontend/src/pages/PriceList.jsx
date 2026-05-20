@@ -188,7 +188,7 @@ export default function PriceList() {
                                 placeholder="Hľadať podľa kódu alebo popisu..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 pl-8 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                             />
                         </div>
                     </div>
@@ -207,7 +207,7 @@ export default function PriceList() {
                     ) : (
                         <div className="rounded-md border overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="bg-muted/50">
+                                <thead className="bg-[var(--color-table-header)]">
                                     <tr>
                                         <th className="px-4 py-3 font-medium text-left">Kód</th>
                                         <th className="px-4 py-3 font-medium text-left">Popis</th>
@@ -218,7 +218,7 @@ export default function PriceList() {
                                 </thead>
                                 <tbody>
                                     {filteredItems.map((item) => (
-                                        <tr key={item.id} className="border-t hover:bg-muted/50 transition-colors">
+                                        <tr key={item.id} className="border-t hover:bg-[var(--color-table-header)] transition-colors">
                                             <td className="px-4 py-3 font-medium text-primary">
                                                 {item.code}
                                             </td>

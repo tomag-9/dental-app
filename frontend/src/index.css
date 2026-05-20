@@ -3,62 +3,133 @@
 
 @layer base {
   :root {
-    /* Blue-tinted palette for all surfaces */
-    --background: 210 55% 94%;
-    --foreground: 222 47% 11%;
+    --color-primary: #0d7c6b;
+    --color-primary-light: #0fa589;
+    --color-primary-dark: #085c4e;
+    --color-primary-subtle: #d4f0eb;
+    --color-primary-foreground: #ffffff;
 
-    --card: 210 45% 97%;
-    --card-foreground: 222 47% 11%;
+    --color-background: #f7f6f2;
+    --color-card: #ffffff;
+    --color-popover: #ffffff;
+    --color-muted: #eeecea;
 
-    --popover: 210 40% 98%;
-    --popover-foreground: 222 47% 11%;
+    --color-foreground: #1a2320;
+    --color-card-foreground: #1a2320;
+    --color-muted-foreground: #8a9490;
 
-    --primary: 217 91% 60%;
+    --color-secondary: #eeecea;
+    --color-secondary-foreground: #1a2320;
+    --color-accent: #d4f0eb;
+    --color-accent-foreground: #085c4e;
+    --color-destructive: #c0392b;
+    --color-destructive-foreground: #ffffff;
+
+    --color-border: #e4ded4;
+    --color-input: #e4ded4;
+    --color-ring: #0d7c6b;
+
+    --color-sidebar-bg: #f0ede5;
+    --color-sidebar-border: #e4ded4;
+    --color-sidebar-text: #4a5752;
+    --color-sidebar-muted: #8a9490;
+    --color-sidebar-active-bg: #d4f0eb;
+    --color-sidebar-active-text: #085c4e;
+    --color-sidebar-brand: #0d7c6b;
+
+    --color-card-border: #e4ded4;
+    --color-table-header: #eeecea;
+    --color-table-border: #e4ded4;
+    --color-table-hover: #f0ede8;
+
+    --color-status-new-bg: #fef9c3;
+    --color-status-new-text: #713f12;
+    --color-status-progress-bg: #d4f0eb;
+    --color-status-progress-text: #085c4e;
+    --color-status-done-bg: #dcfce7;
+    --color-status-done-text: #14532d;
+    --color-status-factured-bg: #d1fae5;
+    --color-status-factured-text: #065f46;
+    --color-status-cancelled-bg: #fee2e2;
+    --color-status-cancelled-text: #991b1b;
+    --color-status-draft-bg: #f3f4f6;
+    --color-status-draft-text: #1f2937;
+    --color-status-issued-bg: #d4f0eb;
+    --color-status-issued-text: #085c4e;
+    --color-status-paid-bg: #dcfce7;
+    --color-status-paid-text: #14532d;
+
+    --color-accent-teal-bg: #d4f0eb;
+    --color-accent-teal-text: #0d7c6b;
+    --color-accent-amber-bg: #fef3c7;
+    --color-accent-amber-text: #d97706;
+    --color-accent-green-bg: #dcfce7;
+    --color-accent-green-text: #16a34a;
+    --color-accent-purple-bg: #f3e8ff;
+    --color-accent-purple-text: #9333ea;
+
+    --background: 45 14% 96%;
+    --foreground: 160 14% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 14% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 14% 12%;
+
+    --primary: 170 79% 27%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 50% 94%;
-    --secondary-foreground: 222 47% 12%;
+    --secondary: 40 10% 93%;
+    --secondary-foreground: 160 14% 12%;
 
-    --muted: 210 35% 92%;
-    --muted-foreground: 215 20% 35%;
+    --muted: 40 10% 93%;
+    --muted-foreground: 165 8% 55%;
 
-    --accent: 210 50% 92%;
-    --accent-foreground: 222 47% 15%;
+    --accent: 165 50% 88%;
+    --accent-foreground: 170 79% 20%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 4 65% 46%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 86%;
-    --input: 214 32% 86%;
-    --ring: 217 91% 60%;
+    --border: 35 20% 87%;
+    --input: 35 20% 87%;
+    --ring: 170 79% 27%;
 
     --radius: 0.5rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-full: 9999px;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / .05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / .07), 0 2px 4px -2px rgb(0 0 0 / .07);
+    --focus-ring: 0 0 0 2px rgb(13 124 107 / .35);
+    --font-body: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+    --tracking-heading: -0.015em;
   }
 
   body {
-    background:
-      radial-gradient(circle at 0% 0%, hsl(210 70% 95%) 0, transparent 50%),
-      radial-gradient(circle at 100% 100%, hsl(210 60% 93%) 0, transparent 55%),
-      linear-gradient(180deg, hsl(210 55% 94%) 0%, hsl(210 50% 95%) 100%),
-      hsl(var(--background));
+    background: var(--color-background);
     color: hsl(var(--foreground));
-    font-family: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+    font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
-    letter-spacing: -0.015em;
+    font-family: var(--font-heading);
+    letter-spacing: var(--tracking-heading);
   }
 
   input,
   select,
   textarea {
     color: hsl(var(--foreground));
-    background-color: hsl(var(--card));
-    border-color: hsl(210 35% 82%);
+    background-color: var(--color-card);
+    border-color: hsl(var(--input));
+    caret-color: hsl(var(--foreground));
   }
 
   input::placeholder,
@@ -66,16 +137,27 @@
     color: hsl(var(--muted-foreground));
   }
 
-  option {
-    background-color: hsl(var(--popover));
+  select {
+    color-scheme: light;
+  }
+
+  option,
+  optgroup {
+    background-color: var(--color-popover);
     color: hsl(var(--foreground));
+  }
+
+  option:checked {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary-dark);
   }
 
   select:focus,
   input:focus,
   textarea:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgb(59 130 246 / .35);
+    border-color: hsl(var(--primary));
+    box-shadow: var(--focus-ring);
   }
 
   ::-webkit-scrollbar {
@@ -89,6 +171,6 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--secondary));
   }
 }
