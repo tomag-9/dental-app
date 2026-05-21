@@ -35,6 +35,7 @@ FDI_LOWER = [
     "38",
 ]
 FDI_ALL = set(FDI_UPPER + FDI_LOWER)
+TOOTH_SCOPE_CODES = {"A", "U", "L", "Q1", "Q2", "Q3", "Q4"}
 
 CANONICAL_FDI_STORAGE_NOTE = (
     "Store tooth identifiers as canonical FDI strings: a single tooth like "
@@ -74,3 +75,8 @@ def validate_tooth_range(value):
 def validate_bridge_span(value):
     teeth = expand_fdi_range(value)
     return len(teeth) >= 2
+
+
+def normalize_tooth_scope(value):
+    raw = str(value or "").strip().upper()
+    return raw if raw in TOOTH_SCOPE_CODES else ""

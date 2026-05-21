@@ -9,6 +9,7 @@ from apps.finance.models import PriceList
 from apps.jobs.dental import (
     CANONICAL_FDI_STORAGE_NOTE,
     expand_fdi_range,
+    normalize_tooth_scope,
     validate_bridge_span,
     validate_tooth_range,
 )
@@ -41,6 +42,12 @@ class DentalNotationTests(APITestCase):
     def test_canonical_fdi_storage_note_documents_api_contract(self):
         self.assertIn("canonical FDI", CANONICAL_FDI_STORAGE_NOTE)
         self.assertIn("45-47", CANONICAL_FDI_STORAGE_NOTE)
+
+    def test_normalize_tooth_scope_accepts_supported_scope_codes(self):
+        self.assertEqual(normalize_tooth_scope("a"), "A")
+        self.assertEqual(normalize_tooth_scope("U"), "U")
+        self.assertEqual(normalize_tooth_scope("q4"), "Q4")
+        self.assertEqual(normalize_tooth_scope("Q5"), "")
 
 
 class VacationApiTests(APITestCase):
@@ -746,6 +753,49 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(item.bridge_span, "45-47")
         self.assertEqual(item.tooth_state, "temporary")
         self.assertEqual(response.data["items"][0]["bridge_span"], "45-47")
+
+    def test_create_job_with_tooth_scope_stores_scope_separately(self):
+        self.client.force_authenticate(user=self.admin_a)
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "CROWN",
+                    "tooth_scope": "U",
+                    "quantity": 1,
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("job-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertIsNone(item.tooth)
+        self.assertEqual(item.tooth_scope, "U")
+        self.assertEqual(response.data["items"][0]["tooth_scope"], "U")
+
+    def test_create_job_accepts_inline_scope_in_tooth_field(self):
+        self.client.force_authenticate(user=self.admin_a)
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "CROWN",
+                    "tooth": "Q2",
+                    "quantity": 1,
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("job-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertIsNone(item.tooth)
+        self.assertEqual(item.tooth_scope, "Q2")
 
     def test_bridge_item_requires_valid_bridge_span(self):
         self.client.force_authenticate(user=self.admin_a)

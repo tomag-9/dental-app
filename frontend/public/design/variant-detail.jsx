@@ -26,6 +26,15 @@ const REGION_SCOPES = [
   { id: 'q4',    label: 'Kvadrant 4 · dolný pravý',  short: 'Q4', teeth: FDI_LOWER.slice(0, 8) },
 ];
 const REGION_BY_ID = Object.fromEntries(REGION_SCOPES.map(r => [r.id, r]));
+const REGION_SCOPE_ALIASES = {
+  A: 'all',
+  U: 'upper',
+  L: 'lower',
+  Q1: 'q1',
+  Q2: 'q2',
+  Q3: 'q3',
+  Q4: 'q4',
+};
 
 // Region procedures catalog — light-weight entries (these aren't in PROC_CATALOG
 // because they're not tooth-specific).
@@ -60,9 +69,20 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
   const [highlightRegion, setHighlightRegion] = React.useState(false);
   const hasLiveItems = Array.isArray(items) && items.length > 0;
   const liveProcs = {};
+  const liveRegionProcs = [];
   for (const item of items || []) {
     const tooth = String(item.tooth || '');
     const code = item.code || item.price_list_code;
+    const scope = String(item.tooth_scope || item.scope || '').toUpperCase();
+    if (scope && code) {
+      liveRegionProcs.push({
+        id: `live-${liveRegionProcs.length}`,
+        scope: REGION_SCOPE_ALIASES[scope] || String(scope).toLowerCase(),
+        code,
+        date: item.created_at ? new Date(item.created_at).toLocaleDateString('sk-SK') : '',
+        note: item.name || item.description || '',
+      });
+    }
     if (!tooth || !code) continue;
     (liveProcs[tooth] = liveProcs[tooth] || []).push(code);
   }
@@ -198,7 +218,7 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
         notation,
         scope: regionScope, onScopeChange: setRegionScope,
         highlight: highlightRegion, onHighlightChange: setHighlightRegion,
-        items: REGION_PROCEDURES,
+        items: hasLiveItems ? liveRegionProcs : REGION_PROCEDURES,
       })
     )
   );
@@ -466,10 +486,8 @@ function ToothDetailModal() {
 // Shows procedures performed on a WHOLE region (full mouth / jaw / side / quadrant).
 // These aren't drawn on the dental cross — they live in their own table here.
 function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightChange, items, notation }) {
-  const visible = scope === 'all' ? items : items.filter(it => it.scope === scope);
-  const region = REGION_BY_ID[scope];
-  const counts = {};
-  for (const it of items) counts[it.scope] = (counts[it.scope] || 0) + 1;
+  const visible = items;
+  const region = REGION_BY_ID.all;
 
   return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 12, overflow: 'hidden', flexShrink: 0 } },
     // Header
@@ -486,53 +504,9 @@ function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightCha
           'Výkony vykonané na celom chrupe, čeľusti, strane alebo kvadrante — nekreslia sa do zubného kríža, ale evidujú sa tu.'
         ),
       ),
-      React.createElement('label', {
-        style: {
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#5a6b66',
-          cursor: scope === 'all' ? 'not-allowed' : 'pointer', opacity: scope === 'all' ? 0.45 : 1,
-          padding: '5px 10px', border: '1px solid #e4ded4', borderRadius: 6, background: '#fbfaf6',
-        }
-      },
-        React.createElement('input', {
-          type: 'checkbox', checked: highlight, disabled: scope === 'all',
-          onChange: e => onHighlightChange(e.target.checked),
-          style: { accentColor: '#0d7c6b' },
-        }),
-        'Zvýrazniť oblasť v kríži'
-      )
-    ),
-
-    // Region tabs
-    React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 5, padding: '8px 16px', background: '#fbfaf6', borderBottom: '1px solid #f0ede5' } },
-      ...REGION_SCOPES.map(r => {
-        const active = scope === r.id;
-        const count = counts[r.id] || 0;
-        return React.createElement('button', {
-          key: r.id, onClick: () => onScopeChange(r.id),
-          style: {
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '6px 11px', borderRadius: 7,
-            border: active ? '1px solid #0d7c6b' : '1px solid #e4ded4',
-            background: active ? '#0d7c6b' : '#fff',
-            color: active ? '#fff' : '#1a2320',
-            fontSize: 11.5, fontWeight: active ? 700 : 600,
-            fontFamily: 'Manrope,sans-serif', cursor: 'pointer',
-            boxShadow: active ? '0 1px 2px rgba(13,124,107,.25)' : 'none',
-            transition: 'background .12s, border-color .12s, color .12s',
-          }
-        },
-          React.createElement(RegionScopeIcon, { scopeId: r.id, color: active ? '#fff' : '#5a6b66', size: 14 }),
-          React.createElement('span', null, r.short),
-          count > 0 && React.createElement('span', {
-            style: {
-              fontFamily: 'ui-monospace,monospace', fontSize: 10,
-              padding: '1px 6px', borderRadius: 9999,
-              background: active ? 'rgba(255,255,255,.22)' : '#f0ede5',
-              color: active ? '#fff' : '#5a6b66', fontWeight: 700,
-            }
-          }, count),
-        );
-      })
+      React.createElement('span', {
+        style: { fontSize: 10.5, fontWeight: 700, color: '#5a6b66', background: '#fbfaf6', border: '1px solid #e4ded4', padding: '5px 10px', borderRadius: 9999 }
+      }, 'Readonly')
     ),
 
     // Region context + procedure list
@@ -541,21 +515,19 @@ function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightCha
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, fontSize: 11, color: '#5a6b66' } },
         React.createElement('span', { style: { fontWeight: 700, color: '#1a2320', fontFamily: 'Plus Jakarta Sans,sans-serif' } }, region.label),
         React.createElement('span', { style: { color: '#b0bdb9' } }, '·'),
-        React.createElement('span', null, `${region.teeth.length} ${region.teeth.length === 1 ? 'zub' : (region.teeth.length < 5 ? 'zuby' : 'zubov')} v rozsahu`),
-        React.createElement('span', { style: { color: '#b0bdb9' } }, '·'),
-        React.createElement('span', null, visible.length === 0 ? 'žiadne výkony' : `${visible.length} výkon${visible.length === 1 ? '' : (visible.length < 5 ? 'y' : 'ov')}`),
+        React.createElement('span', null, visible.length === 0 ? 'žiadne výkony' : `${visible.length} výkon${visible.length === 1 ? '' : (visible.length < 5 ? 'y' : 'ov')} bez filtrovania`),
       ),
 
       // List
       visible.length === 0
         ? React.createElement('div', {
             style: { padding: '24px 18px', border: '1px dashed #e4ded4', borderRadius: 8, background: '#fbfaf6', textAlign: 'center', fontSize: 12, color: '#8a9490' }
-          }, `Pre oblasť „${region.label}" nie sú evidované žiadne výkony.`)
+          }, 'Nie sú evidované žiadne oblastné výkony.')
         : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
             ...visible.map(it => {
               const def = REGION_PROC_DEFS[it.code] || { name: it.code, cat: 'tech', glyph: 'drop' };
               const cat = PROC_CATS[def.cat];
-              const itemRegion = REGION_BY_ID[it.scope];
+              const itemRegion = REGION_BY_ID[it.scope] || { short: it.scope || 'ALL' };
               return React.createElement('div', {
                 key: it.id,
                 style: {

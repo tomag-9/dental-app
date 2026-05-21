@@ -4,6 +4,9 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [jobToDelete, setJobToDelete] = React.useState(null);
+  const [remoteJobs, setRemoteJobs] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
 
   const fallbackJobs = [
@@ -14,7 +17,27 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     { id: 8,  patient: 'Eva Oláhová',    clinic: 'ZubMed Košice',      doctor: 'MUDr. Blaho',   type: 'Inlay keramický', due: '28. 4. 2025', status: 'completed' },
     { id: 7,  patient: 'Michal Gábor',   clinic: 'DentaPrima Žilina',  doctor: 'MUDr. Sloboda', type: 'Korunka',         due: '20. 4. 2025', status: 'cancelled' },
   ];
-  const allJobs = workspace.jobs && workspace.jobs.length ? workspace.jobs : fallbackJobs;
+  const workspaceJobs = workspace.jobs && workspace.jobs.length ? workspace.jobs : fallbackJobs;
+  const allJobs = remoteJobs || workspaceJobs;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (!window.MolarisAPI.fetchJobs) return;
+      setLoading(true);
+      setError('');
+      window.MolarisAPI.fetchJobs({ search, status: tab })
+        .then((jobs) => { if (!cancelled) setRemoteJobs(jobs); })
+        .catch((err) => {
+          if (!cancelled) {
+            setError((err && err.message) || 'Zoznam prác sa nepodarilo filtrovať.');
+            setRemoteJobs(null);
+          }
+        })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    }, 220);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [search, tab]);
 
   const statusMeta = {
     new:        { label: 'Nové',       badge: 'new' },
@@ -22,9 +45,9 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     completed:  { label: 'Dokončené',  badge: 'done' },
     cancelled:  { label: 'Zrušené',    badge: 'cancelled' },
   };
-  const counts = ['new','in_progress','completed','cancelled'].reduce((a, s) => { a[s] = allJobs.filter(j => j.status === s).length; return a; }, {});
+  const counts = ['new','in_progress','completed','cancelled'].reduce((a, s) => { a[s] = workspaceJobs.filter(j => j.status === s).length; return a; }, {});
 
-  const filtered = allJobs.filter(j => {
+  const filtered = remoteJobs ? allJobs : allJobs.filter(j => {
     const q = search.toLowerCase();
     const m = !q || [j.patient, j.clinic, j.doctor, String(j.id), j.type].some(v => v.toLowerCase().includes(q));
     if (!m) return false;
@@ -37,7 +60,6 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
       title: 'Práce',
       subtitle: 'Prehľad, správa a stav zákaziek.',
       actions: [
-        React.createElement(Button, { key: 'f', variant: 'outline' }, React.createElement(Icon, { name: 'filter', size: 14 }), 'Filtre'),
         React.createElement(Button, { key: 'n', onClick: onNewJob }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
       ]
     }),
@@ -62,6 +84,8 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
         }),
         React.createElement(SearchInput, { value: search, onChange: setSearch, placeholder: 'Pacient, lekár, ID…', width: 280 })
       ),
+      error && React.createElement(ErrorState, { title: 'Filtrovanie zlyhalo', message: error }),
+      loading && React.createElement('div', { style: { padding: '0 18px 12px', fontSize: 12, color: '#8a9490' } }, 'Načítavam filtrované práce...'),
       React.createElement(CardContent, { style: { paddingTop: 0 } },
         filtered.length === 0
           ? React.createElement(EmptyState, { title: 'Žiadne práce', description: 'Skúste upraviť vyhľadávanie alebo filter.' })
@@ -95,7 +119,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
                         }))
                       }),
                       React.createElement(IconButton, { name: 'eye', title: 'Detail', onClick: () => onOpenJob && onOpenJob(r.id) }),
-                      React.createElement(IconButton, { name: 'edit', title: 'Upraviť' }),
+                      React.createElement(IconButton, { name: 'edit', title: 'Upraviť', onClick: () => onOpenJob && onOpenJob(r.id) }),
                       React.createElement(IconButton, { name: 'trash', title: 'Zmazať', destructive: true, onClick: () => setJobToDelete(r.id) })
                     )
                 }

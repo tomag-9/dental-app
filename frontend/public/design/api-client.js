@@ -68,6 +68,26 @@
     return job;
   }
 
+  async function fetchJobs(filters = {}) {
+    const qs = new URLSearchParams();
+    if (filters.search) qs.set('search', filters.search);
+    if (filters.status && filters.status !== 'all') qs.set('status', filters.status);
+    if (filters.priority) qs.set('priority', filters.priority);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    const jobs = await request(`/jobs/jobs/${suffix}`);
+    return jobs.map(normalize.job);
+  }
+
+  async function updateJob(id, payload) {
+    const job = await request(`/jobs/jobs/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+    window.__MOLARIS_WORKSPACE = null;
+    window.dispatchEvent(new CustomEvent('molaris-workspace-refresh'));
+    return job;
+  }
+
   async function createRecord(path, payload) {
     const record = await request(path, {
       method: 'POST',
@@ -399,6 +419,8 @@
     request,
     login,
     createJob,
+    fetchJobs,
+    updateJob,
     createRecord,
     transitionJobStatus,
     updateInvoiceStatus,

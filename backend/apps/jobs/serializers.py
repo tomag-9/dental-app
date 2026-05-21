@@ -8,7 +8,12 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
-from .dental import expand_fdi_range, validate_bridge_span, validate_tooth_range
+from .dental import (
+    expand_fdi_range,
+    normalize_tooth_scope,
+    validate_bridge_span,
+    validate_tooth_range,
+)
 from .models import CalendarEvent, Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
@@ -69,17 +74,27 @@ class JobItemSerializer(serializers.ModelSerializer):
             "material",
             "color",
             "bridge_span",
+            "tooth_scope",
             "tooth_state",
             "created_at",
         )
         read_only_fields = ("id", "description", "unit_price", "total", "created_at")
 
     def validate_tooth(self, value):
+        if value and normalize_tooth_scope(value):
+            return value
         if value and not validate_tooth_range(value):
             raise serializers.ValidationError(
                 "Use canonical FDI tooth notation, for example 26 or 45-47."
             )
         return value
+
+    def validate_tooth_scope(self, value):
+        if value and not normalize_tooth_scope(value):
+            raise serializers.ValidationError(
+                "Use A, U, L, Q1, Q2, Q3 or Q4 for tooth scope."
+            )
+        return normalize_tooth_scope(value) or None
 
     def validate_bridge_span(self, value):
         if value and not validate_bridge_span(value):
@@ -92,6 +107,13 @@ class JobItemSerializer(serializers.ModelSerializer):
         procedure_category = data.get("procedure_category")
         bridge_span = data.get("bridge_span")
         tooth = data.get("tooth")
+        tooth_scope = data.get("tooth_scope")
+
+        inline_scope = normalize_tooth_scope(tooth)
+        if inline_scope:
+            data["tooth_scope"] = tooth_scope or inline_scope
+            data["tooth"] = None
+            tooth = None
 
         if procedure_category == "bridge" and not bridge_span:
             raise serializers.ValidationError(
@@ -295,6 +317,7 @@ class JobSerializer(serializers.ModelSerializer):
                 material=entry.get("material") or None,
                 color=entry.get("color") or None,
                 bridge_span=entry.get("bridge_span") or None,
+                tooth_scope=entry.get("tooth_scope") or None,
                 tooth_state=entry.get("tooth_state") or "planned",
             )
             job_item.save()

@@ -4,6 +4,9 @@ function JobDetail({ jobId, onBack }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const [actionError, setActionError] = React.useState('');
   const [changingStatus, setChangingStatus] = React.useState(false);
+  const [editMode, setEditMode] = React.useState(false);
+  const [savingEdit, setSavingEdit] = React.useState(false);
+  const [editFields, setEditFields] = React.useState({ description: '', due_date: '', priority: 'normal', technician: '' });
   const workspaceJob = workspace.jobs && workspace.jobs.find((item) => String(item.id) === String(jobId));
   const rawJob = workspaceJob && workspaceJob.raw;
   const fallbackJob = {
@@ -54,9 +57,20 @@ function JobDetail({ jobId, onBack }) {
     items: (rawJob.items || []).map((item) => ({
       name: item.description,
       tooth: item.tooth || '—',
+      scope: item.tooth_scope || '',
       price: Number(item.total || item.unit_price || 0),
     })),
   } : fallbackJob;
+
+  React.useEffect(() => {
+    if (!rawJob) return;
+    setEditFields({
+      description: rawJob.description || '',
+      due_date: rawJob.due_date || '',
+      priority: rawJob.priority || 'normal',
+      technician: rawJob.technician ? String(rawJob.technician) : '',
+    });
+  }, [rawJob && rawJob.id]);
 
   const fallbackTimeline = [
     { date: '28. 4. 2025 09:14', actor: 'Recepcia', event: 'Práca prijatá', note: 'Z odberu kuriéra. Zaevidovaná do systému.', icon: 'inbox', color: '#0d7c6b' },
@@ -96,6 +110,24 @@ function JobDetail({ jobId, onBack }) {
       setChangingStatus(false);
     }
   };
+  const saveEdit = async () => {
+    if (!rawJob) return;
+    setSavingEdit(true); setActionError('');
+    try {
+      await window.MolarisAPI.updateJob(job.id, {
+        description: editFields.description || '',
+        due_date: editFields.due_date || null,
+        priority: editFields.priority || 'normal',
+        technician: editFields.technician ? Number(editFields.technician) : null,
+      });
+      setEditMode(false);
+    } catch (err) {
+      setActionError((err && err.data && JSON.stringify(err.data)) || 'Prácu sa nepodarilo uložiť.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+  const setEdit = (key, value) => setEditFields((current) => ({ ...current, [key]: value }));
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
@@ -107,8 +139,8 @@ function JobDetail({ jobId, onBack }) {
           React.createElement(Icon, { name: 'arrowLeft', size: 14 }), 'Späť na zoznam'),
         React.createElement(Button, { key: 'p', variant: 'outline' },
           React.createElement(Icon, { name: 'printer', size: 14 }), 'Tlač pracovného listu'),
-        React.createElement(Button, { key: 'e' },
-          React.createElement(Icon, { name: 'edit', size: 14 }), 'Upraviť'),
+        React.createElement(Button, { key: 'e', onClick: () => setEditMode((value) => !value), disabled: !rawJob },
+          React.createElement(Icon, { name: 'edit', size: 14 }), editMode ? 'Zavrieť úpravy' : 'Upraviť'),
       ]
     }),
 
@@ -125,10 +157,9 @@ function JobDetail({ jobId, onBack }) {
       ),
       React.createElement('div', { style: { flex: 1 } },
         React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-          React.createElement('span', { style: { fontSize: 13.5, fontWeight: 700, color: '#085c4e', fontFamily: 'Plus Jakarta Sans,sans-serif' } }, 'V priebehu — frézovanie'),
-          React.createElement(Badge, { color: 'progress' }, 'Krok 4 z 7')
+          React.createElement('span', { style: { fontSize: 13.5, fontWeight: 700, color: '#085c4e', fontFamily: 'Plus Jakarta Sans,sans-serif' } }, job.statusLabel)
         ),
-        React.createElement('div', { style: { fontSize: 11.5, color: '#085c4e', opacity: 0.75, marginTop: 2 } }, 'Predpokladané dokončenie: 13. 5. 2025 · zostáva 5 dní do termínu')
+        React.createElement('div', { style: { fontSize: 11.5, color: '#085c4e', opacity: 0.75, marginTop: 2 } }, `Termín odovzdania: ${job.due}`)
       ),
         React.createElement(Button, { variant: 'outline', size: 'sm', onClick: moveStatus, disabled: !nextStatus || changingStatus }, changingStatus ? 'Mením stav…' : 'Posunúť stav', React.createElement(Icon, { name: 'arrowRight', size: 13 }))
     ),
@@ -154,6 +185,50 @@ function JobDetail({ jobId, onBack }) {
           )
         ),
 
+        editMode && React.createElement(Card, null,
+          React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Úprava práce')),
+          React.createElement(CardContent, null,
+            React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 } },
+              React.createElement(FormField, { label: 'Termín', type: 'date', value: editFields.due_date, onChange: e => setEdit('due_date', e.target.value) }),
+              React.createElement(FormField, {
+                label: 'Priorita',
+                type: 'select',
+                value: editFields.priority,
+                onChange: e => setEdit('priority', e.target.value),
+                options: [
+                  { value: 'low', label: 'Nízka' },
+                  { value: 'normal', label: 'Normálna' },
+                  { value: 'high', label: 'Vysoká' },
+                  { value: 'urgent', label: 'Urgent' },
+                ],
+              }),
+            ),
+            React.createElement(FormField, {
+              label: 'Technik',
+              type: 'select',
+              value: editFields.technician,
+              onChange: e => setEdit('technician', e.target.value),
+              options: [{ value: '', label: 'Nepridelený' }].concat((workspace.technicians || []).map((tech) => ({
+                value: String(tech.id),
+                label: `${tech.first} ${tech.last}`,
+              }))),
+            }),
+            React.createElement('div', { style: { marginTop: 12 } },
+              React.createElement(FormField, {
+                label: 'Poznámka / popis',
+                type: 'textarea',
+                rows: 4,
+                value: editFields.description,
+                onChange: e => setEdit('description', e.target.value),
+              })
+            ),
+            React.createElement('div', { style: { marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
+              React.createElement(Button, { variant: 'outline', onClick: () => setEditMode(false), disabled: savingEdit }, 'Zrušiť'),
+              React.createElement(Button, { onClick: saveEdit, disabled: savingEdit }, React.createElement(Icon, { name: 'check', size: 14 }), savingEdit ? 'Ukladám...' : 'Uložiť')
+            )
+          )
+        ),
+
         React.createElement(Card, null,
           React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Položky práce')),
           React.createElement(CardContent, null,
@@ -167,7 +242,7 @@ function JobDetail({ jobId, onBack }) {
                 ),
                 React.createElement('div', null,
                   React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1a2320' } }, it.name),
-                  React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 2 } }, 'Zub: ', it.tooth)
+                  React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 2 } }, it.scope ? `Oblasť: ${it.scope}` : `Zub: ${it.tooth}`)
                 ),
                 React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490', textAlign: 'right' } }, '1×'),
                 React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, color: '#1a2320', textAlign: 'right' } }, fmt(it.price))

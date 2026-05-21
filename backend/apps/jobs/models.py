@@ -99,6 +99,15 @@ class JobItem(models.Model):
         ("implant", "Implant"),
         ("temporary", "Temporary"),
     )
+    TOOTH_SCOPE_CHOICES = (
+        ("A", "All teeth"),
+        ("U", "Upper jaw"),
+        ("L", "Lower jaw"),
+        ("Q1", "Quadrant 1"),
+        ("Q2", "Quadrant 2"),
+        ("Q3", "Quadrant 3"),
+        ("Q4", "Quadrant 4"),
+    )
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
     price_list_code = models.CharField(max_length=50)
@@ -116,6 +125,12 @@ class JobItem(models.Model):
     material = models.CharField(max_length=100, blank=True, null=True)
     color = models.CharField(max_length=30, blank=True, null=True)
     bridge_span = models.CharField(max_length=50, blank=True, null=True)
+    tooth_scope = models.CharField(
+        max_length=2,
+        choices=TOOTH_SCOPE_CHOICES,
+        blank=True,
+        null=True,
+    )
     tooth_state = models.CharField(
         max_length=30,
         choices=TOOTH_STATE_CHOICES,

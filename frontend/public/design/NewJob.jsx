@@ -17,7 +17,7 @@ function NewJob({ open, onClose }) {
     patientLabel: '',
     patientAge: '',
     items: [
-      { code: 'KOR-ZIR', name: 'Korunka zirkónová', tooth: '14', qty: 1, price: 280.00 }
+      { code: 'KOR-ZIR', name: 'Korunka zirkónová', tooth: '14', tooth_scope: '', qty: 1, price: 280.00 }
     ]
   });
 
@@ -51,8 +51,10 @@ function NewJob({ open, onClose }) {
         description: data.note || data.items.map((it) => it.name).join(', '),
         items: data.items.map((it) => ({
           price_list_code: it.code,
-          tooth: it.tooth || null,
+          tooth: it.tooth_scope ? null : (it.tooth || null),
+          tooth_scope: it.tooth_scope || null,
           quantity: Number(it.qty) || 1,
+          procedure_category: it.cat || null,
         })),
       });
       setSaving(false);
@@ -100,6 +102,39 @@ function getNewJobPatientMeta(patient, data) {
   const name = [first, last].filter(Boolean).join(' ') || data.patientLabel || (data.patient ? `Pacient #${data.patient}` : 'Pacient nevybraný');
   const age = data.patientAge || patient?.age || patient?.age_years || raw?.age || raw?.age_years || '—';
   return { name, age: String(age || '—'), workId: 'nová práca' };
+}
+
+const DENTAL_SCOPE_LABELS = {
+  A: 'Celý chrup',
+  U: 'Horná čeľusť',
+  L: 'Dolná čeľusť',
+  Q1: 'Kvadrant 1',
+  Q2: 'Kvadrant 2',
+  Q3: 'Kvadrant 3',
+  Q4: 'Kvadrant 4',
+};
+
+function normalizeDentalScope(value) {
+  const raw = String(value || '').trim().toUpperCase();
+  return DENTAL_SCOPE_LABELS[raw] ? raw : '';
+}
+
+function isFdiTarget(value) {
+  return /^\d{2}(-\d{2})?$/.test(String(value || '').trim());
+}
+
+function procedureTargetLabel(item) {
+  const scope = normalizeDentalScope(item && (item.tooth_scope || item.scope));
+  if (scope) return scope;
+  return String((item && item.tooth) || '');
+}
+
+function procedureTargetText(item, notation) {
+  const scope = normalizeDentalScope(item && (item.tooth_scope || item.scope));
+  if (scope) return `${scope} · ${DENTAL_SCOPE_LABELS[scope]}`;
+  const tooth = item && item.tooth;
+  if (!tooth) return '—';
+  return String(tooth).includes('-') ? tooth : fdiLabel(Number(tooth), notation);
 }
 
 function LargeJobModal({ title, subtitle, meta, children, footer, onClose }) {
@@ -240,17 +275,26 @@ function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
   };
   const itemsByTooth = data.items.reduce((acc, item) => {
     const tooth = String(item.tooth || '');
-    if (!tooth) return acc;
+    if (!tooth || normalizeDentalScope(item.tooth_scope)) return acc;
     (acc[tooth] = acc[tooth] || []).push(item);
     return acc;
   }, {});
   const selectedItems = itemsByTooth[String(selectedTooth)] || [];
-  const addItem = (code = '', tooth = selectedTooth, qty = 1) => {
+  const addItem = (code = '', tooth = selectedTooth, qty = 1, toothScope = '') => {
     const normalizedCode = String(code || '').trim().toUpperCase();
     const picked = catalogByCode[normalizedCode] || catalog[0] || { code: normalizedCode, name: normalizedCode, price: 0, cat: 'tech' };
+    const scope = normalizeDentalScope(toothScope || tooth);
     setData(d => ({
       ...d,
-      items: [...d.items, { code: normalizedCode || picked.code || '', name: normalizedCode ? picked.name : '', tooth: String(tooth || ''), qty, price: normalizedCode ? picked.price : 0 }]
+      items: [...d.items, {
+        code: normalizedCode || picked.code || '',
+        name: normalizedCode ? picked.name : '',
+        tooth: scope ? '' : String(tooth || ''),
+        tooth_scope: scope,
+        qty,
+        price: normalizedCode ? picked.price : 0,
+        cat: picked.cat || 'tech',
+      }]
     }));
   };
   const removeItem = (i) => setData(d => ({ ...d, items: d.items.filter((_, idx) => idx !== i) }));
@@ -258,13 +302,15 @@ function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
   const runQuickAdd = () => {
     const parts = quick.trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return;
-    const maybeTooth = /^\d{2}$/.test(parts[0]) ? parts.shift() : selectedTooth;
+    const firstTarget = parts[0];
+    const scope = normalizeDentalScope(firstTarget);
+    const maybeTooth = scope || isFdiTarget(firstTarget) ? parts.shift() : selectedTooth;
     const code = (parts.shift() || catalog[0]?.code || '').toUpperCase();
     const found = findCatalogItem(code);
     if (!found) return;
     const qty = Number(parts.shift() || 1) || 1;
-    addItem(found.code, maybeTooth, qty);
-    setSelectedTooth(String(maybeTooth));
+    addItem(found.code, scope ? '' : maybeTooth, qty, scope);
+    if (!scope) setSelectedTooth(String(maybeTooth));
     setQuick('');
   };
   const openToothDetail = () => window.dispatchEvent(new CustomEvent('open-tooth-detail', {
@@ -293,7 +339,7 @@ function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
             value: quick,
             onChange: (event) => setQuick(event.target.value),
             onKeyDown: (event) => { if (event.key === 'Enter') runQuickAdd(); },
-            placeholder: 'Rýchle zadanie: 26 KOR-ZIR 1',
+            placeholder: 'Rýchle zadanie: 26 KOR-ZIR 1 alebo U KOR-ZIR 1',
             style: { width: 260, padding: '6px 10px 6px 28px', border: '1px solid #0d7c6b', borderRadius: 6, fontSize: 12, fontFamily: 'ui-monospace,monospace', outline: 'none', background: '#fff', color: '#1a2320' }
           }),
           React.createElement('span', { style: { position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#0d7c6b' } }, '↵')
@@ -505,9 +551,20 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
   const addDraft = () => {
     const found = pickCatalog(draft.code);
     if (!found) return;
-    addItem(found.code, draft.tooth || selectedTooth, Number(draft.qty) || 1);
-    setSelectedTooth(String(draft.tooth || selectedTooth));
+    const scope = normalizeDentalScope(draft.tooth);
+    addItem(found.code, scope ? '' : (draft.tooth || selectedTooth), Number(draft.qty) || 1, scope);
+    if (!scope) setSelectedTooth(String(draft.tooth || selectedTooth));
     setDraft({ tooth: String(draft.tooth || selectedTooth), code: '', qty: 1 });
+  };
+  const updateTarget = (rowIndex, value) => {
+    const scope = normalizeDentalScope(value);
+    if (scope) {
+      updateItem(rowIndex, 'tooth_scope', scope);
+      updateItem(rowIndex, 'tooth', '');
+      return;
+    }
+    updateItem(rowIndex, 'tooth_scope', '');
+    updateItem(rowIndex, 'tooth', value);
   };
   return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 520 } },
     React.createElement('div', { style: { padding: '10px 14px', background: '#fbfaf6', borderBottom: '1px solid #ece7dc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 } },
@@ -517,9 +574,9 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
       ),
       React.createElement('button', { onClick: () => setDraft({ tooth: String(selectedTooth || ''), code: '', qty: 1 }), style: tableBtnStyle('outline') }, '+ F3 Nový')
     ),
-    React.createElement('div', { style: tableHeaderStyle },
+      React.createElement('div', { style: tableHeaderStyle },
       React.createElement('span', null),
-      React.createElement('span', null, 'Zub'),
+      React.createElement('span', null, 'Zub/oblasť'),
       React.createElement('span', null, 'Kód'),
       React.createElement('span', null, 'Popis'),
       React.createElement('span', { style: { textAlign: 'center' } }, 'Ks'),
@@ -531,14 +588,15 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
       ...data.items.map((it, i) => {
         const known = catalogByCode[it.code] || {};
         const cat = (window.PROC_CATS && window.PROC_CATS[it.cat || known.cat || 'tech']) || { accent: '#8a9490', bg: '#f0ede5', fg: '#5a6b66' };
-        const selected = String(it.tooth || '') === String(selectedTooth);
+        const target = procedureTargetLabel(it);
+        const selected = String(it.tooth || '') === String(selectedTooth) && !it.tooth_scope;
         return React.createElement('div', {
           key: i,
-          onClick: () => it.tooth && setSelectedTooth(String(it.tooth)),
+          onClick: () => it.tooth && !it.tooth_scope && setSelectedTooth(String(it.tooth)),
           style: { ...tableRowStyle, background: selected ? '#fbf9f1' : '#fff', cursor: 'pointer' }
         },
           React.createElement('div', { style: { width: 14, height: 24, borderRadius: 2, background: cat.accent } }),
-          React.createElement('input', { value: it.tooth, onChange: e => updateItem(i, 'tooth', e.target.value), style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
+          React.createElement('input', { value: target, onChange: e => updateTarget(i, e.target.value), title: 'FDI zub alebo A/U/L/Q1-Q4', style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
           React.createElement(ProcedureCodeDropdown, {
             catalog,
             value: it.code || '',
@@ -559,7 +617,7 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
       }),
       React.createElement('div', { style: { ...tableRowStyle, borderTop: '2px dashed #e4ded4', background: '#fbfaf6', color: '#b0bdb9' } },
         React.createElement('div', null),
-        React.createElement('input', { value: draft.tooth, onChange: e => setDraft({ ...draft, tooth: e.target.value }), placeholder: '__', style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
+        React.createElement('input', { value: draft.tooth, onChange: e => setDraft({ ...draft, tooth: e.target.value.toUpperCase() }), placeholder: '26/U/Q1', title: 'FDI zub alebo A/U/L/Q1-Q4', style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
         React.createElement(ProcedureCodeDropdown, {
           catalog,
           value: draft.code,
