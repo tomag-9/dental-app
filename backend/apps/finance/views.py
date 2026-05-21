@@ -1,7 +1,8 @@
 import calendar
+import csv
 from datetime import date
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from django.db import transaction
 from django.db.models import Sum
@@ -23,7 +24,7 @@ from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
-from .models import Invoice, InvoiceItem, PriceList, Subscription
+from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList, Subscription
 from .serializers import (
     InvoiceCreateSerializer,
     InvoiceSerializer,
@@ -74,10 +75,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _invoice_number(self, lab):
-        count = Invoice.objects.filter(lab=lab).count() + 1
-        stamp = timezone.now().strftime("%Y%m%d%H%M%S")
+        seq, _ = InvoiceSequence.objects.select_for_update().get_or_create(lab=lab)
+        seq.last_number += 1
+        seq.save(update_fields=["last_number"])
         prefix = (getattr(lab, "invoice_prefix", None) or "INV").strip() or "INV"
-        return f"{prefix}-{stamp}-{count:04d}"
+        year = timezone.now().year
+        return f"{prefix}-{year}-{seq.last_number:04d}"
 
     def _sync_jobs_for_invoice_status(self, invoice, new_status):
         job_ids = (
@@ -316,6 +319,37 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         self._sync_jobs_for_invoice_status(invoice, "cancelled")
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=["get"], url_path="export")
+    def export(self, request):
+        qs = self.get_queryset()
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        qs = qs.select_related("clinic", "lab").order_by("-created_at")
+
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow([
+            "number", "status", "clinic", "lab",
+            "total_amount", "due_date", "issued_at", "paid_at", "created_at",
+        ])
+        for inv in qs:
+            writer.writerow([
+                inv.number,
+                inv.status,
+                inv.clinic.name,
+                inv.lab.name,
+                str(inv.total_amount),
+                inv.due_date or "",
+                inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
+                inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
+                inv.created_at.strftime("%Y-%m-%d"),
+            ])
+
+        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="invoices.csv"'
+        return response
+
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
@@ -491,3 +525,53 @@ class FinanceStatsView(APIView):
                 "monthly_revenue": monthly_revenue,
             }
         )
+
+
+class ProcedureCatalogView(APIView):
+    """Returns PriceList items grouped by category for the current lab."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if is_superadmin(user):
+            qs = PriceList.objects.all()
+        elif getattr(user, "lab_id", None):
+            qs = PriceList.objects.filter(lab_id=user.lab_id)
+        else:
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .models import PROCEDURE_CATEGORY_CHOICES
+
+        category_map = {key: label for key, label in PROCEDURE_CATEGORY_CHOICES}
+        groups = {}
+        uncategorized = []
+
+        for item in qs.order_by("category", "code"):
+            serialized = {
+                "id": item.id,
+                "code": item.code,
+                "description": item.description,
+                "price": str(item.price),
+                "category": item.category,
+            }
+            if item.category and item.category in category_map:
+                groups.setdefault(item.category, {
+                    "category": item.category,
+                    "label": category_map[item.category],
+                    "items": [],
+                })["items"].append(serialized)
+            else:
+                uncategorized.append(serialized)
+
+        result = list(groups.values())
+        if uncategorized:
+            result.append({
+                "category": None,
+                "label": "Uncategorized",
+                "items": uncategorized,
+            })
+
+        return Response(result)

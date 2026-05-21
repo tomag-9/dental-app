@@ -84,6 +84,16 @@ class Job(models.Model):
 
 
 class JobItem(models.Model):
+    PROCEDURE_CATEGORY_CHOICES = (
+        ("crown", "Crown"),
+        ("bridge", "Bridge"),
+        ("denture", "Denture"),
+        ("implant", "Implant"),
+        ("orthodontic", "Orthodontic"),
+        ("repair", "Repair"),
+        ("other", "Other"),
+    )
+
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
     price_list_code = models.CharField(max_length=50)
     description = models.CharField(max_length=255)
@@ -91,6 +101,12 @@ class JobItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     total = models.DecimalField(max_digits=10, decimal_places=2)
+    procedure_category = models.CharField(
+        max_length=30,
+        choices=PROCEDURE_CATEGORY_CHOICES,
+        blank=True,
+        null=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):

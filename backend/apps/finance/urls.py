@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     FinanceStatsView,
     InvoiceViewSet,
+    ProcedureCatalogView,
     PriceListViewSet,
     SubscriptionViewSet,
 )
@@ -16,4 +17,5 @@ router.register(r"subscriptions", SubscriptionViewSet)
 urlpatterns = [
     path("", include(router.urls)),
     path("stats/", FinanceStatsView.as_view(), name="finance-stats"),
+    path("procedure-catalog/", ProcedureCatalogView.as_view(), name="procedure-catalog"),
 ]

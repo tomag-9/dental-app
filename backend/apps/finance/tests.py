@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
-from apps.finance.models import Invoice, PriceList, Subscription
+from apps.finance.models import Invoice, InvoiceSequence, PriceList, Subscription
 from apps.jobs.models import Job, Technician
 
 
@@ -800,3 +800,188 @@ class FinanceStatsViewTests(APITestCase):
                 },
             ],
         )
+
+
+class InvoiceSequenceTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Seq Lab", invoice_prefix="FAK")
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Clinic")
+        patient = Patient.objects.create(lab=self.lab, first_name="A", last_name="B")
+        self.job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=self.clinic,
+            status="completed",
+        )
+        self.admin = User.objects.create_user(
+            username="seq_admin",
+            email="seq_admin@example.com",
+            password="pass",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def _create_invoice(self):
+        self.client.force_authenticate(user=self.admin)
+        return self.client.post(
+            "/api/invoices/",
+            {"clinic_id": self.clinic.id, "job_ids": [self.job.id]},
+            format="json",
+        )
+
+    def test_invoice_number_uses_prefix_and_year(self):
+        from django.utils import timezone
+
+        resp = self._create_invoice()
+        self.assertEqual(resp.status_code, 201)
+        year = timezone.now().year
+        self.assertTrue(
+            resp.data["number"].startswith(f"FAK-{year}-"),
+            f"Expected FAK-{year}-NNNN, got {resp.data['number']}",
+        )
+
+    def test_sequential_numbers_increment(self):
+        resp1 = self._create_invoice()
+        self.job2 = Job.objects.create(
+            lab=self.lab,
+            patient=Patient.objects.get(lab=self.lab),
+            clinic=self.clinic,
+            status="completed",
+        )
+        self.job = self.job2
+        resp2 = self._create_invoice()
+        num1 = int(resp1.data["number"].split("-")[-1])
+        num2 = int(resp2.data["number"].split("-")[-1])
+        self.assertEqual(num2, num1 + 1)
+
+    def test_sequence_row_created_per_lab(self):
+        self._create_invoice()
+        self.assertTrue(InvoiceSequence.objects.filter(lab=self.lab).exists())
+        seq = InvoiceSequence.objects.get(lab=self.lab)
+        self.assertEqual(seq.last_number, 1)
+
+
+class ProcedureCatalogTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Catalog Lab")
+        self.admin = User.objects.create_user(
+            username="cat_admin",
+            email="cat_admin@example.com",
+            password="pass",
+            role="admin",
+            lab=self.lab,
+        )
+        self.other_lab = Lab.objects.create(name="Other Lab")
+        self.other_user = User.objects.create_user(
+            username="other_u",
+            email="other_u@example.com",
+            password="pass",
+            role="user",
+            lab=self.other_lab,
+        )
+        PriceList.objects.create(
+            lab=self.lab, code="C001", description="Full crown", price="150.00",
+            category="crown"
+        )
+        PriceList.objects.create(
+            lab=self.lab, code="B001", description="3-unit bridge", price="400.00",
+            category="bridge"
+        )
+        PriceList.objects.create(
+            lab=self.lab, code="X001", description="Misc", price="50.00",
+            category=None
+        )
+        PriceList.objects.create(
+            lab=self.other_lab, code="C001", description="Other crown", price="200.00",
+            category="crown"
+        )
+
+    def test_catalog_returns_own_lab_items_grouped(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/procedure-catalog/")
+        self.assertEqual(resp.status_code, 200)
+        categories = {g["category"] for g in resp.data}
+        self.assertIn("crown", categories)
+        self.assertIn("bridge", categories)
+        crown_group = next(g for g in resp.data if g["category"] == "crown")
+        self.assertEqual(len(crown_group["items"]), 1)
+        self.assertEqual(crown_group["items"][0]["code"], "C001")
+
+    def test_catalog_excludes_other_lab_items(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/procedure-catalog/")
+        all_ids = [i["id"] for g in resp.data for i in g["items"]]
+        other_ids = list(
+            PriceList.objects.filter(lab=self.other_lab).values_list("id", flat=True)
+        )
+        for oid in other_ids:
+            self.assertNotIn(oid, all_ids)
+
+    def test_uncategorized_items_grouped_separately(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/procedure-catalog/")
+        uncat_group = next((g for g in resp.data if g["category"] is None), None)
+        self.assertIsNotNone(uncat_group)
+        self.assertEqual(uncat_group["label"], "Uncategorized")
+        self.assertEqual(len(uncat_group["items"]), 1)
+
+    def test_unauthenticated_returns_401(self):
+        resp = self.client.get("/api/finance/procedure-catalog/")
+        self.assertEqual(resp.status_code, 401)
+
+
+class InvoiceCSVExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Export Lab")
+        self.other_lab = Lab.objects.create(name="Other Lab")
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Klinika A")
+        self.other_clinic = Clinic.objects.create(lab=self.other_lab, name="Other Clinic")
+        self.admin = User.objects.create_user(
+            username="export_admin",
+            email="export_admin@example.com",
+            password="pass",
+            role="admin",
+            lab=self.lab,
+        )
+        from django.utils import timezone
+
+        now = timezone.now()
+        Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic, number="EXP-001",
+            status="paid", total_amount="100.00", issued_at=now, paid_at=now,
+        )
+        Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic, number="EXP-002",
+            status="issued", total_amount="200.00", issued_at=now,
+        )
+        Invoice.objects.create(
+            lab=self.other_lab, clinic=self.other_clinic, number="OTHER-001",
+            status="paid", total_amount="999.00",
+        )
+
+    def test_export_returns_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv")
+        content = resp.content.decode("utf-8")
+        self.assertIn("number", content)
+        self.assertIn("EXP-001", content)
+        self.assertIn("EXP-002", content)
+
+    def test_export_excludes_other_lab(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/export/")
+        content = resp.content.decode("utf-8")
+        self.assertNotIn("OTHER-001", content)
+
+    def test_export_status_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/export/?status=paid")
+        content = resp.content.decode("utf-8")
+        self.assertIn("EXP-001", content)
+        self.assertNotIn("EXP-002", content)
+
+    def test_export_unauthenticated_returns_401(self):
+        resp = self.client.get("/api/finance/invoices/export/")
+        self.assertEqual(resp.status_code, 401)

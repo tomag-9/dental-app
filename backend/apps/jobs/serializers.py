@@ -65,6 +65,7 @@ class JobItemSerializer(serializers.ModelSerializer):
             "quantity",
             "unit_price",
             "total",
+            "procedure_category",
             "created_at",
         )
         read_only_fields = ("id", "description", "unit_price", "total", "created_at")
@@ -259,6 +260,7 @@ class JobSerializer(serializers.ModelSerializer):
                 quantity=quantity,
                 unit_price=price_item.price,
                 total=Decimal("0.00"),
+                procedure_category=entry.get("procedure_category") or None,
             )
             job_item.save()
             created_items.append(job_item)

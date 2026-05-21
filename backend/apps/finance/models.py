@@ -5,6 +5,17 @@ from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
 
+PROCEDURE_CATEGORY_CHOICES = (
+    ("crown", "Crown"),
+    ("bridge", "Bridge"),
+    ("denture", "Denture"),
+    ("implant", "Implant"),
+    ("orthodontic", "Orthodontic"),
+    ("repair", "Repair"),
+    ("other", "Other"),
+)
+
+
 class PriceList(models.Model):
     lab = models.ForeignKey(
         Lab, on_delete=models.CASCADE, related_name="price_list_items"
@@ -12,6 +23,12 @@ class PriceList(models.Model):
     code = models.CharField(max_length=50, null=False)
     description = models.CharField(max_length=255, null=False)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
+    category = models.CharField(
+        max_length=30,
+        choices=PROCEDURE_CATEGORY_CHOICES,
+        blank=True,
+        null=True,
+    )
     valid_from = models.DateField(null=True, blank=True)
     valid_to = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -70,6 +87,16 @@ class InvoiceItem(models.Model):
     def save(self, *args, **kwargs):
         self.line_total = self.quantity * self.unit_price
         super().save(*args, **kwargs)
+
+
+class InvoiceSequence(models.Model):
+    lab = models.OneToOneField(
+        Lab, on_delete=models.CASCADE, related_name="invoice_sequence"
+    )
+    last_number = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.lab_id}: {self.last_number}"
 
 
 class Subscription(models.Model):
