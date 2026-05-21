@@ -14,6 +14,7 @@ function NewJob({ open, onClose }) {
     due: '',
     priority: 'normal',
     note: '',
+    toothColor: '',
     patientLabel: '',
     patientAge: '',
     items: [
@@ -34,7 +35,7 @@ function NewJob({ open, onClose }) {
   const selectedPatient = (workspace.patients || []).find((patient) => String(patient.id) === String(data.patient));
   const patientMeta = getNewJobPatientMeta(selectedPatient, data);
 
-  const reset = () => { setStep(0); setData(d => ({ ...d, patient: '', patientLabel: '', patientAge: '', clinic: '', doctor: '', technician: '', due: '', note: '' })); };
+  const reset = () => { setStep(0); setData(d => ({ ...d, patient: '', patientLabel: '', patientAge: '', clinic: '', doctor: '', technician: '', due: '', note: '', toothColor: '' })); };
   const canSubmit = data.patient && data.clinic && data.items.length && data.items.every((it) => it.code && Number(it.qty) > 0);
   const submit = async () => {
     if (!canSubmit) { setError('Vyberte pacienta, kliniku a aspoň jednu položku z cenníka.'); return; }
@@ -48,6 +49,7 @@ function NewJob({ open, onClose }) {
         start_date: data.received || null,
         due_date: data.due || null,
         priority: data.priority,
+        tooth_color: data.toothColor || null,
         description: data.note || data.items.map((it) => it.name).join(', '),
         items: data.items.map((it) => ({
           price_list_code: it.code,
@@ -99,9 +101,9 @@ function getNewJobPatientMeta(patient, data) {
   const raw = patient && (patient.raw || patient);
   const first = patient && (patient.first || patient.first_name || raw?.first_name || raw?.first);
   const last = patient && (patient.last || patient.last_name || raw?.last_name || raw?.last);
-  const name = [first, last].filter(Boolean).join(' ') || data.patientLabel || (data.patient ? `Pacient #${data.patient}` : 'Pacient nevybraný');
-  const age = data.patientAge || patient?.age || patient?.age_years || raw?.age || raw?.age_years || '—';
-  return { name, age: String(age || '—'), workId: 'nová práca' };
+  const name = [first, last].filter(Boolean).join(' ') || data.patientLabel || 'Pacient nevybraný';
+  const age = data.patientAge || patient?.age || patient?.age_years || raw?.age || raw?.age_years || '';
+  return { name, age: String(age || ''), workId: 'nová práca' };
 }
 
 const DENTAL_SCOPE_LABELS = {
@@ -156,7 +158,7 @@ function LargeJobModal({ title, subtitle, meta, children, footer, onClose }) {
             React.createElement('span', null, subtitle),
             meta && React.createElement('span', { style: { color: '#c8c0b4' } }, '·'),
             meta && React.createElement('strong', { style: { color: '#1a2320', fontWeight: 800 } }, meta.name),
-            meta && React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 11 } }, `· ${meta.age === '—' ? 'vek nezadaný' : `${meta.age} r.`}`),
+            meta && meta.age && React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 11 } }, `· ${meta.age} r.`),
             meta && React.createElement('span', null, '· Práca'),
             meta && React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', color: '#0d7c6b', fontWeight: 800 } }, meta.workId)
           )
@@ -199,8 +201,11 @@ function StepPatient({ data, set, setData, workspace }) {
     React.createElement(FormField, {
       label: 'Pacient', required: true, value: data.patient, onChange: e => {
         const patient = patients.find((p) => String(p.id) === String(e.target.value));
-        const meta = getNewJobPatientMeta(patient, { patient: e.target.value, patientLabel: '' });
-        setData((current) => ({ ...current, patient: e.target.value, patientLabel: meta.name, patientAge: meta.age === '—' ? '' : meta.age }));
+        const fallbackLabel = e.target.selectedOptions && e.target.selectedOptions[0]
+          ? e.target.selectedOptions[0].textContent.replace(/^\+\s*/, '')
+          : '';
+        const meta = getNewJobPatientMeta(patient, { patient: e.target.value, patientLabel: fallbackLabel });
+        setData((current) => ({ ...current, patient: e.target.value, patientLabel: meta.name, patientAge: meta.age || '' }));
       },
       type: 'select',
       options: patients.length ? patients.map((p) => ({ value: String(p.id), label: `${p.first} ${p.last}` })) : [
@@ -498,19 +503,37 @@ function JobTile({ fdi, notation, selectedTooth, setSelectedTooth, items }) {
     ),
     React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2, padding: '0 2px' } },
       distinctCats.length === 0 && React.createElement('div', { style: { width: 4, height: 4, borderRadius: '50%', background: '#e4ded4' } }),
-      ...distinctCats.map((cat) => {
+      ...distinctCats.slice(0, 3).map((cat) => {
         const colors = (window.PROC_CATS && window.PROC_CATS[cat]) || { accent: '#8a9490' };
-        return React.createElement('div', { key: cat, style: { width: 6, height: 6, borderRadius: '50%', background: colors.accent } });
-      })
+        const itemForCat = items.find((item) => (item.cat || (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]?.cat) || 'tech') === cat);
+        return React.createElement('div', { key: cat, style: { width: 16, height: 16, borderRadius: 4, background: colors.accent, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } },
+          window.ProcGlyph && itemForCat ? React.createElement(ProcGlyph, { code: itemForCat.code, size: 10 }) : null
+        );
+      }),
+      distinctCats.length > 3 && React.createElement('span', { style: { fontSize: 9, fontWeight: 800, color: '#5a6b66' } }, `+${distinctCats.length - 3}`)
     )
   );
 }
 
 function JobDescriptionCard({ data, setData }) {
+  const colorOptions = ['A1', 'A2', 'A3', 'A3.5', 'A4', 'B1', 'B2', 'B3', 'C1', 'C2', 'D2', 'D3', 'BL1', 'BL2', 'BL3'];
   return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 190 } },
     React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 } },
       React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 800, color: '#1a2320' } }, 'Popis práce'),
       React.createElement('div', { style: { fontSize: 10.5, color: '#8a9490' } }, 'Voľný text pre technika')
+    ),
+    React.createElement('div', null,
+      React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 800, color: '#5a6b66', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' } }, 'Farba'),
+      React.createElement('input', {
+        value: data.toothColor || '',
+        list: 'molaris-tooth-colors',
+        onChange: (event) => setData((current) => ({ ...current, toothColor: event.target.value })),
+        placeholder: 'Vyberte alebo napíšte vlastnú farbu',
+        style: { width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid #e4ded4', borderRadius: 8, fontFamily: 'Manrope,sans-serif', fontSize: 12.5, background: '#fbfaf6', outline: 'none', color: '#1a2320' }
+      }),
+      React.createElement('datalist', { id: 'molaris-tooth-colors' },
+        ...colorOptions.map((color) => React.createElement('option', { key: color, value: color }))
+      )
     ),
     React.createElement('textarea', {
       value: data.note,
@@ -551,6 +574,9 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
   const addDraft = () => {
     const found = pickCatalog(draft.code);
     if (!found) return;
+    addDraftItem(found);
+  };
+  const addDraftItem = (found) => {
     const scope = normalizeDentalScope(draft.tooth);
     addItem(found.code, scope ? '' : (draft.tooth || selectedTooth), Number(draft.qty) || 1, scope);
     if (!scope) setSelectedTooth(String(draft.tooth || selectedTooth));
@@ -621,12 +647,20 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
         React.createElement(ProcedureCodeDropdown, {
           catalog,
           value: draft.code,
-          onInput: (value) => setDraft({ ...draft, code: value.toUpperCase() }),
-          onPick: (item) => setDraft({ ...draft, code: item.code }),
+          onInput: (value) => {
+            const normalized = value.toUpperCase();
+            const exact = catalogByCode[normalized];
+            if (exact) {
+              addDraftItem(exact);
+              return;
+            }
+            setDraft({ ...draft, code: normalized });
+          },
+          onPick: (item) => addDraftItem(item),
           onEnter: addDraft,
           placeholder: 'Kód...',
         }),
-        React.createElement('input', { value: pickCatalog(draft.code)?.name || '', readOnly: true, placeholder: 'začnite písať pre návrhy...', style: cellInputStyle }),
+        React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', minHeight: 26, color: pickCatalog(draft.code) ? '#1a2320' : '#8a9490' } }, pickCatalog(draft.code)?.name || 'Vyberte kód z väčšieho zoznamu'),
         React.createElement('input', { type: 'number', min: 1, value: draft.qty, onChange: e => setDraft({ ...draft, qty: e.target.value }), onKeyDown: e => { if (e.key === 'Enter') addDraft(); }, style: { ...cellInputStyle, textAlign: 'center' } }),
         React.createElement('input', { value: pickCatalog(draft.code)?.price || '', readOnly: true, placeholder: '0,00', style: { ...cellInputStyle, textAlign: 'right' } }),
         React.createElement('input', { value: pickCatalog(draft.code) ? (Number(pickCatalog(draft.code).price || 0) * (Number(draft.qty) || 1)).toFixed(2) : '', readOnly: true, placeholder: '0,00', style: { ...cellInputStyle, textAlign: 'right' } }),
@@ -672,7 +706,7 @@ function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, place
     open && React.createElement('div', {
       style: {
         position: 'absolute', zIndex: 50, top: 'calc(100% + 4px)', left: 0, right: 0,
-        maxHeight: 260, overflowY: 'auto', background: '#fff', border: '1px solid #d8d1c5',
+        minWidth: 360, maxHeight: 340, overflowY: 'auto', background: '#fff', border: '1px solid #d8d1c5',
         borderRadius: 7, boxShadow: '0 12px 28px rgba(26,35,32,.16)', padding: 4
       }
     },
@@ -686,13 +720,13 @@ function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, place
               onMouseDown: (event) => { event.preventDefault(); onPick(item); setOpen(false); },
               style: {
                 width: '100%', border: 'none', background: item.code === value ? '#eefbf8' : '#fff',
-                borderRadius: 5, padding: '7px 8px', display: 'grid', gridTemplateColumns: '74px 1fr auto',
+                borderRadius: 6, padding: '10px 10px', display: 'grid', gridTemplateColumns: '92px minmax(180px,1fr) auto',
                 gap: 8, alignItems: 'center', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope,sans-serif'
               }
             },
-              React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 11, fontWeight: 800, color: '#0d7c6b' } }, item.code),
-              React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11.5, color: '#1a2320' } }, item.name),
-              React.createElement('span', { style: { padding: '2px 6px', borderRadius: 999, background: cat.bg, color: cat.fg, fontSize: 10.5, fontWeight: 800 } }, `${Number(item.price || 0).toFixed(0)} €`)
+              React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 12.5, fontWeight: 800, color: '#0d7c6b' } }, item.code),
+              React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, item.name),
+              React.createElement('span', { style: { padding: '3px 8px', borderRadius: 999, background: cat.bg, color: cat.fg, fontSize: 11.5, fontWeight: 800 } }, `${Number(item.price || 0).toFixed(0)} €`)
             );
           })
     )
@@ -710,7 +744,7 @@ const quadrantLabelStyle = {
   padding: '0 2px 4px'
 };
 
-const tableColumns = '28px 60px 92px minmax(160px,1fr) 50px 92px 92px 28px';
+const tableColumns = '28px 76px 128px minmax(190px,1fr) 50px 92px 92px 28px';
 
 const tableHeaderStyle = {
   display: 'grid',

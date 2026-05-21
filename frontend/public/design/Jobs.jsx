@@ -24,6 +24,12 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     let cancelled = false;
     const timer = window.setTimeout(() => {
       if (!window.MolarisAPI.fetchJobs) return;
+      if (window.MolarisAPI.isAuthenticated && !window.MolarisAPI.isAuthenticated()) {
+        setRemoteJobs(null);
+        setError('');
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError('');
       window.MolarisAPI.fetchJobs({ search, status: tab })

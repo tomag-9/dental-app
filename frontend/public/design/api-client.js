@@ -202,6 +202,10 @@
     try { return JSON.parse(localStorage.getItem(userKey) || 'null'); } catch { return null; }
   }
 
+  function isAuthenticated() {
+    return !!localStorage.getItem(tokenKey);
+  }
+
   const fmtDate = (value) => value ? new Date(value).toLocaleDateString('sk-SK') : '—';
   const number = (value) => Number(value || 0);
 
@@ -437,6 +441,7 @@
     downloadInvoicePdf,
     logout,
     savedUser,
+    isAuthenticated,
     loadWorkspace,
     useWorkspace,
   };
