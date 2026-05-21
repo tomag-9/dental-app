@@ -36,6 +36,12 @@ FDI_LOWER = [
 ]
 FDI_ALL = set(FDI_UPPER + FDI_LOWER)
 
+CANONICAL_FDI_STORAGE_NOTE = (
+    "Store tooth identifiers as canonical FDI strings: a single tooth like "
+    "'26' or a same-arch range like '45-47'. Palmer/Universal labels should "
+    "be converted at the UI boundary before reaching the API."
+)
+
 
 def expand_fdi_range(value):
     raw = str(value or "").strip().replace("–", "-").replace("—", "-")
@@ -63,3 +69,8 @@ def validate_tooth_range(value):
     if not value:
         return True
     return bool(expand_fdi_range(value))
+
+
+def validate_bridge_span(value):
+    teeth = expand_fdi_range(value)
+    return len(teeth) >= 2

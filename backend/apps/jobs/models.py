@@ -93,6 +93,12 @@ class JobItem(models.Model):
         ("repair", "Repair"),
         ("other", "Other"),
     )
+    TOOTH_STATE_CHOICES = (
+        ("planned", "Planned"),
+        ("missing", "Missing"),
+        ("implant", "Implant"),
+        ("temporary", "Temporary"),
+    )
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
     price_list_code = models.CharField(max_length=50)
@@ -106,6 +112,14 @@ class JobItem(models.Model):
         choices=PROCEDURE_CATEGORY_CHOICES,
         blank=True,
         null=True,
+    )
+    material = models.CharField(max_length=100, blank=True, null=True)
+    color = models.CharField(max_length=30, blank=True, null=True)
+    bridge_span = models.CharField(max_length=50, blank=True, null=True)
+    tooth_state = models.CharField(
+        max_length=30,
+        choices=TOOTH_STATE_CHOICES,
+        default="planned",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

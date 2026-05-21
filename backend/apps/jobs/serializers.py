@@ -8,7 +8,7 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
-from .dental import validate_tooth_range
+from .dental import expand_fdi_range, validate_bridge_span, validate_tooth_range
 from .models import CalendarEvent, Job, JobItem, JobTimelineEvent, Technician, Vacation
 
 
@@ -66,6 +66,10 @@ class JobItemSerializer(serializers.ModelSerializer):
             "unit_price",
             "total",
             "procedure_category",
+            "material",
+            "color",
+            "bridge_span",
+            "tooth_state",
             "created_at",
         )
         read_only_fields = ("id", "description", "unit_price", "total", "created_at")
@@ -76,6 +80,33 @@ class JobItemSerializer(serializers.ModelSerializer):
                 "Use canonical FDI tooth notation, for example 26 or 45-47."
             )
         return value
+
+    def validate_bridge_span(self, value):
+        if value and not validate_bridge_span(value):
+            raise serializers.ValidationError(
+                "Bridge span must be a same-arch FDI range covering at least two teeth."
+            )
+        return value
+
+    def validate(self, data):
+        procedure_category = data.get("procedure_category")
+        bridge_span = data.get("bridge_span")
+        tooth = data.get("tooth")
+
+        if procedure_category == "bridge" and not bridge_span:
+            raise serializers.ValidationError(
+                {"bridge_span": "Bridge items require a bridge span."}
+            )
+
+        if bridge_span and tooth:
+            bridge_teeth = set(expand_fdi_range(bridge_span))
+            item_teeth = set(expand_fdi_range(tooth))
+            if item_teeth and not item_teeth.issubset(bridge_teeth):
+                raise serializers.ValidationError(
+                    {"tooth": "Tooth must be within the bridge span."}
+                )
+
+        return data
 
 
 class JobTimelineEventSerializer(serializers.ModelSerializer):
@@ -261,6 +292,10 @@ class JobSerializer(serializers.ModelSerializer):
                 unit_price=price_item.price,
                 total=Decimal("0.00"),
                 procedure_category=entry.get("procedure_category") or None,
+                material=entry.get("material") or None,
+                color=entry.get("color") or None,
+                bridge_span=entry.get("bridge_span") or None,
+                tooth_state=entry.get("tooth_state") or "planned",
             )
             job_item.save()
             created_items.append(job_item)

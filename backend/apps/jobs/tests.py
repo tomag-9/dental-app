@@ -6,7 +6,12 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import PriceList
-from apps.jobs.dental import expand_fdi_range, validate_tooth_range
+from apps.jobs.dental import (
+    CANONICAL_FDI_STORAGE_NOTE,
+    expand_fdi_range,
+    validate_bridge_span,
+    validate_tooth_range,
+)
 from apps.jobs.models import (
     CalendarEvent,
     Job,
@@ -27,6 +32,15 @@ class DentalNotationTests(APITestCase):
         self.assertEqual(expand_fdi_range("99"), [])
         self.assertEqual(expand_fdi_range("18-48"), [])
         self.assertFalse(validate_tooth_range("31-11"))
+
+    def test_bridge_span_requires_at_least_two_same_arch_teeth(self):
+        self.assertTrue(validate_bridge_span("45-47"))
+        self.assertFalse(validate_bridge_span("45"))
+        self.assertFalse(validate_bridge_span("18-48"))
+
+    def test_canonical_fdi_storage_note_documents_api_contract(self):
+        self.assertIn("canonical FDI", CANONICAL_FDI_STORAGE_NOTE)
+        self.assertIn("45-47", CANONICAL_FDI_STORAGE_NOTE)
 
 
 class VacationApiTests(APITestCase):
@@ -702,6 +716,75 @@ class JobValidationApiTests(APITestCase):
         item = JobItem.objects.get(job_id=response.data["id"])
         self.assertEqual(item.tooth, "45-47")
         self.assertEqual(item.quantity, 3)
+
+    def test_create_job_with_item_metadata_snapshots_production_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "BRIDGE",
+                    "tooth": "46",
+                    "quantity": 1,
+                    "procedure_category": "bridge",
+                    "material": "zircon",
+                    "color": "A2",
+                    "bridge_span": "45-47",
+                    "tooth_state": "temporary",
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("job-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertEqual(item.procedure_category, "bridge")
+        self.assertEqual(item.material, "zircon")
+        self.assertEqual(item.color, "A2")
+        self.assertEqual(item.bridge_span, "45-47")
+        self.assertEqual(item.tooth_state, "temporary")
+        self.assertEqual(response.data["items"][0]["bridge_span"], "45-47")
+
+    def test_bridge_item_requires_valid_bridge_span(self):
+        self.client.force_authenticate(user=self.admin_a)
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "BRIDGE",
+                    "tooth": "46",
+                    "procedure_category": "bridge",
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("job-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("bridge_span", str(response.data))
+
+    def test_bridge_span_must_cover_item_tooth(self):
+        self.client.force_authenticate(user=self.admin_a)
+        payload = {
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "items": [
+                {
+                    "price_list_code": "BRIDGE",
+                    "tooth": "44",
+                    "procedure_category": "bridge",
+                    "bridge_span": "45-47",
+                }
+            ],
+        }
+
+        response = self.client.post(reverse("job-list"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("within the bridge span", str(response.data))
 
     def test_transition_status_validates_flow_and_records_timeline(self):
         """Status changes must use the transition endpoint and write audit events."""
