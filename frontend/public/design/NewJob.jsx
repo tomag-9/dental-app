@@ -496,21 +496,16 @@ function JobTile({ fdi, notation, selectedTooth, setSelectedTooth, items }) {
     }
   },
     React.createElement('div', { style: { padding: '4px 4px 0', fontFamily: 'ui-monospace,monospace', fontSize: 12, fontWeight: 800, color: selected ? '#0d7c6b' : '#1a2320', textAlign: 'center', lineHeight: 1.1 } }, fdiLabel(fdi, notation)),
-    React.createElement('div', { style: { minHeight: 15, display: 'flex', justifyContent: 'center', alignItems: 'center' } },
-      items.length > 0
-        ? React.createElement('span', { style: { minWidth: 16, height: 15, padding: '0 5px', borderRadius: 8, background: '#1a2320', color: '#fff', fontSize: 9, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 } }, items.length)
-        : React.createElement('span', { style: { width: 4, height: 4, borderRadius: '50%', background: 'transparent' } })
-    ),
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2, padding: '0 2px' } },
+    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2, padding: '1px 2px' } },
       distinctCats.length === 0 && React.createElement('div', { style: { width: 4, height: 4, borderRadius: '50%', background: '#e4ded4' } }),
-      ...distinctCats.slice(0, 3).map((cat) => {
+      ...distinctCats.slice(0, 2).map((cat) => {
         const colors = (window.PROC_CATS && window.PROC_CATS[cat]) || { accent: '#8a9490' };
         const itemForCat = items.find((item) => (item.cat || (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]?.cat) || 'tech') === cat);
         return React.createElement('div', { key: cat, style: { width: 16, height: 16, borderRadius: 4, background: colors.accent, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } },
           window.ProcGlyph && itemForCat ? React.createElement(ProcGlyph, { code: itemForCat.code, size: 10 }) : null
         );
       }),
-      distinctCats.length > 3 && React.createElement('span', { style: { fontSize: 9, fontWeight: 800, color: '#5a6b66' } }, `+${distinctCats.length - 3}`)
+      distinctCats.length > 2 && React.createElement('span', { style: { fontSize: 9, fontWeight: 800, color: '#5a6b66', lineHeight: 1 } }, `+${distinctCats.length - 2}`)
     )
   );
 }
@@ -606,8 +601,7 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
       React.createElement('span', null, 'Kód'),
       React.createElement('span', null, 'Popis'),
       React.createElement('span', { style: { textAlign: 'center' } }, 'Ks'),
-      React.createElement('span', { style: { textAlign: 'right' } }, 'Cena ZT'),
-      React.createElement('span', { style: { textAlign: 'right' } }, 'Cena lek.'),
+      React.createElement('span', { style: { textAlign: 'right' } }, 'Cena'),
       React.createElement('span', null)
     ),
     React.createElement('div', { style: { flex: 1, overflowY: 'auto', minHeight: 260 } },
@@ -629,15 +623,20 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
             onInput: (value) => applyCode(i, value),
             onPick: (item) => selectCodeForRow(i, item),
           }),
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
-            React.createElement('div', { style: { width: 18, height: 18, borderRadius: 4, background: cat.bg, color: cat.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
-              window.ProcGlyph && it.code ? React.createElement(ProcGlyph, { code: it.code, size: 10 }) : null
-            ),
-            React.createElement('span', { style: { color: '#1a2320', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 } }, it.name || known.name || 'Vyberte kód')
-          ),
+          React.createElement(ProcedureCodeDropdown, {
+            catalog,
+            value: it.name || known.name || '',
+            onInput: (value) => applyCode(i, value),
+            onPick: (item) => selectCodeForRow(i, item),
+            trigger: React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, cursor: 'pointer', height: 26 } },
+              React.createElement('div', { style: { width: 18, height: 18, borderRadius: 4, background: cat.bg, color: cat.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
+                window.ProcGlyph && it.code ? React.createElement(ProcGlyph, { code: it.code, size: 10 }) : null
+              ),
+              React.createElement('span', { style: { color: '#1a2320', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 } }, it.name || known.name || 'Vyberte kód')
+            )
+          }),
           React.createElement('input', { type: 'number', min: 1, value: it.qty, onChange: e => updateItem(i, 'qty', e.target.value), style: { ...cellInputStyle, textAlign: 'center' } }),
           React.createElement('input', { type: 'number', step: '0.01', value: it.price, onChange: e => updateItem(i, 'price', e.target.value), style: { ...cellInputStyle, textAlign: 'right' } }),
-          React.createElement('span', { style: { textAlign: 'right', fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 800, color: '#1a2320', fontSize: 12 } }, fmt((Number(it.price) || 0) * (Number(it.qty) || 0))),
           React.createElement(IconButton, { name: 'trash', destructive: true, onClick: (event) => { event.stopPropagation(); removeItem(i); }, size: 26 })
         );
       }),
@@ -660,17 +659,29 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
           onEnter: addDraft,
           placeholder: 'Kód...',
         }),
-        React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', minHeight: 26, color: pickCatalog(draft.code) ? '#1a2320' : '#8a9490' } }, pickCatalog(draft.code)?.name || 'Vyberte kód z väčšieho zoznamu'),
+        React.createElement(ProcedureCodeDropdown, {
+          catalog,
+          value: draft.code,
+          onInput: (value) => {
+            const normalized = value.toUpperCase();
+            const exact = catalogByCode[normalized];
+            if (exact) {
+              addDraftItem(exact);
+              return;
+            }
+            setDraft({ ...draft, code: normalized });
+          },
+          onPick: (item) => addDraftItem(item),
+          trigger: React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', minHeight: 26, cursor: 'pointer', color: pickCatalog(draft.code) ? '#1a2320' : '#8a9490' } }, pickCatalog(draft.code)?.name || 'Vyberte kód z väčšieho zoznamu')
+        }),
         React.createElement('input', { type: 'number', min: 1, value: draft.qty, onChange: e => setDraft({ ...draft, qty: e.target.value }), onKeyDown: e => { if (e.key === 'Enter') addDraft(); }, style: { ...cellInputStyle, textAlign: 'center' } }),
         React.createElement('input', { value: pickCatalog(draft.code)?.price || '', readOnly: true, placeholder: '0,00', style: { ...cellInputStyle, textAlign: 'right' } }),
-        React.createElement('input', { value: pickCatalog(draft.code) ? (Number(pickCatalog(draft.code).price || 0) * (Number(draft.qty) || 1)).toFixed(2) : '', readOnly: true, placeholder: '0,00', style: { ...cellInputStyle, textAlign: 'right' } }),
         React.createElement(IconButton, { name: 'plus', title: 'Pridať riadok', onClick: addDraft, size: 26 })
       )
     ),
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: tableColumns, padding: '10px 12px', background: '#fbfaf6', borderTop: '1px solid #ece7dc', alignItems: 'center', gap: 8 } },
       React.createElement('span', null), React.createElement('span', null), React.createElement('span', null),
       React.createElement('span', { style: { fontSize: 11, color: '#8a9490', fontWeight: 700 } }, `${data.items.length} položiek`),
-      React.createElement('span', null),
       React.createElement('span', { style: { textAlign: 'right', fontSize: 11, color: '#8a9490', fontWeight: 700 } }, 'Spolu:'),
       React.createElement('span', { style: { textAlign: 'right', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 14, fontWeight: 800, color: '#1a2320' } }, fmt(total)),
       React.createElement('span', null)
@@ -678,15 +689,21 @@ function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, to
   );
 }
 
-function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, placeholder = 'Kód...' }) {
+function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, placeholder = 'Kód...', trigger }) {
   const [open, setOpen] = React.useState(false);
   const query = String(value || '').trim().toUpperCase();
-  const options = (query
-    ? catalog.filter((item) => item.code.toUpperCase().includes(query) || item.name.toLowerCase().includes(query.toLowerCase()))
+  const effectiveQuery = trigger ? '' : query;
+  const options = (effectiveQuery
+    ? catalog.filter((item) => item.code.toUpperCase().includes(effectiveQuery) || item.name.toLowerCase().includes(effectiveQuery.toLowerCase()))
     : catalog
   ).slice(0, 12);
   return React.createElement('div', { style: { position: 'relative', width: '100%' } },
-    React.createElement('input', {
+    trigger
+      ? React.cloneElement(trigger, {
+          onMouseDown: (event) => { event.preventDefault(); setOpen(true); },
+          onClick: () => setOpen(true),
+        })
+      : React.createElement('input', {
       value,
       onFocus: () => setOpen(true),
       onChange: (event) => { onInput(event.target.value.toUpperCase()); setOpen(true); },
@@ -702,7 +719,7 @@ function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, place
       placeholder,
       style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800, color: '#0d7c6b', paddingRight: 22 }
     }),
-    React.createElement(Icon, { name: 'chevronDown', size: 12, color: '#8a9490', style: { position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' } }),
+    !trigger && React.createElement(Icon, { name: 'chevronDown', size: 12, color: '#8a9490', style: { position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' } }),
     open && React.createElement('div', {
       style: {
         position: 'absolute', zIndex: 50, top: 'calc(100% + 4px)', left: 0, right: 0,
@@ -720,13 +737,12 @@ function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, place
               onMouseDown: (event) => { event.preventDefault(); onPick(item); setOpen(false); },
               style: {
                 width: '100%', border: 'none', background: item.code === value ? '#eefbf8' : '#fff',
-                borderRadius: 6, padding: '10px 10px', display: 'grid', gridTemplateColumns: '92px minmax(180px,1fr) auto',
+                borderRadius: 6, padding: '10px 10px', display: 'grid', gridTemplateColumns: '92px minmax(180px,1fr)',
                 gap: 8, alignItems: 'center', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope,sans-serif'
               }
             },
               React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 12.5, fontWeight: 800, color: '#0d7c6b' } }, item.code),
-              React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, item.name),
-              React.createElement('span', { style: { padding: '3px 8px', borderRadius: 999, background: cat.bg, color: cat.fg, fontSize: 11.5, fontWeight: 800 } }, `${Number(item.price || 0).toFixed(0)} €`)
+              React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, item.name)
             );
           })
     )
@@ -744,7 +760,7 @@ const quadrantLabelStyle = {
   padding: '0 2px 4px'
 };
 
-const tableColumns = '28px 76px 128px minmax(190px,1fr) 50px 92px 92px 28px';
+const tableColumns = '28px 76px 128px minmax(190px,1fr) 50px 92px 28px';
 
 const tableHeaderStyle = {
   display: 'grid',
