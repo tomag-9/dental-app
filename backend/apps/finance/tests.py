@@ -6,6 +6,7 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceSequence, PriceList, Subscription
+from apps.core.models import LabApiKey
 from apps.jobs.models import Job, Technician
 
 
@@ -674,6 +675,7 @@ class FinanceStatsViewTests(APITestCase):
             "top_clinics",
             "monthly_growth_pct",
             "monthly_revenue",
+            "aging",
         ]
         for field in required:
             self.assertIn(field, response.data, f"Missing field: {field}")
@@ -985,3 +987,259 @@ class InvoiceCSVExportTests(APITestCase):
     def test_export_unauthenticated_returns_401(self):
         resp = self.client.get("/api/finance/invoices/export/")
         self.assertEqual(resp.status_code, 401)
+
+
+class ProformaInvoiceTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Proforma Lab", invoice_prefix="PRF")
+        self.user = User.objects.create_user(
+            username="proforma_user", password="pw", role="admin", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Proforma Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="P", last_name="Q", birth_number="900101/1234"
+        )
+        self.tech = Technician.objects.create(
+            lab=self.lab, first_name="T", last_name="T"
+        )
+
+    def _create_job(self):
+        return Job.objects.create(
+            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
+            patient=self.patient, technician=self.tech,
+            status="completed", description="Crown",
+        )
+
+    def test_invoice_defaults_to_invoice_type(self):
+        job = self._create_job()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id,
+            "job_ids": [job.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["document_type"], "invoice")
+
+    def test_create_proforma_invoice(self):
+        job = self._create_job()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id,
+            "job_ids": [job.id],
+            "document_type": "proforma",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["document_type"], "proforma")
+
+    def test_document_type_in_list_response(self):
+        Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic,
+            number="PRF-2026-0001", status="draft", document_type="proforma",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/finance/invoices/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(any(i["document_type"] == "proforma" for i in resp.data))
+
+    def test_invalid_document_type_rejected(self):
+        job = self._create_job()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id,
+            "job_ids": [job.id],
+            "document_type": "receipt",
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+
+class MultiProcedurePricingTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Pricing Lab", invoice_prefix="PRC")
+        self.user = User.objects.create_user(
+            username="pricing_user", password="pw", role="admin", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Pricing Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="P", last_name="Q", birth_number="900101/0007"
+        )
+        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+        from apps.finance.models import PriceList
+        PriceList.objects.create(lab=self.lab, code="C001", description="Crown", price="150.00")
+        PriceList.objects.create(lab=self.lab, code="C002", description="Bridge", price="300.00")
+
+    def _make_job(self, procedure_codes, quantities=None):
+        from apps.jobs.models import Job
+        return Job.objects.create(
+            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
+            patient=self.patient, technician=self.tech,
+            status="completed", description="Test",
+            procedure_codes=procedure_codes,
+            procedure_quantities=quantities or {},
+        )
+
+    def test_single_procedure_uses_job_price(self):
+        from apps.jobs.models import Job
+        job = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
+            patient=self.patient, technician=self.tech,
+            status="completed", price="200.00",
+            procedure_codes=["C001"], procedure_quantities={"C001": 1},
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id, "job_ids": [job.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        item = resp.data["items"][0]
+        self.assertEqual(item["unit_price"], "200.00")
+
+    def test_multi_procedure_looks_up_pricelist(self):
+        job = self._make_job(["C001", "C002"], {"C001": 1, "C002": 2})
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id, "job_ids": [job.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        by_desc = {i["description"]: i for i in resp.data["items"]}
+        self.assertIn("Crown", by_desc)
+        self.assertIn("Bridge", by_desc)
+        self.assertEqual(by_desc["Crown"]["unit_price"], "150.00")
+        self.assertEqual(by_desc["Bridge"]["unit_price"], "300.00")
+
+    def test_multi_procedure_unknown_code_gets_zero(self):
+        job = self._make_job(["C001", "UNKNOWN"], {"C001": 1, "UNKNOWN": 1})
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id, "job_ids": [job.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        by_desc = {i["description"]: i for i in resp.data["items"]}
+        self.assertEqual(by_desc["UNKNOWN"]["unit_price"], "0.00")
+
+
+class InvoiceVatRateSnapshotTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="VAT Lab", invoice_prefix="VAT", vat_rate="20.00")
+        self.user = User.objects.create_user(
+            username="vat_user", password="pw", role="admin", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="VAT Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="V", last_name="T", birth_number="900101/0007"
+        )
+        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+
+    def test_vat_rate_snapshot_stored_at_creation(self):
+        from apps.jobs.models import Job
+        job = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
+            patient=self.patient, technician=self.tech,
+            status="completed", price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/finance/invoices/", {
+            "clinic_id": self.clinic.id, "job_ids": [job.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["vat_rate"], "20.00")
+        # total = 100 + 20% VAT = 120
+        self.assertEqual(resp.data["total_amount"], "120.00")
+
+    def test_vat_rate_in_serializer_response(self):
+        from apps.finance.models import Invoice
+        inv = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic,
+            number="VAT-2026-001", status="draft", vat_rate="20.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/finance/invoices/{inv.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("vat_rate", resp.data)
+        self.assertEqual(resp.data["vat_rate"], "20.00")
+
+
+class InvoiceAgingBucketsTests(APITestCase):
+    def setUp(self):
+        from apps.finance.models import InvoiceSequence
+
+        self.lab = Lab.objects.create(name="Aging Lab")
+        self.user = User.objects.create_user(
+            username="aging_admin", password="pw", email="aging@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(name="AgingClinic", lab=self.lab)
+        InvoiceSequence.objects.create(lab=self.lab, last_number=0)
+        today = timezone.localdate()
+
+        def _inv(number, days_overdue):
+            due = today - timezone.timedelta(days=days_overdue)
+            return Invoice.objects.create(
+                lab=self.lab, clinic=self.clinic,
+                number=number, status="issued",
+                total_amount="100.00", due_date=due,
+            )
+
+        self.current = _inv("AGE-0001", 0)      # due today → current
+        self.d15 = _inv("AGE-0002", 15)          # 15 days → 1-30
+        self.d45 = _inv("AGE-0003", 45)          # 45 days → 31-60
+        self.d75 = _inv("AGE-0004", 75)          # 75 days → 61-90
+        self.d100 = _inv("AGE-0005", 100)        # 100 days → over_90
+
+    def test_aging_buckets_in_finance_stats(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/finance/stats/")
+        self.assertEqual(resp.status_code, 200)
+        aging = resp.data["aging"]
+        self.assertIn("current", aging)
+        self.assertIn("1_30", aging)
+        self.assertIn("31_60", aging)
+        self.assertIn("61_90", aging)
+        self.assertIn("over_90", aging)
+        self.assertEqual(aging["current"], 1)
+        self.assertEqual(aging["1_30"], 1)
+        self.assertEqual(aging["31_60"], 1)
+        self.assertEqual(aging["61_90"], 1)
+        self.assertEqual(aging["over_90"], 1)
+
+
+class SubscriptionExtendedFieldsTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Sub Extended Lab")
+        self.superadmin = User.objects.create_user(
+            username="sub_sa", password="pw", email="sub_sa@test.sk",
+            role="superadmin", is_superuser=True,
+        )
+        self.sub = Subscription.objects.create(
+            lab=self.lab, plan="pro", status="active",
+            mrr="99.00", billing_email="billing@lab.sk",
+        )
+
+    def test_subscription_serializer_includes_new_fields(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.get(f"/api/finance/subscriptions/{self.sub.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("mrr", resp.data)
+        self.assertIn("billing_email", resp.data)
+        self.assertIn("trial_ends_at", resp.data)
+        self.assertIn("cancelled_at", resp.data)
+        self.assertEqual(resp.data["billing_email"], "billing@lab.sk")
+
+    def test_subscription_mrr_can_be_set(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.patch(
+            f"/api/finance/subscriptions/{self.sub.id}/",
+            {"mrr": "149.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.sub.refresh_from_db()
+        self.assertEqual(str(self.sub.mrr), "149.00")

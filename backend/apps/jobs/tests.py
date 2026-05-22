@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import Lab, User
+from apps.core.models import AuditLog, Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import PriceList
 from apps.jobs.dental import (
@@ -1041,3 +1041,234 @@ class TechnicianApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+
+
+class WorkOrderEndpointTests(APITestCase):
+    def setUp(self):
+        from apps.core.models import Lab, User
+        from apps.crm.models import Clinic, Doctor, Patient
+        from apps.jobs.models import Job, JobItem, Technician
+        self.lab = Lab.objects.create(name="WO Lab", phone="0900000", email="lab@test.sk")
+        self.user = User.objects.create_user(
+            username="wo_user", password="pw", role="admin", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="WO Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic,
+            first_name="Jan", last_name="Novak",
+            title_before="MUDr.",
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="Alice", last_name="Test",
+            birth_number="900101/1234",
+        )
+        self.tech = Technician.objects.create(
+            lab=self.lab, first_name="Tech", last_name="One"
+        )
+        self.job = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
+            patient=self.patient, technician=self.tech,
+            status="in_progress", description="Crown work",
+            priority="high", tooth_color="A1",
+        )
+        JobItem.objects.create(
+            job=self.job, price_list_code="C001", description="Crown",
+            quantity=1, unit_price="150.00", total="150.00",
+        )
+
+    def test_work_order_returns_structured_data(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["id"], self.job.id)
+        self.assertIn("WO-", resp.data["number"])
+        self.assertEqual(resp.data["status"], "in_progress")
+        self.assertEqual(resp.data["priority"], "high")
+        self.assertEqual(resp.data["tooth_color"], "A1")
+
+    def test_work_order_includes_related_entities(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNotNone(resp.data["patient"])
+        self.assertEqual(resp.data["patient"]["name"], "Alice Test")
+        self.assertIsNotNone(resp.data["clinic"])
+        self.assertIsNotNone(resp.data["doctor"])
+        self.assertIn("Novak", resp.data["doctor"]["name"])
+        self.assertIsNotNone(resp.data["technician"])
+
+    def test_work_order_includes_items(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["items"]), 1)
+        item = resp.data["items"][0]
+        self.assertEqual(item["price_list_code"], "C001")
+        self.assertEqual(item["description"], "Crown")
+        self.assertEqual(item["unit_price"], "150.00")
+
+    def test_work_order_respects_lab_scoping(self):
+        from apps.core.models import Lab, User
+        other_lab = Lab.objects.create(name="Other WO Lab")
+        other_user = User.objects.create_user(
+            username="other_wo_user", email="other_wo@test.sk", password="pw", role="admin", lab=other_lab
+        )
+        self.client.force_authenticate(user=other_user)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
+        self.assertEqual(resp.status_code, 404)
+
+
+class JobStatusConfigTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="StatusConfig Lab")
+        self.user = User.objects.create_user(
+            username="sc_user", password="pw", email="sc_user@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_status_config_returns_all_statuses(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/jobs/jobs/status-config/")
+        self.assertEqual(resp.status_code, 200)
+        expected_statuses = [
+            "new", "in_progress", "completed", "cancelled",
+            "finished_factured", "finished_unfactured", "closed",
+        ]
+        for s in expected_statuses:
+            self.assertIn(s, resp.data, f"Missing status: {s}")
+
+    def test_status_config_entry_has_required_fields(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/jobs/jobs/status-config/")
+        entry = resp.data["new"]
+        self.assertIn("label", entry)
+        self.assertIn("label_en", entry)
+        self.assertIn("color", entry)
+        self.assertIn("allowed_transitions", entry)
+        self.assertIsInstance(entry["allowed_transitions"], list)
+
+    def test_status_config_new_can_transition_to_in_progress(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/jobs/jobs/status-config/")
+        self.assertIn("in_progress", resp.data["new"]["allowed_transitions"])
+
+    def test_status_config_closed_has_no_transitions(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/jobs/jobs/status-config/")
+        self.assertEqual(resp.data["closed"]["allowed_transitions"], [])
+
+
+class JobStatusChangeAuditLogTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Audit Job Lab")
+        self.clinic = Clinic.objects.create(name="AuditClinic", lab=self.lab)
+        self.patient = Patient.objects.create(
+            first_name="Audit", last_name="Patient",
+            birth_number="800101/1111", lab=self.lab,
+        )
+        self.user = User.objects.create_user(
+            username="auditjob_user", password="pw", email="auditjob@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.job = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient,
+            description="Audit job", status="new",
+        )
+
+    def test_status_change_writes_audit_log(self):
+        self.client.force_authenticate(user=self.user)
+        before = AuditLog.objects.filter(action="job.status_changed").count()
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/transition-status/",
+            {"status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            AuditLog.objects.filter(action="job.status_changed").count(),
+            before + 1,
+        )
+        log = AuditLog.objects.filter(action="job.status_changed").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.job.id))
+        self.assertEqual(log.metadata["from_status"], "new")
+        self.assertEqual(log.metadata["to_status"], "in_progress")
+
+
+class QuickCreateJobTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="QuickCreate Lab")
+        self.clinic = Clinic.objects.create(name="QC Clinic", lab=self.lab)
+        self.user = User.objects.create_user(
+            username="qc_user", password="pw", email="qc@test.sk",
+            role="admin", lab=self.lab,
+        )
+
+    def test_creates_patient_and_job_atomically(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/quick-create/",
+            {
+                "clinic_id": self.clinic.id,
+                "patient": {
+                    "first_name": "Nový",
+                    "last_name": "Pacient",
+                    "birth_number": "900101/9999",
+                },
+                "job": {
+                    "description": "Korunka",
+                    "status": "new",
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertIn("patient", resp.data)
+        self.assertIn("job", resp.data)
+        self.assertEqual(resp.data["patient"]["first_name"], "Nový")
+        self.assertIsNotNone(resp.data["job"]["id"])
+
+    def test_reuses_existing_patient_by_birth_number(self):
+        existing = Patient.objects.create(
+            first_name="Existujúci", last_name="Pacient",
+            birth_number="800202/1111", lab=self.lab,
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/quick-create/",
+            {
+                "clinic_id": self.clinic.id,
+                "patient": {
+                    "first_name": "Iné",
+                    "last_name": "Meno",
+                    "birth_number": "800202/1111",
+                },
+                "job": {"description": "Mostík"},
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["patient"]["id"], existing.id)
+
+    def test_missing_clinic_id_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/quick-create/",
+            {"patient": {"first_name": "X", "last_name": "Y"}, "job": {}},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_out_of_scope_clinic_returns_404(self):
+        other_lab = Lab.objects.create(name="Other QC Lab")
+        other_clinic = Clinic.objects.create(name="Other", lab=other_lab)
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/quick-create/",
+            {
+                "clinic_id": other_clinic.id,
+                "patient": {"first_name": "X", "last_name": "Y"},
+                "job": {},
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 404)

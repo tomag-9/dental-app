@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import AuditLog, Lab, Notification, TeamInvitation, User
+from apps.core.models import AuditLog, Lab, LabApiKey, Notification, TeamInvitation, User, UserSession
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
 from apps.jobs.models import Job
@@ -671,3 +671,327 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertGreaterEqual(response.data["metrics"]["users"], 4)
         self.assertEqual(response.data["metrics"]["pending_invitations"], 1)
         self.assertEqual(response.data["metrics"]["unread_notifications"], 1)
+
+
+class LabSlugTests(APITestCase):
+    def test_slug_auto_generated_on_create(self):
+        from apps.core.models import Lab
+        lab = Lab.objects.create(name="Moje Laboratórium")
+        self.assertNotEqual(lab.slug, "")
+        self.assertIn("moje", lab.slug)
+
+    def test_slug_is_unique_across_labs(self):
+        from apps.core.models import Lab
+        lab1 = Lab.objects.create(name="Duplicate Name Lab")
+        lab2 = Lab.objects.create(name="Duplicate Name Lab 2")
+        self.assertNotEqual(lab1.slug, lab2.slug)
+
+    def test_slug_not_overwritten_on_save(self):
+        from apps.core.models import Lab
+        lab = Lab.objects.create(name="Stable Lab")
+        original_slug = lab.slug
+        lab.address = "New Address"
+        lab.save()
+        lab.refresh_from_db()
+        self.assertEqual(lab.slug, original_slug)
+
+    def test_slug_exposed_in_lab_api(self):
+        from apps.core.models import Lab, User
+        lab = Lab.objects.create(name="API Slug Lab")
+        user = User.objects.create_user(
+            username="sluguser", password="pw", role="superadmin",
+            is_superuser=True,
+        )
+        self.client.force_authenticate(user=user)
+        resp = self.client.get(f"/api/labs/{lab.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("slug", resp.data)
+        self.assertNotEqual(resp.data["slug"], "")
+
+
+class SessionEndpointsTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Session Lab")
+        self.user = User.objects.create_user(
+            username="sess_user", password="pw123", email="sess@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def _make_session(self, revoked=False):
+        return UserSession.objects.create(
+            user=self.user,
+            jti="test-jti-12345",
+            ip_address="127.0.0.1",
+            device_info="TestBrowser/1.0",
+            expires_at=timezone.now() + timezone.timedelta(days=1),
+            revoked=revoked,
+        )
+
+    def test_list_sessions_returns_active_only(self):
+        self._make_session(revoked=False)
+        UserSession.objects.create(
+            user=self.user, jti="revoked-jti", expires_at=timezone.now() + timezone.timedelta(days=1),
+            revoked=True,
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/sessions/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["jti"], "test-jti-12345")
+
+    def test_revoke_session(self):
+        session = self._make_session()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.delete(f"/api/core/sessions/{session.id}/")
+        self.assertEqual(resp.status_code, 204)
+        session.refresh_from_db()
+        self.assertTrue(session.revoked)
+
+    def test_revoke_all_sessions(self):
+        UserSession.objects.create(
+            user=self.user, jti="j1", expires_at=timezone.now() + timezone.timedelta(days=1),
+        )
+        UserSession.objects.create(
+            user=self.user, jti="j2", expires_at=timezone.now() + timezone.timedelta(days=1),
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.delete("/api/core/sessions/revoke-all/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["revoked"], 2)
+
+    def test_cannot_revoke_other_users_session(self):
+        other_user = User.objects.create_user(
+            username="other_sess", password="pw", email="other_sess@test.sk",
+            lab=self.lab, role="user",
+        )
+        session = UserSession.objects.create(
+            user=other_user, jti="other-jti", expires_at=timezone.now() + timezone.timedelta(days=1),
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.delete(f"/api/core/sessions/{session.id}/")
+        self.assertEqual(resp.status_code, 404)
+
+
+class SuperadminMetricsTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Metrics Lab")
+        self.superadmin = User.objects.create_user(
+            username="metrics_sa", password="pw", email="metrics_sa@test.sk",
+            role="superadmin", is_superuser=True,
+        )
+        self.regular = User.objects.create_user(
+            username="metrics_user", password="pw", email="metrics_u@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_superadmin_can_access_metrics(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.get("/api/core/superadmin-metrics/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("total_labs", resp.data)
+        self.assertIn("total_users", resp.data)
+        self.assertIn("mrr", resp.data)
+        self.assertIn("recent_activity", resp.data)
+        self.assertGreaterEqual(resp.data["total_labs"], 1)
+
+    def test_regular_user_cannot_access_metrics(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/core/superadmin-metrics/")
+        self.assertEqual(resp.status_code, 403)
+
+
+class AvatarUrlTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Avatar Lab")
+        self.user = User.objects.create_user(
+            username="avatar_user", password="pw", email="avatar@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_update_avatar_url(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.patch(
+            "/api/core/users/me/avatar/",
+            {"avatar_url": "https://example.com/avatar.jpg"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["avatar_url"], "https://example.com/avatar.jpg")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.avatar_url, "https://example.com/avatar.jpg")
+
+    def test_clear_avatar_url(self):
+        self.user.avatar_url = "https://example.com/old.jpg"
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.patch("/api/core/users/me/avatar/", {"avatar_url": ""})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data["avatar_url"])
+
+    def test_avatar_url_exposed_in_me_endpoint(self):
+        self.user.avatar_url = "https://example.com/pic.png"
+        self.user.save()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/users/me/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["avatar_url"], "https://example.com/pic.png")
+
+
+class LabApiKeyTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="ApiKey Lab")
+        self.admin = User.objects.create_user(
+            username="apikey_admin", password="pw", email="apikey_admin@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.user = User.objects.create_user(
+            username="apikey_user", password="pw", email="apikey_user@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_admin_can_create_api_key(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/core/api-keys/", {"name": "My Integration"}, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertIn("key", resp.data)
+        self.assertIn("prefix", resp.data)
+        key_val = resp.data["key"]
+        self.assertTrue(len(key_val) > 16)
+
+    def test_regular_user_cannot_create_api_key(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/core/api-keys/", {"name": "Bad Key"}, format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_admin_can_list_api_keys(self):
+        LabApiKey.objects.create(
+            lab=self.lab, name="Existing Key", prefix="ab12cd34",
+            hashed_key="abc123", created_by=self.admin,
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/core/api-keys/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertNotIn("hashed_key", resp.data[0])
+
+    def test_revoke_api_key(self):
+        key = LabApiKey.objects.create(
+            lab=self.lab, name="Revoke Me", prefix="xx12",
+            hashed_key="hash", created_by=self.admin,
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.delete(f"/api/core/api-keys/{key.id}/")
+        self.assertEqual(resp.status_code, 204)
+        key.refresh_from_db()
+        self.assertFalse(key.is_active)
+
+    def test_name_required(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/core/api-keys/", {"name": ""}, format="json")
+        self.assertIn(resp.status_code, [400])
+
+
+class ImpersonationTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Impersonation Lab")
+        self.superadmin = User.objects.create_user(
+            username="imp_sa", password="pw", email="imp_sa@test.sk",
+            role="superadmin", is_superuser=True,
+        )
+        self.target = User.objects.create_user(
+            username="imp_target", password="pw", email="imp_target@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_superadmin_can_impersonate(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.post(
+            f"/api/core/users/superadmin/{self.target.id}/impersonate/"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("access_token", resp.data)
+        self.assertIn("refresh_token", resp.data)
+        self.assertEqual(resp.data["user"]["id"], self.target.id)
+
+    def test_impersonation_writes_audit_log(self):
+        self.client.force_authenticate(user=self.superadmin)
+        before = AuditLog.objects.filter(action="user.impersonated").count()
+        self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
+        self.assertEqual(
+            AuditLog.objects.filter(action="user.impersonated").count(), before + 1
+        )
+
+    def test_regular_user_cannot_impersonate(self):
+        regular = User.objects.create_user(
+            username="imp_regular", password="pw", email="imp_regular@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.client.force_authenticate(user=regular)
+        resp = self.client.post(
+            f"/api/core/users/superadmin/{self.target.id}/impersonate/"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_impersonate_nonexistent_user_returns_404(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.post("/api/core/users/superadmin/99999/impersonate/")
+        self.assertEqual(resp.status_code, 404)
+
+
+class SystemHealthRuntimeTests(APITestCase):
+    def setUp(self):
+        self.superadmin = User.objects.create_user(
+            username="health_sa", password="pw", email="health_sa@test.sk",
+            role="superadmin", is_superuser=True,
+        )
+
+    def test_health_includes_runtime_info(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.get("/api/core/system-health/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("runtime", resp.data)
+        runtime = resp.data["runtime"]
+        self.assertIn("django_version", runtime)
+        self.assertIn("python_version", runtime)
+        self.assertIn("pending_migrations", runtime)
+
+    def test_health_includes_migration_check(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.get("/api/core/system-health/")
+        checks = {c["service"]: c for c in resp.data["checks"]}
+        self.assertIn("migrations", checks)
+        self.assertIn(checks["migrations"]["status"], ["ok", "warning"])
+
+
+class DashboardChartDataTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Chart Lab")
+        self.user = User.objects.create_user(
+            username="chart_user", password="pw", email="chart@test.sk",
+            role="admin", lab=self.lab,
+        )
+
+    def test_chart_data_returns_required_keys(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/dashboard/chart-data/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("daily_revenue", resp.data)
+        self.assertIn("daily_jobs", resp.data)
+        self.assertIn("status_distribution", resp.data)
+        self.assertIn("days", resp.data)
+
+    def test_chart_data_daily_revenue_has_correct_length(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/dashboard/chart-data/?days=14")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["daily_revenue"]), 14)
+        self.assertEqual(len(resp.data["daily_jobs"]), 14)
+
+    def test_chart_data_days_clamped_to_90(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/dashboard/chart-data/?days=999")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["days"], 90)
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get("/api/core/dashboard/chart-data/")
+        self.assertEqual(resp.status_code, 401)

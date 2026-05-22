@@ -167,6 +167,7 @@ class JobTimelineEvent(models.Model):
     note = models.TextField(blank=True, null=True)
     from_status = models.CharField(max_length=20, blank=True, null=True)
     to_status = models.CharField(max_length=20, blank=True, null=True)
+    changed_fields = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

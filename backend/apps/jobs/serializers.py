@@ -142,6 +142,7 @@ class JobTimelineEventSerializer(serializers.ModelSerializer):
             "note",
             "from_status",
             "to_status",
+            "changed_fields",
             "actor",
             "actor_name",
             "created_at",

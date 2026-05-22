@@ -28,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "is_active",
             "notification_preferences",
+            "avatar_url",
             "date_joined",
         )
         read_only_fields = ("date_joined",)

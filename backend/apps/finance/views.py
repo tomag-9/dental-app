@@ -160,9 +160,18 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             lab_id=clinic.lab_id,
             number=self._invoice_number(clinic.lab),
             status="issued",
+            document_type=data.get("document_type", "invoice"),
+            vat_rate=clinic.lab.vat_rate,
+            discount_percent=data.get("discount_percent", Decimal("0")),
             issued_at=now,
             due_date=due_date,
         )
+
+        # Pre-load all PriceList entries for this lab into a lookup map.
+        price_map = {
+            pl.code: pl
+            for pl in PriceList.objects.filter(lab=clinic.lab)
+        }
 
         subtotal = Decimal("0.00")
         for job in jobs:
@@ -185,24 +194,30 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
             for code in procedures:
                 quantity = int(quantities.get(code, 1))
-                unit_price = (
-                    Decimal(str(job.price or 0))
-                    if len(procedures) == 1
-                    else Decimal("0")
-                )
+                pl_entry = price_map.get(str(code))
+                if len(procedures) == 1:
+                    unit_price = Decimal(str(job.price or 0))
+                elif pl_entry:
+                    unit_price = Decimal(str(pl_entry.price))
+                else:
+                    unit_price = Decimal("0")
+                description = (pl_entry.description if pl_entry else None) or str(code)
                 item = InvoiceItem.objects.create(
                     invoice=invoice,
                     job=job,
-                    description=str(code),
+                    description=description,
                     quantity=quantity,
                     unit_price=unit_price,
                     line_total=unit_price * quantity,
                 )
                 subtotal += item.line_total
 
-        vat_rate = Decimal(str(clinic.lab.vat_rate or 0))
-        vat_amount = (subtotal * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
-        invoice.total_amount = subtotal + vat_amount
+        discount = Decimal(str(invoice.discount_percent or 0))
+        discount_amount = (subtotal * discount / Decimal("100")).quantize(Decimal("0.01"))
+        discounted = subtotal - discount_amount
+        vat_rate = Decimal(str(invoice.vat_rate or 0))
+        vat_amount = (discounted * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
+        invoice.total_amount = discounted + vat_amount
         invoice.save(update_fields=["total_amount"])
 
         # Legacy parity: creating/issuing an invoice marks linked jobs as factured.
@@ -248,59 +263,141 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def pdf(self, request, pk=None):
         invoice = self.get_object()
         items = invoice.items.select_related("job__patient").all()
+        lab = invoice.lab
+        clinic = invoice.clinic
 
         buffer = BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=A4)
         width, height = A4
+        L = 15 * mm   # left margin
+        R = width - 15 * mm  # right edge
 
-        payload = (
-            f"INVOICE|{invoice.number}|"
-            f"{Decimal(invoice.total_amount):.2f}|{invoice.status}"
-        )
-        _, qr_drawing = self._build_qr_svg(payload, size=90)
-        renderPDF.draw(qr_drawing, pdf, width - 55 * mm, height - 55 * mm)
+        def hline(y, x1=None, x2=None):
+            pdf.setLineWidth(0.3)
+            pdf.line(x1 or L, y, x2 or R, y)
 
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(20 * mm, height - 20 * mm, "INVOICE")
+        # QR code top-right
+        payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount):.2f}|{invoice.status}"
+        _, qr_drawing = self._build_qr_svg(payload, size=72)
+        renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
+
+        # Title
+        doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
+        pdf.setFont("Helvetica-Bold", 18)
+        pdf.drawString(L, height - 18 * mm, doc_label)
         pdf.setFont("Helvetica", 10)
-        pdf.drawString(20 * mm, height - 28 * mm, f"Number: {invoice.number}")
+        pdf.drawString(L, height - 25 * mm, f"Číslo: {invoice.number}")
         issued_at = invoice.issued_at or timezone.now()
-        pdf.drawString(
-            20 * mm,
-            height - 34 * mm,
-            f"Issued: {issued_at.strftime('%Y-%m-%d')}",
-        )
-        pdf.drawString(20 * mm, height - 40 * mm, f"Status: {invoice.status}")
+        pdf.drawString(L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}")
+        if invoice.due_date:
+            pdf.drawString(L, height - 37 * mm, f"Dátum splatnosti: {invoice.due_date.strftime('%d.%m.%Y')}")
 
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(20 * mm, height - 52 * mm, "Clinic")
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(20 * mm, height - 58 * mm, invoice.clinic.name)
-        if invoice.clinic.address:
-            pdf.drawString(20 * mm, height - 64 * mm, invoice.clinic.address)
+        hline(height - 42 * mm)
 
-        y = height - 84 * mm
+        # Supplier (lab) block
+        y = height - 49 * mm
         pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(20 * mm, y, "Description")
-        pdf.drawString(120 * mm, y, "Qty")
-        pdf.drawString(140 * mm, y, "Unit")
-        pdf.drawString(165 * mm, y, "Line")
-        y -= 6 * mm
+        pdf.drawString(L, y, "Dodávateľ")
+        y -= 5 * mm
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(L, y, lab.name or "")
+        if lab.address:
+            y -= 4 * mm; pdf.drawString(L, y, lab.address)
+        if lab.city or lab.postal_code:
+            y -= 4 * mm
+            addr2 = " ".join(filter(None, [lab.postal_code, lab.city]))
+            pdf.drawString(L, y, addr2)
+        if lab.tax_id:
+            y -= 4 * mm; pdf.drawString(L, y, f"IČO: {lab.tax_id}")
+        if lab.vat_id:
+            y -= 4 * mm; pdf.drawString(L, y, f"IČ DPH: {lab.vat_id}")
+        if lab.bank_account:
+            y -= 4 * mm; pdf.drawString(L, y, f"IBAN: {lab.bank_account}")
+        if lab.bank_bic:
+            y -= 4 * mm; pdf.drawString(L, y, f"BIC: {lab.bank_bic}")
+        if lab.phone:
+            y -= 4 * mm; pdf.drawString(L, y, f"Tel: {lab.phone}")
 
-        pdf.setFont("Helvetica", 10)
-        for item in items[:25]:
-            pdf.drawString(20 * mm, y, str(item.description)[:50])
-            pdf.drawRightString(135 * mm, y, str(item.quantity))
-            pdf.drawRightString(160 * mm, y, f"{Decimal(item.unit_price):.2f}")
-            pdf.drawRightString(190 * mm, y, f"{Decimal(item.line_total):.2f}")
-            y -= 6 * mm
-            if y < 25 * mm:
+        # Recipient (clinic) block – right column
+        col2 = width / 2 + 5 * mm
+        yc = height - 49 * mm
+        pdf.setFont("Helvetica-Bold", 10)
+        pdf.drawString(col2, yc, "Odberateľ")
+        yc -= 5 * mm
+        pdf.setFont("Helvetica", 9)
+        pdf.drawString(col2, yc, clinic.name if clinic else "")
+        if clinic and clinic.address:
+            yc -= 4 * mm; pdf.drawString(col2, yc, clinic.address)
+        if clinic and getattr(clinic, "city", None):
+            yc -= 4 * mm; pdf.drawString(col2, yc, clinic.city)
+        if clinic and getattr(clinic, "ico", None):
+            yc -= 4 * mm; pdf.drawString(col2, yc, f"IČO: {clinic.ico}")
+
+        table_top = min(y, yc) - 8 * mm
+        hline(table_top)
+
+        # Items table header
+        th = table_top - 6 * mm
+        pdf.setFont("Helvetica-Bold", 9)
+        pdf.drawString(L, th, "Popis")
+        pdf.drawRightString(120 * mm, th, "Mn.")
+        pdf.drawRightString(148 * mm, th, "Jed. cena")
+        pdf.drawRightString(R, th, "Spolu")
+        hline(th - 2 * mm)
+
+        # Items rows
+        ty = th - 8 * mm
+        pdf.setFont("Helvetica", 9)
+        for item in items[:30]:
+            if ty < 55 * mm:
                 break
+            pdf.drawString(L, ty, str(item.description or "")[:60])
+            pdf.drawRightString(120 * mm, ty, str(item.quantity))
+            pdf.drawRightString(148 * mm, ty, f"{Decimal(item.unit_price):.2f} EUR")
+            pdf.drawRightString(R, ty, f"{Decimal(item.line_total):.2f} EUR")
+            ty -= 5 * mm
 
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawRightString(
-            190 * mm, 18 * mm, f"Total: {Decimal(invoice.total_amount):.2f}"
-        )
+        hline(ty)
+
+        # Totals block
+        vat_rate = Decimal(str(invoice.vat_rate or 0))
+        discount = Decimal(str(invoice.discount_percent or 0))
+        total = Decimal(str(invoice.total_amount or 0))
+        divisor = (1 - discount / 100) * (1 + vat_rate / 100) if (1 - discount / 100) * (1 + vat_rate / 100) > 0 else Decimal("1")
+        subtotal = (total / divisor).quantize(Decimal("0.01"))
+        vat_amount = (total - subtotal).quantize(Decimal("0.01"))
+
+        ty -= 6 * mm
+        pdf.setFont("Helvetica", 9)
+        pdf.drawRightString(160 * mm, ty, "Základ DPH:")
+        pdf.drawRightString(R, ty, f"{subtotal:.2f} EUR")
+        if discount > 0:
+            ty -= 5 * mm
+            pdf.drawRightString(160 * mm, ty, f"Zľava ({discount:.0f}%):")
+            disc_eur = (subtotal * discount / 100).quantize(Decimal("0.01"))
+            pdf.drawRightString(R, ty, f"-{disc_eur:.2f} EUR")
+        ty -= 5 * mm
+        pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
+        pdf.drawRightString(R, ty, f"{vat_amount:.2f} EUR")
+        ty -= 7 * mm
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawRightString(160 * mm, ty, "CELKOM:")
+        pdf.drawRightString(R, ty, f"{total:.2f} EUR")
+
+        # Payment method
+        if lab.payment_method:
+            ty -= 8 * mm
+            pdf.setFont("Helvetica", 8)
+            pm_label = {"bank_transfer": "Bankový prevod", "cash": "Hotovosť", "card": "Karta"}.get(
+                lab.payment_method, lab.payment_method
+            )
+            pdf.drawString(L, ty, f"Spôsob úhrady: {pm_label}")
+
+        # Default note
+        if lab.invoice_default_note:
+            ty -= 6 * mm
+            pdf.setFont("Helvetica", 8)
+            pdf.drawString(L, ty, lab.invoice_default_note[:120])
 
         pdf.showPage()
         pdf.save()
@@ -309,7 +406,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = (
-            f'inline; filename="invoice_{invoice.number}.pdf"'
+            f'inline; filename="faktura_{invoice.number}.pdf"'
         )
         return response
 
@@ -513,6 +610,21 @@ class FinanceStatsView(APIView):
                 }
             )
 
+        issued_qs = qs.filter(status="issued", due_date__isnull=False)
+        aging = {"current": 0, "1_30": 0, "31_60": 0, "61_90": 0, "over_90": 0}
+        for inv in issued_qs.only("due_date"):
+            days = (today - inv.due_date).days
+            if days <= 0:
+                aging["current"] += 1
+            elif days <= 30:
+                aging["1_30"] += 1
+            elif days <= 60:
+                aging["31_60"] += 1
+            elif days <= 90:
+                aging["61_90"] += 1
+            else:
+                aging["over_90"] += 1
+
         return Response(
             {
                 "total_revenue": str(total_revenue),
@@ -523,6 +635,7 @@ class FinanceStatsView(APIView):
                 "top_clinics": top_clinics,
                 "monthly_growth_pct": round(growth_pct, 1),
                 "monthly_revenue": monthly_revenue,
+                "aging": aging,
             }
         )
 

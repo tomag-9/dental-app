@@ -252,9 +252,6 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
           React.createElement(PopoverItem, { icon: 'briefcase',  label: 'Nová práca',      sub: 'Vytvoriť dentálnu zákazku', onClick: () => { setAddOpen(false); onNewJob && onNewJob(); } }),
           React.createElement(PopoverItem, { icon: 'user',       label: 'Nový pacient',    sub: 'Pridať kartu pacienta',     onClick: () => { setAddOpen(false); onNewPatient && onNewPatient(); } }),
           React.createElement(PopoverItem, { icon: 'fileText',   label: 'Nová faktúra',    sub: 'Vystaviť faktúru klinike',  onClick: () => { setAddOpen(false); onNewInvoice && onNewInvoice(); } }),
-          React.createElement(PopoverDivider),
-          React.createElement(PopoverItem, { icon: 'building',   label: 'Nová klinika', onClick: () => { setAddOpen(false); onCreateClinic && onCreateClinic(); } }),
-          React.createElement(PopoverItem, { icon: 'stethoscope',label: 'Nový lekár', onClick: () => { setAddOpen(false); onCreateDoctor && onCreateDoctor(); } }),
         )
       ),
 

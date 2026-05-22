@@ -1,10 +1,12 @@
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import serializers as drf_serializers
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.crm.serializers import _validate_birth_number, _validate_dic, _validate_ico
 from apps.finance.models import Invoice, InvoiceItem
 from apps.jobs.models import Job, Technician
 
@@ -372,7 +374,7 @@ class ClinicCrudApiTests(APITestCase):
         self.client.force_authenticate(user=self.superadmin)
         response = self.client.post(
             reverse("clinic-list"),
-            {"lab": self.lab_b.id, "name": "Super Clinic", "ico": "87654321"},
+            {"lab": self.lab_b.id, "name": "Super Clinic"},
             format="json",
         )
 
@@ -634,3 +636,254 @@ class DoctorCrudApiTests(APITestCase):
         # Verify deletion
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class SlovakBirthNumberValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_birth_number(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_birth_number(value)
+
+    def test_valid_10_digit_with_slash(self):
+        self._ok('900101/1234')
+
+    def test_valid_10_digit_without_slash(self):
+        self._ok('9001011234')
+
+    def test_valid_9_digit(self):
+        # pre-1954 format — 9 digits
+        self._ok('490101123')
+
+    def test_invalid_too_short(self):
+        self._err('12345678')
+
+    def test_invalid_letters(self):
+        self._err('9001AB1234')
+
+    def test_invalid_month(self):
+        self._err('9013011234')
+
+    def test_invalid_day(self):
+        self._err('9001991234')
+
+    def test_valid_female_month(self):
+        # women get month + 50, so month 51 → January
+        self._ok('9051011234')
+
+    def test_api_rejects_invalid_birth_number(self):
+        lab = Lab.objects.create(name='ValidatorLab')
+        user = User.objects.create_user(username='vlabuser', password='pw', role='admin', lab=lab)
+        Clinic.objects.create(lab=lab, name='C')
+        self.client.force_authenticate(user=user)
+        resp = self.client.post('/api/crm/patients/', {
+            'first_name': 'Test', 'last_name': 'Patient', 'birth_number': 'badvalue',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('birth_number', resp.data)
+
+
+class SlovakIcoValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_ico(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_ico(value)
+
+    def test_valid_ico(self):
+        # weights [8,7,6,5,4,3,2] × [3,6,1,9,0,5,7] = 146, 146%11=3, check=8
+        self._ok('36190578')
+
+    def test_invalid_not_8_digits(self):
+        self._err('1234567')
+
+    def test_invalid_contains_letters(self):
+        self._err('1234567A')
+
+    def test_invalid_checksum(self):
+        self._err('36190570')
+
+    def test_empty_skipped(self):
+        _validate_ico('')
+
+    def test_api_rejects_invalid_ico(self):
+        lab = Lab.objects.create(name='IcoLab')
+        user = User.objects.create_user(username='icouser', password='pw', role='admin', lab=lab)
+        self.client.force_authenticate(user=user)
+        resp = self.client.post('/api/crm/clinics/', {
+            'name': 'Test Clinic', 'ico': 'BADICO',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('ico', resp.data)
+
+
+class SlovakDicValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_dic(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_dic(value)
+
+    def test_valid_10_digit(self):
+        self._ok('2020123456')
+
+    def test_valid_sk_prefix(self):
+        self._ok('SK2020123456')
+
+    def test_invalid_format(self):
+        self._err('SK123')
+
+    def test_invalid_letters_without_prefix(self):
+        self._err('AB2020123456')
+
+    def test_empty_skipped(self):
+        _validate_dic('')
+
+    def test_api_rejects_invalid_dic(self):
+        lab = Lab.objects.create(name='DicLab')
+        user = User.objects.create_user(username='dicuser', password='pw', role='admin', lab=lab)
+        self.client.force_authenticate(user=user)
+        resp = self.client.post('/api/crm/clinics/', {
+            'name': 'Test Clinic', 'dic': 'BADDIC',
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('dic', resp.data)
+
+
+class PatientAgeTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="AgeLab")
+        self.user = User.objects.create_user(
+            username="ageuser", password="pw", role="admin", lab=self.lab
+        )
+
+    def test_age_returned_in_patient_api(self):
+        # birth_number 900101/1234 → year 1990, month 01, day 01
+        patient = Patient.objects.create(
+            lab=self.lab, first_name="A", last_name="B", birth_number="900101/1234"
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/crm/patients/{patient.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("age", resp.data)
+        age = resp.data["age"]
+        self.assertIsNotNone(age)
+        self.assertGreater(age, 30)
+
+    def test_age_none_for_unparseable_birth_number(self):
+        from apps.crm.serializers import _age_from_birth_number
+        self.assertIsNone(_age_from_birth_number("badvalue"))
+        self.assertIsNone(_age_from_birth_number(""))
+
+    def test_age_female_birth_number(self):
+        # month 51 → January female
+        from apps.crm.serializers import _age_from_birth_number
+        age = _age_from_birth_number("900101/1234")
+        self.assertIsNotNone(age)
+        self.assertGreater(age, 30)
+
+    def test_age_in_list_response(self):
+        Patient.objects.create(
+            lab=self.lab, first_name="X", last_name="Y", birth_number="900101/1234"
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/crm/patients/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("age", resp.data[0])
+
+
+class CrmSearchFilterTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Search Lab")
+        self.user = User.objects.create_user(
+            username="search_user", password="pw", role="admin", lab=self.lab
+        )
+        self.client.force_authenticate(user=self.user)
+        Clinic.objects.create(lab=self.lab, name="Alfa Klinika", ico=None)
+        Clinic.objects.create(lab=self.lab, name="Beta Centrum", ico=None)
+        Doctor.objects.create(lab=self.lab, first_name="Jan", last_name="Novak")
+        Doctor.objects.create(lab=self.lab, first_name="Maria", last_name="Horvatova")
+        Patient.objects.create(lab=self.lab, first_name="Peter", last_name="Kral", birth_number="900101/1234")
+        Patient.objects.create(lab=self.lab, first_name="Jana", last_name="Blahova", birth_number="910202/5678")
+
+    def test_clinic_search_by_name(self):
+        resp = self.client.get("/api/crm/clinics/?search=alfa")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["name"], "Alfa Klinika")
+
+    def test_clinic_search_no_match(self):
+        resp = self.client.get("/api/crm/clinics/?search=xyz")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+    def test_clinic_search_empty_returns_all(self):
+        resp = self.client.get("/api/crm/clinics/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+
+    def test_doctor_search_by_last_name(self):
+        resp = self.client.get("/api/crm/doctors/?search=novak")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Novak")
+
+    def test_doctor_search_by_first_name(self):
+        resp = self.client.get("/api/crm/doctors/?search=maria")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+
+    def test_patient_search_by_last_name(self):
+        resp = self.client.get("/api/crm/patients/?search=kral")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Kral")
+
+    def test_patient_search_by_birth_number(self):
+        resp = self.client.get("/api/crm/patients/?search=900101")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+
+
+class PatientRevenueStatsTests(APITestCase):
+    def setUp(self):
+        from apps.finance.models import InvoiceSequence
+
+        self.lab = Lab.objects.create(name="Revenue Stats Lab")
+        self.user = User.objects.create_user(
+            username="revstat_user", password="pw", email="revstat@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(name="RevClinic", lab=self.lab)
+        self.patient = Patient.objects.create(
+            first_name="Test", last_name="Patient",
+            birth_number="900101/1234", lab=self.lab,
+        )
+        self.job = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient,
+            description="Test job", status="completed", price=150,
+        )
+        InvoiceSequence.objects.create(lab=self.lab, last_number=0)
+        self.invoice = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic, number="INV-2026-0001",
+            status="paid", total_amount="150.00",
+        )
+        InvoiceItem.objects.create(
+            invoice=self.invoice, job=self.job,
+            description="Test", quantity=1, unit_price="150.00", line_total="150.00",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_patient_detail_includes_revenue_stats(self):
+        resp = self.client.get(f"/api/crm/patients/{self.patient.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("revenue_stats", resp.data)
+        stats = resp.data["revenue_stats"]
+        self.assertIn("total_revenue", stats)
+        self.assertIn("jobs_count", stats)
+        self.assertIn("avg_job_value", stats)
+        self.assertEqual(stats["jobs_count"], 1)
+        self.assertEqual(stats["total_revenue"], "150.00")

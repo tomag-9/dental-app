@@ -53,12 +53,24 @@ class Invoice(models.Model):
         ("cancelled", "Cancelled"),
     )
 
+    DOCUMENT_TYPE_CHOICES = (
+        ("invoice", "Invoice"),
+        ("proforma", "Proforma"),
+    )
+
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="invoices")
     clinic = models.ForeignKey(
         Clinic, on_delete=models.CASCADE, related_name="invoices"
     )
     number = models.CharField(max_length=50, unique=True, null=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    document_type = models.CharField(
+        max_length=20,
+        choices=DOCUMENT_TYPE_CHOICES,
+        default="invoice",
+    )
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -118,6 +130,10 @@ class Subscription(models.Model):
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="free")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inactive")
     seats = models.IntegerField(default=5)
+    mrr = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True, blank=True)
+    billing_email = models.EmailField(blank=True, null=True)
+    trial_ends_at = models.DateField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
     current_period_start = models.DateField(null=True, blank=True)
     current_period_end = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

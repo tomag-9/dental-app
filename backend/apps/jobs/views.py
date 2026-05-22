@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date
@@ -102,9 +103,15 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         job = serializer.save(lab=user.lab)
         self._record_timeline(job, "created", note="Práca bola vytvorená.")
 
+    # Fields whose before/after values we track in the timeline.
+    _TRACKED_FIELDS = ("due_date", "priority", "description", "price", "technician_id", "tooth_color")
+
     def perform_update(self, serializer):
-        old_status = serializer.instance.status
-        old_technician_id = serializer.instance.technician_id
+        old = serializer.instance
+        old_status = old.status
+        old_technician_id = old.technician_id
+        old_snapshot = {f: getattr(old, f) for f in self._TRACKED_FIELDS}
+
         new_status = serializer.validated_data.get("status", old_status)
         if new_status != old_status:
             allowed = self.allowed_transitions.get(old_status, set())
@@ -114,6 +121,12 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 )
         job = serializer.save()
 
+        changed = {
+            f: {"from": str(old_snapshot[f]), "to": str(getattr(job, f))}
+            for f in self._TRACKED_FIELDS
+            if old_snapshot[f] != getattr(job, f)
+        }
+
         if old_status != job.status:
             self._record_timeline(
                 job,
@@ -121,11 +134,12 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 note="Stav práce bol zmenený.",
                 from_status=old_status,
                 to_status=job.status,
+                changed_fields=changed or None,
             )
         elif old_technician_id != job.technician_id:
-            self._record_timeline(job, "assigned", note="Technik bol zmenený.")
+            self._record_timeline(job, "assigned", note="Technik bol zmenený.", changed_fields=changed or None)
         else:
-            self._record_timeline(job, "updated", note="Práca bola upravená.")
+            self._record_timeline(job, "updated", note="Práca bola upravená.", changed_fields=changed or None)
 
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
@@ -161,15 +175,230 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         )
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 
-    def _record_timeline(self, job, event, note=None, from_status=None, to_status=None):
+    @action(detail=True, methods=["get"], url_path="work_order")
+    def work_order(self, request, pk=None):
+        job = self.get_object()
+
+        def _name(obj, fields=("first_name", "last_name")):
+            if not obj:
+                return None
+            return " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip() or None
+
+        items = [
+            {
+                "price_list_code": item.price_list_code,
+                "description": item.description,
+                "tooth": item.tooth,
+                "tooth_scope": item.tooth_scope,
+                "quantity": item.quantity,
+                "unit_price": str(item.unit_price),
+                "total": str(item.total),
+                "procedure_category": item.procedure_category,
+                "material": item.material,
+                "color": item.color,
+                "bridge_span": item.bridge_span,
+            }
+            for item in job.items.all()
+        ]
+
+        doctor = job.doctor
+        doctor_name = None
+        if doctor:
+            parts = [
+                doctor.title_before or "",
+                _name(doctor),
+                doctor.title_after or "",
+            ]
+            doctor_name = " ".join(p for p in parts if p).strip() or None
+
+        data = {
+            "id": job.id,
+            "number": f"WO-{job.id:05d}",
+            "status": job.status,
+            "priority": job.priority,
+            "description": job.description,
+            "tooth_color": job.tooth_color,
+            "due_date": job.due_date,
+            "start_date": job.start_date,
+            "end_date": job.end_date,
+            "try_in_date": job.try_in_date,
+            "created_at": job.created_at,
+            "patient": {
+                "id": job.patient_id,
+                "name": _name(job.patient),
+                "birth_number": getattr(job.patient, "birth_number", None),
+            } if job.patient else None,
+            "clinic": {
+                "id": job.clinic_id,
+                "name": getattr(job.clinic, "name", None),
+            } if job.clinic else None,
+            "doctor": {
+                "id": job.doctor_id,
+                "name": doctor_name,
+            } if job.doctor else None,
+            "technician": {
+                "id": job.technician_id,
+                "name": _name(job.technician),
+            } if job.technician else None,
+            "lab": {
+                "name": job.lab.name,
+                "address": job.lab.address,
+                "phone": job.lab.phone,
+                "email": job.lab.email,
+            },
+            "items": items,
+        }
+        return Response(data)
+
+    @action(detail=False, methods=["post"], url_path="quick-create")
+    @transaction.atomic
+    def quick_create(self, request):
+        """
+        Atomically create a patient (if needed) and a job in one request.
+
+        Expected payload:
+          {
+            "patient": {"first_name": "...", "last_name": "...", "birth_number": "...", ...},
+            "clinic_id": <int>,           # required
+            "job": {"description": "...", "due_date": "...", ...}
+          }
+        Patient is matched by birth_number if provided and already exists; otherwise created.
+        """
+        from django.db import transaction as db_transaction
+
+        from apps.crm.models import Clinic, Patient
+        from apps.crm.serializers import PatientSerializer
+
+        user = request.user
+        if not is_superadmin(user) and not getattr(user, "lab_id", None):
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+        lab = user.lab if not is_superadmin(user) else None
+
+        clinic_id = request.data.get("clinic_id")
+        if not clinic_id:
+            return Response(
+                {"detail": "clinic_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+        clinic_qs = Clinic.objects.filter(id=clinic_id)
+        if lab:
+            clinic_qs = clinic_qs.filter(lab=lab)
+        clinic = clinic_qs.first()
+        if not clinic:
+            return Response(
+                {"detail": "Clinic not found or out of scope"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if lab is None:
+            lab = clinic.lab
+
+        patient_data = request.data.get("patient")
+        if not patient_data:
+            return Response(
+                {"detail": "patient data is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        birth_number = patient_data.get("birth_number", "").strip()
+        patient = None
+        if birth_number:
+            patient = Patient.objects.filter(lab=lab, birth_number=birth_number).first()
+
+        if patient is None:
+            pat_ser = PatientSerializer(data={**patient_data, "lab": lab.id})
+            pat_ser.is_valid(raise_exception=True)
+            patient = pat_ser.save(lab=lab)
+
+        job_data = request.data.get("job") or {}
+        job_ser = self.get_serializer(
+            data={
+                "patient": patient.id,
+                "clinic": clinic.id,
+                **{k: v for k, v in job_data.items() if k not in ("patient", "clinic", "lab")},
+            }
+        )
+        job_ser.is_valid(raise_exception=True)
+        job = job_ser.save(lab=lab, patient=patient, clinic=clinic)
+        self._record_timeline(job, "created", note="Práca bola vytvorená (quick-create).")
+
+        return Response(
+            {
+                "patient": {"id": patient.id, "first_name": patient.first_name, "last_name": patient.last_name},
+                "job": self.get_serializer(job).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["get"], url_path="status-config")
+    def status_config(self, request):
+        config = {
+            "new": {
+                "label": "Nová",
+                "label_en": "New",
+                "color": "blue",
+                "allowed_transitions": ["in_progress", "cancelled"],
+            },
+            "in_progress": {
+                "label": "V procese",
+                "label_en": "In Progress",
+                "color": "yellow",
+                "allowed_transitions": ["completed", "cancelled"],
+            },
+            "completed": {
+                "label": "Dokončená",
+                "label_en": "Completed",
+                "color": "green",
+                "allowed_transitions": ["in_progress"],
+            },
+            "cancelled": {
+                "label": "Zrušená",
+                "label_en": "Cancelled",
+                "color": "red",
+                "allowed_transitions": ["new"],
+            },
+            "finished_factured": {
+                "label": "Vyfakturovaná",
+                "label_en": "Invoiced",
+                "color": "purple",
+                "allowed_transitions": [],
+            },
+            "finished_unfactured": {
+                "label": "Ukončená – nevyfakturovaná",
+                "label_en": "Closed – Not Invoiced",
+                "color": "gray",
+                "allowed_transitions": ["in_progress"],
+            },
+            "closed": {
+                "label": "Uzavretá",
+                "label_en": "Closed",
+                "color": "slate",
+                "allowed_transitions": [],
+            },
+        }
+        return Response(config)
+
+    def _record_timeline(self, job, event, note=None, from_status=None, to_status=None, changed_fields=None):
+        actor = self.request.user if self.request.user.is_authenticated else None
         JobTimelineEvent.objects.create(
             job=job,
-            actor=self.request.user if self.request.user.is_authenticated else None,
+            actor=actor,
             event=event,
             note=note,
             from_status=from_status,
             to_status=to_status,
+            changed_fields=changed_fields,
         )
+        if event == "status_changed" and (from_status or to_status):
+            from apps.core.models import AuditLog
+            AuditLog.objects.create(
+                actor=actor,
+                lab=job.lab,
+                action="job.status_changed",
+                entity_type="job",
+                entity_id=str(job.id),
+                description=f"Job #{job.id} status: {from_status} → {to_status}",
+                metadata={"from_status": from_status, "to_status": to_status},
+            )
 
 
 class VacationViewSet(viewsets.ModelViewSet):

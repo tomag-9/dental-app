@@ -13,9 +13,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.finance.models import Subscription
+from apps.jobs.models import CalendarEvent
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
-from .models import AuditLog, Lab, Notification, TeamInvitation, User
+from .models import AuditLog, Lab, LabApiKey, Notification, TeamInvitation, User, UserSession
 from .serializers import (
     AuditLogSerializer,
     LabSerializer,
@@ -57,6 +58,33 @@ def _write_audit_log(
         metadata=metadata or {},
         ip_address=_client_ip(request),
     )
+
+
+def _send_invitation_email(invitation):
+    from django.conf import settings as django_settings
+    from django.core.mail import send_mail
+
+    base_url = getattr(django_settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+    join_url = f"{base_url}/join?token={invitation.token}&invitation={invitation.id}"
+    lab_name = invitation.lab.name if invitation.lab else "Dental Lab"
+    subject = f"Pozvánka do laboratória {lab_name}"
+    message = (
+        f"Boli ste pozvaní do laboratória {lab_name}.\n\n"
+        f"Rola: {invitation.role}\n"
+        f"Platnosť: do {invitation.expires_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+        f"Prijmite pozvánku kliknutím na odkaz:\n{join_url}\n\n"
+        f"Ak ste túto pozvánku neočakávali, ignorujte tento email."
+    )
+    try:
+        send_mail(
+            subject,
+            message,
+            django_settings.DEFAULT_FROM_EMAIL,
+            [invitation.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
 
 
 def _build_unique_username(base_value):
@@ -305,6 +333,47 @@ class SystemHealthView(APIView):
                 }
             )
 
+        # Migration check
+        from django.db.migrations.executor import MigrationExecutor
+        try:
+            executor = MigrationExecutor(connection)
+            plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
+            pending_migrations = len(plan)
+            migration_status = "ok" if pending_migrations == 0 else "warning"
+            checks.append({
+                "service": "migrations",
+                "status": migration_status,
+                "detail": (
+                    "All migrations applied"
+                    if pending_migrations == 0
+                    else f"{pending_migrations} pending migration(s)"
+                ),
+            })
+        except Exception as exc:
+            migration_status = "error"
+            checks.append({"service": "migrations", "status": "error", "detail": str(exc)})
+
+        # Memory check (psutil optional)
+        memory_info = None
+        try:
+            import psutil
+            mem = psutil.virtual_memory()
+            memory_info = {
+                "total_mb": round(mem.total / 1024 / 1024),
+                "available_mb": round(mem.available / 1024 / 1024),
+                "percent_used": mem.percent,
+            }
+            checks.append({
+                "service": "memory",
+                "status": "ok" if mem.percent < 90 else "warning",
+                "detail": f"{mem.percent}% used",
+            })
+        except ImportError:
+            pass
+
+        import django
+        import sys
+
         lab_count = Lab.objects.count()
         user_count = User.objects.count()
         pending_invites = TeamInvitation.objects.filter(status="pending").count()
@@ -321,6 +390,12 @@ class SystemHealthView(APIView):
                     "users": user_count,
                     "pending_invitations": pending_invites,
                     "unread_notifications": unread_notifications,
+                },
+                "runtime": {
+                    "django_version": django.__version__,
+                    "python_version": sys.version.split(" ")[0],
+                    "pending_migrations": pending_migrations if "pending_migrations" in dir() else None,
+                    "memory": memory_info,
                 },
             }
         )
@@ -467,6 +542,24 @@ class DashboardStatsView(APIView):
                 }
             )
 
+        # Add CalendarEvents happening today.
+        cal_qs = CalendarEvent.objects.filter(start__date=today)
+        if not is_superadmin(user):
+            cal_qs = cal_qs.filter(lab_id=getattr(user, "lab_id", None))
+        for event in cal_qs.order_by("start")[:6]:
+            local_start = timezone.localtime(event.start)
+            time_str = local_start.strftime("%H:%M")
+            today_schedule_data.append(
+                {
+                    "id": event.id,
+                    "type": event.event_type or "meeting",
+                    "time": time_str,
+                    "title": event.title,
+                    "status": None,
+                }
+            )
+        today_schedule_data.sort(key=lambda x: x["time"])
+
         return Response(
             {
                 "total_patients": total_patients,
@@ -490,6 +583,82 @@ class DashboardStatsView(APIView):
                 "recent_jobs": recent_jobs_data,
                 "recent_invoices": recent_invoices_data,
                 "today_schedule": today_schedule_data,
+            }
+        )
+
+
+class DashboardChartDataView(APIView):
+    """Daily revenue and job counts for the last 30 days, plus status distribution."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.finance.models import Invoice
+        from apps.jobs.models import Job
+
+        user = request.user
+        lab_id = getattr(user, "lab_id", None)
+
+        if is_superadmin(user):
+            invoices_qs = Invoice.objects.all()
+            jobs_qs = Job.objects.all()
+        elif lab_id:
+            invoices_qs = Invoice.objects.filter(lab_id=lab_id)
+            jobs_qs = Job.objects.filter(lab_id=lab_id)
+        else:
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        today = timezone.localdate()
+        days = int(request.query_params.get("days", 30))
+        days = min(max(days, 7), 90)
+
+        daily_revenue = {}
+        daily_jobs = {}
+        for i in range(days - 1, -1, -1):
+            day = today - timedelta(days=i)
+            daily_revenue[day.isoformat()] = Decimal("0.00")
+            daily_jobs[day.isoformat()] = 0
+
+        start_date = today - timedelta(days=days - 1)
+        for inv in invoices_qs.filter(
+            status="paid",
+            paid_at__date__gte=start_date,
+            paid_at__date__lte=today,
+        ).only("paid_at", "total_amount"):
+            key = inv.paid_at.date().isoformat()
+            if key in daily_revenue:
+                daily_revenue[key] += Decimal(str(inv.total_amount or 0))
+
+        for job in jobs_qs.filter(
+            created_at__date__gte=start_date,
+            created_at__date__lte=today,
+        ).only("created_at"):
+            key = job.created_at.date().isoformat()
+            if key in daily_jobs:
+                daily_jobs[key] += 1
+
+        status_counts = {}
+        for job in jobs_qs.values("status"):
+            s = job["status"]
+            status_counts[s] = status_counts.get(s, 0) + 1
+
+        return Response(
+            {
+                "days": days,
+                "daily_revenue": [
+                    {"date": d, "revenue": f"{v:.2f}"}
+                    for d, v in daily_revenue.items()
+                ],
+                "daily_jobs": [
+                    {"date": d, "count": c}
+                    for d, c in daily_jobs.items()
+                ],
+                "status_distribution": [
+                    {"status": s, "count": c}
+                    for s, c in sorted(status_counts.items())
+                ],
             }
         )
 
@@ -658,6 +827,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
             description=f"Invitation sent to {invitation.email}",
             metadata={"role": invitation.role},
         )
+        _send_invitation_email(invitation)
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.AllowAny])
     @transaction.atomic
@@ -1056,6 +1226,14 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         return Response(result)
 
+    @action(detail=False, methods=["patch"], url_path="me/avatar")
+    def update_avatar(self, request):
+        user = request.user
+        avatar_url = request.data.get("avatar_url", "")
+        user.avatar_url = avatar_url or None
+        user.save(update_fields=["avatar_url"])
+        return Response({"avatar_url": user.avatar_url})
+
     @action(
         detail=False,
         methods=["put"],
@@ -1084,3 +1262,274 @@ class UserViewSet(viewsets.ModelViewSet):
             metadata={"is_active": target.is_active},
         )
         return Response({"id": target.id, "is_active": target.is_active})
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"superadmin/(?P<target_user_id>[^/.]+)/impersonate",
+    )
+    def impersonate(self, request, target_user_id=None):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Superadmin only endpoint")
+
+        try:
+            target = User.objects.select_related("lab").get(id=target_user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        refresh = RefreshToken.for_user(target)
+        _write_audit_log(
+            request,
+            action="user.impersonated",
+            entity_type="user",
+            entity_id=target.id,
+            lab=target.lab,
+            description=f"Superadmin {request.user.username} impersonated {target.username}",
+            metadata={"impersonated_by": request.user.id},
+        )
+        return Response(
+            {
+                "user": UserSerializer(target).data,
+                "access_token": str(refresh.access_token),
+                "refresh_token": str(refresh),
+            }
+        )
+
+
+class SessionLoginView(APIView):
+    """JWT login that also persists a UserSession record."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+        serializer = TokenObtainPairSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.user
+        refresh = serializer.validated_data["refresh"]
+
+        from rest_framework_simplejwt.tokens import RefreshToken as _RT
+
+        token_obj = _RT(refresh)
+        jti = token_obj["jti"]
+        exp = timezone.datetime.fromtimestamp(token_obj["exp"], tz=timezone.utc)
+
+        device_info = request.META.get("HTTP_USER_AGENT", "")[:500]
+        UserSession.objects.update_or_create(
+            jti=jti,
+            defaults={
+                "user": user,
+                "ip_address": _client_ip(request),
+                "device_info": device_info,
+                "expires_at": exp,
+                "revoked": False,
+            },
+        )
+
+        return Response(serializer.validated_data)
+
+
+class SessionViewSet(viewsets.ViewSet):
+    """List and revoke the current user's active sessions."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request):
+        qs = UserSession.objects.filter(
+            user=request.user, revoked=False, expires_at__gt=timezone.now()
+        ).order_by("-created_at")
+        return Response(
+            [
+                {
+                    "id": s.id,
+                    "jti": s.jti,
+                    "ip_address": s.ip_address,
+                    "device_info": s.device_info,
+                    "created_at": s.created_at.isoformat(),
+                    "expires_at": s.expires_at.isoformat(),
+                }
+                for s in qs
+            ]
+        )
+
+    def destroy(self, request, pk=None):
+        session = UserSession.objects.filter(
+            pk=pk, user=request.user
+        ).first()
+        if session is None:
+            return Response(
+                {"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        session.revoked = True
+        session.save(update_fields=["revoked"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=["delete"], url_path="revoke-all")
+    def revoke_all(self, request):
+        updated = UserSession.objects.filter(
+            user=request.user, revoked=False
+        ).update(revoked=True)
+        return Response({"revoked": updated})
+
+
+class LabApiKeyViewSet(viewsets.ViewSet):
+    """Generate and manage lab API keys (hashed storage, plaintext shown once)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _assert_admin(self, user):
+        if not is_admin_or_superadmin(user):
+            raise PermissionDenied("Only admin or superadmin can manage API keys")
+
+    def _get_lab(self, user):
+        if is_superadmin(user):
+            return None
+        lab = getattr(user, "lab", None)
+        if not lab:
+            raise PermissionDenied("No lab associated")
+        return lab
+
+    def list(self, request):
+        self._assert_admin(request.user)
+        lab = self._get_lab(request.user)
+        qs = LabApiKey.objects.filter(is_active=True)
+        if lab:
+            qs = qs.filter(lab=lab)
+        return Response(
+            [
+                {
+                    "id": k.id,
+                    "name": k.name,
+                    "prefix": k.prefix,
+                    "is_active": k.is_active,
+                    "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                    "created_at": k.created_at.isoformat(),
+                }
+                for k in qs
+            ]
+        )
+
+    def create(self, request):
+        import hashlib
+
+        self._assert_admin(request.user)
+        name = (request.data.get("name") or "").strip()
+        if not name:
+            return Response(
+                {"name": "Name is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lab = self._get_lab(request.user)
+        if lab is None:
+            lab_id = request.data.get("lab_id")
+            if not lab_id:
+                return Response(
+                    {"lab_id": "lab_id required for superadmin"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            lab = Lab.objects.filter(id=lab_id).first()
+            if not lab:
+                return Response(
+                    {"detail": "Lab not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
+        raw_key = secrets.token_urlsafe(32)
+        prefix = raw_key[:8]
+        hashed = hashlib.sha256(raw_key.encode()).hexdigest()
+
+        key = LabApiKey.objects.create(
+            lab=lab,
+            name=name,
+            prefix=prefix,
+            hashed_key=hashed,
+            created_by=request.user,
+        )
+        return Response(
+            {
+                "id": key.id,
+                "name": key.name,
+                "prefix": key.prefix,
+                "key": raw_key,
+                "created_at": key.created_at.isoformat(),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def destroy(self, request, pk=None):
+        self._assert_admin(request.user)
+        lab = self._get_lab(request.user)
+        qs = LabApiKey.objects.filter(pk=pk)
+        if lab:
+            qs = qs.filter(lab=lab)
+        key = qs.first()
+        if not key:
+            return Response(
+                {"detail": "API key not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        key.is_active = False
+        key.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SuperadminMetricsView(APIView):
+    """Platform-level MRR/activity aggregates for superadmin."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Superadmin only endpoint")
+
+        from apps.finance.models import Invoice, Subscription
+
+        today = timezone.localdate()
+        month_start = today.replace(day=1)
+
+        total_labs = Lab.objects.count()
+        total_users = User.objects.filter(is_active=True).count()
+        active_subscriptions = Subscription.objects.filter(status="active").count()
+
+        mrr = (
+            Invoice.objects.filter(
+                status="paid",
+                paid_at__date__gte=month_start,
+                paid_at__date__lte=today,
+            ).aggregate(total=Sum("total_amount"))["total"]
+            or Decimal("0.00")
+        )
+
+        recent_activity = []
+        for log in AuditLog.objects.select_related("actor", "lab").order_by("-created_at")[:10]:
+            recent_activity.append(
+                {
+                    "id": log.id,
+                    "action": log.action,
+                    "actor": log.actor.username if log.actor else None,
+                    "lab": log.lab.name if log.lab else None,
+                    "description": log.description,
+                    "created_at": log.created_at.isoformat(),
+                }
+            )
+
+        new_labs_this_month = Lab.objects.filter(
+            created_at__date__gte=month_start
+        ).count()
+        new_users_this_month = User.objects.filter(
+            date_joined__date__gte=month_start
+        ).count()
+
+        return Response(
+            {
+                "total_labs": total_labs,
+                "total_users": total_users,
+                "active_subscriptions": active_subscriptions,
+                "mrr": f"{mrr:.2f}",
+                "new_labs_this_month": new_labs_this_month,
+                "new_users_this_month": new_users_this_month,
+                "recent_activity": recent_activity,
+            }
+        )

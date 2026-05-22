@@ -49,6 +49,14 @@ class InvoiceCreateSerializer(serializers.Serializer):
         child=serializers.IntegerField(min_value=1),
         allow_empty=False,
     )
+    document_type = serializers.ChoiceField(
+        choices=("invoice", "proforma"),
+        default="invoice",
+        required=False,
+    )
+    discount_percent = serializers.DecimalField(
+        max_digits=5, decimal_places=2, default=0, required=False, min_value=0, max_value=100,
+    )
 
 
 class InvoiceStatusUpdateSerializer(serializers.Serializer):
@@ -74,6 +82,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "clinic",
             "clinic_name",
             "status",
+            "document_type",
+            "vat_rate",
+            "discount_percent",
             "total_amount",
             "subtotal_amount",
             "vat_amount",
@@ -97,11 +108,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return sorted(patient_names)
 
     def get_subtotal_amount(self, obj):
-        vat_rate = Decimal(str(getattr(obj.lab, "vat_rate", 0) or 0))
+        vat_rate = Decimal(str(obj.vat_rate or 0))
+        discount = Decimal(str(obj.discount_percent or 0))
         total = Decimal(str(obj.total_amount or 0))
-        if vat_rate <= 0:
+        # Reverse: total = (subtotal * (1 - discount/100)) * (1 + vat/100)
+        divisor = (Decimal("1") - discount / Decimal("100")) * (Decimal("1") + vat_rate / Decimal("100"))
+        if divisor <= 0:
             return f"{total:.2f}"
-        divisor = Decimal("1") + (vat_rate / Decimal("100"))
         subtotal = (total / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return f"{subtotal:.2f}"
 
@@ -126,7 +139,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_related_jobs(self, obj):
         related = []
         seen = set()
-        for item in obj.items.select_related("job__patient").all():
+        for item in obj.items.select_related("job__patient").order_by("job_id"):
             job = item.job
             if not job or job.id in seen:
                 continue

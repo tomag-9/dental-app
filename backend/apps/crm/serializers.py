@@ -1,8 +1,80 @@
+import re
+
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Clinic, Doctor, Patient
+
+
+def _age_from_birth_number(birth_number):
+    """Return age in years from a Slovak rodné číslo, or None if unparseable."""
+    try:
+        digits = birth_number.replace('/', '').strip()
+        if not re.fullmatch(r'\d{9,10}', digits):
+            return None
+        yy = int(digits[0:2])
+        mm = int(digits[2:4])
+        dd = int(digits[4:6])
+        if mm > 50:
+            mm -= 50
+        if not (1 <= mm <= 12) or not (1 <= dd <= 31):
+            return None
+        today = timezone.localdate()
+        # Determine full year: YY >= 54 → 19YY, YY < 54 → 20YY (post-1954 rule)
+        full_year = (1900 + yy) if yy >= 54 else (2000 + yy)
+        age = today.year - full_year
+        if (today.month, today.day) < (mm, dd):
+            age -= 1
+        return max(age, 0)
+    except (ValueError, TypeError):
+        return None
+
+
+def _validate_birth_number(value):
+    digits = value.replace('/', '').strip()
+    if not re.fullmatch(r'\d{9,10}', digits):
+        raise serializers.ValidationError(
+            'Rodné číslo musí obsahovať 9 alebo 10 číslic (napr. 900101/1234).'
+        )
+    mm = int(digits[2:4])
+    dd = int(digits[4:6])
+    if mm > 50:
+        mm -= 50
+    if not (1 <= mm <= 12):
+        raise serializers.ValidationError('Rodné číslo obsahuje neplatný mesiac.')
+    if not (1 <= dd <= 31):
+        raise serializers.ValidationError('Rodné číslo obsahuje neplatný deň.')
+
+
+def _validate_ico(value):
+    if not value:
+        return
+    digits = value.strip()
+    if not re.fullmatch(r'\d{8}', digits):
+        raise serializers.ValidationError('IČO musí mať presne 8 číslic.')
+    weights = [8, 7, 6, 5, 4, 3, 2]
+    total = sum(int(digits[i]) * weights[i] for i in range(7))
+    remainder = total % 11
+    check = int(digits[7])
+    if remainder == 0:
+        if check != 0:
+            raise serializers.ValidationError('IČO má neplatný kontrolný súčet.')
+    elif remainder > 1 and check != 11 - remainder:
+        raise serializers.ValidationError('IČO má neplatný kontrolný súčet.')
+
+
+def _validate_dic(value):
+    if not value:
+        return
+    stripped = value.strip().upper()
+    if re.fullmatch(r'\d{8,10}', stripped):
+        return
+    if re.fullmatch(r'SK\d{10}', stripped):
+        return
+    raise serializers.ValidationError(
+        'DIČ musí byť vo formáte 10 číslic alebo SK0000000000.'
+    )
 
 ACTIVE_JOB_STATUSES = ("new", "in_progress")
 
@@ -99,6 +171,16 @@ class ClinicSerializer(serializers.ModelSerializer):
                 validated_data["address"] = address
 
         return validated_data
+
+    def validate_ico(self, value):
+        if value:
+            _validate_ico(value)
+        return value
+
+    def validate_dic(self, value):
+        if value:
+            _validate_dic(value)
+        return value
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -238,11 +320,21 @@ class PatientSerializer(serializers.ModelSerializer):
     jobs_count = serializers.SerializerMethodField()
     active_jobs = serializers.SerializerMethodField()
     ytd_revenue = serializers.SerializerMethodField()
+    age = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
-        fields = "__all__"
-        read_only_fields = ["lab", "jobs_count", "active_jobs", "ytd_revenue"]
+        fields = [
+            "id", "lab", "first_name", "last_name", "birth_number",
+            "address", "phone", "email", "tooth_procedures", "created_at",
+            "jobs_count", "active_jobs", "ytd_revenue", "age",
+        ]
+        read_only_fields = ["lab", "jobs_count", "active_jobs", "ytd_revenue", "age"]
+
+    def validate_birth_number(self, value):
+        if value:
+            _validate_birth_number(value)
+        return value
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -274,3 +366,6 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def get_ytd_revenue(self, obj):
         return _paid_invoice_revenue_for_jobs(obj.jobs.all())
+
+    def get_age(self, obj):
+        return _age_from_birth_number(obj.birth_number)

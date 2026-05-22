@@ -1,7 +1,9 @@
+import csv
 from decimal import Decimal
 
 from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
+from django.http import HttpResponse
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -63,6 +65,29 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 ],
             }
         )
+
+    @action(detail=False, methods=["get"], url_path="export")
+    def export_csv(self, request):
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="inventory.csv"'
+        writer = csv.writer(response)
+        writer.writerow([
+            "name", "sku", "quantity", "unit", "category",
+            "supplier", "cost_price", "location", "notes",
+        ])
+        for item in self.get_queryset().order_by("name"):
+            writer.writerow([
+                item.name,
+                item.sku or "",
+                item.quantity,
+                item.unit or "",
+                item.category or "",
+                item.supplier or "",
+                item.cost_price if item.cost_price is not None else "",
+                item.location or "",
+                item.notes or "",
+            ])
+        return response
 
     @action(detail=False, methods=["post"], url_path="import")
     def bulk_import(self, request):

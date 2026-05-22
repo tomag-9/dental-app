@@ -1,9 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils.text import slugify
 
 
 class Lab(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
+    slug = models.SlugField(max_length=255, unique=True, blank=True)
     address = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
@@ -25,6 +27,17 @@ class Lab(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name)
+            slug = base
+            n = 1
+            while Lab.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{n}"
+                n += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
@@ -44,6 +57,7 @@ class User(AbstractUser):
         Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
     )
     notification_preferences = models.JSONField(default=dict, blank=True)
+    avatar_url = models.URLField(max_length=500, blank=True, null=True)
 
     # Required for custom user model
     REQUIRED_FIELDS = ["email"]
@@ -136,6 +150,49 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.recipient_id}: {self.title}"
+
+
+class LabApiKey(models.Model):
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="api_keys")
+    name = models.CharField(max_length=100)
+    prefix = models.CharField(max_length=12)
+    hashed_key = models.CharField(max_length=128)
+    is_active = models.BooleanField(default=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        "User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="created_api_keys",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.lab_id}:{self.name}:{self.prefix}"
+
+
+class UserSession(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sessions"
+    )
+    jti = models.CharField(max_length=255, unique=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    device_info = models.CharField(max_length=500, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    revoked = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    @property
+    def is_active(self):
+        from django.utils import timezone
+        return not self.revoked and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f"session:{self.user_id}:{self.jti[:8]}"
 
 
 class AuditLog(models.Model):

@@ -120,13 +120,26 @@ function Dashboard({ onNavigate, onOpenJob }) {
 
   const typeDot = { job: '#0d7c6b', meeting: '#2563eb', pickup: '#d97706' };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Dobré ráno';
+    if (hour >= 12 && hour < 18) return 'Dobrý deň';
+    if (hour >= 18 && hour < 22) return 'Dobrý večer';
+    return 'Dobrú noc';
+  };
+  const savedUser = window.MolarisAPI.savedUser && window.MolarisAPI.savedUser();
+  const firstName = (savedUser && savedUser.name && savedUser.name.split(' ')[0]) || '';
+  const greetingTitle = firstName ? `${getGreeting()}, ${firstName}` : getGreeting();
+  const todaySubtitle = new Date().toLocaleDateString('sk-SK', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }) + ' · Prehľad vášho laboratória.';
+
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
-      title: 'Dobré ráno, Ján',
-      subtitle: 'Pondelok 12. mája 2026 · Prehľad vášho laboratória.',
+      title: greetingTitle,
+      subtitle: todaySubtitle,
       actions: [
         React.createElement(Button, { key: 'r', variant: 'outline' }, React.createElement(Icon, { name: 'refreshCw', size: 13 }), 'Obnoviť'),
-        React.createElement(Button, { key: 'n', onClick: () => onNavigate('jobs') }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
       ]
     }),
 
