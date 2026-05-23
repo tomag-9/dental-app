@@ -995,3 +995,100 @@ class DashboardChartDataTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get("/api/core/dashboard/chart-data/")
         self.assertEqual(resp.status_code, 401)
+
+
+class TwoFactorTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="2FA Lab")
+        self.user = User.objects.create_user(
+            username="tfa_user", password="pw", email="tfa@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_get_2fa_status_unenrolled(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/2fa/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data["totp_enabled"])
+
+    def test_setup_returns_secret_and_uri(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/core/2fa/?action=setup")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("secret", resp.data)
+        self.assertIn("provisioning_uri", resp.data)
+        self.assertIn("otpauth://", resp.data["provisioning_uri"])
+
+    def test_verify_with_valid_code_enables_2fa(self):
+        import pyotp
+        self.client.force_authenticate(user=self.user)
+        self.client.post("/api/core/2fa/?action=setup")
+        self.user.refresh_from_db()
+        totp = pyotp.TOTP(self.user.totp_secret)
+        code = totp.now()
+        resp = self.client.post("/api/core/2fa/?action=verify", {"code": code})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["totp_enabled"])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.totp_enabled)
+
+    def test_verify_with_invalid_code_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+        self.client.post("/api/core/2fa/?action=setup")
+        resp = self.client.post("/api/core/2fa/?action=verify", {"code": "000000"})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_disable_with_valid_code_deactivates_2fa(self):
+        import pyotp
+        self.client.force_authenticate(user=self.user)
+        self.client.post("/api/core/2fa/?action=setup")
+        self.user.refresh_from_db()
+        totp = pyotp.TOTP(self.user.totp_secret)
+        self.client.post("/api/core/2fa/?action=verify", {"code": totp.now()})
+        resp = self.client.post("/api/core/2fa/?action=disable", {"code": totp.now()})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data["totp_enabled"])
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get("/api/core/2fa/")
+        self.assertEqual(resp.status_code, 401)
+
+
+class PermissionsMatrixTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Matrix Lab")
+        self.admin = User.objects.create_user(
+            username="matrix_admin", password="pw", email="matrix@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.user = User.objects.create_user(
+            username="matrix_user", password="pw", email="muser@test.sk",
+            role="user", lab=self.lab,
+        )
+
+    def test_matrix_returns_all_roles(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/core/permissions/matrix/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("matrix", resp.data)
+        self.assertIn("superadmin", resp.data["matrix"])
+        self.assertIn("admin", resp.data["matrix"])
+        self.assertIn("user", resp.data["matrix"])
+        self.assertIn("technician", resp.data["matrix"])
+
+    def test_current_role_and_permissions_returned(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/core/permissions/matrix/")
+        self.assertEqual(resp.data["current_role"], "admin")
+        self.assertIn("lab:write", resp.data["current_permissions"])
+
+    def test_user_role_has_limited_permissions(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/core/permissions/matrix/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["current_role"], "user")
+        self.assertNotIn("user:delete", resp.data["current_permissions"])
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get("/api/core/permissions/matrix/")
+        self.assertEqual(resp.status_code, 401)

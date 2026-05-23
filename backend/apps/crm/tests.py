@@ -887,3 +887,93 @@ class PatientRevenueStatsTests(APITestCase):
         self.assertIn("avg_job_value", stats)
         self.assertEqual(stats["jobs_count"], 1)
         self.assertEqual(stats["total_revenue"], "150.00")
+
+
+class CrmAdminOnlyWriteTests(APITestCase):
+    """Only admin/superadmin can create, update, delete CRM records."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Write Guard Lab")
+        self.admin = User.objects.create_user(
+            username="crm_admin", password="pw", email="crm_admin@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="crm_user", password="pw", email="crm_user@test.sk",
+            role="user", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Test Clinic")
+
+    def test_admin_can_create_clinic(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/crm/clinics/", {"name": "New Clinic"})
+        self.assertEqual(resp.status_code, 201)
+
+    def test_user_cannot_create_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post("/api/crm/clinics/", {"name": "Blocked Clinic"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_cannot_update_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.patch(f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_cannot_delete_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.delete(f"/api/crm/clinics/{self.clinic.id}/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_can_read_clinics(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/clinics/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_admin_can_create_patient(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/crm/patients/", {
+            "first_name": "Jan", "last_name": "Novak", "birth_number": "9001015555",
+        })
+        self.assertEqual(resp.status_code, 201)
+
+    def test_user_cannot_create_patient(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post("/api/crm/patients/", {
+            "first_name": "Eva", "last_name": "Nová", "birth_number": "9055215557",
+        })
+        self.assertEqual(resp.status_code, 403)
+
+
+class CrmCsvExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Export Lab")
+        self.user = User.objects.create_user(
+            username="export_user", password="pw", email="export@test.sk",
+            role="user", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Export Clinic", ico="12345678")
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="Jana", last_name="Novakova", birth_number="8555215556",
+        )
+
+    def test_patients_export_returns_csv(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("first_name", content)
+        self.assertIn("Novakova", content)
+
+    def test_clinics_export_returns_csv(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/crm/clinics/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("name", content)
+        self.assertIn("Export Clinic", content)
+
+    def test_unauthenticated_export_denied(self):
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 401)

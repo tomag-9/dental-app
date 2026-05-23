@@ -17,3 +17,5 @@ pyplusplus
 flake8
 black
 djangorestframework-simplejwt
+pyotp
+qrcode[pil]

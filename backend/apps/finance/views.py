@@ -276,8 +276,22 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pdf.setLineWidth(0.3)
             pdf.line(x1 or L, y, x2 or R, y)
 
-        # QR code top-right
-        payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount):.2f}|{invoice.status}"
+        # QR code top-right — PAY by square when lab has it enabled
+        if lab.enable_qr_payment and lab.bank_account:
+            iban = (lab.bank_account or "").replace(" ", "")
+            amount = Decimal(str(invoice.total_amount or 0))
+            bic = lab.bank_bic or ""
+            msg = f"Faktura {invoice.number}"
+            # Simplified PAY by square payload (BySQUARE-compatible subset)
+            payload = (
+                f"PAY*QR%0100*1*1"
+                f"%AM{amount:.2f}%CC EUR"
+                f"%IBAN{iban}"
+                + (f"%BIC{bic}" if bic else "")
+                + f"%MSG{msg}"
+            )
+        else:
+            payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount):.2f}|{invoice.status}"
         _, qr_drawing = self._build_qr_svg(payload, size=72)
         renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 

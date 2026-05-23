@@ -30,9 +30,10 @@ class Migration(migrations.Migration):
         ),
         # Populate slugs for existing rows.
         migrations.RunPython(populate_slugs, migrations.RunPython.noop),
-        # Add the unique constraint directly (avoids re-creating the _like index).
-        migrations.RunSQL(
-            "ALTER TABLE core_lab ADD CONSTRAINT core_lab_slug_key UNIQUE (slug);",
-            reverse_sql="ALTER TABLE core_lab DROP CONSTRAINT IF EXISTS core_lab_slug_key;",
+        # Make slug non-nullable and unique.
+        migrations.AlterField(
+            model_name="lab",
+            name="slug",
+            field=models.SlugField(max_length=255, blank=True, unique=True),
         ),
     ]

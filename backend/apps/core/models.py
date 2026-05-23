@@ -24,6 +24,7 @@ class Lab(models.Model):
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     payment_method = models.CharField(max_length=50, default="bank_transfer")
     invoice_default_note = models.TextField(blank=True, default="")
+    enable_qr_payment = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -58,6 +59,8 @@ class User(AbstractUser):
     )
     notification_preferences = models.JSONField(default=dict, blank=True)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
+    totp_secret = models.CharField(max_length=64, blank=True, null=True)
+    totp_enabled = models.BooleanField(default=False)
 
     # Required for custom user model
     REQUIRED_FIELDS = ["email"]

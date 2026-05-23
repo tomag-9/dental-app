@@ -16,7 +16,15 @@ from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
-from .models import AuditLog, Lab, LabApiKey, Notification, TeamInvitation, User, UserSession
+from .models import (
+    AuditLog,
+    Lab,
+    LabApiKey,
+    Notification,
+    TeamInvitation,
+    User,
+    UserSession,
+)
 from .serializers import (
     AuditLogSerializer,
     LabSerializer,
@@ -335,39 +343,47 @@ class SystemHealthView(APIView):
 
         # Migration check
         from django.db.migrations.executor import MigrationExecutor
+
         try:
             executor = MigrationExecutor(connection)
             plan = executor.migration_plan(executor.loader.graph.leaf_nodes())
             pending_migrations = len(plan)
             migration_status = "ok" if pending_migrations == 0 else "warning"
-            checks.append({
-                "service": "migrations",
-                "status": migration_status,
-                "detail": (
-                    "All migrations applied"
-                    if pending_migrations == 0
-                    else f"{pending_migrations} pending migration(s)"
-                ),
-            })
+            checks.append(
+                {
+                    "service": "migrations",
+                    "status": migration_status,
+                    "detail": (
+                        "All migrations applied"
+                        if pending_migrations == 0
+                        else f"{pending_migrations} pending migration(s)"
+                    ),
+                }
+            )
         except Exception as exc:
             migration_status = "error"
-            checks.append({"service": "migrations", "status": "error", "detail": str(exc)})
+            checks.append(
+                {"service": "migrations", "status": "error", "detail": str(exc)}
+            )
 
         # Memory check (psutil optional)
         memory_info = None
         try:
             import psutil
+
             mem = psutil.virtual_memory()
             memory_info = {
                 "total_mb": round(mem.total / 1024 / 1024),
                 "available_mb": round(mem.available / 1024 / 1024),
                 "percent_used": mem.percent,
             }
-            checks.append({
-                "service": "memory",
-                "status": "ok" if mem.percent < 90 else "warning",
-                "detail": f"{mem.percent}% used",
-            })
+            checks.append(
+                {
+                    "service": "memory",
+                    "status": "ok" if mem.percent < 90 else "warning",
+                    "detail": f"{mem.percent}% used",
+                }
+            )
         except ImportError:
             pass
 
@@ -394,7 +410,9 @@ class SystemHealthView(APIView):
                 "runtime": {
                     "django_version": django.__version__,
                     "python_version": sys.version.split(" ")[0],
-                    "pending_migrations": pending_migrations if "pending_migrations" in dir() else None,
+                    "pending_migrations": (
+                        pending_migrations if "pending_migrations" in dir() else None
+                    ),
                     "memory": memory_info,
                 },
             }
@@ -648,16 +666,11 @@ class DashboardChartDataView(APIView):
             {
                 "days": days,
                 "daily_revenue": [
-                    {"date": d, "revenue": f"{v:.2f}"}
-                    for d, v in daily_revenue.items()
+                    {"date": d, "revenue": f"{v:.2f}"} for d, v in daily_revenue.items()
                 ],
-                "daily_jobs": [
-                    {"date": d, "count": c}
-                    for d, c in daily_jobs.items()
-                ],
+                "daily_jobs": [{"date": d, "count": c} for d, c in daily_jobs.items()],
                 "status_distribution": [
-                    {"status": s, "count": c}
-                    for s, c in sorted(status_counts.items())
+                    {"status": s, "count": c} for s, c in sorted(status_counts.items())
                 ],
             }
         )
@@ -1357,9 +1370,7 @@ class SessionViewSet(viewsets.ViewSet):
         )
 
     def destroy(self, request, pk=None):
-        session = UserSession.objects.filter(
-            pk=pk, user=request.user
-        ).first()
+        session = UserSession.objects.filter(pk=pk, user=request.user).first()
         if session is None:
             return Response(
                 {"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND
@@ -1370,9 +1381,9 @@ class SessionViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["delete"], url_path="revoke-all")
     def revoke_all(self, request):
-        updated = UserSession.objects.filter(
-            user=request.user, revoked=False
-        ).update(revoked=True)
+        updated = UserSession.objects.filter(user=request.user, revoked=False).update(
+            revoked=True
+        )
         return Response({"revoked": updated})
 
 
@@ -1406,7 +1417,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
                     "name": k.name,
                     "prefix": k.prefix,
                     "is_active": k.is_active,
-                    "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                    "last_used_at": (
+                        k.last_used_at.isoformat() if k.last_used_at else None
+                    ),
                     "created_at": k.created_at.isoformat(),
                 }
                 for k in qs
@@ -1493,17 +1506,16 @@ class SuperadminMetricsView(APIView):
         total_users = User.objects.filter(is_active=True).count()
         active_subscriptions = Subscription.objects.filter(status="active").count()
 
-        mrr = (
-            Invoice.objects.filter(
-                status="paid",
-                paid_at__date__gte=month_start,
-                paid_at__date__lte=today,
-            ).aggregate(total=Sum("total_amount"))["total"]
-            or Decimal("0.00")
-        )
+        mrr = Invoice.objects.filter(
+            status="paid",
+            paid_at__date__gte=month_start,
+            paid_at__date__lte=today,
+        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         recent_activity = []
-        for log in AuditLog.objects.select_related("actor", "lab").order_by("-created_at")[:10]:
+        for log in AuditLog.objects.select_related("actor", "lab").order_by(
+            "-created_at"
+        )[:10]:
             recent_activity.append(
                 {
                     "id": log.id,
@@ -1531,5 +1543,229 @@ class SuperadminMetricsView(APIView):
                 "new_labs_this_month": new_labs_this_month,
                 "new_users_this_month": new_users_this_month,
                 "recent_activity": recent_activity,
+            }
+        )
+
+
+class TwoFactorView(APIView):
+    """TOTP-based 2FA: setup, verify (activate), disable."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Return current 2FA status for the user."""
+        return Response({"totp_enabled": request.user.totp_enabled})
+
+    def post(self, request):
+        """
+        Action-based dispatch via ?action= query param.
+        setup    — generate a new TOTP secret and return the provisioning URI.
+        verify   — confirm a TOTP code and activate 2FA.
+        disable  — deactivate 2FA (requires current TOTP code).
+        """
+        import pyotp
+
+        action_name = request.query_params.get("action", "setup")
+        user = request.user
+
+        if action_name == "setup":
+            secret = pyotp.random_base32()
+            user.totp_secret = secret
+            user.totp_enabled = False
+            user.save(update_fields=["totp_secret", "totp_enabled"])
+            totp = pyotp.TOTP(secret)
+            issuer = "DentalApp"
+            label = user.email or user.username
+            provisioning_uri = totp.provisioning_uri(name=label, issuer_name=issuer)
+            return Response(
+                {
+                    "secret": secret,
+                    "provisioning_uri": provisioning_uri,
+                    "message": "Scan the provisioning_uri with your authenticator app, then call verify.",
+                }
+            )
+
+        if action_name == "verify":
+            code = request.data.get("code", "")
+            if not user.totp_secret:
+                return Response(
+                    {"detail": "2FA not set up. Call setup first."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            totp = pyotp.TOTP(user.totp_secret)
+            if not totp.verify(code, valid_window=1):
+                return Response(
+                    {"detail": "Invalid TOTP code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.totp_enabled = True
+            user.save(update_fields=["totp_enabled"])
+            _write_audit_log(
+                request,
+                action="user.2fa_enabled",
+                entity_type="user",
+                entity_id=user.pk,
+                lab=user.lab,
+                description=f"2FA enabled for {user.username}",
+            )
+            return Response(
+                {"totp_enabled": True, "message": "2FA activated successfully."}
+            )
+
+        if action_name == "disable":
+            code = request.data.get("code", "")
+            if not user.totp_enabled:
+                return Response(
+                    {"detail": "2FA is not active."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            totp = pyotp.TOTP(user.totp_secret)
+            if not totp.verify(code, valid_window=1):
+                return Response(
+                    {"detail": "Invalid TOTP code."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.totp_secret = None
+            user.totp_enabled = False
+            user.save(update_fields=["totp_secret", "totp_enabled"])
+            _write_audit_log(
+                request,
+                action="user.2fa_disabled",
+                entity_type="user",
+                entity_id=user.pk,
+                lab=user.lab,
+                description=f"2FA disabled for {user.username}",
+            )
+            return Response({"totp_enabled": False, "message": "2FA deactivated."})
+
+        return Response(
+            {
+                "detail": f"Unknown action '{action_name}'. Use setup, verify, or disable."
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+_ROLE_PERMISSIONS = {
+    "superadmin": {
+        "description": "Full platform access across all labs",
+        "actions": [
+            "lab:read",
+            "lab:write",
+            "lab:delete",
+            "user:read",
+            "user:write",
+            "user:delete",
+            "user:impersonate",
+            "patient:read",
+            "patient:write",
+            "patient:delete",
+            "clinic:read",
+            "clinic:write",
+            "clinic:delete",
+            "doctor:read",
+            "doctor:write",
+            "doctor:delete",
+            "job:read",
+            "job:write",
+            "job:delete",
+            "invoice:read",
+            "invoice:write",
+            "invoice:delete",
+            "inventory:read",
+            "inventory:write",
+            "inventory:delete",
+            "audit_log:read",
+            "session:read",
+            "session:revoke",
+            "api_key:read",
+            "api_key:write",
+            "api_key:delete",
+            "2fa:manage",
+            "system_health:read",
+            "superadmin_metrics:read",
+        ],
+    },
+    "admin": {
+        "description": "Full access within own lab",
+        "actions": [
+            "lab:read",
+            "lab:write",
+            "user:read",
+            "user:write",
+            "patient:read",
+            "patient:write",
+            "patient:delete",
+            "clinic:read",
+            "clinic:write",
+            "clinic:delete",
+            "doctor:read",
+            "doctor:write",
+            "doctor:delete",
+            "job:read",
+            "job:write",
+            "job:delete",
+            "invoice:read",
+            "invoice:write",
+            "invoice:delete",
+            "inventory:read",
+            "inventory:write",
+            "inventory:delete",
+            "audit_log:read",
+            "session:read",
+            "session:revoke",
+            "api_key:read",
+            "api_key:write",
+            "api_key:delete",
+            "2fa:manage",
+        ],
+    },
+    "user": {
+        "description": "Standard lab user — can read most resources, limited write",
+        "actions": [
+            "lab:read",
+            "patient:read",
+            "clinic:read",
+            "doctor:read",
+            "job:read",
+            "job:write",
+            "invoice:read",
+            "inventory:read",
+            "session:read",
+            "session:revoke",
+            "2fa:manage",
+        ],
+    },
+    "technician": {
+        "description": "Technician — focused on job execution, no invoicing or admin",
+        "actions": [
+            "lab:read",
+            "patient:read",
+            "job:read",
+            "job:write",
+            "inventory:read",
+            "session:read",
+            "session:revoke",
+            "2fa:manage",
+        ],
+    },
+}
+
+
+class PermissionsMatrixView(APIView):
+    """Return the full role → allowed actions matrix."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        role = getattr(user, "role", "user")
+        return Response(
+            {
+                "current_role": role,
+                "current_permissions": _ROLE_PERMISSIONS.get(role, {}).get(
+                    "actions", []
+                ),
+                "matrix": _ROLE_PERMISSIONS,
             }
         )

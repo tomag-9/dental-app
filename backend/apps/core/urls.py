@@ -10,12 +10,14 @@ from .views import (
     LabApiKeyViewSet,
     LabViewSet,
     NotificationViewSet,
+    PermissionsMatrixView,
     PermissionsView,
     SessionLoginView,
     SessionViewSet,
     SuperadminMetricsView,
     SystemHealthView,
     TeamInvitationViewSet,
+    TwoFactorView,
     UserViewSet,
 )
 
@@ -35,5 +37,7 @@ urlpatterns = [
     path("superadmin-metrics/", SuperadminMetricsView.as_view(), name="superadmin-metrics"),
     path("auth/login/", SessionLoginView.as_view(), name="session-login"),
     path("dashboard/chart-data/", DashboardChartDataView.as_view(), name="dashboard-chart-data"),
+    path("2fa/", TwoFactorView.as_view(), name="2fa"),
+    path("permissions/matrix/", PermissionsMatrixView.as_view(), name="permissions-matrix"),
     path("", include(router.urls)),
 ]
