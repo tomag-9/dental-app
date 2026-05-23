@@ -1272,3 +1272,24 @@ class QuickCreateJobTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 404)
+
+    def test_regular_user_cannot_quick_create(self):
+        regular = User.objects.create_user(
+            username="qc_regular", password="pw", email="qcr@test.sk",
+            role="user", lab=self.lab,
+        )
+        self.client.force_authenticate(user=regular)
+        resp = self.client.post(
+            "/api/jobs/jobs/quick-create/",
+            {
+                "clinic_id": self.clinic.id,
+                "patient": {
+                    "first_name": "Eva",
+                    "last_name": "Nova",
+                    "birth_number": "9055215000",
+                },
+                "job": {"description": "Test"},
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)

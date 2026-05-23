@@ -1569,6 +1569,13 @@ class TwoFactorView(APIView):
         user = request.user
 
         if action_name == "setup":
+            if user.totp_enabled:
+                return Response(
+                    {
+                        "detail": "2FA is already active. Disable it first before re-enrolling."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             secret = pyotp.random_base32()
             user.totp_secret = secret
             user.totp_enabled = False
@@ -1617,6 +1624,11 @@ class TwoFactorView(APIView):
             if not user.totp_enabled:
                 return Response(
                     {"detail": "2FA is not active."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not user.totp_secret:
+                return Response(
+                    {"detail": "2FA secret is missing. Contact support."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             totp = pyotp.TOTP(user.totp_secret)

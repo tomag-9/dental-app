@@ -947,7 +947,11 @@ class CrmAdminOnlyWriteTests(APITestCase):
 class CrmCsvExportTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Export Lab")
-        self.user = User.objects.create_user(
+        self.admin = User.objects.create_user(
+            username="export_admin", password="pw", email="export_admin@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
             username="export_user", password="pw", email="export@test.sk",
             role="user", lab=self.lab,
         )
@@ -956,8 +960,8 @@ class CrmCsvExportTests(APITestCase):
             lab=self.lab, first_name="Jana", last_name="Novakova", birth_number="8555215556",
         )
 
-    def test_patients_export_returns_csv(self):
-        self.client.force_authenticate(user=self.user)
+    def test_admin_can_export_patients_csv(self):
+        self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/crm/patients/export/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
@@ -965,8 +969,13 @@ class CrmCsvExportTests(APITestCase):
         self.assertIn("first_name", content)
         self.assertIn("Novakova", content)
 
+    def test_user_cannot_export_patients_csv(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 403)
+
     def test_clinics_export_returns_csv(self):
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.regular)
         resp = self.client.get("/api/crm/clinics/export/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])

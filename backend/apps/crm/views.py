@@ -14,8 +14,6 @@ from apps.jobs.models import Job
 from .models import Clinic, Doctor, Patient
 from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 
-_WRITE_ACTIONS = {"create", "update", "partial_update", "destroy"}
-
 
 def _assert_crm_write(user):
     if not is_admin_or_superadmin(user):
@@ -217,6 +215,7 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
+        _assert_crm_write(request.user)
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="patients.csv"'
         writer = csv.writer(response)

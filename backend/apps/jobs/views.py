@@ -8,7 +8,11 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
+from apps.core.access import (
+    TenantScopedQuerysetMixin,
+    is_admin_or_superadmin,
+    is_superadmin,
+)
 
 from .models import CalendarEvent, Job, JobTimelineEvent, Technician, Vacation
 from .serializers import (
@@ -104,7 +108,14 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         self._record_timeline(job, "created", note="Práca bola vytvorená.")
 
     # Fields whose before/after values we track in the timeline.
-    _TRACKED_FIELDS = ("due_date", "priority", "description", "price", "technician_id", "tooth_color")
+    _TRACKED_FIELDS = (
+        "due_date",
+        "priority",
+        "description",
+        "price",
+        "technician_id",
+        "tooth_color",
+    )
 
     def perform_update(self, serializer):
         old = serializer.instance
@@ -137,9 +148,19 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 changed_fields=changed or None,
             )
         elif old_technician_id != job.technician_id:
-            self._record_timeline(job, "assigned", note="Technik bol zmenený.", changed_fields=changed or None)
+            self._record_timeline(
+                job,
+                "assigned",
+                note="Technik bol zmenený.",
+                changed_fields=changed or None,
+            )
         else:
-            self._record_timeline(job, "updated", note="Práca bola upravená.", changed_fields=changed or None)
+            self._record_timeline(
+                job,
+                "updated",
+                note="Práca bola upravená.",
+                changed_fields=changed or None,
+            )
 
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
@@ -182,7 +203,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         def _name(obj, fields=("first_name", "last_name")):
             if not obj:
                 return None
-            return " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip() or None
+            return (
+                " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip()
+                or None
+            )
 
         items = [
             {
@@ -223,23 +247,39 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             "end_date": job.end_date,
             "try_in_date": job.try_in_date,
             "created_at": job.created_at,
-            "patient": {
-                "id": job.patient_id,
-                "name": _name(job.patient),
-                "birth_number": getattr(job.patient, "birth_number", None),
-            } if job.patient else None,
-            "clinic": {
-                "id": job.clinic_id,
-                "name": getattr(job.clinic, "name", None),
-            } if job.clinic else None,
-            "doctor": {
-                "id": job.doctor_id,
-                "name": doctor_name,
-            } if job.doctor else None,
-            "technician": {
-                "id": job.technician_id,
-                "name": _name(job.technician),
-            } if job.technician else None,
+            "patient": (
+                {
+                    "id": job.patient_id,
+                    "name": _name(job.patient),
+                    "birth_number": getattr(job.patient, "birth_number", None),
+                }
+                if job.patient
+                else None
+            ),
+            "clinic": (
+                {
+                    "id": job.clinic_id,
+                    "name": getattr(job.clinic, "name", None),
+                }
+                if job.clinic
+                else None
+            ),
+            "doctor": (
+                {
+                    "id": job.doctor_id,
+                    "name": doctor_name,
+                }
+                if job.doctor
+                else None
+            ),
+            "technician": (
+                {
+                    "id": job.technician_id,
+                    "name": _name(job.technician),
+                }
+                if job.technician
+                else None
+            ),
             "lab": {
                 "name": job.lab.name,
                 "address": job.lab.address,
@@ -264,8 +304,6 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
           }
         Patient is matched by birth_number if provided and already exists; otherwise created.
         """
-        from django.db import transaction as db_transaction
-
         from apps.crm.models import Clinic, Patient
         from apps.crm.serializers import PatientSerializer
 
@@ -273,6 +311,11 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         if not is_superadmin(user) and not getattr(user, "lab_id", None):
             return Response(
                 {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+        if not is_admin_or_superadmin(user):
+            return Response(
+                {"detail": "Only admin or superadmin can create patients and jobs."},
+                status=status.HTTP_403_FORBIDDEN,
             )
         lab = user.lab if not is_superadmin(user) else None
 
@@ -296,7 +339,8 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         patient_data = request.data.get("patient")
         if not patient_data:
             return Response(
-                {"detail": "patient data is required"}, status=status.HTTP_400_BAD_REQUEST
+                {"detail": "patient data is required"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         birth_number = patient_data.get("birth_number", "").strip()
@@ -314,16 +358,26 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             data={
                 "patient": patient.id,
                 "clinic": clinic.id,
-                **{k: v for k, v in job_data.items() if k not in ("patient", "clinic", "lab")},
+                **{
+                    k: v
+                    for k, v in job_data.items()
+                    if k not in ("patient", "clinic", "lab")
+                },
             }
         )
         job_ser.is_valid(raise_exception=True)
         job = job_ser.save(lab=lab, patient=patient, clinic=clinic)
-        self._record_timeline(job, "created", note="Práca bola vytvorená (quick-create).")
+        self._record_timeline(
+            job, "created", note="Práca bola vytvorená (quick-create)."
+        )
 
         return Response(
             {
-                "patient": {"id": patient.id, "first_name": patient.first_name, "last_name": patient.last_name},
+                "patient": {
+                    "id": patient.id,
+                    "first_name": patient.first_name,
+                    "last_name": patient.last_name,
+                },
                 "job": self.get_serializer(job).data,
             },
             status=status.HTTP_201_CREATED,
@@ -377,7 +431,15 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         }
         return Response(config)
 
-    def _record_timeline(self, job, event, note=None, from_status=None, to_status=None, changed_fields=None):
+    def _record_timeline(
+        self,
+        job,
+        event,
+        note=None,
+        from_status=None,
+        to_status=None,
+        changed_fields=None,
+    ):
         actor = self.request.user if self.request.user.is_authenticated else None
         JobTimelineEvent.objects.create(
             job=job,
@@ -390,6 +452,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         )
         if event == "status_changed" and (from_status or to_status):
             from apps.core.models import AuditLog
+
             AuditLog.objects.create(
                 actor=actor,
                 lab=job.lab,

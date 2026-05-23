@@ -1049,6 +1049,24 @@ class TwoFactorTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(resp.data["totp_enabled"])
 
+    def test_setup_blocked_when_2fa_already_active(self):
+        import pyotp
+        self.client.force_authenticate(user=self.user)
+        self.client.post("/api/core/2fa/?action=setup")
+        self.user.refresh_from_db()
+        totp = pyotp.TOTP(self.user.totp_secret)
+        self.client.post("/api/core/2fa/?action=verify", {"code": totp.now()})
+        resp = self.client.post("/api/core/2fa/?action=setup")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_disable_with_missing_secret_returns_400_not_500(self):
+        self.client.force_authenticate(user=self.user)
+        self.user.totp_enabled = True
+        self.user.totp_secret = None
+        self.user.save(update_fields=["totp_enabled", "totp_secret"])
+        resp = self.client.post("/api/core/2fa/?action=disable", {"code": "123456"})
+        self.assertEqual(resp.status_code, 400)
+
     def test_unauthenticated_denied(self):
         resp = self.client.get("/api/core/2fa/")
         self.assertEqual(resp.status_code, 401)
