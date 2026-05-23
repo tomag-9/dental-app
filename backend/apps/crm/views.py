@@ -103,6 +103,27 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         _assert_crm_write(self.request.user)
         instance.delete()
 
+    @action(detail=False, methods=["get"], url_path="export")
+    def export_csv(self, request):
+        _assert_crm_write(request.user)
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="doctors.csv"'
+        writer = csv.writer(response)
+        writer.writerow(
+            ["id", "title_before", "first_name", "last_name", "title_after", "clinic_name", "created_at"]
+        )
+        for d in self.get_queryset().select_related("clinic").order_by("last_name", "first_name"):
+            writer.writerow([
+                d.id,
+                d.title_before or "",
+                d.first_name or "",
+                d.last_name or "",
+                d.title_after or "",
+                d.clinic.name if d.clinic else "",
+                d.created_at.date().isoformat() if d.created_at else "",
+            ])
+        return response
+
 
 class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Patient.objects.all()

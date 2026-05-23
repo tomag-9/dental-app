@@ -75,6 +75,25 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         if priority:
             qs = qs.filter(priority=priority)
 
+        from_date = self.request.query_params.get("from_date")
+        if from_date:
+            parsed = parse_date(from_date)
+            if parsed:
+                qs = qs.filter(due_date__gte=parsed)
+
+        to_date = self.request.query_params.get("to_date")
+        if to_date:
+            parsed = parse_date(to_date)
+            if parsed:
+                qs = qs.filter(due_date__lte=parsed)
+
+        technician_id = self.request.query_params.get("technician_id")
+        if technician_id:
+            try:
+                qs = qs.filter(technician_id=int(technician_id))
+            except (ValueError, TypeError):
+                pass
+
         search = (
             self.request.query_params.get("search")
             or self.request.query_params.get("q")
@@ -167,6 +186,73 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         if job.status == "closed" or job.invoice_items.exists():
             raise ValidationError("Closed or invoiced jobs cannot be deleted")
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["post"], url_path="bulk-update")
+    def bulk_update(self, request):
+        """
+        Update status and/or priority for multiple jobs at once.
+        Body: {"job_ids": [1, 2, 3], "status": "in_progress"} (status optional)
+              {"job_ids": [1, 2], "priority": "high"} (priority optional)
+        Invalid transitions are skipped and reported; valid ones are applied atomically.
+        """
+        job_ids = request.data.get("job_ids", [])
+        new_status = request.data.get("status")
+        new_priority = request.data.get("priority")
+
+        if not isinstance(job_ids, list) or not job_ids:
+            return Response(
+                {"detail": "job_ids must be a non-empty list."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not new_status and not new_priority:
+            return Response(
+                {"detail": "Provide at least one of: status, priority."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        qs = self.get_queryset().filter(id__in=job_ids)
+        updated = []
+        skipped = []
+
+        with transaction.atomic():
+            for job in qs:
+                skip_reason = None
+                if new_status:
+                    if new_status == job.status:
+                        pass
+                    elif new_status not in self.allowed_transitions.get(job.status, set()):
+                        skip_reason = f"Invalid transition {job.status}→{new_status}"
+                if skip_reason:
+                    skipped.append({"id": job.id, "reason": skip_reason})
+                    continue
+
+                old_status = job.status
+                update_fields = ["updated_at"]
+                if new_status and new_status != job.status:
+                    job.status = new_status
+                    update_fields.append("status")
+                if new_priority:
+                    job.priority = new_priority
+                    update_fields.append("priority")
+                job.save(update_fields=update_fields)
+
+                if new_status and old_status != job.status:
+                    self._record_timeline(
+                        job,
+                        "status_changed",
+                        note="Hromadná zmena stavu.",
+                        from_status=old_status,
+                        to_status=job.status,
+                    )
+                elif new_priority:
+                    self._record_timeline(job, "updated", note="Hromadná zmena priority.")
+
+                updated.append(job.id)
+
+        return Response(
+            {"updated": updated, "skipped": skipped, "updated_count": len(updated)},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"], url_path="transition-status")
     def transition_status(self, request, pk=None):

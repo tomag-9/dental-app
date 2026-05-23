@@ -986,3 +986,42 @@ class CrmCsvExportTests(APITestCase):
     def test_unauthenticated_export_denied(self):
         resp = self.client.get("/api/crm/patients/export/")
         self.assertEqual(resp.status_code, 401)
+
+
+class DoctorCsvExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Doctor Export Lab")
+        self.admin = User.objects.create_user(
+            username="doc_admin", password="pw", email="doc_admin@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="doc_regular", password="pw", email="doc_regular@test.sk",
+            role="user", lab=self.lab,
+        )
+        from apps.crm.models import Clinic
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Stomatológia Nováková")
+        from apps.crm.models import Doctor
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic,
+            first_name="Mária", last_name="Nováková", title_before="MUDr.",
+        )
+
+    def test_admin_can_export_doctors_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("last_name", content)
+        self.assertIn("Nováková", content)
+        self.assertIn("Stomatológia", content)
+
+    def test_non_admin_export_denied(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unauthenticated_export_denied(self):
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 401)

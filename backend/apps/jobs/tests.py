@@ -1293,3 +1293,132 @@ class QuickCreateJobTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 403)
+
+
+class JobDateRangeFilterTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Filter Lab")
+        self.clinic = Clinic.objects.create(name="Filter Clinic", lab=self.lab)
+        self.user = User.objects.create_user(
+            username="filter_user", password="pw", email="filter@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="Filter", last_name="Patient",
+        )
+        from django.utils import timezone
+        today = timezone.localdate()
+        self.job_past = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            due_date=today - timezone.timedelta(days=10),
+        )
+        self.job_today = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            due_date=today,
+        )
+        self.job_future = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            due_date=today + timezone.timedelta(days=10),
+        )
+
+    def test_from_date_filters_out_past(self):
+        from django.utils import timezone
+        today = timezone.localdate().isoformat()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/?from_date={today}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [j["id"] for j in resp.data]
+        self.assertIn(self.job_today.id, ids)
+        self.assertIn(self.job_future.id, ids)
+        self.assertNotIn(self.job_past.id, ids)
+
+    def test_to_date_filters_out_future(self):
+        from django.utils import timezone
+        today = timezone.localdate().isoformat()
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/?to_date={today}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [j["id"] for j in resp.data]
+        self.assertIn(self.job_today.id, ids)
+        self.assertIn(self.job_past.id, ids)
+        self.assertNotIn(self.job_future.id, ids)
+
+    def test_technician_id_filter(self):
+        from apps.jobs.models import Technician
+        tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+        self.job_today.technician = tech
+        self.job_today.save(update_fields=["technician"])
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/?technician_id={tech.id}")
+        self.assertEqual(resp.status_code, 200)
+        ids = [j["id"] for j in resp.data]
+        self.assertIn(self.job_today.id, ids)
+        self.assertNotIn(self.job_past.id, ids)
+
+
+class JobBulkUpdateTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Bulk Lab")
+        self.clinic = Clinic.objects.create(name="Bulk Clinic", lab=self.lab)
+        self.user = User.objects.create_user(
+            username="bulk_user", password="pw", email="bulk@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="Bulk", last_name="Patient",
+        )
+        self.job1 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
+        self.job2 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
+        self.job3 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="completed")
+
+    def test_bulk_status_update_valid_transition(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id, self.job2.id], "status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["updated_count"], 2)
+        self.job1.refresh_from_db()
+        self.assertEqual(self.job1.status, "in_progress")
+
+    def test_bulk_update_invalid_transition_skipped(self):
+        self.client.force_authenticate(user=self.user)
+        # job3 is completed, new→completed is invalid from new
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id, self.job3.id], "status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["updated_count"], 1)
+        self.assertEqual(len(resp.data["skipped"]), 1)
+
+    def test_bulk_priority_update(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id], "priority": "high"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.job1.refresh_from_db()
+        self.assertEqual(self.job1.priority, "high")
+
+    def test_empty_job_ids_returns_400(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [], "status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id], "status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 401)

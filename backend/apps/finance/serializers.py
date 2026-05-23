@@ -63,6 +63,23 @@ class InvoiceStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("draft", "issued", "paid", "cancelled"))
 
 
+def _sk_date(d):
+    """Format a date as DD.MM.YYYY (Slovak locale convention)."""
+    if d is None:
+        return None
+    return d.strftime("%d.%m.%Y")
+
+
+def _sk_amount(amount):
+    """Format a Decimal as '1 234,56 EUR' (Slovak locale convention)."""
+    if amount is None:
+        return None
+    # Slovak: thousands separator = space, decimal separator = comma
+    parts = f"{Decimal(str(amount)):.2f}".split(".")
+    integer_part = "{:,}".format(int(parts[0])).replace(",", " ")  # non-breaking space
+    return f"{integer_part},{parts[1]} EUR"
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
@@ -72,6 +89,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     is_overdue = serializers.SerializerMethodField()
     days_overdue = serializers.SerializerMethodField()
     related_jobs = serializers.SerializerMethodField()
+    formatted_total = serializers.SerializerMethodField()
+    formatted_due_date = serializers.SerializerMethodField()
+    formatted_issued_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -88,6 +108,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "total_amount",
             "subtotal_amount",
             "vat_amount",
+            "formatted_total",
+            "formatted_due_date",
+            "formatted_issued_at",
             "is_overdue",
             "days_overdue",
             "created_at",
@@ -106,6 +129,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             if patient:
                 patient_names.add(f"{patient.first_name} {patient.last_name}")
         return sorted(patient_names)
+
+    def get_formatted_total(self, obj):
+        return _sk_amount(obj.total_amount)
+
+    def get_formatted_due_date(self, obj):
+        return _sk_date(obj.due_date)
+
+    def get_formatted_issued_at(self, obj):
+        d = obj.issued_at.date() if obj.issued_at else None
+        return _sk_date(d)
 
     def get_subtotal_amount(self, obj):
         vat_rate = Decimal(str(obj.vat_rate or 0))

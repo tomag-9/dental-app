@@ -4,6 +4,8 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO, StringIO
 
+from django.conf import settings as django_settings
+from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Sum
 from django.http import HttpResponse
@@ -262,40 +264,92 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="pdf")
     def pdf(self, request, pk=None):
         invoice = self.get_object()
+        buffer = BytesIO()
+        self._render_invoice_pdf(invoice, buffer)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'inline; filename="faktura_{invoice.number}.pdf"'
+        )
+        return response
+
+    @action(detail=True, methods=["post"], url_path="send-email")
+    def send_email(self, request, pk=None):
+        """Email the invoice PDF to the clinic contact or a provided address."""
+        invoice = self.get_object()
+        lab = invoice.lab
+        clinic = invoice.clinic
+
+        recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
+        if not recipient:
+            return Response(
+                {"detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build PDF in memory
+        buffer = BytesIO()
+        self._render_invoice_pdf(invoice, buffer)
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+
+        doc_label = "Faktúra" if invoice.document_type == "invoice" else "Proforma faktúra"
+        subject = f"{doc_label} č. {invoice.number}"
+        body = (
+            f"Dobrý deň,\n\n"
+            f"V prílohe nájdete {doc_label.lower()} č. {invoice.number}.\n\n"
+            f"S pozdravom,\n{lab.name if lab else 'Dentálne laboratórium'}"
+        )
+        msg = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+            to=[recipient],
+        )
+        msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
+        try:
+            msg.send(fail_silently=False)
+        except Exception as exc:
+            return Response(
+                {"detail": f"Email delivery failed: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({"sent_to": recipient, "invoice": invoice.number})
+
+    def _render_invoice_pdf(self, invoice, buffer):
+        """Render the invoice PDF into buffer (shared by pdf action and send_email)."""
         items = invoice.items.select_related("job__patient").all()
         lab = invoice.lab
         clinic = invoice.clinic
 
-        buffer = BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=A4)
         width, height = A4
-        L = 15 * mm   # left margin
-        R = width - 15 * mm  # right edge
+        L = 15 * mm
+        R = width - 15 * mm
 
         def hline(y, x1=None, x2=None):
             pdf.setLineWidth(0.3)
             pdf.line(x1 or L, y, x2 or R, y)
 
-        # QR code top-right — PAY by square when lab has it enabled
         if lab.enable_qr_payment and lab.bank_account:
             iban = (lab.bank_account or "").replace(" ", "")
             amount = Decimal(str(invoice.total_amount or 0))
             bic = lab.bank_bic or ""
-            msg = f"Faktura {invoice.number}"
-            # Simplified PAY by square payload (BySQUARE-compatible subset)
+            msg_text = f"Faktura {invoice.number}"
             payload = (
                 f"PAY*QR%0100*1*1"
                 f"%AM{amount:.2f}%CC EUR"
                 f"%IBAN{iban}"
                 + (f"%BIC{bic}" if bic else "")
-                + f"%MSG{msg}"
+                + f"%MSG{msg_text}"
             )
         else:
-            payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount):.2f}|{invoice.status}"
+            payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount or 0):.2f}|{invoice.status}"
         _, qr_drawing = self._build_qr_svg(payload, size=72)
         renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 
-        # Title
         doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(L, height - 18 * mm, doc_label)
@@ -308,7 +362,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         hline(height - 42 * mm)
 
-        # Supplier (lab) block
         y = height - 49 * mm
         pdf.setFont("Helvetica-Bold", 10)
         pdf.drawString(L, y, "Dodávateľ")
@@ -319,8 +372,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             y -= 4 * mm; pdf.drawString(L, y, lab.address)
         if lab.city or lab.postal_code:
             y -= 4 * mm
-            addr2 = " ".join(filter(None, [lab.postal_code, lab.city]))
-            pdf.drawString(L, y, addr2)
+            pdf.drawString(L, y, " ".join(filter(None, [lab.postal_code, lab.city])))
         if lab.tax_id:
             y -= 4 * mm; pdf.drawString(L, y, f"IČO: {lab.tax_id}")
         if lab.vat_id:
@@ -329,10 +381,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             y -= 4 * mm; pdf.drawString(L, y, f"IBAN: {lab.bank_account}")
         if lab.bank_bic:
             y -= 4 * mm; pdf.drawString(L, y, f"BIC: {lab.bank_bic}")
-        if lab.phone:
-            y -= 4 * mm; pdf.drawString(L, y, f"Tel: {lab.phone}")
 
-        # Recipient (clinic) block – right column
         col2 = width / 2 + 5 * mm
         yc = height - 49 * mm
         pdf.setFont("Helvetica-Bold", 10)
@@ -342,15 +391,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf.drawString(col2, yc, clinic.name if clinic else "")
         if clinic and clinic.address:
             yc -= 4 * mm; pdf.drawString(col2, yc, clinic.address)
-        if clinic and getattr(clinic, "city", None):
-            yc -= 4 * mm; pdf.drawString(col2, yc, clinic.city)
         if clinic and getattr(clinic, "ico", None):
             yc -= 4 * mm; pdf.drawString(col2, yc, f"IČO: {clinic.ico}")
 
         table_top = min(y, yc) - 8 * mm
         hline(table_top)
-
-        # Items table header
         th = table_top - 6 * mm
         pdf.setFont("Helvetica-Bold", 9)
         pdf.drawString(L, th, "Popis")
@@ -359,7 +404,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf.drawRightString(R, th, "Spolu")
         hline(th - 2 * mm)
 
-        # Items rows
         ty = th - 8 * mm
         pdf.setFont("Helvetica", 9)
         for item in items[:30]:
@@ -372,8 +416,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             ty -= 5 * mm
 
         hline(ty)
-
-        # Totals block
         vat_rate = Decimal(str(invoice.vat_rate or 0))
         discount = Decimal(str(invoice.discount_percent or 0))
         total = Decimal(str(invoice.total_amount or 0))
@@ -388,8 +430,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if discount > 0:
             ty -= 5 * mm
             pdf.drawRightString(160 * mm, ty, f"Zľava ({discount:.0f}%):")
-            disc_eur = (subtotal * discount / 100).quantize(Decimal("0.01"))
-            pdf.drawRightString(R, ty, f"-{disc_eur:.2f} EUR")
+            pdf.drawRightString(R, ty, f"-{(subtotal * discount / 100).quantize(Decimal('0.01')):.2f} EUR")
         ty -= 5 * mm
         pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
         pdf.drawRightString(R, ty, f"{vat_amount:.2f} EUR")
@@ -398,16 +439,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf.drawRightString(160 * mm, ty, "CELKOM:")
         pdf.drawRightString(R, ty, f"{total:.2f} EUR")
 
-        # Payment method
         if lab.payment_method:
             ty -= 8 * mm
             pdf.setFont("Helvetica", 8)
-            pm_label = {"bank_transfer": "Bankový prevod", "cash": "Hotovosť", "card": "Karta"}.get(
-                lab.payment_method, lab.payment_method
-            )
+            pm_label = {"bank_transfer": "Bankový prevod", "cash": "Hotovosť", "card": "Karta"}.get(lab.payment_method, lab.payment_method)
             pdf.drawString(L, ty, f"Spôsob úhrady: {pm_label}")
-
-        # Default note
         if lab.invoice_default_note:
             ty -= 6 * mm
             pdf.setFont("Helvetica", 8)
@@ -415,14 +451,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         pdf.showPage()
         pdf.save()
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
-
-        response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = (
-            f'inline; filename="faktura_{invoice.number}.pdf"'
-        )
-        return response
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):

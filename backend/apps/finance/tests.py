@@ -1243,3 +1243,131 @@ class SubscriptionExtendedFieldsTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.sub.refresh_from_db()
         self.assertEqual(str(self.sub.mrr), "149.00")
+
+
+class InvoiceSkFormatTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="SK Format Lab")
+        self.admin = User.objects.create_user(
+            username="skfmt_admin", password="pw", email="skfmt@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Klinika SK")
+        from django.utils import timezone
+        self.invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="LAB-2026-0001",
+            status="issued",
+            total_amount="1234.56",
+            vat_rate="20.00",
+            due_date=timezone.localdate(),
+            issued_at=timezone.now(),
+        )
+
+    def test_formatted_total_slovak_style(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{self.invoice.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("formatted_total", resp.data)
+        self.assertIn("EUR", resp.data["formatted_total"])
+        self.assertIn(",", resp.data["formatted_total"])
+
+    def test_formatted_due_date_slovak_style(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{self.invoice.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("formatted_due_date", resp.data)
+        # Slovak format DD.MM.YYYY
+        self.assertRegex(resp.data["formatted_due_date"], r"^\d{2}\.\d{2}\.\d{4}$")
+
+    def test_formatted_issued_at_slovak_style(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{self.invoice.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("formatted_issued_at", resp.data)
+        self.assertRegex(resp.data["formatted_issued_at"], r"^\d{2}\.\d{2}\.\d{4}$")
+
+    def test_formatted_fields_null_when_no_dates(self):
+        invoice_no_dates = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic,
+            number="LAB-2026-0002", status="draft",
+            total_amount="0.00", vat_rate="20.00",
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{invoice_no_dates.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.data["formatted_due_date"])
+        self.assertIsNone(resp.data["formatted_issued_at"])
+
+
+class InvoiceSendEmailTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Email Lab")
+        self.admin = User.objects.create_user(
+            username="email_admin", password="pw", email="email_admin@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(
+            lab=self.lab, name="Email Klinika",
+            contact_info={"email": "klinika@test.sk"},
+        )
+        self.invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="LAB-2026-0010",
+            status="issued",
+            total_amount="500.00",
+            vat_rate="20.00",
+        )
+
+    def test_send_email_to_explicit_address(self):
+        from django.test import override_settings
+        from django.core import mail
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            resp = self.client.post(
+                f"/api/finance/invoices/{self.invoice.id}/send-email/",
+                {"email": "recipient@test.sk"},
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["sent_to"], "recipient@test.sk")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.invoice.number, mail.outbox[0].subject)
+
+    def test_send_email_falls_back_to_clinic_contact(self):
+        from django.test import override_settings
+        from django.core import mail
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            resp = self.client.post(
+                f"/api/finance/invoices/{self.invoice.id}/send-email/",
+                {},
+                format="json",
+            )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["sent_to"], "klinika@test.sk")
+
+    def test_send_email_no_recipient_returns_400(self):
+        clinic_no_email = Clinic.objects.create(lab=self.lab, name="No Email Clinic")
+        invoice_no_email = Invoice.objects.create(
+            lab=self.lab, clinic=clinic_no_email,
+            number="LAB-2026-0011", status="issued",
+            total_amount="100.00", vat_rate="20.00",
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            f"/api/finance/invoices/{invoice_no_email.id}/send-email/",
+            {},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_send_email_unauthenticated_denied(self):
+        resp = self.client.post(
+            f"/api/finance/invoices/{self.invoice.id}/send-email/",
+            {"email": "test@test.sk"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 401)
