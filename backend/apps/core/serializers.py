@@ -8,6 +8,23 @@ class LabSerializer(serializers.ModelSerializer):
         model = Lab
         fields = "__all__"
 
+    def validate_vat_rate(self, value):
+        if value is not None and not (0 <= value <= 100):
+            raise serializers.ValidationError("VAT rate must be between 0 and 100.")
+        return value
+
+    def validate_invoice_due_days(self, value):
+        if value is not None and value < 1:
+            raise serializers.ValidationError("Invoice due days must be at least 1.")
+        return value
+
+    def validate_invoice_prefix(self, value):
+        if value and not value.replace("-", "").replace("_", "").isalnum():
+            raise serializers.ValidationError(
+                "Invoice prefix may only contain letters, digits, hyphens, and underscores."
+            )
+        return value
+
 
 class UserSerializer(serializers.ModelSerializer):
     lab_details = LabSerializer(source="lab", read_only=True)

@@ -4,6 +4,8 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO, StringIO
 
+from django.utils.dateparse import parse_date
+
 from django.conf import settings as django_settings
 from django.core.mail import EmailMessage
 from django.db import transaction
@@ -117,11 +119,28 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         qs = Invoice.objects.select_related("clinic", "lab").prefetch_related(
             "items__job__patient"
         )
-        if is_superadmin(user):
-            return qs
-        if getattr(user, "lab_id", None):
-            return qs.filter(lab_id=user.lab_id)
-        return qs.none()
+        if not is_superadmin(user):
+            if getattr(user, "lab_id", None):
+                qs = qs.filter(lab_id=user.lab_id)
+            else:
+                return qs.none()
+
+        params = self.request.query_params
+        if status_filter := params.get("status"):
+            qs = qs.filter(status=status_filter)
+        if doc_type := params.get("document_type"):
+            qs = qs.filter(document_type=doc_type)
+        if clinic_id := params.get("clinic_id"):
+            try:
+                qs = qs.filter(clinic_id=int(clinic_id))
+            except (ValueError, TypeError):
+                pass
+        if date_from := parse_date(params.get("date_from", "")):
+            qs = qs.filter(due_date__gte=date_from)
+        if date_to := parse_date(params.get("date_to", "")):
+            qs = qs.filter(due_date__lte=date_to)
+
+        return qs
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -457,6 +476,61 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice = self.get_object()
         self._sync_jobs_for_invoice_status(invoice, "cancelled")
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["post"], url_path="send-overdue-reminders")
+    def send_overdue_reminders(self, request):
+        """Send reminder emails for all overdue issued invoices in this lab."""
+        today = date.today()
+        # Build queryset directly — bypass list-filter query params so a stray
+        # ?status= on the POST does not silently suppress reminder delivery.
+        user = request.user
+        base_qs = Invoice.objects.select_related("clinic", "lab")
+        if not is_superadmin(user):
+            lab_id = getattr(user, "lab_id", None)
+            base_qs = base_qs.filter(lab_id=lab_id) if lab_id else base_qs.none()
+        qs = base_qs.filter(status="issued", due_date__lt=today)
+
+        sent = []
+        failed = []
+        for invoice in qs:
+            clinic = invoice.clinic
+            recipient = (clinic.contact_info or {}).get("email") if clinic else None
+            if not recipient:
+                failed.append({"invoice": invoice.number, "reason": "No recipient email"})
+                continue
+
+            buffer = BytesIO()
+            self._render_invoice_pdf(invoice, buffer)
+            pdf_bytes = buffer.getvalue()
+            buffer.close()
+
+            days_overdue = (today - invoice.due_date).days
+            lab = invoice.lab
+            subject = f"Upomienka: Faktúra č. {invoice.number} je po splatnosti"
+            body = (
+                f"Dobrý deň,\n\n"
+                f"Faktúra č. {invoice.number} je po splatnosti {days_overdue} dní"
+                f" (splatnosť: {invoice.due_date.strftime('%d.%m.%Y')}).\n\n"
+                f"Prosíme o úhradu v čo najkratšom čase.\n\n"
+                f"S pozdravom,\n{lab.name if lab else 'Dentálne laboratórium'}"
+            )
+            msg = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+                to=[recipient],
+            )
+            msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
+            try:
+                msg.send(fail_silently=False)
+                sent.append(invoice.number)
+            except Exception as exc:
+                failed.append({"invoice": invoice.number, "reason": str(exc)})
+
+        return Response(
+            {"sent": sent, "sent_count": len(sent), "failed": failed},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):

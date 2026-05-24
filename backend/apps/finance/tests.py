@@ -1371,3 +1371,134 @@ class InvoiceSendEmailTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 401)
+
+
+class InvoiceListFilterTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Filter Invoice Lab")
+        self.admin = User.objects.create_user(
+            username="inv_filter_admin", password="pw", email="invf@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic_a = Clinic.objects.create(lab=self.lab, name="Clinic A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab, name="Clinic B")
+        from datetime import date, timedelta
+        today = date.today()
+        self.inv_issued = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_a,
+            number="F-0001", status="issued",
+            total_amount="100.00", vat_rate="20.00",
+            due_date=today + timedelta(days=10),
+        )
+        self.inv_paid = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_b,
+            number="F-0002", status="paid",
+            total_amount="200.00", vat_rate="20.00",
+            due_date=today - timedelta(days=5),
+        )
+        self.inv_proforma = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_a,
+            number="F-0003", status="issued", document_type="proforma",
+            total_amount="50.00", vat_rate="20.00",
+            due_date=today,
+        )
+
+    def test_status_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/?status=paid")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["number"], "F-0002")
+
+    def test_document_type_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/?document_type=proforma")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["number"], "F-0003")
+
+    def test_clinic_id_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/?clinic_id={self.clinic_b.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["number"], "F-0002")
+
+    def test_date_range_filter(self):
+        from datetime import date, timedelta
+        today = date.today()
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/?date_from={today.isoformat()}")
+        self.assertEqual(resp.status_code, 200)
+        numbers = [inv["number"] for inv in resp.data]
+        self.assertIn("F-0001", numbers)
+        self.assertIn("F-0003", numbers)
+        self.assertNotIn("F-0002", numbers)
+
+    def test_invalid_clinic_id_ignored(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/?clinic_id=notanumber")
+        self.assertEqual(resp.status_code, 200)
+
+
+class OverdueReminderTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Overdue Lab")
+        self.admin = User.objects.create_user(
+            username="overdue_admin", password="pw", email="overdue_a@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.clinic_with_email = Clinic.objects.create(
+            lab=self.lab, name="Email Clinic",
+            contact_info={"email": "clinic@test.sk"},
+        )
+        self.clinic_no_email = Clinic.objects.create(
+            lab=self.lab, name="No Email Clinic",
+        )
+        from datetime import date, timedelta
+        yesterday = date.today() - timedelta(days=1)
+        self.overdue_inv = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_with_email,
+            number="OD-0001", status="issued",
+            total_amount="300.00", vat_rate="20.00",
+            due_date=yesterday,
+        )
+        self.overdue_no_email = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_no_email,
+            number="OD-0002", status="issued",
+            total_amount="100.00", vat_rate="20.00",
+            due_date=yesterday,
+        )
+        self.paid_inv = Invoice.objects.create(
+            lab=self.lab, clinic=self.clinic_with_email,
+            number="OD-0003", status="paid",
+            total_amount="50.00", vat_rate="20.00",
+            due_date=yesterday,
+        )
+
+    def test_sends_reminders_for_overdue_issued_invoices(self):
+        from django.test import override_settings
+        from django.core import mail
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("OD-0001", resp.data["sent"])
+        self.assertEqual(resp.data["sent_count"], 1)
+        self.assertEqual(len(resp.data["failed"]), 1)
+        self.assertEqual(resp.data["failed"][0]["invoice"], "OD-0002")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("OD-0001", mail.outbox[0].subject)
+
+    def test_paid_invoices_not_included(self):
+        from django.test import override_settings
+        from django.core import mail
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+        sent_numbers = resp.data["sent"] + [f["invoice"] for f in resp.data["failed"]]
+        self.assertNotIn("OD-0003", sent_numbers)
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+        self.assertEqual(resp.status_code, 401)

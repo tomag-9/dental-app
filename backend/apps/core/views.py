@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.finance.models import Subscription
-from apps.jobs.models import CalendarEvent
+from apps.jobs.models import CalendarEvent, Vacation
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
 from .models import (
@@ -576,6 +576,22 @@ class DashboardStatsView(APIView):
                     "status": None,
                 }
             )
+        # Add vacation periods covering today.
+        vac_qs = Vacation.objects.filter(start__date__lte=today, end__date__gte=today)
+        if not is_superadmin(user):
+            vac_qs = vac_qs.filter(lab_id=getattr(user, "lab_id", None))
+        for vac in vac_qs[:3]:
+            desc = vac.description or "Dovolenka"
+            today_schedule_data.append(
+                {
+                    "id": vac.id,
+                    "type": "vacation",
+                    "time": "00:00",
+                    "title": desc,
+                    "status": None,
+                }
+            )
+
         today_schedule_data.sort(key=lambda x: x["time"])
 
         return Response(
@@ -936,9 +952,20 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Notification.objects.select_related("lab", "recipient")
-        if is_superadmin(self.request.user):
-            return qs
-        return qs.filter(recipient=self.request.user)
+        if not is_superadmin(self.request.user):
+            qs = qs.filter(recipient=self.request.user)
+
+        # Only apply query-param filters for list/retrieve — not for bulk actions
+        # like mark_all_read or unread_count which must see the full recipient scope.
+        if getattr(self, "action", None) in ("list", "retrieve"):
+            notification_type = self.request.query_params.get("type")
+            if notification_type:
+                qs = qs.filter(type=notification_type)
+
+            if self.request.query_params.get("unread") in ("1", "true"):
+                qs = qs.filter(read_at__isnull=True)
+
+        return qs.order_by("-created_at")
 
     def perform_create(self, serializer):
         user = self.request.user

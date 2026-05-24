@@ -1110,3 +1110,134 @@ class PermissionsMatrixTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get("/api/core/permissions/matrix/")
         self.assertEqual(resp.status_code, 401)
+
+
+class NotificationFilterTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Notif Lab")
+        self.user = User.objects.create_user(
+            username="notif_user", password="pw", email="notif@test.sk",
+            role="admin", lab=self.lab,
+        )
+        self.n_job = Notification.objects.create(
+            lab=self.lab, recipient=self.user,
+            type="job", title="New job", message="",
+        )
+        self.n_invoice = Notification.objects.create(
+            lab=self.lab, recipient=self.user,
+            type="invoice", title="Invoice issued", message="",
+        )
+        from django.utils import timezone as tz
+        self.n_read = Notification.objects.create(
+            lab=self.lab, recipient=self.user,
+            type="system", title="Read notif", message="",
+            read_at=tz.now(),
+        )
+
+    def test_type_filter_returns_only_matching(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/notifications/?type=job")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["id"], self.n_job.id)
+
+    def test_unread_filter_excludes_read_notifications(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/notifications/?unread=1")
+        self.assertEqual(resp.status_code, 200)
+        ids = [n["id"] for n in resp.data]
+        self.assertIn(self.n_job.id, ids)
+        self.assertIn(self.n_invoice.id, ids)
+        self.assertNotIn(self.n_read.id, ids)
+
+    def test_combined_type_and_unread_filter(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/notifications/?type=invoice&unread=true")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["id"], self.n_invoice.id)
+
+
+class DashboardTodayScheduleVacationTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Schedule Lab")
+        self.user = User.objects.create_user(
+            username="sched_user", password="pw", email="sched@test.sk",
+            role="admin", lab=self.lab,
+        )
+        from apps.jobs.models import Vacation
+        from django.utils import timezone as tz
+        today = tz.now()
+        self.vacation = Vacation.objects.create(
+            lab=self.lab,
+            start=today.replace(hour=0, minute=0, second=0),
+            end=today.replace(hour=23, minute=59, second=59),
+            description="Testovacia dovolenka",
+        )
+
+    def test_today_schedule_includes_vacation(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/dashboard/stats/")
+        self.assertEqual(resp.status_code, 200)
+        schedule = resp.data.get("today_schedule", [])
+        types = [item["type"] for item in schedule]
+        self.assertIn("vacation", types)
+        vacation_items = [item for item in schedule if item["type"] == "vacation"]
+        self.assertEqual(vacation_items[0]["title"], "Testovacia dovolenka")
+
+
+class LabSettingsValidationTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Validation Lab")
+        self.admin = User.objects.create_user(
+            username="val_admin", password="pw", email="val@test.sk",
+            role="admin", lab=self.lab,
+        )
+
+    def test_vat_rate_above_100_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"vat_rate": "150.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("vat_rate", resp.data)
+
+    def test_vat_rate_valid_accepted(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"vat_rate": "20.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    def test_invoice_due_days_zero_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"invoice_due_days": 0},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("invoice_due_days", resp.data)
+
+    def test_invoice_prefix_with_special_chars_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"invoice_prefix": "INV/2026!"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("invoice_prefix", resp.data)
+
+    def test_invoice_prefix_alphanumeric_with_dash_accepted(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"invoice_prefix": "LAB-2"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
