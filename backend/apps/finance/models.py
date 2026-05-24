@@ -4,7 +4,6 @@ from apps.core.models import Lab
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
-
 PROCEDURE_CATEGORY_CHOICES = (
     ("crown", "Crown"),
     ("bridge", "Bridge"),
@@ -130,7 +129,9 @@ class Subscription(models.Model):
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="free")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inactive")
     seats = models.IntegerField(default=5)
-    mrr = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True, blank=True)
+    mrr = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, null=True, blank=True
+    )
     billing_email = models.EmailField(blank=True, null=True)
     trial_ends_at = models.DateField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)

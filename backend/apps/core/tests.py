@@ -2,7 +2,15 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import AuditLog, Lab, LabApiKey, Notification, TeamInvitation, User, UserSession
+from apps.core.models import (
+    AuditLog,
+    Lab,
+    LabApiKey,
+    Notification,
+    TeamInvitation,
+    User,
+    UserSession,
+)
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
 from apps.jobs.models import Job
@@ -676,18 +684,21 @@ class CoreUserFlowsApiTests(APITestCase):
 class LabSlugTests(APITestCase):
     def test_slug_auto_generated_on_create(self):
         from apps.core.models import Lab
+
         lab = Lab.objects.create(name="Moje Laboratórium")
         self.assertNotEqual(lab.slug, "")
         self.assertIn("moje", lab.slug)
 
     def test_slug_is_unique_across_labs(self):
         from apps.core.models import Lab
+
         lab1 = Lab.objects.create(name="Duplicate Name Lab")
         lab2 = Lab.objects.create(name="Duplicate Name Lab 2")
         self.assertNotEqual(lab1.slug, lab2.slug)
 
     def test_slug_not_overwritten_on_save(self):
         from apps.core.models import Lab
+
         lab = Lab.objects.create(name="Stable Lab")
         original_slug = lab.slug
         lab.address = "New Address"
@@ -697,9 +708,12 @@ class LabSlugTests(APITestCase):
 
     def test_slug_exposed_in_lab_api(self):
         from apps.core.models import Lab, User
+
         lab = Lab.objects.create(name="API Slug Lab")
         user = User.objects.create_user(
-            username="sluguser", password="pw", role="superadmin",
+            username="sluguser",
+            password="pw",
+            role="superadmin",
             is_superuser=True,
         )
         self.client.force_authenticate(user=user)
@@ -713,8 +727,11 @@ class SessionEndpointsTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Session Lab")
         self.user = User.objects.create_user(
-            username="sess_user", password="pw123", email="sess@test.sk",
-            role="user", lab=self.lab,
+            username="sess_user",
+            password="pw123",
+            email="sess@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def _make_session(self, revoked=False):
@@ -730,7 +747,9 @@ class SessionEndpointsTests(APITestCase):
     def test_list_sessions_returns_active_only(self):
         self._make_session(revoked=False)
         UserSession.objects.create(
-            user=self.user, jti="revoked-jti", expires_at=timezone.now() + timezone.timedelta(days=1),
+            user=self.user,
+            jti="revoked-jti",
+            expires_at=timezone.now() + timezone.timedelta(days=1),
             revoked=True,
         )
         self.client.force_authenticate(user=self.user)
@@ -749,10 +768,14 @@ class SessionEndpointsTests(APITestCase):
 
     def test_revoke_all_sessions(self):
         UserSession.objects.create(
-            user=self.user, jti="j1", expires_at=timezone.now() + timezone.timedelta(days=1),
+            user=self.user,
+            jti="j1",
+            expires_at=timezone.now() + timezone.timedelta(days=1),
         )
         UserSession.objects.create(
-            user=self.user, jti="j2", expires_at=timezone.now() + timezone.timedelta(days=1),
+            user=self.user,
+            jti="j2",
+            expires_at=timezone.now() + timezone.timedelta(days=1),
         )
         self.client.force_authenticate(user=self.user)
         resp = self.client.delete("/api/core/sessions/revoke-all/")
@@ -761,11 +784,16 @@ class SessionEndpointsTests(APITestCase):
 
     def test_cannot_revoke_other_users_session(self):
         other_user = User.objects.create_user(
-            username="other_sess", password="pw", email="other_sess@test.sk",
-            lab=self.lab, role="user",
+            username="other_sess",
+            password="pw",
+            email="other_sess@test.sk",
+            lab=self.lab,
+            role="user",
         )
         session = UserSession.objects.create(
-            user=other_user, jti="other-jti", expires_at=timezone.now() + timezone.timedelta(days=1),
+            user=other_user,
+            jti="other-jti",
+            expires_at=timezone.now() + timezone.timedelta(days=1),
         )
         self.client.force_authenticate(user=self.user)
         resp = self.client.delete(f"/api/core/sessions/{session.id}/")
@@ -776,12 +804,18 @@ class SuperadminMetricsTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Metrics Lab")
         self.superadmin = User.objects.create_user(
-            username="metrics_sa", password="pw", email="metrics_sa@test.sk",
-            role="superadmin", is_superuser=True,
+            username="metrics_sa",
+            password="pw",
+            email="metrics_sa@test.sk",
+            role="superadmin",
+            is_superuser=True,
         )
         self.regular = User.objects.create_user(
-            username="metrics_user", password="pw", email="metrics_u@test.sk",
-            role="user", lab=self.lab,
+            username="metrics_user",
+            password="pw",
+            email="metrics_u@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_superadmin_can_access_metrics(self):
@@ -804,8 +838,11 @@ class AvatarUrlTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Avatar Lab")
         self.user = User.objects.create_user(
-            username="avatar_user", password="pw", email="avatar@test.sk",
-            role="user", lab=self.lab,
+            username="avatar_user",
+            password="pw",
+            email="avatar@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_update_avatar_url(self):
@@ -840,17 +877,25 @@ class LabApiKeyTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="ApiKey Lab")
         self.admin = User.objects.create_user(
-            username="apikey_admin", password="pw", email="apikey_admin@test.sk",
-            role="admin", lab=self.lab,
+            username="apikey_admin",
+            password="pw",
+            email="apikey_admin@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.user = User.objects.create_user(
-            username="apikey_user", password="pw", email="apikey_user@test.sk",
-            role="user", lab=self.lab,
+            username="apikey_user",
+            password="pw",
+            email="apikey_user@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_admin_can_create_api_key(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post("/api/core/api-keys/", {"name": "My Integration"}, format="json")
+        resp = self.client.post(
+            "/api/core/api-keys/", {"name": "My Integration"}, format="json"
+        )
         self.assertEqual(resp.status_code, 201)
         self.assertIn("key", resp.data)
         self.assertIn("prefix", resp.data)
@@ -859,13 +904,18 @@ class LabApiKeyTests(APITestCase):
 
     def test_regular_user_cannot_create_api_key(self):
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/core/api-keys/", {"name": "Bad Key"}, format="json")
+        resp = self.client.post(
+            "/api/core/api-keys/", {"name": "Bad Key"}, format="json"
+        )
         self.assertEqual(resp.status_code, 403)
 
     def test_admin_can_list_api_keys(self):
         LabApiKey.objects.create(
-            lab=self.lab, name="Existing Key", prefix="ab12cd34",
-            hashed_key="abc123", created_by=self.admin,
+            lab=self.lab,
+            name="Existing Key",
+            prefix="ab12cd34",
+            hashed_key="abc123",
+            created_by=self.admin,
         )
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/core/api-keys/")
@@ -875,8 +925,11 @@ class LabApiKeyTests(APITestCase):
 
     def test_revoke_api_key(self):
         key = LabApiKey.objects.create(
-            lab=self.lab, name="Revoke Me", prefix="xx12",
-            hashed_key="hash", created_by=self.admin,
+            lab=self.lab,
+            name="Revoke Me",
+            prefix="xx12",
+            hashed_key="hash",
+            created_by=self.admin,
         )
         self.client.force_authenticate(user=self.admin)
         resp = self.client.delete(f"/api/core/api-keys/{key.id}/")
@@ -894,12 +947,18 @@ class ImpersonationTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Impersonation Lab")
         self.superadmin = User.objects.create_user(
-            username="imp_sa", password="pw", email="imp_sa@test.sk",
-            role="superadmin", is_superuser=True,
+            username="imp_sa",
+            password="pw",
+            email="imp_sa@test.sk",
+            role="superadmin",
+            is_superuser=True,
         )
         self.target = User.objects.create_user(
-            username="imp_target", password="pw", email="imp_target@test.sk",
-            role="user", lab=self.lab,
+            username="imp_target",
+            password="pw",
+            email="imp_target@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_superadmin_can_impersonate(self):
@@ -922,8 +981,11 @@ class ImpersonationTests(APITestCase):
 
     def test_regular_user_cannot_impersonate(self):
         regular = User.objects.create_user(
-            username="imp_regular", password="pw", email="imp_regular@test.sk",
-            role="admin", lab=self.lab,
+            username="imp_regular",
+            password="pw",
+            email="imp_regular@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.client.force_authenticate(user=regular)
         resp = self.client.post(
@@ -940,8 +1002,11 @@ class ImpersonationTests(APITestCase):
 class SystemHealthRuntimeTests(APITestCase):
     def setUp(self):
         self.superadmin = User.objects.create_user(
-            username="health_sa", password="pw", email="health_sa@test.sk",
-            role="superadmin", is_superuser=True,
+            username="health_sa",
+            password="pw",
+            email="health_sa@test.sk",
+            role="superadmin",
+            is_superuser=True,
         )
 
     def test_health_includes_runtime_info(self):
@@ -966,8 +1031,11 @@ class DashboardChartDataTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Chart Lab")
         self.user = User.objects.create_user(
-            username="chart_user", password="pw", email="chart@test.sk",
-            role="admin", lab=self.lab,
+            username="chart_user",
+            password="pw",
+            email="chart@test.sk",
+            role="admin",
+            lab=self.lab,
         )
 
     def test_chart_data_returns_required_keys(self):
@@ -1001,8 +1069,11 @@ class TwoFactorTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="2FA Lab")
         self.user = User.objects.create_user(
-            username="tfa_user", password="pw", email="tfa@test.sk",
-            role="user", lab=self.lab,
+            username="tfa_user",
+            password="pw",
+            email="tfa@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_get_2fa_status_unenrolled(self):
@@ -1021,6 +1092,7 @@ class TwoFactorTests(APITestCase):
 
     def test_verify_with_valid_code_enables_2fa(self):
         import pyotp
+
         self.client.force_authenticate(user=self.user)
         self.client.post("/api/core/2fa/?action=setup")
         self.user.refresh_from_db()
@@ -1040,6 +1112,7 @@ class TwoFactorTests(APITestCase):
 
     def test_disable_with_valid_code_deactivates_2fa(self):
         import pyotp
+
         self.client.force_authenticate(user=self.user)
         self.client.post("/api/core/2fa/?action=setup")
         self.user.refresh_from_db()
@@ -1051,6 +1124,7 @@ class TwoFactorTests(APITestCase):
 
     def test_setup_blocked_when_2fa_already_active(self):
         import pyotp
+
         self.client.force_authenticate(user=self.user)
         self.client.post("/api/core/2fa/?action=setup")
         self.user.refresh_from_db()
@@ -1076,12 +1150,18 @@ class PermissionsMatrixTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Matrix Lab")
         self.admin = User.objects.create_user(
-            username="matrix_admin", password="pw", email="matrix@test.sk",
-            role="admin", lab=self.lab,
+            username="matrix_admin",
+            password="pw",
+            email="matrix@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.user = User.objects.create_user(
-            username="matrix_user", password="pw", email="muser@test.sk",
-            role="user", lab=self.lab,
+            username="matrix_user",
+            password="pw",
+            email="muser@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_matrix_returns_all_roles(self):
@@ -1116,21 +1196,34 @@ class NotificationFilterTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Notif Lab")
         self.user = User.objects.create_user(
-            username="notif_user", password="pw", email="notif@test.sk",
-            role="admin", lab=self.lab,
+            username="notif_user",
+            password="pw",
+            email="notif@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.n_job = Notification.objects.create(
-            lab=self.lab, recipient=self.user,
-            type="job", title="New job", message="",
+            lab=self.lab,
+            recipient=self.user,
+            type="job",
+            title="New job",
+            message="",
         )
         self.n_invoice = Notification.objects.create(
-            lab=self.lab, recipient=self.user,
-            type="invoice", title="Invoice issued", message="",
+            lab=self.lab,
+            recipient=self.user,
+            type="invoice",
+            title="Invoice issued",
+            message="",
         )
         from django.utils import timezone as tz
+
         self.n_read = Notification.objects.create(
-            lab=self.lab, recipient=self.user,
-            type="system", title="Read notif", message="",
+            lab=self.lab,
+            recipient=self.user,
+            type="system",
+            title="Read notif",
+            message="",
             read_at=tz.now(),
         )
 
@@ -1162,11 +1255,15 @@ class DashboardTodayScheduleVacationTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Schedule Lab")
         self.user = User.objects.create_user(
-            username="sched_user", password="pw", email="sched@test.sk",
-            role="admin", lab=self.lab,
+            username="sched_user",
+            password="pw",
+            email="sched@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         from apps.jobs.models import Vacation
         from django.utils import timezone as tz
+
         today = tz.now()
         self.vacation = Vacation.objects.create(
             lab=self.lab,
@@ -1190,8 +1287,11 @@ class LabSettingsValidationTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Validation Lab")
         self.admin = User.objects.create_user(
-            username="val_admin", password="pw", email="val@test.sk",
-            role="admin", lab=self.lab,
+            username="val_admin",
+            password="pw",
+            email="val@test.sk",
+            role="admin",
+            lab=self.lab,
         )
 
     def test_vat_rate_above_100_rejected(self):
@@ -1241,3 +1341,62 @@ class LabSettingsValidationTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 200)
+
+
+class LabRolePermissionTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Perm Lab")
+        self.admin = User.objects.create_user(
+            username="perm_admin",
+            password="pw",
+            email="perm@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def test_list_permissions_empty(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [])
+
+    def test_create_permission_override(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            f"/api/core/labs/{self.lab.id}/permissions/",
+            {"role": "user", "action": "crm.export", "allowed": False},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["role"], "user")
+        self.assertEqual(resp.data["action"], "crm.export")
+        self.assertFalse(resp.data["allowed"])
+
+    def test_create_requires_role_and_action(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            f"/api/core/labs/{self.lab.id}/permissions/",
+            {"role": "user"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_delete_permission_override(self):
+        from apps.core.models import LabRolePermission
+
+        override = LabRolePermission.objects.create(
+            lab=self.lab,
+            role="user",
+            action="crm.export",
+            allowed=False,
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.delete(
+            f"/api/core/labs/{self.lab.id}/permissions/{override.id}/"
+        )
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(LabRolePermission.objects.filter(id=override.id).exists())
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
+        self.assertEqual(resp.status_code, 401)

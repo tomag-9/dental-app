@@ -22,11 +22,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Add as nullable first — no unique constraint yet.
+        # Add as nullable first, no index yet to avoid duplicate index on AlterField.
         migrations.AddField(
             model_name="lab",
             name="slug",
-            field=models.SlugField(max_length=255, blank=True, null=True),
+            field=models.SlugField(
+                max_length=255, blank=True, null=True, db_index=False
+            ),
         ),
         # Populate slugs for existing rows.
         migrations.RunPython(populate_slugs, migrations.RunPython.noop),

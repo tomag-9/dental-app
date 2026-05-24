@@ -71,22 +71,33 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="inventory.csv"'
         writer = csv.writer(response)
-        writer.writerow([
-            "name", "sku", "quantity", "unit", "category",
-            "supplier", "cost_price", "location", "notes",
-        ])
+        writer.writerow(
+            [
+                "name",
+                "sku",
+                "quantity",
+                "unit",
+                "category",
+                "supplier",
+                "cost_price",
+                "location",
+                "notes",
+            ]
+        )
         for item in self.get_queryset().order_by("name"):
-            writer.writerow([
-                item.name,
-                item.sku or "",
-                item.quantity,
-                item.unit or "",
-                item.category or "",
-                item.supplier or "",
-                item.cost_price if item.cost_price is not None else "",
-                item.location or "",
-                item.notes or "",
-            ])
+            writer.writerow(
+                [
+                    item.name,
+                    item.sku or "",
+                    item.quantity,
+                    item.unit or "",
+                    item.category or "",
+                    item.supplier or "",
+                    item.cost_price if item.cost_price is not None else "",
+                    item.location or "",
+                    item.notes or "",
+                ]
+            )
         return response
 
     @action(detail=False, methods=["post"], url_path="import")
@@ -204,3 +215,106 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             {"imported": len(created), "skipped": skipped},
             status=status.HTTP_201_CREATED,
         )
+
+    _CSV_FIELDS = [
+        "name",
+        "sku",
+        "quantity",
+        "unit",
+        "min_threshold",
+        "category",
+        "location",
+        "supplier",
+        "cost_price",
+        "notes",
+    ]
+
+    @action(detail=False, methods=["post"], url_path="import-csv")
+    def import_csv(self, request):
+        """
+        Import warehouse items from a multipart CSV file upload.
+        POST /api/inventory/warehouse/import-csv/  (field name: file)
+        Header row must match field names; unknown columns are ignored.
+        Invalid rows are skipped; returns counts of imported and skipped items.
+        """
+        user = request.user
+        if not (hasattr(user, "lab") and user.lab):
+            return Response(
+                {"detail": "No lab associated with user"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        csv_file = request.FILES.get("file")
+        if not csv_file:
+            return Response(
+                {"detail": "No file provided. Send a CSV file in the 'file' field."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            text = csv_file.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return Response(
+                {"detail": "File encoding must be UTF-8."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = csv.DictReader(text.splitlines())
+        if not reader.fieldnames:
+            return Response(
+                {"detail": "CSV file is empty or missing a header row."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        _MAX_ROWS = 5_000
+
+        lab = user.lab
+        valid_items = []
+        skipped = 0
+        row_errors = {}
+
+        for idx, row in enumerate(reader):
+            if idx >= _MAX_ROWS:
+                return Response(
+                    {
+                        "detail": f"CSV exceeds the {_MAX_ROWS}-row limit. Split into smaller files."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            item_data = {
+                field: value
+                for field in self._CSV_FIELDS
+                if (value := (row.get(field) or "").strip())
+            }
+            ser = WarehouseItemImportSerializer(data=item_data)
+            if ser.is_valid():
+                valid_items.append(ser)
+            else:
+                skipped += 1
+                row_errors[idx + 2] = ser.errors
+
+        with transaction.atomic():
+            created = WarehouseItem.objects.bulk_create(
+                [
+                    WarehouseItem(
+                        lab=lab,
+                        name=s.validated_data["name"],
+                        sku=s.validated_data.get("sku") or None,
+                        quantity=s.validated_data.get("quantity", 0),
+                        unit=s.validated_data.get("unit", "pcs"),
+                        min_threshold=s.validated_data.get("min_threshold"),
+                        category=s.validated_data.get("category") or None,
+                        location=s.validated_data.get("location") or None,
+                        supplier=s.validated_data.get("supplier") or None,
+                        cost_price=s.validated_data.get("cost_price"),
+                        notes=s.validated_data.get("notes") or None,
+                    )
+                    for s in valid_items
+                ]
+            )
+
+        response_data = {"imported": len(created), "skipped": skipped}
+        if row_errors:
+            response_data["row_errors"] = row_errors
+        return Response(response_data, status=status.HTTP_201_CREATED)

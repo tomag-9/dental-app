@@ -190,6 +190,27 @@ class Vacation(models.Model):
         return f"Vacation {self.id}: {self.start} - {self.end}"
 
 
+class JobAttachment(models.Model):
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="attachments")
+    file_name = models.CharField(max_length=255)
+    file_url = models.URLField(max_length=500)
+    file_type = models.CharField(max_length=100, blank=True, null=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="job_attachments",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.job_id} - {self.file_name}"
+
+
 class CalendarEvent(models.Model):
     EVENT_TYPE_CHOICES = (
         ("meeting", "Meeting"),
@@ -209,6 +230,9 @@ class CalendarEvent(models.Model):
     start = models.DateTimeField(null=False)
     end = models.DateTimeField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    contact_person = models.CharField(max_length=100, blank=True, null=True)
+    contact_phone = models.CharField(max_length=30, blank=True, null=True)
     related_job = models.ForeignKey(
         Job,
         on_delete=models.SET_NULL,

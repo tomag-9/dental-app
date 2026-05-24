@@ -408,3 +408,63 @@ class WarehouseBulkImportTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         item = WarehouseItem.objects.get(lab=self.lab, name="Supplier Item")
         self.assertEqual(item.supplier, "Dental Depot")
+
+
+class InventoryCSVImportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="CSV Lab")
+        self.admin = User.objects.create_user(
+            username="csv_admin",
+            password="pw",
+            email="csv@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def _csv_file(self, content):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(
+            "items.csv", content.encode("utf-8"), content_type="text/csv"
+        )
+
+    def test_import_valid_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        csv_content = "name,sku,quantity,unit,category\nZákladné jehly,SKU-001,50,pcs,consumable\nVosk,SKU-002,20,g,\n"
+        resp = self.client.post(
+            "/api/inventory/warehouse/import-csv/",
+            {"file": self._csv_file(csv_content)},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["imported"], 2)
+        self.assertEqual(resp.data["skipped"], 0)
+        self.assertEqual(WarehouseItem.objects.filter(lab=self.lab).count(), 2)
+
+    def test_import_skips_invalid_rows(self):
+        self.client.force_authenticate(user=self.admin)
+        csv_content = "name,quantity\nGood Item,10\n,20\n"
+        resp = self.client.post(
+            "/api/inventory/warehouse/import-csv/",
+            {"file": self._csv_file(csv_content)},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["imported"], 1)
+        self.assertEqual(resp.data["skipped"], 1)
+
+    def test_import_no_file_returns_400(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/inventory/warehouse/import-csv/", {}, format="multipart"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unauthenticated_denied(self):
+        csv_content = "name\nItem\n"
+        resp = self.client.post(
+            "/api/inventory/warehouse/import-csv/",
+            {"file": self._csv_file(csv_content)},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 401)

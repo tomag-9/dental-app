@@ -1048,32 +1048,48 @@ class WorkOrderEndpointTests(APITestCase):
         from apps.core.models import Lab, User
         from apps.crm.models import Clinic, Doctor, Patient
         from apps.jobs.models import Job, JobItem, Technician
-        self.lab = Lab.objects.create(name="WO Lab", phone="0900000", email="lab@test.sk")
+
+        self.lab = Lab.objects.create(
+            name="WO Lab", phone="0900000", email="lab@test.sk"
+        )
         self.user = User.objects.create_user(
             username="wo_user", password="pw", role="admin", lab=self.lab
         )
         self.clinic = Clinic.objects.create(lab=self.lab, name="WO Clinic")
         self.doctor = Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic,
-            first_name="Jan", last_name="Novak",
+            lab=self.lab,
+            clinic=self.clinic,
+            first_name="Jan",
+            last_name="Novak",
             title_before="MUDr.",
         )
         self.patient = Patient.objects.create(
-            lab=self.lab, first_name="Alice", last_name="Test",
+            lab=self.lab,
+            first_name="Alice",
+            last_name="Test",
             birth_number="900101/1234",
         )
         self.tech = Technician.objects.create(
             lab=self.lab, first_name="Tech", last_name="One"
         )
         self.job = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
-            patient=self.patient, technician=self.tech,
-            status="in_progress", description="Crown work",
-            priority="high", tooth_color="A1",
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="in_progress",
+            description="Crown work",
+            priority="high",
+            tooth_color="A1",
         )
         JobItem.objects.create(
-            job=self.job, price_list_code="C001", description="Crown",
-            quantity=1, unit_price="150.00", total="150.00",
+            job=self.job,
+            price_list_code="C001",
+            description="Crown",
+            quantity=1,
+            unit_price="150.00",
+            total="150.00",
         )
 
     def test_work_order_returns_structured_data(self):
@@ -1109,9 +1125,14 @@ class WorkOrderEndpointTests(APITestCase):
 
     def test_work_order_respects_lab_scoping(self):
         from apps.core.models import Lab, User
+
         other_lab = Lab.objects.create(name="Other WO Lab")
         other_user = User.objects.create_user(
-            username="other_wo_user", email="other_wo@test.sk", password="pw", role="admin", lab=other_lab
+            username="other_wo_user",
+            email="other_wo@test.sk",
+            password="pw",
+            role="admin",
+            lab=other_lab,
         )
         self.client.force_authenticate(user=other_user)
         resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
@@ -1122,8 +1143,11 @@ class JobStatusConfigTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="StatusConfig Lab")
         self.user = User.objects.create_user(
-            username="sc_user", password="pw", email="sc_user@test.sk",
-            role="user", lab=self.lab,
+            username="sc_user",
+            password="pw",
+            email="sc_user@test.sk",
+            role="user",
+            lab=self.lab,
         )
 
     def test_status_config_returns_all_statuses(self):
@@ -1131,8 +1155,13 @@ class JobStatusConfigTests(APITestCase):
         resp = self.client.get("/api/jobs/jobs/status-config/")
         self.assertEqual(resp.status_code, 200)
         expected_statuses = [
-            "new", "in_progress", "completed", "cancelled",
-            "finished_factured", "finished_unfactured", "closed",
+            "new",
+            "in_progress",
+            "completed",
+            "cancelled",
+            "finished_factured",
+            "finished_unfactured",
+            "closed",
         ]
         for s in expected_statuses:
             self.assertIn(s, resp.data, f"Missing status: {s}")
@@ -1163,16 +1192,24 @@ class JobStatusChangeAuditLogTests(APITestCase):
         self.lab = Lab.objects.create(name="Audit Job Lab")
         self.clinic = Clinic.objects.create(name="AuditClinic", lab=self.lab)
         self.patient = Patient.objects.create(
-            first_name="Audit", last_name="Patient",
-            birth_number="800101/1111", lab=self.lab,
+            first_name="Audit",
+            last_name="Patient",
+            birth_number="800101/1111",
+            lab=self.lab,
         )
         self.user = User.objects.create_user(
-            username="auditjob_user", password="pw", email="auditjob@test.sk",
-            role="admin", lab=self.lab,
+            username="auditjob_user",
+            password="pw",
+            email="auditjob@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.job = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, patient=self.patient,
-            description="Audit job", status="new",
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            description="Audit job",
+            status="new",
         )
 
     def test_status_change_writes_audit_log(self):
@@ -1199,8 +1236,11 @@ class QuickCreateJobTests(APITestCase):
         self.lab = Lab.objects.create(name="QuickCreate Lab")
         self.clinic = Clinic.objects.create(name="QC Clinic", lab=self.lab)
         self.user = User.objects.create_user(
-            username="qc_user", password="pw", email="qc@test.sk",
-            role="admin", lab=self.lab,
+            username="qc_user",
+            password="pw",
+            email="qc@test.sk",
+            role="admin",
+            lab=self.lab,
         )
 
     def test_creates_patient_and_job_atomically(self):
@@ -1229,8 +1269,10 @@ class QuickCreateJobTests(APITestCase):
 
     def test_reuses_existing_patient_by_birth_number(self):
         existing = Patient.objects.create(
-            first_name="Existujúci", last_name="Pacient",
-            birth_number="800202/1111", lab=self.lab,
+            first_name="Existujúci",
+            last_name="Pacient",
+            birth_number="800202/1111",
+            lab=self.lab,
         )
         self.client.force_authenticate(user=self.user)
         resp = self.client.post(
@@ -1275,8 +1317,11 @@ class QuickCreateJobTests(APITestCase):
 
     def test_regular_user_cannot_quick_create(self):
         regular = User.objects.create_user(
-            username="qc_regular", password="pw", email="qcr@test.sk",
-            role="user", lab=self.lab,
+            username="qc_regular",
+            password="pw",
+            email="qcr@test.sk",
+            role="user",
+            lab=self.lab,
         )
         self.client.force_authenticate(user=regular)
         resp = self.client.post(
@@ -1300,29 +1345,45 @@ class JobDateRangeFilterTests(APITestCase):
         self.lab = Lab.objects.create(name="Filter Lab")
         self.clinic = Clinic.objects.create(name="Filter Clinic", lab=self.lab)
         self.user = User.objects.create_user(
-            username="filter_user", password="pw", email="filter@test.sk",
-            role="admin", lab=self.lab,
+            username="filter_user",
+            password="pw",
+            email="filter@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.patient = Patient.objects.create(
-            lab=self.lab, first_name="Filter", last_name="Patient",
+            lab=self.lab,
+            first_name="Filter",
+            last_name="Patient",
         )
         from django.utils import timezone
+
         today = timezone.localdate()
         self.job_past = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            status="new",
             due_date=today - timezone.timedelta(days=10),
         )
         self.job_today = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            status="new",
             due_date=today,
         )
         self.job_future = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new",
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            status="new",
             due_date=today + timezone.timedelta(days=10),
         )
 
     def test_from_date_filters_out_past(self):
         from django.utils import timezone
+
         today = timezone.localdate().isoformat()
         self.client.force_authenticate(user=self.user)
         resp = self.client.get(f"/api/jobs/jobs/?from_date={today}")
@@ -1334,6 +1395,7 @@ class JobDateRangeFilterTests(APITestCase):
 
     def test_to_date_filters_out_future(self):
         from django.utils import timezone
+
         today = timezone.localdate().isoformat()
         self.client.force_authenticate(user=self.user)
         resp = self.client.get(f"/api/jobs/jobs/?to_date={today}")
@@ -1345,6 +1407,7 @@ class JobDateRangeFilterTests(APITestCase):
 
     def test_technician_id_filter(self):
         from apps.jobs.models import Technician
+
         tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
         self.job_today.technician = tech
         self.job_today.save(update_fields=["technician"])
@@ -1361,15 +1424,26 @@ class JobBulkUpdateTests(APITestCase):
         self.lab = Lab.objects.create(name="Bulk Lab")
         self.clinic = Clinic.objects.create(name="Bulk Clinic", lab=self.lab)
         self.user = User.objects.create_user(
-            username="bulk_user", password="pw", email="bulk@test.sk",
-            role="admin", lab=self.lab,
+            username="bulk_user",
+            password="pw",
+            email="bulk@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.patient = Patient.objects.create(
-            lab=self.lab, first_name="Bulk", last_name="Patient",
+            lab=self.lab,
+            first_name="Bulk",
+            last_name="Patient",
         )
-        self.job1 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
-        self.job2 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
-        self.job3 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="completed")
+        self.job1 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new"
+        )
+        self.job2 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new"
+        )
+        self.job3 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="completed"
+        )
 
     def test_bulk_status_update_valid_transition(self):
         self.client.force_authenticate(user=self.user)
@@ -1422,3 +1496,110 @@ class JobBulkUpdateTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 401)
+
+
+class JobAttachmentTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Attach Lab")
+        self.clinic = Clinic.objects.create(name="Attach Clinic", lab=self.lab)
+        self.user = User.objects.create_user(
+            username="attach_user",
+            password="pw",
+            email="attach@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="A",
+            last_name="Patient",
+        )
+        self.job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            status="new",
+        )
+
+    def test_list_attachments_empty(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/attachments/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data, [])
+
+    def test_create_attachment(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "photo.jpg",
+                "file_url": "https://example.com/photo.jpg",
+                "file_type": "image/jpeg",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["file_name"], "photo.jpg")
+        self.assertEqual(resp.data["uploaded_by"], self.user.id)
+
+    def test_list_attachments_after_create(self):
+        self.client.force_authenticate(user=self.user)
+        self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {"file_name": "scan.pdf", "file_url": "https://example.com/scan.pdf"},
+            format="json",
+        )
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/attachments/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["file_name"], "scan.pdf")
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/attachments/")
+        self.assertEqual(resp.status_code, 401)
+
+
+class CalendarEventContactFieldsTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Cal Lab")
+        self.user = User.objects.create_user(
+            username="cal_user",
+            password="pw",
+            email="cal@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def test_create_event_with_contact_fields(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/calendar-events/",
+            {
+                "title": "Pickup",
+                "event_type": "pickup",
+                "start": "2026-06-01T10:00:00Z",
+                "location": "Klinika Bratislava, Hlavná 1",
+                "contact_person": "Dr. Novák",
+                "contact_phone": "+421 900 000 000",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["location"], "Klinika Bratislava, Hlavná 1")
+        self.assertEqual(resp.data["contact_person"], "Dr. Novák")
+        self.assertEqual(resp.data["contact_phone"], "+421 900 000 000")
+
+    def test_event_contact_fields_nullable(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/calendar-events/",
+            {
+                "title": "Meeting",
+                "event_type": "meeting",
+                "start": "2026-06-02T09:00:00Z",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertIsNone(resp.data["location"])
+        self.assertIsNone(resp.data["contact_person"])

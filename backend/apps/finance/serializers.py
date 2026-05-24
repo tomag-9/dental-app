@@ -55,7 +55,12 @@ class InvoiceCreateSerializer(serializers.Serializer):
         required=False,
     )
     discount_percent = serializers.DecimalField(
-        max_digits=5, decimal_places=2, default=0, required=False, min_value=0, max_value=100,
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        required=False,
+        min_value=0,
+        max_value=100,
     )
 
 
@@ -145,7 +150,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
         discount = Decimal(str(obj.discount_percent or 0))
         total = Decimal(str(obj.total_amount or 0))
         # Reverse: total = (subtotal * (1 - discount/100)) * (1 + vat/100)
-        divisor = (Decimal("1") - discount / Decimal("100")) * (Decimal("1") + vat_rate / Decimal("100"))
+        divisor = (Decimal("1") - discount / Decimal("100")) * (
+            Decimal("1") + vat_rate / Decimal("100")
+        )
         if divisor <= 0:
             return f"{total:.2f}"
         subtotal = (total / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

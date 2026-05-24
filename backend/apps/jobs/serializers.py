@@ -14,7 +14,15 @@ from .dental import (
     validate_bridge_span,
     validate_tooth_range,
 )
-from .models import CalendarEvent, Job, JobItem, JobTimelineEvent, Technician, Vacation
+from .models import (
+    CalendarEvent,
+    Job,
+    JobAttachment,
+    JobItem,
+    JobTimelineEvent,
+    Technician,
+    Vacation,
+)
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
@@ -363,3 +371,32 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         model = CalendarEvent
         fields = "__all__"
         read_only_fields = ["lab", "created_at"]
+
+
+class JobAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobAttachment
+        fields = (
+            "id",
+            "job",
+            "file_name",
+            "file_url",
+            "file_type",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        )
+        read_only_fields = (
+            "id",
+            "job",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        )
+
+    def get_uploaded_by_name(self, obj):
+        if not obj.uploaded_by:
+            return ""
+        return obj.uploaded_by.get_full_name() or obj.uploaded_by.username

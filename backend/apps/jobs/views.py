@@ -14,9 +14,17 @@ from apps.core.access import (
     is_superadmin,
 )
 
-from .models import CalendarEvent, Job, JobTimelineEvent, Technician, Vacation
+from .models import (
+    CalendarEvent,
+    Job,
+    JobAttachment,
+    JobTimelineEvent,
+    Technician,
+    Vacation,
+)
 from .serializers import (
     CalendarEventSerializer,
+    JobAttachmentSerializer,
     JobSerializer,
     JobStatusTransitionSerializer,
     TechnicianSerializer,
@@ -220,7 +228,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 if new_status:
                     if new_status == job.status:
                         pass
-                    elif new_status not in self.allowed_transitions.get(job.status, set()):
+                    elif new_status not in self.allowed_transitions.get(
+                        job.status, set()
+                    ):
                         skip_reason = f"Invalid transition {job.status}→{new_status}"
                 if skip_reason:
                     skipped.append({"id": job.id, "reason": skip_reason})
@@ -245,7 +255,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                         to_status=job.status,
                     )
                 elif new_priority:
-                    self._record_timeline(job, "updated", note="Hromadná zmena priority.")
+                    self._record_timeline(
+                        job, "updated", note="Hromadná zmena priority."
+                    )
 
                 updated.append(job.id)
 
@@ -516,6 +528,22 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             },
         }
         return Response(config)
+
+    @action(detail=True, methods=["get", "post"], url_path="attachments")
+    def attachments(self, request, pk=None):
+        job = self.get_object()
+        if request.method == "GET":
+            qs = JobAttachment.objects.filter(job=job)
+            serializer = JobAttachmentSerializer(
+                qs, many=True, context={"request": request}
+            )
+            return Response(serializer.data)
+        serializer = JobAttachmentSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save(job=job, uploaded_by=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def _record_timeline(
         self,

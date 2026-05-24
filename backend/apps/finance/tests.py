@@ -6,7 +6,6 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceSequence, PriceList, Subscription
-from apps.core.models import LabApiKey
 from apps.jobs.models import Job, Technician
 
 
@@ -882,20 +881,28 @@ class ProcedureCatalogTests(APITestCase):
             lab=self.other_lab,
         )
         PriceList.objects.create(
-            lab=self.lab, code="C001", description="Full crown", price="150.00",
-            category="crown"
+            lab=self.lab,
+            code="C001",
+            description="Full crown",
+            price="150.00",
+            category="crown",
         )
         PriceList.objects.create(
-            lab=self.lab, code="B001", description="3-unit bridge", price="400.00",
-            category="bridge"
+            lab=self.lab,
+            code="B001",
+            description="3-unit bridge",
+            price="400.00",
+            category="bridge",
         )
         PriceList.objects.create(
-            lab=self.lab, code="X001", description="Misc", price="50.00",
-            category=None
+            lab=self.lab, code="X001", description="Misc", price="50.00", category=None
         )
         PriceList.objects.create(
-            lab=self.other_lab, code="C001", description="Other crown", price="200.00",
-            category="crown"
+            lab=self.other_lab,
+            code="C001",
+            description="Other crown",
+            price="200.00",
+            category="crown",
         )
 
     def test_catalog_returns_own_lab_items_grouped(self):
@@ -937,7 +944,9 @@ class InvoiceCSVExportTests(APITestCase):
         self.lab = Lab.objects.create(name="Export Lab")
         self.other_lab = Lab.objects.create(name="Other Lab")
         self.clinic = Clinic.objects.create(lab=self.lab, name="Klinika A")
-        self.other_clinic = Clinic.objects.create(lab=self.other_lab, name="Other Clinic")
+        self.other_clinic = Clinic.objects.create(
+            lab=self.other_lab, name="Other Clinic"
+        )
         self.admin = User.objects.create_user(
             username="export_admin",
             email="export_admin@example.com",
@@ -949,16 +958,28 @@ class InvoiceCSVExportTests(APITestCase):
 
         now = timezone.now()
         Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic, number="EXP-001",
-            status="paid", total_amount="100.00", issued_at=now, paid_at=now,
+            lab=self.lab,
+            clinic=self.clinic,
+            number="EXP-001",
+            status="paid",
+            total_amount="100.00",
+            issued_at=now,
+            paid_at=now,
         )
         Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic, number="EXP-002",
-            status="issued", total_amount="200.00", issued_at=now,
+            lab=self.lab,
+            clinic=self.clinic,
+            number="EXP-002",
+            status="issued",
+            total_amount="200.00",
+            issued_at=now,
         )
         Invoice.objects.create(
-            lab=self.other_lab, clinic=self.other_clinic, number="OTHER-001",
-            status="paid", total_amount="999.00",
+            lab=self.other_lab,
+            clinic=self.other_clinic,
+            number="OTHER-001",
+            status="paid",
+            total_amount="999.00",
         )
 
     def test_export_returns_csv(self):
@@ -1008,36 +1029,51 @@ class ProformaInvoiceTests(APITestCase):
 
     def _create_job(self):
         return Job.objects.create(
-            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
-            patient=self.patient, technician=self.tech,
-            status="completed", description="Crown",
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            description="Crown",
         )
 
     def test_invoice_defaults_to_invoice_type(self):
         job = self._create_job()
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id,
-            "job_ids": [job.id],
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["document_type"], "invoice")
 
     def test_create_proforma_invoice(self):
         job = self._create_job()
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id,
-            "job_ids": [job.id],
-            "document_type": "proforma",
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "document_type": "proforma",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["document_type"], "proforma")
 
     def test_document_type_in_list_response(self):
         Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic,
-            number="PRF-2026-0001", status="draft", document_type="proforma",
+            lab=self.lab,
+            clinic=self.clinic,
+            number="PRF-2026-0001",
+            status="draft",
+            document_type="proforma",
         )
         self.client.force_authenticate(user=self.user)
         resp = self.client.get("/api/finance/invoices/")
@@ -1047,11 +1083,15 @@ class ProformaInvoiceTests(APITestCase):
     def test_invalid_document_type_rejected(self):
         job = self._create_job()
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id,
-            "job_ids": [job.id],
-            "document_type": "receipt",
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "document_type": "receipt",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 400)
 
 
@@ -1068,33 +1108,56 @@ class MultiProcedurePricingTests(APITestCase):
         self.patient = Patient.objects.create(
             lab=self.lab, first_name="P", last_name="Q", birth_number="900101/0007"
         )
-        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+        self.tech = Technician.objects.create(
+            lab=self.lab, first_name="T", last_name="T"
+        )
         from apps.finance.models import PriceList
-        PriceList.objects.create(lab=self.lab, code="C001", description="Crown", price="150.00")
-        PriceList.objects.create(lab=self.lab, code="C002", description="Bridge", price="300.00")
+
+        PriceList.objects.create(
+            lab=self.lab, code="C001", description="Crown", price="150.00"
+        )
+        PriceList.objects.create(
+            lab=self.lab, code="C002", description="Bridge", price="300.00"
+        )
 
     def _make_job(self, procedure_codes, quantities=None):
         from apps.jobs.models import Job
+
         return Job.objects.create(
-            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
-            patient=self.patient, technician=self.tech,
-            status="completed", description="Test",
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            description="Test",
             procedure_codes=procedure_codes,
             procedure_quantities=quantities or {},
         )
 
     def test_single_procedure_uses_job_price(self):
         from apps.jobs.models import Job
+
         job = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
-            patient=self.patient, technician=self.tech,
-            status="completed", price="200.00",
-            procedure_codes=["C001"], procedure_quantities={"C001": 1},
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="200.00",
+            procedure_codes=["C001"],
+            procedure_quantities={"C001": 1},
         )
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id, "job_ids": [job.id],
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         item = resp.data["items"][0]
         self.assertEqual(item["unit_price"], "200.00")
@@ -1102,9 +1165,14 @@ class MultiProcedurePricingTests(APITestCase):
     def test_multi_procedure_looks_up_pricelist(self):
         job = self._make_job(["C001", "C002"], {"C001": 1, "C002": 2})
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id, "job_ids": [job.id],
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         by_desc = {i["description"]: i for i in resp.data["items"]}
         self.assertIn("Crown", by_desc)
@@ -1115,9 +1183,14 @@ class MultiProcedurePricingTests(APITestCase):
     def test_multi_procedure_unknown_code_gets_zero(self):
         job = self._make_job(["C001", "UNKNOWN"], {"C001": 1, "UNKNOWN": 1})
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id, "job_ids": [job.id],
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         by_desc = {i["description"]: i for i in resp.data["items"]}
         self.assertEqual(by_desc["UNKNOWN"]["unit_price"], "0.00")
@@ -1125,7 +1198,9 @@ class MultiProcedurePricingTests(APITestCase):
 
 class InvoiceVatRateSnapshotTests(APITestCase):
     def setUp(self):
-        self.lab = Lab.objects.create(name="VAT Lab", invoice_prefix="VAT", vat_rate="20.00")
+        self.lab = Lab.objects.create(
+            name="VAT Lab", invoice_prefix="VAT", vat_rate="20.00"
+        )
         self.user = User.objects.create_user(
             username="vat_user", password="pw", role="admin", lab=self.lab
         )
@@ -1136,19 +1211,31 @@ class InvoiceVatRateSnapshotTests(APITestCase):
         self.patient = Patient.objects.create(
             lab=self.lab, first_name="V", last_name="T", birth_number="900101/0007"
         )
-        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+        self.tech = Technician.objects.create(
+            lab=self.lab, first_name="T", last_name="T"
+        )
 
     def test_vat_rate_snapshot_stored_at_creation(self):
         from apps.jobs.models import Job
+
         job = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, doctor=self.doctor,
-            patient=self.patient, technician=self.tech,
-            status="completed", price="100.00",
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
         )
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post("/api/finance/invoices/", {
-            "clinic_id": self.clinic.id, "job_ids": [job.id],
-        }, format="json")
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["vat_rate"], "20.00")
         # total = 100 + 20% VAT = 120
@@ -1156,9 +1243,13 @@ class InvoiceVatRateSnapshotTests(APITestCase):
 
     def test_vat_rate_in_serializer_response(self):
         from apps.finance.models import Invoice
+
         inv = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic,
-            number="VAT-2026-001", status="draft", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic,
+            number="VAT-2026-001",
+            status="draft",
+            vat_rate="20.00",
         )
         self.client.force_authenticate(user=self.user)
         resp = self.client.get(f"/api/finance/invoices/{inv.id}/")
@@ -1173,8 +1264,11 @@ class InvoiceAgingBucketsTests(APITestCase):
 
         self.lab = Lab.objects.create(name="Aging Lab")
         self.user = User.objects.create_user(
-            username="aging_admin", password="pw", email="aging@test.sk",
-            role="admin", lab=self.lab,
+            username="aging_admin",
+            password="pw",
+            email="aging@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic = Clinic.objects.create(name="AgingClinic", lab=self.lab)
         InvoiceSequence.objects.create(lab=self.lab, last_number=0)
@@ -1183,16 +1277,19 @@ class InvoiceAgingBucketsTests(APITestCase):
         def _inv(number, days_overdue):
             due = today - timezone.timedelta(days=days_overdue)
             return Invoice.objects.create(
-                lab=self.lab, clinic=self.clinic,
-                number=number, status="issued",
-                total_amount="100.00", due_date=due,
+                lab=self.lab,
+                clinic=self.clinic,
+                number=number,
+                status="issued",
+                total_amount="100.00",
+                due_date=due,
             )
 
-        self.current = _inv("AGE-0001", 0)      # due today → current
-        self.d15 = _inv("AGE-0002", 15)          # 15 days → 1-30
-        self.d45 = _inv("AGE-0003", 45)          # 45 days → 31-60
-        self.d75 = _inv("AGE-0004", 75)          # 75 days → 61-90
-        self.d100 = _inv("AGE-0005", 100)        # 100 days → over_90
+        self.current = _inv("AGE-0001", 0)  # due today → current
+        self.d15 = _inv("AGE-0002", 15)  # 15 days → 1-30
+        self.d45 = _inv("AGE-0003", 45)  # 45 days → 31-60
+        self.d75 = _inv("AGE-0004", 75)  # 75 days → 61-90
+        self.d100 = _inv("AGE-0005", 100)  # 100 days → over_90
 
     def test_aging_buckets_in_finance_stats(self):
         self.client.force_authenticate(user=self.user)
@@ -1215,12 +1312,18 @@ class SubscriptionExtendedFieldsTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Sub Extended Lab")
         self.superadmin = User.objects.create_user(
-            username="sub_sa", password="pw", email="sub_sa@test.sk",
-            role="superadmin", is_superuser=True,
+            username="sub_sa",
+            password="pw",
+            email="sub_sa@test.sk",
+            role="superadmin",
+            is_superuser=True,
         )
         self.sub = Subscription.objects.create(
-            lab=self.lab, plan="pro", status="active",
-            mrr="99.00", billing_email="billing@lab.sk",
+            lab=self.lab,
+            plan="pro",
+            status="active",
+            mrr="99.00",
+            billing_email="billing@lab.sk",
         )
 
     def test_subscription_serializer_includes_new_fields(self):
@@ -1249,11 +1352,15 @@ class InvoiceSkFormatTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="SK Format Lab")
         self.admin = User.objects.create_user(
-            username="skfmt_admin", password="pw", email="skfmt@test.sk",
-            role="admin", lab=self.lab,
+            username="skfmt_admin",
+            password="pw",
+            email="skfmt@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic = Clinic.objects.create(lab=self.lab, name="Klinika SK")
         from django.utils import timezone
+
         self.invoice = Invoice.objects.create(
             lab=self.lab,
             clinic=self.clinic,
@@ -1290,9 +1397,12 @@ class InvoiceSkFormatTests(APITestCase):
 
     def test_formatted_fields_null_when_no_dates(self):
         invoice_no_dates = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic,
-            number="LAB-2026-0002", status="draft",
-            total_amount="0.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic,
+            number="LAB-2026-0002",
+            status="draft",
+            total_amount="0.00",
+            vat_rate="20.00",
         )
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get(f"/api/finance/invoices/{invoice_no_dates.id}/")
@@ -1305,11 +1415,15 @@ class InvoiceSendEmailTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Email Lab")
         self.admin = User.objects.create_user(
-            username="email_admin", password="pw", email="email_admin@test.sk",
-            role="admin", lab=self.lab,
+            username="email_admin",
+            password="pw",
+            email="email_admin@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic = Clinic.objects.create(
-            lab=self.lab, name="Email Klinika",
+            lab=self.lab,
+            name="Email Klinika",
             contact_info={"email": "klinika@test.sk"},
         )
         self.invoice = Invoice.objects.create(
@@ -1324,8 +1438,11 @@ class InvoiceSendEmailTests(APITestCase):
     def test_send_email_to_explicit_address(self):
         from django.test import override_settings
         from django.core import mail
+
         self.client.force_authenticate(user=self.admin)
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {"email": "recipient@test.sk"},
@@ -1338,9 +1455,11 @@ class InvoiceSendEmailTests(APITestCase):
 
     def test_send_email_falls_back_to_clinic_contact(self):
         from django.test import override_settings
-        from django.core import mail
+
         self.client.force_authenticate(user=self.admin)
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {},
@@ -1352,9 +1471,12 @@ class InvoiceSendEmailTests(APITestCase):
     def test_send_email_no_recipient_returns_400(self):
         clinic_no_email = Clinic.objects.create(lab=self.lab, name="No Email Clinic")
         invoice_no_email = Invoice.objects.create(
-            lab=self.lab, clinic=clinic_no_email,
-            number="LAB-2026-0011", status="issued",
-            total_amount="100.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=clinic_no_email,
+            number="LAB-2026-0011",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
         )
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post(
@@ -1377,29 +1499,43 @@ class InvoiceListFilterTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Filter Invoice Lab")
         self.admin = User.objects.create_user(
-            username="inv_filter_admin", password="pw", email="invf@test.sk",
-            role="admin", lab=self.lab,
+            username="inv_filter_admin",
+            password="pw",
+            email="invf@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic_a = Clinic.objects.create(lab=self.lab, name="Clinic A")
         self.clinic_b = Clinic.objects.create(lab=self.lab, name="Clinic B")
         from datetime import date, timedelta
+
         today = date.today()
         self.inv_issued = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_a,
-            number="F-0001", status="issued",
-            total_amount="100.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_a,
+            number="F-0001",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
             due_date=today + timedelta(days=10),
         )
         self.inv_paid = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_b,
-            number="F-0002", status="paid",
-            total_amount="200.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_b,
+            number="F-0002",
+            status="paid",
+            total_amount="200.00",
+            vat_rate="20.00",
             due_date=today - timedelta(days=5),
         )
         self.inv_proforma = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_a,
-            number="F-0003", status="issued", document_type="proforma",
-            total_amount="50.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_a,
+            number="F-0003",
+            status="issued",
+            document_type="proforma",
+            total_amount="50.00",
+            vat_rate="20.00",
             due_date=today,
         )
 
@@ -1425,7 +1561,8 @@ class InvoiceListFilterTests(APITestCase):
         self.assertEqual(resp.data[0]["number"], "F-0002")
 
     def test_date_range_filter(self):
-        from datetime import date, timedelta
+        from datetime import date
+
         today = date.today()
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get(f"/api/finance/invoices/?date_from={today.isoformat()}")
@@ -1445,42 +1582,60 @@ class OverdueReminderTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Overdue Lab")
         self.admin = User.objects.create_user(
-            username="overdue_admin", password="pw", email="overdue_a@test.sk",
-            role="admin", lab=self.lab,
+            username="overdue_admin",
+            password="pw",
+            email="overdue_a@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic_with_email = Clinic.objects.create(
-            lab=self.lab, name="Email Clinic",
+            lab=self.lab,
+            name="Email Clinic",
             contact_info={"email": "clinic@test.sk"},
         )
         self.clinic_no_email = Clinic.objects.create(
-            lab=self.lab, name="No Email Clinic",
+            lab=self.lab,
+            name="No Email Clinic",
         )
         from datetime import date, timedelta
+
         yesterday = date.today() - timedelta(days=1)
         self.overdue_inv = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_with_email,
-            number="OD-0001", status="issued",
-            total_amount="300.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_with_email,
+            number="OD-0001",
+            status="issued",
+            total_amount="300.00",
+            vat_rate="20.00",
             due_date=yesterday,
         )
         self.overdue_no_email = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_no_email,
-            number="OD-0002", status="issued",
-            total_amount="100.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_no_email,
+            number="OD-0002",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
             due_date=yesterday,
         )
         self.paid_inv = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic_with_email,
-            number="OD-0003", status="paid",
-            total_amount="50.00", vat_rate="20.00",
+            lab=self.lab,
+            clinic=self.clinic_with_email,
+            number="OD-0003",
+            status="paid",
+            total_amount="50.00",
+            vat_rate="20.00",
             due_date=yesterday,
         )
 
     def test_sends_reminders_for_overdue_issued_invoices(self):
         from django.test import override_settings
         from django.core import mail
+
         self.client.force_authenticate(user=self.admin)
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("OD-0001", resp.data["sent"])
@@ -1492,13 +1647,107 @@ class OverdueReminderTests(APITestCase):
 
     def test_paid_invoices_not_included(self):
         from django.test import override_settings
-        from django.core import mail
+
         self.client.force_authenticate(user=self.admin)
-        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
         sent_numbers = resp.data["sent"] + [f["invoice"] for f in resp.data["failed"]]
         self.assertNotIn("OD-0003", sent_numbers)
 
     def test_unauthenticated_denied(self):
         resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+        self.assertEqual(resp.status_code, 401)
+
+
+class InvoiceAgingTests(APITestCase):
+    def setUp(self):
+        from datetime import date, timedelta
+
+        self.lab = Lab.objects.create(name="Aging Lab")
+        self.admin = User.objects.create_user(
+            username="aging_admin",
+            password="pw",
+            email="aging@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Aging Clinic")
+        today = date.today()
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="AG-0001",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
+            due_date=today + timedelta(days=5),
+        )
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="AG-0002",
+            status="issued",
+            total_amount="200.00",
+            vat_rate="20.00",
+            due_date=today - timedelta(days=15),
+        )
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="AG-0003",
+            status="issued",
+            total_amount="300.00",
+            vat_rate="20.00",
+            due_date=today - timedelta(days=45),
+        )
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="AG-0004",
+            status="paid",
+            total_amount="400.00",
+            vat_rate="20.00",
+            due_date=today - timedelta(days=10),
+        )
+
+    def _bucket(self, resp_data, key):
+        return next(b for b in resp_data if b["bucket"] == key)
+
+    def test_aging_returns_five_buckets(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/aging/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 5)
+
+    def test_current_bucket_contains_not_overdue(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/aging/")
+        current = self._bucket(resp.data, "current")
+        self.assertEqual(current["count"], 1)
+        self.assertEqual(current["amount"], "100.00")
+
+    def test_1_30_bucket_contains_fifteen_day_overdue(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/aging/")
+        b = self._bucket(resp.data, "1_30")
+        self.assertEqual(b["count"], 1)
+        self.assertEqual(b["amount"], "200.00")
+
+    def test_31_60_bucket_contains_45_day_overdue(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/aging/")
+        b = self._bucket(resp.data, "31_60")
+        self.assertEqual(b["count"], 1)
+        self.assertEqual(b["amount"], "300.00")
+
+    def test_paid_invoices_excluded(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/aging/")
+        total = sum(int(b["count"]) for b in resp.data)
+        self.assertEqual(total, 3)
+
+    def test_unauthenticated_denied(self):
+        resp = self.client.get("/api/finance/invoices/aging/")
         self.assertEqual(resp.status_code, 401)

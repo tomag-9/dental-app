@@ -647,41 +647,49 @@ class SlovakBirthNumberValidatorTests(APITestCase):
             _validate_birth_number(value)
 
     def test_valid_10_digit_with_slash(self):
-        self._ok('900101/1234')
+        self._ok("900101/1234")
 
     def test_valid_10_digit_without_slash(self):
-        self._ok('9001011234')
+        self._ok("9001011234")
 
     def test_valid_9_digit(self):
         # pre-1954 format — 9 digits
-        self._ok('490101123')
+        self._ok("490101123")
 
     def test_invalid_too_short(self):
-        self._err('12345678')
+        self._err("12345678")
 
     def test_invalid_letters(self):
-        self._err('9001AB1234')
+        self._err("9001AB1234")
 
     def test_invalid_month(self):
-        self._err('9013011234')
+        self._err("9013011234")
 
     def test_invalid_day(self):
-        self._err('9001991234')
+        self._err("9001991234")
 
     def test_valid_female_month(self):
         # women get month + 50, so month 51 → January
-        self._ok('9051011234')
+        self._ok("9051011234")
 
     def test_api_rejects_invalid_birth_number(self):
-        lab = Lab.objects.create(name='ValidatorLab')
-        user = User.objects.create_user(username='vlabuser', password='pw', role='admin', lab=lab)
-        Clinic.objects.create(lab=lab, name='C')
+        lab = Lab.objects.create(name="ValidatorLab")
+        user = User.objects.create_user(
+            username="vlabuser", password="pw", role="admin", lab=lab
+        )
+        Clinic.objects.create(lab=lab, name="C")
         self.client.force_authenticate(user=user)
-        resp = self.client.post('/api/crm/patients/', {
-            'first_name': 'Test', 'last_name': 'Patient', 'birth_number': 'badvalue',
-        }, format='json')
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Test",
+                "last_name": "Patient",
+                "birth_number": "badvalue",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('birth_number', resp.data)
+        self.assertIn("birth_number", resp.data)
 
 
 class SlovakIcoValidatorTests(APITestCase):
@@ -694,29 +702,36 @@ class SlovakIcoValidatorTests(APITestCase):
 
     def test_valid_ico(self):
         # weights [8,7,6,5,4,3,2] × [3,6,1,9,0,5,7] = 146, 146%11=3, check=8
-        self._ok('36190578')
+        self._ok("36190578")
 
     def test_invalid_not_8_digits(self):
-        self._err('1234567')
+        self._err("1234567")
 
     def test_invalid_contains_letters(self):
-        self._err('1234567A')
+        self._err("1234567A")
 
     def test_invalid_checksum(self):
-        self._err('36190570')
+        self._err("36190570")
 
     def test_empty_skipped(self):
-        _validate_ico('')
+        _validate_ico("")
 
     def test_api_rejects_invalid_ico(self):
-        lab = Lab.objects.create(name='IcoLab')
-        user = User.objects.create_user(username='icouser', password='pw', role='admin', lab=lab)
+        lab = Lab.objects.create(name="IcoLab")
+        user = User.objects.create_user(
+            username="icouser", password="pw", role="admin", lab=lab
+        )
         self.client.force_authenticate(user=user)
-        resp = self.client.post('/api/crm/clinics/', {
-            'name': 'Test Clinic', 'ico': 'BADICO',
-        }, format='json')
+        resp = self.client.post(
+            "/api/crm/clinics/",
+            {
+                "name": "Test Clinic",
+                "ico": "BADICO",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('ico', resp.data)
+        self.assertIn("ico", resp.data)
 
 
 class SlovakDicValidatorTests(APITestCase):
@@ -728,29 +743,36 @@ class SlovakDicValidatorTests(APITestCase):
             _validate_dic(value)
 
     def test_valid_10_digit(self):
-        self._ok('2020123456')
+        self._ok("2020123456")
 
     def test_valid_sk_prefix(self):
-        self._ok('SK2020123456')
+        self._ok("SK2020123456")
 
     def test_invalid_format(self):
-        self._err('SK123')
+        self._err("SK123")
 
     def test_invalid_letters_without_prefix(self):
-        self._err('AB2020123456')
+        self._err("AB2020123456")
 
     def test_empty_skipped(self):
-        _validate_dic('')
+        _validate_dic("")
 
     def test_api_rejects_invalid_dic(self):
-        lab = Lab.objects.create(name='DicLab')
-        user = User.objects.create_user(username='dicuser', password='pw', role='admin', lab=lab)
+        lab = Lab.objects.create(name="DicLab")
+        user = User.objects.create_user(
+            username="dicuser", password="pw", role="admin", lab=lab
+        )
         self.client.force_authenticate(user=user)
-        resp = self.client.post('/api/crm/clinics/', {
-            'name': 'Test Clinic', 'dic': 'BADDIC',
-        }, format='json')
+        resp = self.client.post(
+            "/api/crm/clinics/",
+            {
+                "name": "Test Clinic",
+                "dic": "BADDIC",
+            },
+            format="json",
+        )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('dic', resp.data)
+        self.assertIn("dic", resp.data)
 
 
 class PatientAgeTests(APITestCase):
@@ -775,12 +797,14 @@ class PatientAgeTests(APITestCase):
 
     def test_age_none_for_unparseable_birth_number(self):
         from apps.crm.serializers import _age_from_birth_number
+
         self.assertIsNone(_age_from_birth_number("badvalue"))
         self.assertIsNone(_age_from_birth_number(""))
 
     def test_age_female_birth_number(self):
         # month 51 → January female
         from apps.crm.serializers import _age_from_birth_number
+
         age = _age_from_birth_number("900101/1234")
         self.assertIsNotNone(age)
         self.assertGreater(age, 30)
@@ -806,8 +830,18 @@ class CrmSearchFilterTests(APITestCase):
         Clinic.objects.create(lab=self.lab, name="Beta Centrum", ico=None)
         Doctor.objects.create(lab=self.lab, first_name="Jan", last_name="Novak")
         Doctor.objects.create(lab=self.lab, first_name="Maria", last_name="Horvatova")
-        Patient.objects.create(lab=self.lab, first_name="Peter", last_name="Kral", birth_number="900101/1234")
-        Patient.objects.create(lab=self.lab, first_name="Jana", last_name="Blahova", birth_number="910202/5678")
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Peter",
+            last_name="Kral",
+            birth_number="900101/1234",
+        )
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Jana",
+            last_name="Blahova",
+            birth_number="910202/5678",
+        )
 
     def test_clinic_search_by_name(self):
         resp = self.client.get("/api/crm/clinics/?search=alfa")
@@ -854,26 +888,42 @@ class PatientRevenueStatsTests(APITestCase):
 
         self.lab = Lab.objects.create(name="Revenue Stats Lab")
         self.user = User.objects.create_user(
-            username="revstat_user", password="pw", email="revstat@test.sk",
-            role="admin", lab=self.lab,
+            username="revstat_user",
+            password="pw",
+            email="revstat@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.clinic = Clinic.objects.create(name="RevClinic", lab=self.lab)
         self.patient = Patient.objects.create(
-            first_name="Test", last_name="Patient",
-            birth_number="900101/1234", lab=self.lab,
+            first_name="Test",
+            last_name="Patient",
+            birth_number="900101/1234",
+            lab=self.lab,
         )
         self.job = Job.objects.create(
-            lab=self.lab, clinic=self.clinic, patient=self.patient,
-            description="Test job", status="completed", price=150,
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            description="Test job",
+            status="completed",
+            price=150,
         )
         InvoiceSequence.objects.create(lab=self.lab, last_number=0)
         self.invoice = Invoice.objects.create(
-            lab=self.lab, clinic=self.clinic, number="INV-2026-0001",
-            status="paid", total_amount="150.00",
+            lab=self.lab,
+            clinic=self.clinic,
+            number="INV-2026-0001",
+            status="paid",
+            total_amount="150.00",
         )
         InvoiceItem.objects.create(
-            invoice=self.invoice, job=self.job,
-            description="Test", quantity=1, unit_price="150.00", line_total="150.00",
+            invoice=self.invoice,
+            job=self.job,
+            description="Test",
+            quantity=1,
+            unit_price="150.00",
+            line_total="150.00",
         )
         self.client.force_authenticate(user=self.user)
 
@@ -895,12 +945,18 @@ class CrmAdminOnlyWriteTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Write Guard Lab")
         self.admin = User.objects.create_user(
-            username="crm_admin", password="pw", email="crm_admin@test.sk",
-            role="admin", lab=self.lab,
+            username="crm_admin",
+            password="pw",
+            email="crm_admin@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.regular = User.objects.create_user(
-            username="crm_user", password="pw", email="crm_user@test.sk",
-            role="user", lab=self.lab,
+            username="crm_user",
+            password="pw",
+            email="crm_user@test.sk",
+            role="user",
+            lab=self.lab,
         )
         self.clinic = Clinic.objects.create(lab=self.lab, name="Test Clinic")
 
@@ -916,7 +972,9 @@ class CrmAdminOnlyWriteTests(APITestCase):
 
     def test_user_cannot_update_clinic(self):
         self.client.force_authenticate(user=self.regular)
-        resp = self.client.patch(f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"})
+        resp = self.client.patch(
+            f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"}
+        )
         self.assertEqual(resp.status_code, 403)
 
     def test_user_cannot_delete_clinic(self):
@@ -931,16 +989,26 @@ class CrmAdminOnlyWriteTests(APITestCase):
 
     def test_admin_can_create_patient(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post("/api/crm/patients/", {
-            "first_name": "Jan", "last_name": "Novak", "birth_number": "9001015555",
-        })
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Jan",
+                "last_name": "Novak",
+                "birth_number": "9001015555",
+            },
+        )
         self.assertEqual(resp.status_code, 201)
 
     def test_user_cannot_create_patient(self):
         self.client.force_authenticate(user=self.regular)
-        resp = self.client.post("/api/crm/patients/", {
-            "first_name": "Eva", "last_name": "Nová", "birth_number": "9055215557",
-        })
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Eva",
+                "last_name": "Nová",
+                "birth_number": "9055215557",
+            },
+        )
         self.assertEqual(resp.status_code, 403)
 
 
@@ -948,16 +1016,27 @@ class CrmCsvExportTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Export Lab")
         self.admin = User.objects.create_user(
-            username="export_admin", password="pw", email="export_admin@test.sk",
-            role="admin", lab=self.lab,
+            username="export_admin",
+            password="pw",
+            email="export_admin@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.regular = User.objects.create_user(
-            username="export_user", password="pw", email="export@test.sk",
-            role="user", lab=self.lab,
+            username="export_user",
+            password="pw",
+            email="export@test.sk",
+            role="user",
+            lab=self.lab,
         )
-        self.clinic = Clinic.objects.create(lab=self.lab, name="Export Clinic", ico="12345678")
+        self.clinic = Clinic.objects.create(
+            lab=self.lab, name="Export Clinic", ico="12345678"
+        )
         self.patient = Patient.objects.create(
-            lab=self.lab, first_name="Jana", last_name="Novakova", birth_number="8555215556",
+            lab=self.lab,
+            first_name="Jana",
+            last_name="Novakova",
+            birth_number="8555215556",
         )
 
     def test_admin_can_export_patients_csv(self):
@@ -992,19 +1071,30 @@ class DoctorCsvExportTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Doctor Export Lab")
         self.admin = User.objects.create_user(
-            username="doc_admin", password="pw", email="doc_admin@test.sk",
-            role="admin", lab=self.lab,
+            username="doc_admin",
+            password="pw",
+            email="doc_admin@test.sk",
+            role="admin",
+            lab=self.lab,
         )
         self.regular = User.objects.create_user(
-            username="doc_regular", password="pw", email="doc_regular@test.sk",
-            role="user", lab=self.lab,
+            username="doc_regular",
+            password="pw",
+            email="doc_regular@test.sk",
+            role="user",
+            lab=self.lab,
         )
         from apps.crm.models import Clinic
+
         self.clinic = Clinic.objects.create(lab=self.lab, name="Stomatológia Nováková")
         from apps.crm.models import Doctor
+
         Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic,
-            first_name="Mária", last_name="Nováková", title_before="MUDr.",
+            lab=self.lab,
+            clinic=self.clinic,
+            first_name="Mária",
+            last_name="Nováková",
+            title_before="MUDr.",
         )
 
     def test_admin_can_export_doctors_csv(self):

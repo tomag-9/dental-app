@@ -20,6 +20,7 @@ from .models import (
     AuditLog,
     Lab,
     LabApiKey,
+    LabRolePermission,
     Notification,
     TeamInvitation,
     User,
@@ -1808,3 +1809,76 @@ class PermissionsMatrixView(APIView):
                 "matrix": _ROLE_PERMISSIONS,
             }
         )
+
+
+class LabRolePermissionViewSet(viewsets.ViewSet):
+    """Manage per-lab role permission overrides. Admin-only."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def _get_lab(self, request, lab_pk):
+        user = request.user
+        if is_superadmin(user):
+            return Lab.objects.filter(pk=lab_pk).first()
+        if is_admin_or_superadmin(user) and getattr(user, "lab_id", None) == lab_pk:
+            return user.lab
+        return None
+
+    def list(self, request, lab_pk=None):
+        lab = self._get_lab(request, lab_pk)
+        if not lab:
+            raise PermissionDenied("Access denied or lab not found.")
+        overrides = LabRolePermission.objects.filter(lab=lab)
+        data = [
+            {"id": o.id, "role": o.role, "action": o.action, "allowed": o.allowed}
+            for o in overrides
+        ]
+        return Response(data)
+
+    def create(self, request, lab_pk=None):
+        lab = self._get_lab(request, lab_pk)
+        if not lab:
+            raise PermissionDenied("Access denied or lab not found.")
+        role = request.data.get("role")
+        action_name = request.data.get("action")
+        raw_allowed = request.data.get("allowed", True)
+        if not role or not action_name:
+            return Response(
+                {"detail": "role and action are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        valid_roles = {r for r, _ in LabRolePermission.ROLE_CHOICES}
+        if role not in valid_roles:
+            return Response(
+                {"detail": f"role must be one of: {', '.join(sorted(valid_roles))}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Normalise: JSON bool → Python bool; string "false"/"0" → False.
+        if isinstance(raw_allowed, str):
+            allowed = raw_allowed.lower() not in ("false", "0", "no")
+        else:
+            allowed = bool(raw_allowed)
+        override, _ = LabRolePermission.objects.update_or_create(
+            lab=lab,
+            role=role,
+            action=action_name,
+            defaults={"allowed": allowed},
+        )
+        return Response(
+            {
+                "id": override.id,
+                "role": override.role,
+                "action": override.action,
+                "allowed": override.allowed,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    def destroy(self, request, lab_pk=None, pk=None):
+        lab = self._get_lab(request, lab_pk)
+        if not lab:
+            raise PermissionDenied("Access denied or lab not found.")
+        deleted, _ = LabRolePermission.objects.filter(lab=lab, pk=pk).delete()
+        if not deleted:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)

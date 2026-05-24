@@ -163,7 +163,10 @@ class LabApiKey(models.Model):
     is_active = models.BooleanField(default=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
-        "User", on_delete=models.SET_NULL, null=True, blank=True,
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="created_api_keys",
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -176,9 +179,7 @@ class LabApiKey(models.Model):
 
 
 class UserSession(models.Model):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="sessions"
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")
     jti = models.CharField(max_length=255, unique=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     device_info = models.CharField(max_length=500, blank=True, default="")
@@ -192,6 +193,7 @@ class UserSession(models.Model):
     @property
     def is_active(self):
         from django.utils import timezone
+
         return not self.revoked and self.expires_at > timezone.now()
 
     def __str__(self):
@@ -226,3 +228,30 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.action} by {self.actor_id or 'system'}"
+
+
+class LabRolePermission(models.Model):
+    """Per-lab override of allowed actions for a given role."""
+
+    ROLE_CHOICES = (
+        ("admin", "Admin"),
+        ("user", "User"),
+        ("technician", "Technician"),
+    )
+
+    lab = models.ForeignKey(
+        Lab,
+        on_delete=models.CASCADE,
+        related_name="role_permissions",
+    )
+    role = models.CharField(max_length=30, choices=ROLE_CHOICES)
+    action = models.CharField(max_length=100)
+    allowed = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("lab", "role", "action")
+        ordering = ["role", "action"]
+
+    def __str__(self):
+        state = "allow" if self.allowed else "deny"
+        return f"{self.lab_id}:{self.role}:{self.action}={state}"

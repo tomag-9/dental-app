@@ -8,6 +8,7 @@ from .views import (
     DashboardChartDataView,
     GlobalSearchView,
     LabApiKeyViewSet,
+    LabRolePermissionViewSet,
     LabViewSet,
     NotificationViewSet,
     PermissionsMatrixView,
@@ -30,14 +31,32 @@ router.register(r"team-invitations", TeamInvitationViewSet)
 router.register(r"sessions", SessionViewSet, basename="session")
 router.register(r"api-keys", LabApiKeyViewSet, basename="api-key")
 
+lab_permissions_router = DefaultRouter()
+lab_permissions_router.register(
+    r"", LabRolePermissionViewSet, basename="lab-role-permission"
+)
+
 urlpatterns = [
     path("search/", GlobalSearchView.as_view(), name="global-search"),
     path("permissions/", PermissionsView.as_view(), name="permissions"),
     path("system-health/", SystemHealthView.as_view(), name="system-health"),
-    path("superadmin-metrics/", SuperadminMetricsView.as_view(), name="superadmin-metrics"),
+    path(
+        "superadmin-metrics/",
+        SuperadminMetricsView.as_view(),
+        name="superadmin-metrics",
+    ),
     path("auth/login/", SessionLoginView.as_view(), name="session-login"),
-    path("dashboard/chart-data/", DashboardChartDataView.as_view(), name="dashboard-chart-data"),
+    path(
+        "dashboard/chart-data/",
+        DashboardChartDataView.as_view(),
+        name="dashboard-chart-data",
+    ),
     path("2fa/", TwoFactorView.as_view(), name="2fa"),
-    path("permissions/matrix/", PermissionsMatrixView.as_view(), name="permissions-matrix"),
+    path(
+        "permissions/matrix/",
+        PermissionsMatrixView.as_view(),
+        name="permissions-matrix",
+    ),
+    path("labs/<int:lab_pk>/permissions/", include(lab_permissions_router.urls)),
     path("", include(router.urls)),
 ]

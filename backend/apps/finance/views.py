@@ -189,10 +189,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         )
 
         # Pre-load all PriceList entries for this lab into a lookup map.
-        price_map = {
-            pl.code: pl
-            for pl in PriceList.objects.filter(lab=clinic.lab)
-        }
+        price_map = {pl.code: pl for pl in PriceList.objects.filter(lab=clinic.lab)}
 
         subtotal = Decimal("0.00")
         for job in jobs:
@@ -234,7 +231,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 subtotal += item.line_total
 
         discount = Decimal(str(invoice.discount_percent or 0))
-        discount_amount = (subtotal * discount / Decimal("100")).quantize(Decimal("0.01"))
+        discount_amount = (subtotal * discount / Decimal("100")).quantize(
+            Decimal("0.01")
+        )
         discounted = subtotal - discount_amount
         vat_rate = Decimal(str(invoice.vat_rate or 0))
         vat_amount = (discounted * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
@@ -300,10 +299,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         lab = invoice.lab
         clinic = invoice.clinic
 
-        recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
+        recipient = (
+            request.data.get("email") or (clinic.contact_info or {}).get("email")
+            if clinic
+            else None
+        )
         if not recipient:
             return Response(
-                {"detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."},
+                {
+                    "detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -313,7 +318,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf_bytes = buffer.getvalue()
         buffer.close()
 
-        doc_label = "Faktúra" if invoice.document_type == "invoice" else "Proforma faktúra"
+        doc_label = (
+            "Faktúra" if invoice.document_type == "invoice" else "Proforma faktúra"
+        )
         subject = f"{doc_label} č. {invoice.number}"
         body = (
             f"Dobrý deň,\n\n"
@@ -323,7 +330,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         msg = EmailMessage(
             subject=subject,
             body=body,
-            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+            from_email=getattr(
+                django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
+            ),
             to=[recipient],
         )
         msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
@@ -360,24 +369,30 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             payload = (
                 f"PAY*QR%0100*1*1"
                 f"%AM{amount:.2f}%CC EUR"
-                f"%IBAN{iban}"
-                + (f"%BIC{bic}" if bic else "")
-                + f"%MSG{msg_text}"
+                f"%IBAN{iban}" + (f"%BIC{bic}" if bic else "") + f"%MSG{msg_text}"
             )
         else:
             payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount or 0):.2f}|{invoice.status}"
         _, qr_drawing = self._build_qr_svg(payload, size=72)
         renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 
-        doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
+        doc_label = (
+            "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
+        )
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(L, height - 18 * mm, doc_label)
         pdf.setFont("Helvetica", 10)
         pdf.drawString(L, height - 25 * mm, f"Číslo: {invoice.number}")
         issued_at = invoice.issued_at or timezone.now()
-        pdf.drawString(L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}")
+        pdf.drawString(
+            L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}"
+        )
         if invoice.due_date:
-            pdf.drawString(L, height - 37 * mm, f"Dátum splatnosti: {invoice.due_date.strftime('%d.%m.%Y')}")
+            pdf.drawString(
+                L,
+                height - 37 * mm,
+                f"Dátum splatnosti: {invoice.due_date.strftime('%d.%m.%Y')}",
+            )
 
         hline(height - 42 * mm)
 
@@ -388,18 +403,23 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf.setFont("Helvetica", 9)
         pdf.drawString(L, y, lab.name or "")
         if lab.address:
-            y -= 4 * mm; pdf.drawString(L, y, lab.address)
+            y -= 4 * mm
+            pdf.drawString(L, y, lab.address)
         if lab.city or lab.postal_code:
             y -= 4 * mm
             pdf.drawString(L, y, " ".join(filter(None, [lab.postal_code, lab.city])))
         if lab.tax_id:
-            y -= 4 * mm; pdf.drawString(L, y, f"IČO: {lab.tax_id}")
+            y -= 4 * mm
+            pdf.drawString(L, y, f"IČO: {lab.tax_id}")
         if lab.vat_id:
-            y -= 4 * mm; pdf.drawString(L, y, f"IČ DPH: {lab.vat_id}")
+            y -= 4 * mm
+            pdf.drawString(L, y, f"IČ DPH: {lab.vat_id}")
         if lab.bank_account:
-            y -= 4 * mm; pdf.drawString(L, y, f"IBAN: {lab.bank_account}")
+            y -= 4 * mm
+            pdf.drawString(L, y, f"IBAN: {lab.bank_account}")
         if lab.bank_bic:
-            y -= 4 * mm; pdf.drawString(L, y, f"BIC: {lab.bank_bic}")
+            y -= 4 * mm
+            pdf.drawString(L, y, f"BIC: {lab.bank_bic}")
 
         col2 = width / 2 + 5 * mm
         yc = height - 49 * mm
@@ -409,9 +429,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf.setFont("Helvetica", 9)
         pdf.drawString(col2, yc, clinic.name if clinic else "")
         if clinic and clinic.address:
-            yc -= 4 * mm; pdf.drawString(col2, yc, clinic.address)
+            yc -= 4 * mm
+            pdf.drawString(col2, yc, clinic.address)
         if clinic and getattr(clinic, "ico", None):
-            yc -= 4 * mm; pdf.drawString(col2, yc, f"IČO: {clinic.ico}")
+            yc -= 4 * mm
+            pdf.drawString(col2, yc, f"IČO: {clinic.ico}")
 
         table_top = min(y, yc) - 8 * mm
         hline(table_top)
@@ -438,7 +460,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         vat_rate = Decimal(str(invoice.vat_rate or 0))
         discount = Decimal(str(invoice.discount_percent or 0))
         total = Decimal(str(invoice.total_amount or 0))
-        divisor = (1 - discount / 100) * (1 + vat_rate / 100) if (1 - discount / 100) * (1 + vat_rate / 100) > 0 else Decimal("1")
+        divisor = (
+            (1 - discount / 100) * (1 + vat_rate / 100)
+            if (1 - discount / 100) * (1 + vat_rate / 100) > 0
+            else Decimal("1")
+        )
         subtotal = (total / divisor).quantize(Decimal("0.01"))
         vat_amount = (total - subtotal).quantize(Decimal("0.01"))
 
@@ -449,7 +475,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if discount > 0:
             ty -= 5 * mm
             pdf.drawRightString(160 * mm, ty, f"Zľava ({discount:.0f}%):")
-            pdf.drawRightString(R, ty, f"-{(subtotal * discount / 100).quantize(Decimal('0.01')):.2f} EUR")
+            pdf.drawRightString(
+                R,
+                ty,
+                f"-{(subtotal * discount / 100).quantize(Decimal('0.01')):.2f} EUR",
+            )
         ty -= 5 * mm
         pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
         pdf.drawRightString(R, ty, f"{vat_amount:.2f} EUR")
@@ -461,7 +491,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if lab.payment_method:
             ty -= 8 * mm
             pdf.setFont("Helvetica", 8)
-            pm_label = {"bank_transfer": "Bankový prevod", "cash": "Hotovosť", "card": "Karta"}.get(lab.payment_method, lab.payment_method)
+            pm_label = {
+                "bank_transfer": "Bankový prevod",
+                "cash": "Hotovosť",
+                "card": "Karta",
+            }.get(lab.payment_method, lab.payment_method)
             pdf.drawString(L, ty, f"Spôsob úhrady: {pm_label}")
         if lab.invoice_default_note:
             ty -= 6 * mm
@@ -496,7 +530,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             clinic = invoice.clinic
             recipient = (clinic.contact_info or {}).get("email") if clinic else None
             if not recipient:
-                failed.append({"invoice": invoice.number, "reason": "No recipient email"})
+                failed.append(
+                    {"invoice": invoice.number, "reason": "No recipient email"}
+                )
                 continue
 
             buffer = BytesIO()
@@ -517,7 +553,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             msg = EmailMessage(
                 subject=subject,
                 body=body,
-                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+                from_email=getattr(
+                    django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
+                ),
                 to=[recipient],
             )
             msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
@@ -542,22 +580,33 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         buf = StringIO()
         writer = csv.writer(buf)
-        writer.writerow([
-            "number", "status", "clinic", "lab",
-            "total_amount", "due_date", "issued_at", "paid_at", "created_at",
-        ])
+        writer.writerow(
+            [
+                "number",
+                "status",
+                "clinic",
+                "lab",
+                "total_amount",
+                "due_date",
+                "issued_at",
+                "paid_at",
+                "created_at",
+            ]
+        )
         for inv in qs:
-            writer.writerow([
-                inv.number,
-                inv.status,
-                inv.clinic.name,
-                inv.lab.name,
-                str(inv.total_amount),
-                inv.due_date or "",
-                inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
-                inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
-                inv.created_at.strftime("%Y-%m-%d"),
-            ])
+            writer.writerow(
+                [
+                    inv.number,
+                    inv.status,
+                    inv.clinic.name,
+                    inv.lab.name,
+                    str(inv.total_amount),
+                    inv.due_date or "",
+                    inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
+                    inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
+                    inv.created_at.strftime("%Y-%m-%d"),
+                ]
+            )
 
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="invoices.csv"'
@@ -787,20 +836,88 @@ class ProcedureCatalogView(APIView):
                 "category": item.category,
             }
             if item.category and item.category in category_map:
-                groups.setdefault(item.category, {
-                    "category": item.category,
-                    "label": category_map[item.category],
-                    "items": [],
-                })["items"].append(serialized)
+                groups.setdefault(
+                    item.category,
+                    {
+                        "category": item.category,
+                        "label": category_map[item.category],
+                        "items": [],
+                    },
+                )["items"].append(serialized)
             else:
                 uncategorized.append(serialized)
 
         result = list(groups.values())
         if uncategorized:
-            result.append({
-                "category": None,
-                "label": "Uncategorized",
-                "items": uncategorized,
-            })
+            result.append(
+                {
+                    "category": None,
+                    "label": "Uncategorized",
+                    "items": uncategorized,
+                }
+            )
+
+        return Response(result)
+
+
+class InvoiceAgingView(APIView):
+    """Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if is_superadmin(user):
+            qs = Invoice.objects.filter(status="issued")
+        elif getattr(user, "lab_id", None):
+            qs = Invoice.objects.filter(status="issued", lab_id=user.lab_id)
+        else:
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        today = timezone.localdate()
+        buckets = {
+            "current": {
+                "label": "Aktuálne (≤0 dní)",
+                "count": 0,
+                "amount": Decimal("0.00"),
+            },
+            "1_30": {"label": "1–30 dní", "count": 0, "amount": Decimal("0.00")},
+            "31_60": {"label": "31–60 dní", "count": 0, "amount": Decimal("0.00")},
+            "61_90": {"label": "61–90 dní", "count": 0, "amount": Decimal("0.00")},
+            "over_90": {
+                "label": "Viac ako 90 dní",
+                "count": 0,
+                "amount": Decimal("0.00"),
+            },
+        }
+
+        for invoice in qs.filter(due_date__isnull=False):
+            days_overdue = (today - invoice.due_date).days
+            amount = invoice.total_amount or Decimal("0.00")
+            if days_overdue <= 0:
+                key = "current"
+            elif days_overdue <= 30:
+                key = "1_30"
+            elif days_overdue <= 60:
+                key = "31_60"
+            elif days_overdue <= 90:
+                key = "61_90"
+            else:
+                key = "over_90"
+            buckets[key]["count"] += 1
+            buckets[key]["amount"] += amount
+
+        result = []
+        for key, data in buckets.items():
+            result.append(
+                {
+                    "bucket": key,
+                    "label": data["label"],
+                    "count": data["count"],
+                    "amount": str(data["amount"]),
+                }
+            )
 
         return Response(result)

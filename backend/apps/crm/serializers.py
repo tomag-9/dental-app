@@ -10,8 +10,8 @@ from .models import Clinic, Doctor, Patient
 def _age_from_birth_number(birth_number):
     """Return age in years from a Slovak rodné číslo, or None if unparseable."""
     try:
-        digits = birth_number.replace('/', '').strip()
-        if not re.fullmatch(r'\d{9,10}', digits):
+        digits = birth_number.replace("/", "").strip()
+        if not re.fullmatch(r"\d{9,10}", digits):
             return None
         yy = int(digits[0:2])
         mm = int(digits[2:4])
@@ -32,49 +32,50 @@ def _age_from_birth_number(birth_number):
 
 
 def _validate_birth_number(value):
-    digits = value.replace('/', '').strip()
-    if not re.fullmatch(r'\d{9,10}', digits):
+    digits = value.replace("/", "").strip()
+    if not re.fullmatch(r"\d{9,10}", digits):
         raise serializers.ValidationError(
-            'Rodné číslo musí obsahovať 9 alebo 10 číslic (napr. 900101/1234).'
+            "Rodné číslo musí obsahovať 9 alebo 10 číslic (napr. 900101/1234)."
         )
     mm = int(digits[2:4])
     dd = int(digits[4:6])
     if mm > 50:
         mm -= 50
     if not (1 <= mm <= 12):
-        raise serializers.ValidationError('Rodné číslo obsahuje neplatný mesiac.')
+        raise serializers.ValidationError("Rodné číslo obsahuje neplatný mesiac.")
     if not (1 <= dd <= 31):
-        raise serializers.ValidationError('Rodné číslo obsahuje neplatný deň.')
+        raise serializers.ValidationError("Rodné číslo obsahuje neplatný deň.")
 
 
 def _validate_ico(value):
     if not value:
         return
     digits = value.strip()
-    if not re.fullmatch(r'\d{8}', digits):
-        raise serializers.ValidationError('IČO musí mať presne 8 číslic.')
+    if not re.fullmatch(r"\d{8}", digits):
+        raise serializers.ValidationError("IČO musí mať presne 8 číslic.")
     weights = [8, 7, 6, 5, 4, 3, 2]
     total = sum(int(digits[i]) * weights[i] for i in range(7))
     remainder = total % 11
     check = int(digits[7])
     if remainder == 0:
         if check != 0:
-            raise serializers.ValidationError('IČO má neplatný kontrolný súčet.')
+            raise serializers.ValidationError("IČO má neplatný kontrolný súčet.")
     elif remainder > 1 and check != 11 - remainder:
-        raise serializers.ValidationError('IČO má neplatný kontrolný súčet.')
+        raise serializers.ValidationError("IČO má neplatný kontrolný súčet.")
 
 
 def _validate_dic(value):
     if not value:
         return
     stripped = value.strip().upper()
-    if re.fullmatch(r'\d{8,10}', stripped):
+    if re.fullmatch(r"\d{8,10}", stripped):
         return
-    if re.fullmatch(r'SK\d{10}', stripped):
+    if re.fullmatch(r"SK\d{10}", stripped):
         return
     raise serializers.ValidationError(
-        'DIČ musí byť vo formáte 10 číslic alebo SK0000000000.'
+        "DIČ musí byť vo formáte 10 číslic alebo SK0000000000."
     )
+
 
 ACTIVE_JOB_STATUSES = ("new", "in_progress")
 
@@ -325,9 +326,20 @@ class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            "id", "lab", "first_name", "last_name", "birth_number",
-            "address", "phone", "email", "tooth_procedures", "created_at",
-            "jobs_count", "active_jobs", "ytd_revenue", "age",
+            "id",
+            "lab",
+            "first_name",
+            "last_name",
+            "birth_number",
+            "address",
+            "phone",
+            "email",
+            "tooth_procedures",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
+            "age",
         ]
         read_only_fields = ["lab", "jobs_count", "active_jobs", "ytd_revenue", "age"]
 

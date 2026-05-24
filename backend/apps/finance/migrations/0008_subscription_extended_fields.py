@@ -11,7 +11,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="subscription",
             name="mrr",
-            field=models.DecimalField(blank=True, decimal_places=2, default=0, max_digits=10, null=True),
+            field=models.DecimalField(
+                blank=True, decimal_places=2, default=0, max_digits=10, null=True
+            ),
         ),
         migrations.AddField(
             model_name="subscription",
