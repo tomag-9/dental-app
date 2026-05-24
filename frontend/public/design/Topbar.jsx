@@ -31,6 +31,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [notifItems, setNotifItems] = React.useState([]);
   const [notifLoading, setNotifLoading] = React.useState(false);
+  const [notifApiLoaded, setNotifApiLoaded] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
 
   // Close popovers on outside click
@@ -67,8 +68,9 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       const id = parseInt(path.replace('/jobs/', '').replace('/', ''), 10);
       return Number.isFinite(id) ? { type: 'job', id } : { type: 'page', route: 'jobs' };
     }
-    if (path.startsWith('/patients/')) return { type: 'page', route: 'patients' };
-    if (path.startsWith('/invoices/')) return { type: 'page', route: 'invoices' };
+    // Match both /patients/123 and bare /patients
+    if (path.startsWith('/patients')) return { type: 'page', route: 'patients' };
+    if (path.startsWith('/invoices')) return { type: 'page', route: 'invoices' };
     if (path.startsWith('/clinics')) return { type: 'page', route: 'clinics' };
     if (path.startsWith('/doctors')) return { type: 'page', route: 'doctors' };
     if (path.startsWith('/jobs')) return { type: 'page', route: 'jobs' };
@@ -76,6 +78,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     if (path.startsWith('/calendar')) return { type: 'page', route: 'calendar' };
     if (path.startsWith('/inventory')) return { type: 'page', route: 'inventory' };
     if (path.startsWith('/settings')) return { type: 'page', route: 'settings' };
+    if (path.startsWith('/superadmin')) return { type: 'page', route: 'superadmin' };
     return null;
   };
 
@@ -87,8 +90,15 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       onClose();
       return;
     }
+    // Direct job open
     if (item.type === 'job' && item.object_id && onOpenJob) {
       onOpenJob(item.object_id);
+      onClose();
+      return;
+    }
+    // Patient and invoice navigate to their list pages (no detail-level routing yet)
+    if ((item.type === 'patient' || item.type === 'invoice') && onNavigate) {
+      onNavigate(item.type === 'patient' ? 'patients' : 'invoices');
       onClose();
       return;
     }
@@ -135,7 +145,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     if (!notifOpen) return () => { alive = false; };
     const loadNotifications = async () => {
       if (!window.MolarisAPI || !window.MolarisAPI.fetchNotifications) {
-        setNotifItems(fallbackNotifications);
+        setNotifApiLoaded(false);
         return;
       }
       setNotifLoading(true);
@@ -155,11 +165,11 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
           raw: item,
         }));
         setNotifItems(mapped);
+        setNotifApiLoaded(true);
         setUnreadCount(mapped.filter((item) => item.unread).length);
       } catch {
         if (!alive) return;
-        setNotifItems(fallbackNotifications);
-        setUnreadCount(fallbackNotifications.filter((item) => item.unread).length);
+        setNotifApiLoaded(false);
       } finally {
         if (!alive) return;
         setNotifLoading(false);
@@ -195,6 +205,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   }, [searchOpen, q]);
 
   const stop = e => e.stopPropagation();
+  const stopAll = e => { e.stopPropagation(); if (e.nativeEvent) e.nativeEvent.stopPropagation(); };
 
   return React.createElement(React.Fragment, null,
     React.createElement('header', {
@@ -231,7 +242,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       React.createElement('div', { style: { flex: 1 } }),
 
       // Quick add
-      React.createElement('div', { style: { position: 'relative' }, onClick: stop },
+      React.createElement('div', { style: { position: 'relative' }, onClick: stop, onMouseDown: stopAll },
         React.createElement('button', {
           onClick: () => { setAddOpen(!addOpen); setNotifOpen(false); },
           style: {
@@ -256,7 +267,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       ),
 
       // Notifications
-      React.createElement('div', { style: { position: 'relative' }, onClick: stop },
+      React.createElement('div', { style: { position: 'relative' }, onClick: stop, onMouseDown: stopAll },
         React.createElement('button', {
           onClick: () => { setNotifOpen(!notifOpen); setAddOpen(false); },
           style: {
@@ -294,7 +305,11 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
           ),
           React.createElement('div', { style: { maxHeight: 400, overflowY: 'auto' } },
             notifLoading && React.createElement('div', { style: { padding: '16px 14px', fontSize: 12, color: '#8a9490' } }, 'Načítavam notifikácie...'),
-            !notifLoading && (notifItems.length ? notifItems : fallbackNotifications).map((n, i) => React.createElement('div', {
+            !notifLoading && notifApiLoaded && notifItems.length === 0 && React.createElement('div', {
+              style: { padding: '28px 14px', textAlign: 'center', color: '#8a9490', fontSize: 12.5 }
+            }, React.createElement(Icon, { name: 'bell', size: 24, color: '#d4ded8' }),
+              React.createElement('div', { style: { marginTop: 8 } }, 'Žiadne notifikácie')),
+            !notifLoading && (notifApiLoaded ? notifItems : fallbackNotifications).map((n, i) => React.createElement('div', {
               key: n.id,
               style: {
                 display: 'flex', gap: 10, padding: '12px 14px',

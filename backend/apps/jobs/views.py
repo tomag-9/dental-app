@@ -31,6 +31,34 @@ from .serializers import (
     VacationSerializer,
 )
 
+STATUS_LABELS = {
+    "new": "Nová",
+    "in_progress": "V riešení",
+    "completed": "Dokončená",
+    "cancelled": "Zrušená",
+    "finished_factured": "Dokončená/Fakturovaná",
+    "finished_unfactured": "Dokončená/Nefakturovaná",
+    "closed": "Uzavretá",
+}
+
+
+def _notify_lab_admins(lab, notification_type, title, message, url=None):
+    from apps.core.models import Notification, User
+
+    if not lab:
+        return
+    for admin in User.objects.filter(
+        lab=lab, role__in=("admin", "superadmin"), is_active=True
+    ):
+        Notification.objects.create(
+            lab=lab,
+            recipient=admin,
+            type=notification_type,
+            title=title,
+            message=message,
+            url=url,
+        )
+
 
 class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Technician.objects.all()
@@ -291,6 +319,23 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             note=serializer.validated_data.get("note") or "Stav práce bol zmenený.",
             from_status=old_status,
             to_status=new_status,
+        )
+        patient = job.patient
+        patient_name = (
+            f"{patient.first_name} {patient.last_name}".strip()
+            if patient
+            else f"#{job.id}"
+        )
+        _notify_lab_admins(
+            lab=job.lab,
+            notification_type="job",
+            title=f"Stav práce #{job.id} zmenený na {STATUS_LABELS.get(new_status, new_status)}",
+            message=(
+                f"Pacient: {patient_name}. "
+                f"Zmena: {STATUS_LABELS.get(old_status, old_status)}"
+                f" → {STATUS_LABELS.get(new_status, new_status)}"
+            ),
+            url=f"/jobs/{job.id}",
         )
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 

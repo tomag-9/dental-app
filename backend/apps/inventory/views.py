@@ -15,6 +15,43 @@ from .models import WarehouseItem
 from .serializers import WarehouseItemImportSerializer, WarehouseItemSerializer
 
 
+def _check_low_stock_notification(item):
+    from apps.core.models import Notification, User
+
+    if not item.lab_id:
+        return
+    threshold = item.min_threshold
+    if threshold is None:
+        return
+    if item.quantity > threshold:
+        return
+    title = (
+        f"Nulový stav skladu: {item.name}"
+        if item.quantity <= 0
+        else f"Nízky stav skladu: {item.name}"
+    )
+    message = f"Aktuálny stav: {item.quantity} {item.unit or 'ks'}, minimum: {threshold} {item.unit or 'ks'}."
+    already_notified = Notification.objects.filter(
+        lab_id=item.lab_id,
+        type="stock",
+        url=f"/inventory/{item.id}",
+        read_at__isnull=True,
+    ).exists()
+    if already_notified:
+        return
+    for admin in User.objects.filter(
+        lab_id=item.lab_id, role__in=("admin", "superadmin"), is_active=True
+    ):
+        Notification.objects.create(
+            lab_id=item.lab_id,
+            recipient=admin,
+            type="stock",
+            title=title,
+            message=message,
+            url=f"/inventory/{item.id}",
+        )
+
+
 class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = WarehouseItem.objects.all()
     serializer_class = WarehouseItemSerializer
@@ -25,6 +62,11 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         self.save_with_request_lab(serializer)
+        _check_low_stock_notification(serializer.instance)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        _check_low_stock_notification(serializer.instance)
 
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):

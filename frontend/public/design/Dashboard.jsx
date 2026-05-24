@@ -27,7 +27,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
     },
     { 
       label: 'Tržby',           
-      value: apiStats ? `${Number(apiStats.total_revenue || 0).toLocaleString('sk-SK')} €` : '8 420 €', 
+      value: apiStats ? fmtEur(apiStats.total_revenue || 0) : '8 420,00 €',
       icon: 'euro', 
       tone: 'green',
       delta: apiStats && apiStats.deltas ? apiStats.deltas.revenue + ' €' : '+12 %' 
@@ -97,7 +97,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
           clinic: inv.clinic_name || 'Neznáma klinika',
           status: inv.status,
           statusLabel: invoiceStatusMap[inv.status] || inv.status,
-          amount: `${Number(inv.total_amount || 0).toLocaleString('sk-SK')} €`,
+          amount: fmtEur(inv.total_amount || 0),
           date: createdDate,
         };
       })

@@ -335,9 +335,23 @@ function Section({ title, action, children, padding = true }) {
   );
 }
 
+// ─── Shared sk-SK formatting helpers ──────────────────────────────────────────
+function fmtEur(amount) {
+  const n = Number(amount) || 0;
+  return n.toLocaleString('sk-SK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function fmtDate(value, opts) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('sk-SK', opts || undefined);
+}
+
 Object.assign(window, {
   Button, Card, CardHeader, CardTitle, CardContent,
   Badge, FormField, ConfirmDialog,
   EmptyState, LoadingState, ErrorState,
-  PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section
+  PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section,
+  fmtEur, fmtDate,
 });

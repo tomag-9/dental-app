@@ -7,8 +7,8 @@ function Finance({ onNavigate }) {
   const paidTotal = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
   const overdueCount = invoices.filter(i => i.status === 'issued' && i.raw && i.raw.due_date && new Date(i.raw.due_date) < new Date()).length;
   const metrics = [
-    { label: 'Celkové tržby',     value: invoices.length ? paidTotal.toLocaleString('sk-SK') + ' €' : '42 180 €', icon: 'euro', tone: 'green', delta: '+12 %' },
-    { label: 'Čakajúce faktúry',  value: invoices.length ? String(invoices.filter(i => i.status === 'issued').length) : '7', icon: 'fileText', tone: 'amber', sub: invoices.length ? issuedTotal.toLocaleString('sk-SK') + ' €' : 'vystavené' },
+    { label: 'Celkové tržby',     value: invoices.length ? fmtEur(paidTotal) : '42 180,00 €', icon: 'euro', tone: 'green', delta: '+12 %' },
+    { label: 'Čakajúce faktúry',  value: invoices.length ? String(invoices.filter(i => i.status === 'issued').length) : '7', icon: 'fileText', tone: 'amber', sub: invoices.length ? fmtEur(issuedTotal) : 'vystavené' },
     { label: 'Po splatnosti',     value: invoices.length ? String(overdueCount) : '2', icon: 'alertCircle',tone: 'red',   sub: invoices.length ? 'podľa splatnosti' : '1 240 € celkom' },
     { label: 'Priem. doba úhrady',value: '11 dní',    icon: 'clock',      tone: 'teal',  sub: '−2 dni MoM' },
   ];
@@ -77,7 +77,7 @@ function Finance({ onNavigate }) {
             ...topClinics.map((c, i) => React.createElement('div', { key: c.name },
               React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 } },
                 React.createElement('span', { style: { fontSize: 12.5, fontWeight: 500, color: '#1a2320' } }, c.name),
-                React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, c.amount.toLocaleString('sk-SK'), ' €')
+                React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, fmtEur(c.amount))
               ),
               React.createElement('div', { style: { height: 6, background: '#f0ede5', borderRadius: 3, overflow: 'hidden' } },
                 React.createElement('div', { style: { height: '100%', width: `${c.share}%`, background: '#0d7c6b', borderRadius: 3 } })

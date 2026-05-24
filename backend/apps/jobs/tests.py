@@ -1603,3 +1603,55 @@ class CalendarEventContactFieldsTests(APITestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertIsNone(resp.data["location"])
         self.assertIsNone(resp.data["contact_person"])
+
+
+class JobStatusNotificationTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Notif Lab")
+        self.admin = User.objects.create_user(
+            username="notif_admin",
+            password="pw",
+            email="admin@notif.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.patient = Patient.objects.create(
+            first_name="Jana", last_name="Nová", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(name="Klinika Test", lab=self.lab)
+        self.job = Job.objects.create(
+            patient=self.patient,
+            clinic=self.clinic,
+            lab=self.lab,
+            status="new",
+        )
+
+    def test_transition_status_creates_notification_for_admin(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/transition-status/",
+            {"status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        notif = Notification.objects.filter(
+            lab=self.lab, type="job", recipient=self.admin
+        ).first()
+        self.assertIsNotNone(notif)
+        self.assertIn("V riešení", notif.title)
+        self.assertEqual(notif.url, f"/jobs/{self.job.id}")
+
+    def test_transition_no_notification_for_same_status(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/transition-status/",
+            {"status": "new"},
+            format="json",
+        )
+        self.assertEqual(
+            Notification.objects.filter(lab=self.lab, type="job").count(), 0
+        )

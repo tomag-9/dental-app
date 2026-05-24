@@ -468,3 +468,90 @@ class InventoryCSVImportTests(APITestCase):
             format="multipart",
         )
         self.assertEqual(resp.status_code, 401)
+
+
+class LowStockNotificationTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Stock Notif Lab")
+        self.admin = User.objects.create_user(
+            username="stock_admin",
+            password="pw",
+            email="stock@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def test_create_below_threshold_generates_notification(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/inventory/warehouse/",
+            {"name": "Akrylát", "quantity": 5, "min_threshold": 10},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        item_id = resp.data["id"]
+        notif = Notification.objects.filter(
+            lab=self.lab, type="stock", recipient=self.admin
+        ).first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Akrylát", notif.title)
+        self.assertEqual(notif.url, f"/inventory/{item_id}")
+
+    def test_create_above_threshold_no_notification(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(
+            "/api/inventory/warehouse/",
+            {"name": "Composite", "quantity": 50, "min_threshold": 10},
+            format="json",
+        )
+        self.assertEqual(
+            Notification.objects.filter(lab=self.lab, type="stock").count(), 0
+        )
+
+    def test_update_to_low_stock_creates_notification(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        create_resp = self.client.post(
+            "/api/inventory/warehouse/",
+            {"name": "Zircón", "quantity": 50, "min_threshold": 10},
+            format="json",
+        )
+        item_id = create_resp.data["id"]
+        patch_resp = self.client.patch(
+            f"/api/inventory/warehouse/{item_id}/",
+            {"quantity": 3},
+            format="json",
+        )
+        self.assertEqual(patch_resp.status_code, 200)
+        notif = Notification.objects.filter(
+            lab=self.lab, type="stock", recipient=self.admin
+        ).first()
+        self.assertIsNotNone(notif)
+
+    def test_dedup_does_not_create_second_notification_while_unread(self):
+        from apps.core.models import Notification
+
+        self.client.force_authenticate(user=self.admin)
+        create_resp = self.client.post(
+            "/api/inventory/warehouse/",
+            {"name": "Wax", "quantity": 3, "min_threshold": 10},
+            format="json",
+        )
+        item_id = create_resp.data["id"]
+        # Update again still below threshold
+        self.client.patch(
+            f"/api/inventory/warehouse/{item_id}/",
+            {"quantity": 2},
+            format="json",
+        )
+        self.assertEqual(
+            Notification.objects.filter(
+                lab=self.lab, type="stock", url=f"/inventory/{item_id}"
+            ).count(),
+            1,
+        )
