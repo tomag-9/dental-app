@@ -72,6 +72,29 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @action(detail=False, methods=["get"], url_path="export")
+    def export(self, request):
+        qs = self.get_queryset().order_by("code")
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            ["code", "description", "price", "category", "valid_from", "valid_to"]
+        )
+        for item in qs:
+            writer.writerow(
+                [
+                    item.code,
+                    item.description,
+                    str(item.price),
+                    item.category or "",
+                    item.valid_from or "",
+                    item.valid_to or "",
+                ]
+            )
+        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="pricelist.csv"'
+        return response
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     queryset = Invoice.objects.all()

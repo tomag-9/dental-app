@@ -6,6 +6,28 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
   const patientJobs = workspace.jobs && workspacePatient
     ? workspace.jobs.filter((job) => job.raw && job.raw.patient === workspacePatient.id)
     : null;
+
+  const [revenueStats, setRevenueStats] = React.useState(null);
+  const [toothMap, setToothMap] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!patientId) return;
+    const access = localStorage.getItem('molaris.access');
+    const rawBase = window.__API_BASE_URL && !window.__API_BASE_URL.includes('%') ? window.__API_BASE_URL : 'http://localhost:8810/api';
+    const API_BASE = rawBase.replace(/\/$/, '').endsWith('/api') ? rawBase.replace(/\/$/, '') : `${rawBase.replace(/\/$/, '')}/api`;
+    const headers = access ? { Authorization: `Bearer ${access}` } : {};
+
+    fetch(`${API_BASE}/crm/patients/${patientId}/`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && data.revenue_stats) setRevenueStats(data.revenue_stats); })
+      .catch(() => {});
+
+    fetch(`${API_BASE}/crm/patients/${patientId}/cumulative_tooth_map/`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setToothMap(data); })
+      .catch(() => {});
+  }, [patientId]);
+
   const fallbackPatient = {
     id: patientId || 1,
     title: '',
@@ -24,7 +46,7 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
     last: workspacePatient.last,
     birth: workspacePatient.birth,
     insurance: '—',
-    age: '',
+    age: workspacePatient.raw.age != null ? workspacePatient.raw.age : '',
     phone: workspacePatient.phone || '—',
     email: workspacePatient.email || '—',
     address: workspacePatient.raw.address || '—',
@@ -32,7 +54,7 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
     doctor: patientJobs && patientJobs[0] ? patientJobs[0].doctor : '—',
     note: 'Bez poznámky.',
     firstVisit: workspacePatient.raw.created_at ? new Date(workspacePatient.raw.created_at).toLocaleDateString('sk-SK') : '—',
-    totalSpent: (patientJobs || []).reduce((sum, job) => sum + Number(job.raw.price || 0), 0),
+    totalSpent: revenueStats ? parseFloat(revenueStats.total_revenue) : (patientJobs || []).reduce((sum, job) => sum + Number(job.raw.price || 0), 0),
   } : fallbackPatient;
 
   const fallbackJobs = [
@@ -53,13 +75,15 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
       }))
     : fallbackJobs;
 
-  const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
+  const fmt = n => Number(n).toFixed(2).replace('.', ',') + ' €';
   const initials = `${p.first[0]}${p.last[0]}`;
+
+  const toothMapEntries = toothMap ? Object.entries(toothMap) : [];
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
       title: `${p.first} ${p.last}`,
-      subtitle: `Pacient · ${p.age} rokov · ${p.insurance}`,
+      subtitle: `Pacient${p.age != null && p.age !== '' ? ` · ${p.age} rokov` : ''}`,
       breadcrumbs: [{ label: 'Pacienti', onClick: onBack }, { label: `${p.first} ${p.last}` }],
       actions: [
         React.createElement(Button, { key: 'b', variant: 'outline', onClick: onBack },
@@ -90,7 +114,7 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
       // Left: jobs history + stats
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
         React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 } },
-          React.createElement(StatCard, { label: 'Práce celkom', value: String(jobs.length), icon: 'briefcase', tone: 'teal' }),
+          React.createElement(StatCard, { label: 'Práce celkom', value: String(revenueStats ? revenueStats.jobs_count : jobs.length), icon: 'briefcase', tone: 'teal' }),
           React.createElement(StatCard, { label: 'Aktívne',       value: String(jobs.filter(j => j.status === 'in_progress').length), icon: 'activity', tone: 'amber' }),
           React.createElement(StatCard, { label: 'Tržby (celkom)',value: fmt(p.totalSpent), icon: 'euro', tone: 'green' }),
         ),
@@ -113,6 +137,30 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
               ],
               data: jobs
             })
+          )
+        ),
+
+        // Cumulative tooth map
+        toothMapEntries.length > 0 && React.createElement(Card, null,
+          React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Zubný kríž – vykonané výkony')),
+          React.createElement(CardContent, null,
+            React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
+              toothMapEntries.map(([tooth, procedure]) =>
+                React.createElement('div', {
+                  key: tooth,
+                  style: {
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    background: '#f0faf7', border: '1px solid #b0ddd5', borderRadius: 8,
+                    padding: '8px 12px', minWidth: 72,
+                  }
+                },
+                  React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: 15, color: '#0d7c6b' } }, tooth),
+                  React.createElement('span', { style: { fontSize: 10.5, color: '#5a6b66', marginTop: 3, textAlign: 'center', maxWidth: 80 } },
+                    typeof procedure === 'object' ? (procedure.code || procedure.description || JSON.stringify(procedure)) : String(procedure)
+                  )
+                )
+              )
+            )
           )
         )
       ),
@@ -139,6 +187,16 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
                 React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: '#1a2320' } }, p.doctor),
                 React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490', marginTop: 2 } }, 'Protetika')
               )
+            )
+          )
+        ),
+        revenueStats && React.createElement(Card, null,
+          React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Finančný prehľad')),
+          React.createElement(CardContent, null,
+            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+              React.createElement(IdCell, { label: 'Celkové tržby', value: fmt(revenueStats.total_revenue) }),
+              React.createElement(IdCell, { label: 'Počet prác', value: String(revenueStats.jobs_count) }),
+              React.createElement(IdCell, { label: 'Priemerná hodnota', value: fmt(revenueStats.avg_job_value) }),
             )
           )
         ),

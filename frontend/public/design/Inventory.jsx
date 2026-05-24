@@ -3,7 +3,34 @@
 function Inventory({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
+  const [exporting, setExporting] = React.useState(false);
   const workspace = window.MolarisAPI.useWorkspace();
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const access = localStorage.getItem('molaris.access');
+      const rawBase = window.__API_BASE_URL && !window.__API_BASE_URL.includes('%') ? window.__API_BASE_URL : 'http://localhost:8810/api';
+      const API_BASE = rawBase.replace(/\/$/, '').endsWith('/api') ? rawBase.replace(/\/$/, '') : `${rawBase.replace(/\/$/, '')}/api`;
+      const response = await fetch(`${API_BASE}/inventory/warehouse/export/`, {
+        headers: access ? { Authorization: `Bearer ${access}` } : {},
+      });
+      if (!response.ok) throw new Error('Export zlyhal');
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'inventory.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      alert('Export sa nepodaril: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const fallbackItems = [
     { id: 1, code: 'KER-001', name: 'Keramická hmota IPS e.max', category: 'Keramika', unit: 'g',  stock: 420, min: 200, price: 0.85, supplier: 'Ivoclar' },
@@ -41,6 +68,8 @@ function Inventory({ onNavigate, onCreate }) {
       title: 'Sklad',
       subtitle: 'Správa skladových zásob a dentálnych materiálov.',
       actions: [
+        React.createElement(Button, { key: 'export', variant: 'outline', onClick: handleExport, disabled: exporting },
+          React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'Exportovať CSV'),
         React.createElement(Button, { key: 'import', variant: 'outline' },
           React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
         React.createElement(Button, { key: 'add', onClick: onCreate },

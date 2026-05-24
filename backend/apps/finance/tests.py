@@ -1751,3 +1751,76 @@ class InvoiceAgingTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get("/api/finance/invoices/aging/")
         self.assertEqual(resp.status_code, 401)
+
+
+class PriceListExportCsvTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="PL Export Lab")
+        self.admin = User.objects.create_user(
+            username="pl_export_admin",
+            password="pw",
+            email="pl@lab.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        PriceList.objects.create(
+            lab=self.lab,
+            code="KOR-001",
+            description="Korunka zirkónová",
+            price="280.00",
+            category="crown",
+        )
+        PriceList.objects.create(
+            lab=self.lab,
+            code="MOS-002",
+            description="Mostík 3-členný",
+            price="650.00",
+            category="bridge",
+        )
+
+    def test_export_returns_csv_with_header(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/price-list/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        self.assertIn("code,description,price", content)
+
+    def test_export_contains_all_lab_items(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/price-list/export/")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        rows = [r for r in content.strip().split("\n") if r]
+        self.assertEqual(len(rows), 3)  # header + 2 items
+        self.assertIn("KOR-001", content)
+        self.assertIn("MOS-002", content)
+
+    def test_export_tenant_scoped(self):
+        other_lab = Lab.objects.create(name="Other PL Lab")
+        other_user = User.objects.create_user(
+            username="other_pl_admin",
+            password="pw",
+            email="other_pl@lab.sk",
+            role="admin",
+            lab=other_lab,
+        )
+        self.client.force_authenticate(user=other_user)
+        resp = self.client.get("/api/finance/price-list/export/")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        self.assertNotIn("KOR-001", content)
+
+    def test_export_unauthenticated_denied(self):
+        resp = self.client.get("/api/finance/price-list/export/")
+        self.assertEqual(resp.status_code, 401)

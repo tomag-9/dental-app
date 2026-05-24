@@ -1,5 +1,9 @@
+import csv
+from io import StringIO
+
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import permissions, serializers, status, viewsets
@@ -573,6 +577,62 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             },
         }
         return Response(config)
+
+    @action(detail=False, methods=["get"], url_path="export")
+    def export(self, request):
+        qs = self.get_queryset().select_related(
+            "patient", "clinic", "doctor", "technician"
+        )
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            [
+                "id",
+                "status",
+                "patient",
+                "clinic",
+                "doctor",
+                "technician",
+                "due_date",
+                "priority",
+                "price",
+                "created_at",
+            ]
+        )
+        for job in qs:
+            patient = (
+                f"{job.patient.first_name} {job.patient.last_name}".strip()
+                if job.patient
+                else ""
+            )
+            clinic = job.clinic.name if job.clinic else ""
+            doctor = (
+                f"{job.doctor.first_name} {job.doctor.last_name}".strip()
+                if job.doctor
+                else ""
+            )
+            technician = (
+                f"{job.technician.first_name} {job.technician.last_name}".strip()
+                if job.technician
+                else ""
+            )
+            writer.writerow(
+                [
+                    job.id,
+                    job.status,
+                    patient,
+                    clinic,
+                    doctor,
+                    technician,
+                    job.due_date or "",
+                    job.priority or "",
+                    str(job.price) if job.price is not None else "",
+                    job.created_at.strftime("%Y-%m-%d"),
+                ]
+            )
+        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="jobs.csv"'
+        return response
 
     @action(detail=True, methods=["get", "post"], url_path="attachments")
     def attachments(self, request, pk=None):

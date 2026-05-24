@@ -1655,3 +1655,90 @@ class JobStatusNotificationTests(APITestCase):
         self.assertEqual(
             Notification.objects.filter(lab=self.lab, type="job").count(), 0
         )
+
+
+class JobExportCsvTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Export Lab")
+        self.admin = User.objects.create_user(
+            username="export_admin",
+            password="pw",
+            email="export@lab.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.patient = Patient.objects.create(
+            first_name="Ján", last_name="Testovský", lab=self.lab
+        )
+        self.clinic = Clinic.objects.create(name="Klinika Export", lab=self.lab)
+        Job.objects.create(
+            patient=self.patient,
+            clinic=self.clinic,
+            lab=self.lab,
+            status="completed",
+            price="250.00",
+        )
+        Job.objects.create(
+            patient=self.patient,
+            clinic=self.clinic,
+            lab=self.lab,
+            status="new",
+            price="100.00",
+        )
+
+    def test_export_returns_csv_with_header(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/jobs/jobs/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "text/csv")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        self.assertIn("id,status,patient", content)
+
+    def test_export_contains_all_lab_jobs(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/jobs/jobs/export/")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        rows = [r for r in content.strip().split("\n") if r]
+        self.assertEqual(len(rows), 3)  # header + 2 jobs
+
+    def test_export_respects_status_filter(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/jobs/jobs/export/?status=completed")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        rows = [r for r in content.strip().split("\n") if r]
+        self.assertEqual(len(rows), 2)  # header + 1 completed job
+
+    def test_export_tenant_scoped(self):
+        other_lab = Lab.objects.create(name="Other Lab")
+        other_user = User.objects.create_user(
+            username="other_export",
+            password="pw",
+            email="other@lab.sk",
+            role="admin",
+            lab=other_lab,
+        )
+        self.client.force_authenticate(user=other_user)
+        resp = self.client.get("/api/jobs/jobs/export/")
+        content = (
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
+        )
+        rows = [r for r in content.strip().split("\n") if r]
+        self.assertEqual(len(rows), 1)  # header only, no jobs from other lab
+
+    def test_export_unauthenticated_denied(self):
+        resp = self.client.get("/api/jobs/jobs/export/")
+        self.assertEqual(resp.status_code, 401)
