@@ -1,3 +1,6 @@
+from io import BytesIO
+
+import openpyxl
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -555,3 +558,61 @@ class LowStockNotificationTests(APITestCase):
             ).count(),
             1,
         )
+
+
+class InventoryXlsxExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="XLSX Export Lab")
+        self.admin = User.objects.create_user(
+            username="xlsx_inv_admin",
+            password="pw",
+            email="xlsx_inv@lab.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab,
+            name="Zirkón blok",
+            sku="ZIR-001",
+            quantity=50,
+            unit="pcs",
+            category="material",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab,
+            name="Separačný lak",
+            sku="SEP-002",
+            quantity=10,
+            unit="ml",
+            category="consumable",
+        )
+
+    def test_export_xlsx_returns_spreadsheet(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/inventory/warehouse/export/?format=xlsx")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("spreadsheetml", resp["Content-Type"])
+        self.assertIn(".xlsx", resp["Content-Disposition"])
+        wb = openpyxl.load_workbook(BytesIO(resp.content))
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        self.assertIn("name", header)
+        self.assertIn("sku", header)
+        names = [
+            ws.cell(row=r, column=header.index("name") + 1).value
+            for r in range(2, ws.max_row + 1)
+        ]
+        self.assertIn("Zirkón blok", names)
+        self.assertIn("Separačný lak", names)
+
+    def test_export_csv_still_works(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/inventory/warehouse/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("Zirkón blok", content)
+
+    def test_export_unauthenticated_returns_401(self):
+        resp = self.client.get("/api/inventory/warehouse/export/?format=xlsx")
+        self.assertEqual(resp.status_code, 401)

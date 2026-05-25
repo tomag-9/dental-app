@@ -19,3 +19,4 @@ black
 djangorestframework-simplejwt
 pyotp
 qrcode[pil]
+openpyxl

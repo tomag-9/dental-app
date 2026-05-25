@@ -4,21 +4,46 @@ function Patients({ onNavigate, onOpenPatient, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
 
-  const fallbackPatients = [
-    { id: 1, first: 'Mária',  last: 'Kováčová', birth: '8512151234', phone: '+421 911 222 333', email: 'kovacova@email.sk',  jobs: 4 },
-    { id: 2, first: 'Peter',  last: 'Horváth',  birth: '9001041234', phone: '+421 902 444 555', email: 'horvath@email.sk',   jobs: 2 },
-    { id: 3, first: 'Jana',   last: 'Blahová',  birth: '7556281234', phone: '',                 email: 'blahova@email.sk',   jobs: 3 },
-    { id: 4, first: 'Tomáš',  last: 'Varga',    birth: '8203151234', phone: '+421 944 666 777', email: '',                   jobs: 1 },
-    { id: 5, first: 'Eva',    last: 'Oláhová',  birth: '9109121234', phone: '+421 915 888 999', email: 'olahova@email.sk',   jobs: 1 },
-    { id: 6, first: 'Michal', last: 'Gábor',    birth: '8807231234', phone: '',                 email: 'gabor@email.sk',     jobs: 2 },
-  ];
-  const patients = workspace.patients && workspace.patients.length ? workspace.patients : fallbackPatients;
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      React.createElement(PageHeader, {
+        title: 'Pacienti',
+        subtitle: 'Správa kariet pacientov.',
+        actions: [
+          React.createElement(Button, { key: 'imp', variant: 'outline', disabled: true }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
+          React.createElement(Button, { key: 'n', disabled: true }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
+        ]
+      }),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam pacientov…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      React.createElement(PageHeader, { title: 'Pacienti', subtitle: 'Správa kariet pacientov.' }),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať pacientov',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
+
+  const patients = workspace.patients || [];
 
   const filtered = patients.filter(p => {
     const q = search.toLowerCase();
-    return !q || `${p.first} ${p.last}`.toLowerCase().includes(q) || p.birth.includes(q);
+    return !q || `${p.first} ${p.last}`.toLowerCase().includes(q) || (p.birth || '').includes(q);
   });
-  const initials = p => `${p.first[0]}${p.last[0]}`;
+  const initials = p => `${(p.first || '?')[0]}${(p.last || '?')[0]}`;
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {

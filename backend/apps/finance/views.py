@@ -4,6 +4,8 @@ from datetime import date
 from decimal import Decimal
 from io import BytesIO, StringIO
 
+import openpyxl
+
 from django.utils.dateparse import parse_date
 
 from django.conf import settings as django_settings
@@ -75,23 +77,42 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):
         qs = self.get_queryset().order_by("code")
+        header = ["code", "description", "price", "category", "valid_from", "valid_to"]
+        rows = [
+            [
+                item.code,
+                item.description,
+                str(item.price),
+                item.category or "",
+                str(item.valid_from) if item.valid_from else "",
+                str(item.valid_to) if item.valid_to else "",
+            ]
+            for item in qs
+        ]
+        if request.query_params.get("format") == "xlsx":
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Cenník"
+            ws.append(header)
+            for row in rows:
+                ws.append(row)
+            buf = BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            response = HttpResponse(
+                buf.read(),
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
+            )
+            response["Content-Disposition"] = 'attachment; filename="pricelist.xlsx"'
+            return response
         buf = StringIO()
         writer = csv.writer(buf)
-        writer.writerow(
-            ["code", "description", "price", "category", "valid_from", "valid_to"]
-        )
-        for item in qs:
-            writer.writerow(
-                [
-                    item.code,
-                    item.description,
-                    str(item.price),
-                    item.category or "",
-                    item.valid_from or "",
-                    item.valid_to or "",
-                ]
-            )
-        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        writer.writerow(header)
+        for row in rows:
+            writer.writerow(row)
+        response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="pricelist.csv"'
         return response
 
@@ -601,37 +622,57 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=status_filter)
         qs = qs.select_related("clinic", "lab").order_by("-created_at")
 
+        header = [
+            "number",
+            "status",
+            "clinic",
+            "lab",
+            "total_amount",
+            "due_date",
+            "issued_at",
+            "paid_at",
+            "created_at",
+        ]
+        rows = [
+            [
+                inv.number,
+                inv.status,
+                inv.clinic.name,
+                inv.lab.name,
+                str(inv.total_amount),
+                str(inv.due_date) if inv.due_date else "",
+                inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
+                inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
+                inv.created_at.strftime("%Y-%m-%d"),
+            ]
+            for inv in qs
+        ]
+
+        if request.query_params.get("format") == "xlsx":
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Faktúry"
+            ws.append(header)
+            for row in rows:
+                ws.append(row)
+            buf = BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            response = HttpResponse(
+                buf.read(),
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ),
+            )
+            response["Content-Disposition"] = 'attachment; filename="invoices.xlsx"'
+            return response
+
         buf = StringIO()
         writer = csv.writer(buf)
-        writer.writerow(
-            [
-                "number",
-                "status",
-                "clinic",
-                "lab",
-                "total_amount",
-                "due_date",
-                "issued_at",
-                "paid_at",
-                "created_at",
-            ]
-        )
-        for inv in qs:
-            writer.writerow(
-                [
-                    inv.number,
-                    inv.status,
-                    inv.clinic.name,
-                    inv.lab.name,
-                    str(inv.total_amount),
-                    inv.due_date or "",
-                    inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
-                    inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
-                    inv.created_at.strftime("%Y-%m-%d"),
-                ]
-            )
-
-        response = HttpResponse(buf.getvalue(), content_type="text/csv")
+        writer.writerow(header)
+        for row in rows:
+            writer.writerow(row)
+        response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="invoices.csv"'
         return response
 

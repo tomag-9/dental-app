@@ -1009,6 +1009,26 @@ class InvoiceCSVExportTests(APITestCase):
         resp = self.client.get("/api/finance/invoices/export/")
         self.assertEqual(resp.status_code, 401)
 
+    def test_export_xlsx_returns_spreadsheet(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/export/?format=xlsx")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("spreadsheetml", resp["Content-Type"])
+        self.assertIn(".xlsx", resp["Content-Disposition"])
+        import openpyxl
+        from io import BytesIO
+
+        wb = openpyxl.load_workbook(BytesIO(resp.content))
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        self.assertIn("number", header)
+        numbers = [
+            ws.cell(row=r, column=header.index("number") + 1).value
+            for r in range(2, ws.max_row + 1)
+        ]
+        self.assertIn("EXP-001", numbers)
+        self.assertIn("EXP-002", numbers)
+
 
 class ProformaInvoiceTests(APITestCase):
     def setUp(self):
@@ -1824,3 +1844,23 @@ class PriceListExportCsvTests(APITestCase):
     def test_export_unauthenticated_denied(self):
         resp = self.client.get("/api/finance/price-list/export/")
         self.assertEqual(resp.status_code, 401)
+
+    def test_export_xlsx_returns_spreadsheet(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/price-list/export/?format=xlsx")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("spreadsheetml", resp["Content-Type"])
+        self.assertIn(".xlsx", resp["Content-Disposition"])
+        import openpyxl
+        from io import BytesIO
+
+        wb = openpyxl.load_workbook(BytesIO(resp.content))
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        self.assertIn("code", header)
+        codes = [
+            ws.cell(row=r, column=header.index("code") + 1).value
+            for r in range(2, ws.max_row + 1)
+        ]
+        self.assertIn("KOR-001", codes)
+        self.assertIn("MOS-002", codes)

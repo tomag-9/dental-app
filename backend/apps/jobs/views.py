@@ -1,5 +1,7 @@
 import csv
-from io import StringIO
+from io import BytesIO, StringIO
+
+import openpyxl
 
 from django.db import transaction
 from django.db.models import Q
@@ -583,22 +585,20 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         qs = self.get_queryset().select_related(
             "patient", "clinic", "doctor", "technician"
         )
-        buf = StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(
-            [
-                "id",
-                "status",
-                "patient",
-                "clinic",
-                "doctor",
-                "technician",
-                "due_date",
-                "priority",
-                "price",
-                "created_at",
-            ]
-        )
+
+        header = [
+            "id",
+            "status",
+            "patient",
+            "clinic",
+            "doctor",
+            "technician",
+            "due_date",
+            "priority",
+            "price",
+            "created_at",
+        ]
+        rows = []
         for job in qs:
             patient = (
                 f"{job.patient.first_name} {job.patient.last_name}".strip()
@@ -616,7 +616,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 if job.technician
                 else ""
             )
-            writer.writerow(
+            rows.append(
                 [
                     job.id,
                     job.status,
@@ -624,12 +624,38 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                     clinic,
                     doctor,
                     technician,
-                    job.due_date or "",
+                    str(job.due_date) if job.due_date else "",
                     job.priority or "",
                     str(job.price) if job.price is not None else "",
                     job.created_at.strftime("%Y-%m-%d"),
                 ]
             )
+
+        if request.query_params.get("format") == "xlsx":
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Práce"
+            ws.append(header)
+            for row in rows:
+                ws.append(row)
+            buf = BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            response = HttpResponse(
+                buf.read(),
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument"
+                    ".spreadsheetml.sheet"
+                ),
+            )
+            response["Content-Disposition"] = 'attachment; filename="jobs.xlsx"'
+            return response
+
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(header)
+        for row in rows:
+            writer.writerow(row)
         response = HttpResponse(buf.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="jobs.csv"'
         return response

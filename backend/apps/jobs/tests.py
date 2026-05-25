@@ -1742,3 +1742,19 @@ class JobExportCsvTests(APITestCase):
     def test_export_unauthenticated_denied(self):
         resp = self.client.get("/api/jobs/jobs/export/")
         self.assertEqual(resp.status_code, 401)
+
+    def test_export_xlsx_returns_spreadsheet(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/jobs/jobs/export/?format=xlsx")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("spreadsheetml", resp["Content-Type"])
+        self.assertIn(".xlsx", resp["Content-Disposition"])
+        import openpyxl
+        from io import BytesIO
+
+        wb = openpyxl.load_workbook(BytesIO(resp.content))
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        self.assertIn("id", header)
+        self.assertIn("status", header)
+        self.assertGreaterEqual(ws.max_row, 2)
