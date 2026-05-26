@@ -1690,7 +1690,7 @@ class JobExportCsvTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/jobs/jobs/export/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp["Content-Type"], "text/csv")
+        self.assertIn("text/csv", resp["Content-Type"])
         content = (
             b"".join(resp.streaming_content).decode()
             if hasattr(resp, "streaming_content")
@@ -1745,7 +1745,7 @@ class JobExportCsvTests(APITestCase):
 
     def test_export_xlsx_returns_spreadsheet(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.get("/api/jobs/jobs/export/?format=xlsx")
+        resp = self.client.get("/api/jobs/jobs/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("spreadsheetml", resp["Content-Type"])
         self.assertIn(".xlsx", resp["Content-Disposition"])

@@ -631,7 +631,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 ]
             )
 
-        if request.query_params.get("format") == "xlsx":
+        if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Práce"

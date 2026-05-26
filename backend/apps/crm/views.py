@@ -1,6 +1,8 @@
 import csv
 from decimal import Decimal
+from io import BytesIO
 
+import openpyxl
 from django.db.models import Q, Sum
 from django.http import HttpResponse
 from rest_framework import permissions, viewsets
@@ -13,6 +15,36 @@ from apps.jobs.models import Job
 
 from .models import Clinic, Doctor, Patient
 from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
+
+
+_XLSX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+
+def _xlsx_response(header, rows, sheet_title, filename):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = sheet_title
+    ws.append(header)
+    for row in rows:
+        ws.append(row)
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(buf.read(), content_type=_XLSX_CONTENT_TYPE)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _csv_response(header, rows, filename):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow(header)
+    for row in rows:
+        writer.writerow(row)
+    return response
 
 
 def _assert_crm_write(user):
@@ -53,25 +85,22 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = 'attachment; filename="clinics.csv"'
-        writer = csv.writer(response)
-        writer.writerow(
-            ["id", "name", "ico", "dic", "address", "bank_details", "created_at"]
-        )
-        for c in self.get_queryset().order_by("name"):
-            writer.writerow(
-                [
-                    c.id,
-                    c.name or "",
-                    c.ico or "",
-                    c.dic or "",
-                    c.address or "",
-                    c.bank_details or "",
-                    c.created_at.date().isoformat() if c.created_at else "",
-                ]
-            )
-        return response
+        header = ["id", "name", "ico", "dic", "address", "bank_details", "created_at"]
+        rows = [
+            [
+                c.id,
+                c.name or "",
+                c.ico or "",
+                c.dic or "",
+                c.address or "",
+                c.bank_details or "",
+                c.created_at.date().isoformat() if c.created_at else "",
+            ]
+            for c in self.get_queryset().order_by("name")
+        ]
+        if request.query_params.get("export_format") == "xlsx":
+            return _xlsx_response(header, rows, "Kliniky", "clinics.xlsx")
+        return _csv_response(header, rows, "clinics.csv")
 
 
 class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -106,37 +135,32 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
         _assert_crm_write(request.user)
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = 'attachment; filename="doctors.csv"'
-        writer = csv.writer(response)
-        writer.writerow(
+        header = [
+            "id",
+            "title_before",
+            "first_name",
+            "last_name",
+            "title_after",
+            "clinic_name",
+            "created_at",
+        ]
+        rows = [
             [
-                "id",
-                "title_before",
-                "first_name",
-                "last_name",
-                "title_after",
-                "clinic_name",
-                "created_at",
+                d.id,
+                d.title_before or "",
+                d.first_name or "",
+                d.last_name or "",
+                d.title_after or "",
+                d.clinic.name if d.clinic else "",
+                d.created_at.date().isoformat() if d.created_at else "",
             ]
-        )
-        for d in (
-            self.get_queryset()
+            for d in self.get_queryset()
             .select_related("clinic")
             .order_by("last_name", "first_name")
-        ):
-            writer.writerow(
-                [
-                    d.id,
-                    d.title_before or "",
-                    d.first_name or "",
-                    d.last_name or "",
-                    d.title_after or "",
-                    d.clinic.name if d.clinic else "",
-                    d.created_at.date().isoformat() if d.created_at else "",
-                ]
-            )
-        return response
+        ]
+        if request.query_params.get("export_format") == "xlsx":
+            return _xlsx_response(header, rows, "Lekári", "doctors.xlsx")
+        return _csv_response(header, rows, "doctors.csv")
 
 
 class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -251,32 +275,29 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
         _assert_crm_write(request.user)
-        response = HttpResponse(content_type="text/csv; charset=utf-8")
-        response["Content-Disposition"] = 'attachment; filename="patients.csv"'
-        writer = csv.writer(response)
-        writer.writerow(
+        header = [
+            "id",
+            "first_name",
+            "last_name",
+            "birth_number",
+            "address",
+            "phone",
+            "email",
+            "created_at",
+        ]
+        rows = [
             [
-                "id",
-                "first_name",
-                "last_name",
-                "birth_number",
-                "address",
-                "phone",
-                "email",
-                "created_at",
+                p.id,
+                p.first_name or "",
+                p.last_name or "",
+                p.birth_number or "",
+                p.address or "",
+                p.phone or "",
+                p.email or "",
+                p.created_at.date().isoformat() if p.created_at else "",
             ]
-        )
-        for p in self.get_queryset().order_by("last_name", "first_name"):
-            writer.writerow(
-                [
-                    p.id,
-                    p.first_name or "",
-                    p.last_name or "",
-                    p.birth_number or "",
-                    p.address or "",
-                    p.phone or "",
-                    p.email or "",
-                    p.created_at.date().isoformat() if p.created_at else "",
-                ]
-            )
-        return response
+            for p in self.get_queryset().order_by("last_name", "first_name")
+        ]
+        if request.query_params.get("export_format") == "xlsx":
+            return _xlsx_response(header, rows, "Pacienti", "patients.xlsx")
+        return _csv_response(header, rows, "patients.csv")

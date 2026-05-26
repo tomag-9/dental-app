@@ -986,7 +986,7 @@ class InvoiceCSVExportTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/invoices/export/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp["Content-Type"], "text/csv")
+        self.assertIn("text/csv", resp["Content-Type"])
         content = resp.content.decode("utf-8")
         self.assertIn("number", content)
         self.assertIn("EXP-001", content)
@@ -1011,7 +1011,7 @@ class InvoiceCSVExportTests(APITestCase):
 
     def test_export_xlsx_returns_spreadsheet(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.get("/api/finance/invoices/export/?format=xlsx")
+        resp = self.client.get("/api/finance/invoices/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("spreadsheetml", resp["Content-Type"])
         self.assertIn(".xlsx", resp["Content-Disposition"])
@@ -1802,7 +1802,7 @@ class PriceListExportCsvTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/price-list/export/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp["Content-Type"], "text/csv")
+        self.assertIn("text/csv", resp["Content-Type"])
         content = (
             b"".join(resp.streaming_content).decode()
             if hasattr(resp, "streaming_content")
@@ -1847,7 +1847,7 @@ class PriceListExportCsvTests(APITestCase):
 
     def test_export_xlsx_returns_spreadsheet(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.get("/api/finance/price-list/export/?format=xlsx")
+        resp = self.client.get("/api/finance/price-list/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("spreadsheetml", resp["Content-Type"])
         self.assertIn(".xlsx", resp["Content-Disposition"])

@@ -9,17 +9,6 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [error, setError] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
 
-  const fallbackJobs = [
-    { id: 12, patient: 'Mária Kováčová', clinic: 'Klinika Bratislava', doctor: 'MUDr. Novák',   type: 'Mostík zirkón',  due: '15. 5. 2025', status: 'in_progress' },
-    { id: 11, patient: 'Peter Horváth',  clinic: 'ZubMed Košice',      doctor: 'MUDr. Blaho',   type: 'Korunka',         due: '12. 5. 2025', status: 'new' },
-    { id: 10, patient: 'Jana Blahová',   clinic: 'DentaPrima Žilina',  doctor: 'MUDr. Sloboda', type: 'Snímateľná prot.',due: '8. 5. 2025',  status: 'new' },
-    { id: 9,  patient: 'Tomáš Varga',    clinic: 'Klinika Bratislava', doctor: 'MUDr. Novák',   type: 'Implantát + abut.',due: '3. 5. 2025', status: 'completed' },
-    { id: 8,  patient: 'Eva Oláhová',    clinic: 'ZubMed Košice',      doctor: 'MUDr. Blaho',   type: 'Inlay keramický', due: '28. 4. 2025', status: 'completed' },
-    { id: 7,  patient: 'Michal Gábor',   clinic: 'DentaPrima Žilina',  doctor: 'MUDr. Sloboda', type: 'Korunka',         due: '20. 4. 2025', status: 'cancelled' },
-  ];
-  const workspaceJobs = workspace.jobs && workspace.jobs.length ? workspace.jobs : fallbackJobs;
-  const allJobs = remoteJobs || workspaceJobs;
-
   React.useEffect(() => {
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -45,30 +34,59 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [search, tab]);
 
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Práce',
+    subtitle: 'Prehľad, správa a stav zákaziek.',
+    actions: [
+      React.createElement(Button, { key: 'n', onClick: onNewJob }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
+    ]
+  });
+
+  if (workspace.loading && !remoteJobs) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam práce…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error && !remoteJobs) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať práce',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
+
+  const allJobs = remoteJobs || workspace.jobs || [];
   const statusMeta = {
     new:        { label: 'Nové',       badge: 'new' },
     in_progress:{ label: 'V priebehu', badge: 'progress' },
     completed:  { label: 'Dokončené',  badge: 'done' },
     cancelled:  { label: 'Zrušené',    badge: 'cancelled' },
   };
-  const counts = ['new','in_progress','completed','cancelled'].reduce((a, s) => { a[s] = workspaceJobs.filter(j => j.status === s).length; return a; }, {});
+  const counts = ['new','in_progress','completed','cancelled'].reduce((a, s) => { a[s] = allJobs.filter(j => j.status === s).length; return a; }, {});
 
   const filtered = remoteJobs ? allJobs : allJobs.filter(j => {
     const q = search.toLowerCase();
-    const m = !q || [j.patient, j.clinic, j.doctor, String(j.id), j.type].some(v => v.toLowerCase().includes(q));
+    const m = !q || [j.patient, j.clinic, j.doctor, String(j.id), j.type].some(v => (v || '').toLowerCase().includes(q));
     if (!m) return false;
     if (tab !== 'all' && j.status !== tab) return false;
     return true;
   });
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Práce',
-      subtitle: 'Prehľad, správa a stav zákaziek.',
-      actions: [
-        React.createElement(Button, { key: 'n', onClick: onNewJob }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
-      ]
-    }),
+    pageHeader,
 
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       React.createElement(StatCard, { label: 'Nové',        value: String(counts.new),        icon: 'inbox',     tone: 'amber' }),
@@ -90,11 +108,11 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
         }),
         React.createElement(SearchInput, { value: search, onChange: setSearch, placeholder: 'Pacient, lekár, ID…', width: 280 })
       ),
-      error && React.createElement(ErrorState, { title: 'Filtrovanie zlyhalo', message: error }),
+      error && React.createElement(ErrorState, { title: 'Filtrovanie zlyhalo', message: error, onRetry: () => { setError(''); setRemoteJobs(null); } }),
       loading && React.createElement('div', { style: { padding: '0 18px 12px', fontSize: 12, color: '#8a9490' } }, 'Načítavam filtrované práce...'),
       React.createElement(CardContent, { style: { paddingTop: 0 } },
         filtered.length === 0
-          ? React.createElement(EmptyState, { title: 'Žiadne práce', description: 'Skúste upraviť vyhľadávanie alebo filter.' })
+          ? React.createElement(EmptyState, { title: 'Žiadne práce', description: search || tab !== 'all' ? 'Skúste upraviť vyhľadávanie alebo filter.' : 'Začnite vytvorením prvej práce.' })
           : React.createElement(DataTable, {
               onRowClick: (r) => onOpenJob && onOpenJob(r.id),
               columns: [

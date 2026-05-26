@@ -137,7 +137,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             ]
             for item in self.get_queryset().order_by("name")
         ]
-        if request.query_params.get("format") == "xlsx":
+        if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Sklad"

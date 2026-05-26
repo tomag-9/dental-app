@@ -89,7 +89,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             ]
             for item in qs
         ]
-        if request.query_params.get("format") == "xlsx":
+        if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Cenník"
@@ -648,7 +648,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             for inv in qs
         ]
 
-        if request.query_params.get("format") == "xlsx":
+        if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Faktúry"

@@ -589,7 +589,7 @@ class InventoryXlsxExportTests(APITestCase):
 
     def test_export_xlsx_returns_spreadsheet(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.get("/api/inventory/warehouse/export/?format=xlsx")
+        resp = self.client.get("/api/inventory/warehouse/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("spreadsheetml", resp["Content-Type"])
         self.assertIn(".xlsx", resp["Content-Disposition"])
@@ -614,5 +614,5 @@ class InventoryXlsxExportTests(APITestCase):
         self.assertIn("Zirkón blok", content)
 
     def test_export_unauthenticated_returns_401(self):
-        resp = self.client.get("/api/inventory/warehouse/export/?format=xlsx")
+        resp = self.client.get("/api/inventory/warehouse/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 401)
