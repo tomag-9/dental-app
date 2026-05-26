@@ -85,11 +85,11 @@ function Finance({ onNavigate }) {
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     pageHeader,
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+    React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       ...metrics.map(m => React.createElement(StatCard, { key: m.label, ...m }))
     ),
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'flex-start' } },
+    React.createElement('div', { className: 'content-grid', style: { display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 16, alignItems: 'flex-start' } },
       React.createElement(Card, null,
         React.createElement(CardHeader, { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
           React.createElement(CardTitle, null, 'Mesačné tržby (posledných 6 mesiacov)'),

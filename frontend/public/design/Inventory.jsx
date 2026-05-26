@@ -95,7 +95,7 @@ function Inventory({ onNavigate, onCreate }) {
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     pageHeader,
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+    React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       React.createElement(StatCard, { label: 'Celkom položiek', value: String(items.length), icon: 'package', tone: 'teal' }),
       React.createElement(StatCard, { label: 'Hodnota skladu',   value: totalValue.toFixed(2).replace('.', ',') + ' €', icon: 'euro', tone: 'green' }),
       React.createElement(StatCard, { label: 'Nízky stav',        value: String(lowCount), icon: 'alertTriangle', tone: 'amber' }),

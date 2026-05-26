@@ -43,7 +43,7 @@ function VariantGrid() {
               background: '#fff',
             }
           }),
-          React.createElement('span', { style: { position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 700, color: '#0d7c6b', fontFamily: 'Manrope,sans-serif' } }, '⏎'),
+          React.createElement('span', { style: { position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 10, fontWeight: 700, color: '#0d7c6b', fontFamily: 'Manrope,sans-serif' } }, 'GO'),
         ),
         React.createElement(NotationToggle, { value: notation, onChange: setNotation }),
       )
@@ -89,7 +89,7 @@ function TileGrid({ selected, onSelect, notation, procs, missing, implants, temp
           // Magnifying glass button — opens the detail (Variant A) modal
           React.createElement(LupaButton, { onClick: onOpenDetail, title: 'Otvoriť detail zubného kríža' }),
         ),
-        React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } }, 'Kompaktné zobrazenie — všetkých 32 zubov · 🔍 otvorí detail'),
+        React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } }, 'Kompaktné zobrazenie — všetkých 32 zubov · detail otvoríte tlačidlom lupy'),
       ),
       React.createElement('div', { style: { display: 'flex', gap: 6, fontSize: 9.5, color: '#5a6b66', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 240 } },
         ...['crown', 'bridge', 'implant', 'filling', 'tech'].map(c => {
@@ -210,7 +210,7 @@ function Tile({ fdi, notation, selected, onSelect, codes, missing, implant, temp
     }, fdiLabel(fdi, notation)),
     // Middle: status indicator (implant icon / missing X) + category dots
     React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2, padding: '0 2px' } },
-      missing && React.createElement('span', { style: { fontSize: 14, fontWeight: 900, color: '#c0392b', lineHeight: 1 } }, '✕'),
+      missing && React.createElement(Icon, { name: 'x', size: 14, color: '#c0392b', strokeWidth: 3 }),
       !missing && implant && React.createElement('div', {
         style: { width: 16, height: 12, borderRadius: 2, background: '#f3e8ff', border: '1px solid #9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b21a8' }
       }, React.createElement(ProcGlyph, { code: 'IMP-ABU', size: 8 })),

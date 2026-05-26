@@ -195,7 +195,7 @@ function Settings({ onNavigate, user }) {
       title: 'Nastavenia',
       subtitle: 'Profil používateľa, parametre laboratória a integrácie.'
     }),
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '220px 1fr', gap: 18, alignItems: 'flex-start' } },
+    React.createElement('div', { className: 'settings-grid', style: { display: 'grid', gridTemplateColumns: '220px 1fr', gap: 18, alignItems: 'flex-start' } },
       // Side nav
       React.createElement(Card, { style: { padding: 8 } },
         React.createElement('nav', { style: { display: 'flex', flexDirection: 'column', gap: 2 } },

@@ -65,7 +65,7 @@ function Invoices({ onNavigate, onCreate }) {
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     pageHeader,
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+    React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       React.createElement(StatCard, { label: 'Zaplatené', value: fmt(totals.paid), icon: 'checkCircle', tone: 'green', sub: countLabel(invoices.filter(i => i.status === 'paid').length, 'faktúra', 'faktúry') }),
       React.createElement(StatCard, { label: 'Čaká na platbu', value: fmt(totals.issued), icon: 'clock', tone: 'amber', sub: countLabel(invoices.filter(i => i.status === 'issued').length, 'vystavená', 'vystavené') }),
       React.createElement(StatCard, { label: 'Koncepty', value: fmt(totals.draft), icon: 'fileText', tone: 'teal', sub: countLabel(invoices.filter(i => i.status === 'draft').length, 'čaká odoslanie', 'čakajú odoslanie') }),

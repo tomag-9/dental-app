@@ -88,7 +88,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     pageHeader,
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+    React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       React.createElement(StatCard, { label: 'Nové',        value: String(counts.new),        icon: 'inbox',     tone: 'amber' }),
       React.createElement(StatCard, { label: 'V priebehu',  value: String(counts.in_progress),icon: 'activity',  tone: 'teal' }),
       React.createElement(StatCard, { label: 'Dokončené',   value: String(counts.completed),  icon: 'checkCircle',tone: 'green' }),

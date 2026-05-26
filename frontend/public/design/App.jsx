@@ -30,6 +30,14 @@ function App() {
     return () => window.removeEventListener('molaris-user-updated', onUserUpdate);
   }, []);
 
+  React.useEffect(() => {
+    const onVisualNavigate = (event) => {
+      if (event && event.detail && event.detail.page) navigate(event.detail.page);
+    };
+    window.addEventListener('molaris-visual-navigate', onVisualNavigate);
+    return () => window.removeEventListener('molaris-visual-navigate', onVisualNavigate);
+  }, []);
+
   // Safety: if the role somehow flips at runtime, land on a page the sidebar can show.
   React.useEffect(() => {
     const isSa = user && user.role === 'superadmin';
@@ -89,14 +97,17 @@ function App() {
     page === 'patient_detail' ? 'patients' :
     page;
 
-  return React.createElement('div', { style: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f6f3ec' } },
+  return React.createElement('div', {
+    className: 'molaris-app-shell',
+    style: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f6f3ec' }
+  },
     React.createElement(Sidebar, {
       currentPage: sidebarPage,
       onNavigate: navigate,
       user,
       onLogout: () => { window.MolarisAPI.logout(); setUser(null); },
     }),
-    React.createElement('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 } },
+    React.createElement('div', { className: 'molaris-content-shell', style: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 } },
       React.createElement(Topbar, {
         onNavigate: navigate,
         onOpenJob: openJob,
@@ -107,6 +118,7 @@ function App() {
         onCreateDoctor: () => setCreateType('doctor'),
       }),
       React.createElement('main', {
+        className: 'molaris-main',
         style: { flex: 1, overflowY: 'auto', padding: '28px 32px 60px', minWidth: 0 }
       }, pageEl)
     ),

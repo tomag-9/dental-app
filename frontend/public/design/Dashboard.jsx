@@ -143,11 +143,11 @@ function Dashboard({ onNavigate, onOpenJob }) {
       ]
     }),
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
+    React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       ...stats.map(s => React.createElement(StatCard, { key: s.label, ...s }))
     ),
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '5fr 4fr 3fr', gap: 16, alignItems: 'flex-start' } },
+    React.createElement('div', { className: 'content-grid', style: { display: 'grid', gridTemplateColumns: '5fr 4fr 3fr', gap: 16, alignItems: 'flex-start' } },
       // Recent jobs
       React.createElement(Card, null,
         React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },

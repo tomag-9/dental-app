@@ -33,6 +33,13 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   const [notifLoading, setNotifLoading] = React.useState(false);
   const [notifApiLoaded, setNotifApiLoaded] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [isNarrow, setIsNarrow] = React.useState(() => typeof window !== 'undefined' && window.innerWidth <= 720);
+
+  React.useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth <= 720);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Close popovers on outside click
   React.useEffect(() => {
@@ -45,7 +52,11 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   React.useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); setQ(''); }
-      if (e.key === 'Escape') setSearchOpen(false);
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setNotifOpen(false);
+        setAddOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -209,6 +220,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
 
   return React.createElement(React.Fragment, null,
     React.createElement('header', {
+      className: 'molaris-topbar',
       style: {
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '0 32px', height: 56,
@@ -221,8 +233,9 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       // Global search trigger
       React.createElement('button', {
         onClick: () => { setSearchOpen(true); setQ(''); },
+        'aria-label': 'Otvoriť globálne vyhľadávanie',
         style: {
-          flex: 1, maxWidth: 420, display: 'flex', alignItems: 'center', gap: 10,
+          flex: 1, minWidth: 0, maxWidth: isNarrow ? 'none' : 420, display: 'flex', alignItems: 'center', gap: 10,
           height: 34, padding: '0 12px', borderRadius: 8,
           background: '#fff', border: '1px solid #e4ded4',
           cursor: 'pointer', fontFamily: 'Manrope,sans-serif',
@@ -233,8 +246,9 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
         onMouseLeave: e => e.currentTarget.style.borderColor = '#e4ded4'
       },
         React.createElement(Icon, { name: 'search', size: 13, color: '#b0bdb9' }),
-        React.createElement('span', { style: { flex: 1 } }, 'Hľadať pacientov, práce, faktúry…'),
+        React.createElement('span', { className: 'molaris-search-label', style: { flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, 'Hľadať pacientov, práce, faktúry…'),
         React.createElement('span', {
+          className: 'molaris-search-shortcut',
           style: { padding: '1px 6px', borderRadius: 4, border: '1px solid #e4ded4', fontSize: 10.5, color: '#8a9490', fontFamily: 'ui-monospace, monospace', background: '#fbfaf6' }
         }, '⌘K')
       ),
@@ -245,9 +259,11 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       React.createElement('div', { style: { position: 'relative' }, onClick: stop, onMouseDown: stopAll },
         React.createElement('button', {
           onClick: () => { setAddOpen(!addOpen); setNotifOpen(false); },
+          'aria-haspopup': 'menu',
+          'aria-expanded': addOpen,
           style: {
             display: 'inline-flex', alignItems: 'center', gap: 6, height: 34,
-            padding: '0 12px', borderRadius: 8, border: 'none',
+            padding: isNarrow ? '0 10px' : '0 12px', borderRadius: 8, border: 'none',
             background: '#0d7c6b', color: 'white', fontWeight: 600, fontSize: 12.5,
             cursor: 'pointer', fontFamily: 'Manrope,sans-serif',
             transition: 'background .12s'
@@ -256,10 +272,10 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
           onMouseLeave: e => e.currentTarget.style.background = '#0d7c6b'
         },
           React.createElement(Icon, { name: 'plus', size: 14 }),
-          'Pridať',
-          React.createElement(Icon, { name: 'chevronDown', size: 12 })
+          !isNarrow && 'Pridať',
+          !isNarrow && React.createElement(Icon, { name: 'chevronDown', size: 12 })
         ),
-        addOpen && React.createElement(Popover, null,
+        addOpen && React.createElement(Popover, { role: 'menu', label: 'Rýchle pridanie' },
           React.createElement(PopoverItem, { icon: 'briefcase',  label: 'Nová práca',      sub: 'Vytvoriť dentálnu zákazku', onClick: () => { setAddOpen(false); onNewJob && onNewJob(); } }),
           React.createElement(PopoverItem, { icon: 'user',       label: 'Nový pacient',    sub: 'Pridať kartu pacienta',     onClick: () => { setAddOpen(false); onNewPatient && onNewPatient(); } }),
           React.createElement(PopoverItem, { icon: 'fileText',   label: 'Nová faktúra',    sub: 'Vystaviť faktúru klinike',  onClick: () => { setAddOpen(false); onNewInvoice && onNewInvoice(); } }),
@@ -270,6 +286,9 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       React.createElement('div', { style: { position: 'relative' }, onClick: stop, onMouseDown: stopAll },
         React.createElement('button', {
           onClick: () => { setNotifOpen(!notifOpen); setAddOpen(false); },
+          'aria-label': unreadCount > 0 ? `Notifikácie, ${unreadCount} neprečítané` : 'Notifikácie',
+          'aria-haspopup': 'menu',
+          'aria-expanded': notifOpen,
           style: {
             width: 34, height: 34, borderRadius: 8, border: '1px solid #e4ded4',
             background: '#fff', cursor: 'pointer', display: 'flex',
@@ -290,7 +309,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
             }
           }, unreadCount)
         ),
-        notifOpen && React.createElement(Popover, { width: 380 },
+        notifOpen && React.createElement(Popover, { width: 380, role: 'menu', label: 'Notifikácie' },
           React.createElement('div', { style: { padding: '12px 14px', borderBottom: '1px solid #f0ede5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
             React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, fontSize: 13, color: '#1a2320' } }, 'Notifikácie'),
             React.createElement('button', {
@@ -309,13 +328,13 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
               style: { padding: '28px 14px', textAlign: 'center', color: '#8a9490', fontSize: 12.5 }
             }, React.createElement(Icon, { name: 'bell', size: 24, color: '#d4ded8' }),
               React.createElement('div', { style: { marginTop: 8 } }, 'Žiadne notifikácie')),
-            !notifLoading && (notifApiLoaded ? notifItems : fallbackNotifications).map((n, i) => React.createElement('div', {
+            !notifLoading && (notifApiLoaded ? notifItems : fallbackNotifications).map((n, i) => React.createElement('button', {
               key: n.id,
               style: {
-                display: 'flex', gap: 10, padding: '12px 14px',
+                display: 'flex', gap: 10, padding: '12px 14px', width: '100%', border: 'none', textAlign: 'left',
                 borderTop: i === 0 ? 'none' : '1px solid #f0ede5',
                 background: n.unread ? '#fbfaf6' : '#fff',
-                cursor: 'pointer', transition: 'background .1s'
+                cursor: 'pointer', transition: 'background .1s', fontFamily: 'Manrope,sans-serif',
               },
               onMouseEnter: e => e.currentTarget.style.background = '#f0ede5',
               onMouseLeave: e => e.currentTarget.style.background = n.unread ? '#fbfaf6' : '#fff',
@@ -364,8 +383,10 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   );
 }
 
-function Popover({ children, width = 260 }) {
+function Popover({ children, width = 260, role, label }) {
   return React.createElement('div', {
+    role,
+    'aria-label': label,
     style: {
       position: 'absolute', top: 'calc(100% + 6px)', right: 0, width,
       background: '#fff', borderRadius: 10, border: '1px solid #e4ded4',
@@ -379,6 +400,7 @@ function Popover({ children, width = 260 }) {
 function PopoverItem({ icon, label, sub, onClick }) {
   return React.createElement('button', {
     onClick,
+    role: 'menuitem',
     style: {
       display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
       width: '100%', background: 'transparent', border: 'none', cursor: 'pointer',
@@ -404,6 +426,8 @@ function PopoverDivider() {
 // ─── Command palette ───────────────────────────────────────────────
 function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, items, loading, onAction }) {
   const inputRef = React.useRef(null);
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const dialogId = React.useId ? React.useId() : 'command-palette';
   React.useEffect(() => { inputRef.current && inputRef.current.focus(); }, []);
 
   const normalizedItems = (items || []).map((item) => {
@@ -421,23 +445,55 @@ function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, 
   const filtered = query
     ? normalizedItems.filter(i => `${i.label} ${i.sub}`.toLowerCase().includes(query.toLowerCase()))
     : normalizedItems;
-
   const groups = { job: 'Práce', patient: 'Pacienti', invoice: 'Faktúry', page: 'Stránky', action: 'Akcie' };
   const grouped = Object.keys(groups).map(k => ({ key: k, label: groups[k], items: filtered.filter(i => i.kind === k) })).filter(g => g.items.length);
+  const orderedItems = grouped.flatMap((group) => group.items);
+  React.useEffect(() => {
+    setSelectedIndex((current) => Math.min(Math.max(current, 0), Math.max(orderedItems.length - 1, 0)));
+  }, [orderedItems.length]);
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setSelectedIndex((current) => orderedItems.length ? (current + 1) % orderedItems.length : 0);
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setSelectedIndex((current) => orderedItems.length ? (current - 1 + orderedItems.length) % orderedItems.length : 0);
+    }
+    if (event.key === 'Enter' && orderedItems[selectedIndex]) {
+      event.preventDefault();
+      orderedItems[selectedIndex].action();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+    }
+  };
+  let optionIndex = -1;
 
   return React.createElement('div', {
     onClick: onClose,
     style: { position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(26,35,32,.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh' }
   },
     React.createElement('div', {
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': `${dialogId}-input`,
+      onKeyDown: handleKeyDown,
       onClick: e => e.stopPropagation(),
       style: { width: 560, maxWidth: '92vw', background: '#fff', borderRadius: 14, boxShadow: '0 24px 80px rgba(0,0,0,.22)', overflow: 'hidden', animation: 'popIn .18s ease-out' }
     },
       React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderBottom: '1px solid #f0ede5' } },
         React.createElement(Icon, { name: 'search', size: 16, color: '#b0bdb9' }),
         React.createElement('input', {
+          id: `${dialogId}-input`,
           ref: inputRef, value: query, onChange: e => onQueryChange(e.target.value),
           placeholder: 'Hľadať pacientov, práce, faktúry, stránky…',
+          role: 'combobox',
+          'aria-expanded': true,
+          'aria-controls': `${dialogId}-results`,
+          'aria-activedescendant': orderedItems[selectedIndex] ? `${dialogId}-option-${selectedIndex}` : undefined,
           style: { flex: 1, border: 'none', outline: 'none', fontSize: 14, fontFamily: 'Manrope,sans-serif', color: '#1a2320', background: 'transparent' }
         }),
         React.createElement('button', {
@@ -445,17 +501,22 @@ function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, 
           style: { padding: '2px 6px', borderRadius: 4, border: '1px solid #e4ded4', fontSize: 10.5, color: '#8a9490', fontFamily: 'ui-monospace, monospace', background: '#fbfaf6', cursor: 'pointer' }
         }, 'esc')
       ),
-      React.createElement('div', { style: { maxHeight: '52vh', overflowY: 'auto' } },
+      React.createElement('div', { id: `${dialogId}-results`, role: 'listbox', style: { maxHeight: '52vh', overflowY: 'auto' } },
         loading && React.createElement('div', { style: { padding: 24, textAlign: 'center', color: '#8a9490', fontSize: 12.5 } }, 'Načítavam výsledky...'),
         !loading && filtered.length === 0
           ? React.createElement('div', { style: { padding: 30, textAlign: 'center', color: '#8a9490', fontSize: 13 } }, 'Žiadne výsledky pre „', query, '".')
           : grouped.map(g => React.createElement('div', { key: g.key },
               React.createElement('div', { style: { padding: '10px 18px 4px', fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.06em' } }, g.label),
-              ...g.items.map(it => React.createElement('button', {
-                key: it.id, onClick: it.action,
-                style: { display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope,sans-serif', transition: 'background .1s' },
+              ...g.items.map(it => {
+                optionIndex += 1;
+                const active = optionIndex === selectedIndex;
+                return React.createElement('button', {
+                key: it.id, id: `${dialogId}-option-${optionIndex}`, onClick: it.action,
+                role: 'option',
+                'aria-selected': active,
+                style: { display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px', width: '100%', background: active ? '#f0ede5' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope,sans-serif', transition: 'background .1s' },
                 onMouseEnter: e => e.currentTarget.style.background = '#f0ede5',
-                onMouseLeave: e => e.currentTarget.style.background = 'transparent',
+                onMouseLeave: e => e.currentTarget.style.background = active ? '#f0ede5' : 'transparent',
               },
                 React.createElement('div', { style: { width: 28, height: 28, borderRadius: 6, background: '#fbfaf6', border: '1px solid #ece7dc', color: '#0d7c6b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
                   React.createElement(Icon, { name: it.icon, size: 13 })
@@ -465,7 +526,8 @@ function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, 
                   React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490', marginTop: 1 } }, it.sub)
                 ),
                 React.createElement(Icon, { name: 'arrowRight', size: 12, color: '#b0bdb9' })
-              ))
+              );
+              })
             ))
       ),
       React.createElement('div', { style: { padding: '10px 18px', borderTop: '1px solid #f0ede5', background: '#fbfaf6', display: 'flex', gap: 16, fontSize: 11, color: '#8a9490' } },

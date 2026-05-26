@@ -9,6 +9,15 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
   const [expandFinance, setExpandFinance] = React.useState(true);
   const [expandConfig, setExpandConfig] = React.useState(true);
   const [expandPlatform, setExpandPlatform] = React.useState(true);
+  const [isNarrow, setIsNarrow] = React.useState(() => typeof window !== 'undefined' && window.innerWidth <= 720);
+
+  React.useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth <= 720);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  const effectiveCollapsed = collapsed || isNarrow;
 
   const isSuperadmin = user.role === 'superadmin';
   const isAdmin = user.role === 'admin';
@@ -60,13 +69,13 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
   const navBtn = (id, name, icon, small = false) => {
     const active = currentPage === id;
     return React.createElement('button', {
-      key: id, onClick: () => onNavigate(id), title: collapsed ? name : undefined,
+      key: id, onClick: () => onNavigate(id), title: effectiveCollapsed ? name : undefined,
       onMouseEnter: e => { if (!active) e.currentTarget.style.background = isSuperadmin ? '#2a3530' : '#e7e2d4'; },
       onMouseLeave: e => { if (!active) e.currentTarget.style.background = 'transparent'; },
       style: {
-        display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 10,
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        padding: collapsed ? '8px 0' : (small ? '6px 10px' : '7px 10px'),
+        display: 'flex', alignItems: 'center', gap: effectiveCollapsed ? 0 : 10,
+        justifyContent: effectiveCollapsed ? 'center' : 'flex-start',
+        padding: effectiveCollapsed ? '8px 0' : (small ? '6px 10px' : '7px 10px'),
         borderRadius: 6,
         background: active
           ? (isSuperadmin ? 'rgba(254,243,199,.14)' : '#d4f0eb')
@@ -86,16 +95,16 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
           ? (isSuperadmin ? '#fef3c7' : '#0d7c6b')
           : (isSuperadmin ? '#8f9994' : '#6a7570')
       }),
-      !collapsed && React.createElement('span', null, name)
+      !effectiveCollapsed && React.createElement('span', null, name)
     );
   };
 
   const sectionBtn = (label, icon, expanded, toggle) => React.createElement('button', {
     onClick: toggle,
     style: {
-      display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 10,
-      justifyContent: collapsed ? 'center' : 'flex-start',
-      padding: collapsed ? '8px 0' : '7px 10px', borderRadius: 6,
+      display: 'flex', alignItems: 'center', gap: effectiveCollapsed ? 0 : 10,
+      justifyContent: effectiveCollapsed ? 'center' : 'flex-start',
+      padding: effectiveCollapsed ? '8px 0' : '7px 10px', borderRadius: 6,
       background: 'transparent',
       color: isSuperadmin ? '#c4cbc8' : '#4a5752',
       fontSize: 13, fontWeight: 500,
@@ -104,7 +113,7 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
     }
   },
     React.createElement(Icon, { name: icon, size: 16, color: isSuperadmin ? '#8f9994' : '#6a7570' }),
-    !collapsed && React.createElement(React.Fragment, null,
+    !effectiveCollapsed && React.createElement(React.Fragment, null,
       React.createElement('span', { style: { flex: 1 } }, label),
       React.createElement(Icon, { name: expanded ? 'chevronDown' : 'chevronRight', size: 13, color: isSuperadmin ? '#8f9994' : '#8a9490' })
     )
@@ -125,7 +134,7 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
 
   return React.createElement('div', {
     style: {
-      width: collapsed ? 64 : 224, minHeight: '100%', height: '100%',
+      width: effectiveCollapsed ? 64 : 224, minHeight: '100%', height: '100%',
       background: chrome.bg, display: 'flex', flexDirection: 'column', flexShrink: 0,
       borderRight: `1px solid ${chrome.border}`, transition: 'width .25s, background .25s',
       overflow: 'hidden',
@@ -135,14 +144,14 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
     React.createElement('div', {
       style: {
         height: 56, display: 'flex', alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'space-between',
-        padding: collapsed ? 0 : '0 14px',
+        justifyContent: effectiveCollapsed ? 'center' : 'space-between',
+        padding: effectiveCollapsed ? 0 : '0 14px',
         borderBottom: `1px solid ${chrome.border}`, flexShrink: 0,
       }
     },
-      collapsed
+      effectiveCollapsed
         ? React.createElement('button', {
-            onClick: () => setCollapsed(false), title: 'Rozbaliť',
+            onClick: () => !isNarrow && setCollapsed(false), title: isNarrow ? 'Molaris' : 'Rozbaliť',
             style: { background: 'none', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' },
             onMouseEnter: e => { e.currentTarget.style.background = chrome.subtleHover; },
             onMouseLeave: e => { e.currentTarget.style.background = 'transparent'; }
@@ -157,7 +166,7 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
     ),
 
     // ── Mode tag (superadmin only) ──
-    isSuperadmin && !collapsed && React.createElement('div', {
+    isSuperadmin && !effectiveCollapsed && React.createElement('div', {
       style: { padding: '10px 14px 4px', display: 'flex', alignItems: 'center', gap: 7 }
     },
       React.createElement('span', {
@@ -181,7 +190,7 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
             ...saMain.map(l => navBtn(l.id, l.name, l.icon)),
             React.createElement('div', { key: 'sa-platform', style: { marginTop: 6 } },
               sectionBtn('Platforma', 'layers', expandPlatform, () => setExpandPlatform(!expandPlatform)),
-              !collapsed && expandPlatform && subGroup(saPlatform)
+              !effectiveCollapsed && expandPlatform && subGroup(saPlatform)
             ),
             React.createElement('div', { key: 'sa-bottom', style: { marginTop: 'auto', paddingTop: 10 } },
               ...saBottom.map(l => navBtn(l.id, l.name, l.icon))
@@ -192,12 +201,12 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
 
             isAdmin && React.createElement('div', { key: 'finance', style: { marginTop: 6 } },
               sectionBtn('Financie', 'euro', expandFinance, () => setExpandFinance(!expandFinance)),
-              !collapsed && expandFinance && subGroup(adminFinance)
+              !effectiveCollapsed && expandFinance && subGroup(adminFinance)
             ),
 
             isAdmin && React.createElement('div', { key: 'config', style: { marginTop: 6 } },
               sectionBtn('Konfigurácia', 'layers', expandConfig, () => setExpandConfig(!expandConfig)),
-              !collapsed && expandConfig && subGroup(adminConfig)
+              !effectiveCollapsed && expandConfig && subGroup(adminConfig)
             ),
 
             React.createElement('div', { key: 'admin-bottom', style: { marginTop: 'auto', paddingTop: 10 } },
@@ -219,11 +228,11 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
             fontSize: 11, fontWeight: 700, flexShrink: 0, fontFamily: 'Plus Jakarta Sans,sans-serif',
           }
         }, user.initials),
-        !collapsed && React.createElement('div', { style: { overflow: 'hidden', flex: 1 } },
+        !effectiveCollapsed && React.createElement('div', { style: { overflow: 'hidden', flex: 1 } },
           React.createElement('p', { style: { fontSize: 12.5, fontWeight: 600, color: chrome.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, user.name),
           React.createElement('p', { style: { fontSize: 10.5, color: chrome.subText, margin: 0 } }, roleLabels[user.role] || 'Používateľ')
         ),
-        !collapsed && React.createElement('button', {
+        !effectiveCollapsed && React.createElement('button', {
           onClick: onLogout, title: 'Odhlásiť sa',
           style: { background: 'none', border: 'none', cursor: 'pointer', color: chrome.subText, padding: 6, borderRadius: 6, display: 'flex' },
           onMouseEnter: e => { e.currentTarget.style.background = chrome.subtleHover; e.currentTarget.style.color = isSuperadmin ? '#fef3c7' : '#0d7c6b'; },

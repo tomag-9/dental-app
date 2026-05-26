@@ -1,13 +1,13 @@
 // Shared.jsx — Molaris UI Kit primitives (Option A: Deep Teal palette)
 
-function Button({ children, variant = 'primary', size = 'md', className = '', disabled, onClick, type = 'button', title, style: extraStyle = {} }) {
+function Button({ children, variant = 'primary', size = 'md', className = '', disabled, onClick, type = 'button', title, style: extraStyle = {}, ariaLabel }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     borderRadius: 6, fontWeight: 600, fontFamily: 'Manrope,sans-serif',
     border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
     transition: 'background .12s, color .12s, opacity .12s',
     gap: 6, opacity: disabled ? 0.4 : 1, whiteSpace: 'nowrap',
-    boxShadow: 'none', outline: 'none',
+    boxShadow: 'none',
   };
   const variants = {
     primary:     { background: '#0d7c6b', color: 'white' },
@@ -23,7 +23,7 @@ function Button({ children, variant = 'primary', size = 'md', className = '', di
     icon: { width: 36, height: 36, padding: 0 },
   };
   const style = { ...base, ...(variants[variant] || {}), ...(sizes[size] || {}), ...extraStyle };
-  return React.createElement('button', { style, disabled, onClick, type, title, className }, children);
+  return React.createElement('button', { style, disabled, onClick, type, title, className, 'aria-label': ariaLabel }, children);
 }
 
 function Card({ children, style = {} }) {
@@ -94,17 +94,41 @@ function FormField({ label, name, value, onChange, type = 'text', placeholder = 
 }
 
 function ConfirmDialog({ open, title, message, confirmText = 'Potvrdiť', cancelText = 'Zrušiť', destructive, onConfirm, onCancel }) {
+  const dialogRef = React.useRef(null);
+  const titleId = React.useId ? React.useId() : 'confirm-dialog-title';
+  const messageId = React.useId ? React.useId() : 'confirm-dialog-message';
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.activeElement;
+    const onKey = (event) => {
+      if (event.key === 'Escape') onCancel && onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    window.setTimeout(() => {
+      const firstButton = dialogRef.current && dialogRef.current.querySelector('button');
+      if (firstButton) firstButton.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (previous && previous.focus) previous.focus();
+    };
+  }, [open, onCancel]);
   if (!open) return null;
   return React.createElement('div', {
     style: { position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.4)' },
     onClick: onCancel
   },
     React.createElement('div', {
+      ref: dialogRef,
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': titleId,
+      'aria-describedby': messageId,
       style: { background: 'white', borderRadius: 12, padding: 24, width: 340, boxShadow: '0 20px 60px rgba(0,0,0,.15)' },
       onClick: e => e.stopPropagation()
     },
-      React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#1a2320' } }, title),
-      React.createElement('p', { style: { fontSize: 13, color: '#8a9490', marginBottom: 20, lineHeight: 1.5 } }, message),
+      React.createElement('h3', { id: titleId, style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 16, fontWeight: 700, marginBottom: 8, color: '#1a2320' } }, title),
+      React.createElement('p', { id: messageId, style: { fontSize: 13, color: '#8a9490', marginBottom: 20, lineHeight: 1.5 } }, message),
       React.createElement('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end' } },
         React.createElement(Button, { variant: 'outline', onClick: onCancel }, cancelText),
         React.createElement(Button, { variant: destructive ? 'destructive' : 'primary', onClick: onConfirm }, confirmText)
@@ -117,7 +141,9 @@ function EmptyState({ title = 'Žiadne záznamy', description = 'Začnite vytvor
   return React.createElement('div', {
     style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', textAlign: 'center', borderRadius: 10, border: '2px dashed #e4ded4', background: '#f7f6f2', gap: 8 }
   },
-    React.createElement('div', { style: { fontSize: 36, color: '#c8c0b4', marginBottom: 4 } }, '📥'),
+    React.createElement('div', { 'aria-hidden': 'true', style: { width: 44, height: 44, color: '#c8c0b4', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      React.createElement(Icon, { name: 'inbox', size: 34 })
+    ),
     React.createElement('h3', { style: { fontSize: 14, fontWeight: 600, color: '#1a2320', margin: 0 } }, title),
     React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0, maxWidth: 240 } }, description),
     action
@@ -135,9 +161,12 @@ function LoadingState({ message = 'Načítavam…' }) {
 
 function ErrorState({ title = 'Chyba', message = 'Niečo sa pokazilo.', onRetry }) {
   return React.createElement('div', {
+    role: 'alert',
     style: { background: '#fde8e6', border: '1px solid #f5c0bb', borderRadius: 10, padding: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }
   },
-    React.createElement('span', { style: { fontSize: 18 } }, '⚠️'),
+    React.createElement('span', { 'aria-hidden': 'true', style: { width: 24, height: 24, color: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      React.createElement(Icon, { name: 'alertTriangle', size: 20 })
+    ),
     React.createElement('div', { style: { flex: 1 } },
       React.createElement('p', { style: { fontWeight: 600, fontSize: 13, color: '#1a2320', margin: '0 0 4px' } }, title),
       React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0 } }, message),
@@ -204,7 +233,7 @@ function StatCard({ label, value, sub, delta, icon, tone = 'teal' }) {
 // ─── Tabs ───────────────────────────────────────────────
 function Tabs({ value, onChange, tabs }) {
   return React.createElement('div', {
-    style: { display: 'inline-flex', background: '#f0ede5', borderRadius: 8, padding: 3, gap: 2 }
+    style: { display: 'inline-flex', maxWidth: '100%', overflowX: 'auto', background: '#f0ede5', borderRadius: 8, padding: 3, gap: 2 }
   },
     ...tabs.map(t => {
       const active = value === t.value;
@@ -216,7 +245,7 @@ function Tabs({ value, onChange, tabs }) {
           color: active ? '#0d7c6b' : '#5a6b66',
           fontWeight: active ? 600 : 500, fontSize: 12.5, fontFamily: 'Manrope,sans-serif',
           boxShadow: active ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
-          transition: 'background .12s, color .12s'
+          transition: 'background .12s, color .12s', flexShrink: 0
         }
       }, t.label);
     })
@@ -244,7 +273,7 @@ function SearchInput({ value, onChange, placeholder = 'Hľadať…', width }) {
 // ─── Icon button ───────────────────────────────────────────────
 function IconButton({ name, title, onClick, destructive, size = 28 }) {
   return React.createElement('button', {
-    onClick, title,
+    onClick, title, 'aria-label': title || name,
     style: {
       width: size, height: size, borderRadius: 6, border: 'none',
       background: 'transparent', color: destructive ? '#c0392b' : '#5a6b66',
@@ -278,6 +307,13 @@ function DataTable({ columns, data, onRowClick }) {
         ...data.map((row, i) => React.createElement('tr', {
           key: row.id || i,
           onClick: onRowClick ? () => onRowClick(row) : undefined,
+          onKeyDown: onRowClick ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              onRowClick(row);
+            }
+          } : undefined,
+          tabIndex: onRowClick ? 0 : undefined,
           style: {
             borderTop: i === 0 ? 'none' : '1px solid #f0ede5',
             background: '#fff', cursor: onRowClick ? 'pointer' : 'default',
@@ -298,12 +334,36 @@ function DataTable({ columns, data, onRowClick }) {
 
 // ─── Drawer ───────────────────────────────────────────────
 function Drawer({ open, onClose, title, subtitle, children, width = 480, footer }) {
+  const drawerRef = React.useRef(null);
+  const titleId = React.useId ? React.useId() : 'drawer-title';
+  const subtitleId = React.useId ? React.useId() : 'drawer-subtitle';
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.activeElement;
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose && onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    window.setTimeout(() => {
+      const firstControl = drawerRef.current && drawerRef.current.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (firstControl) firstControl.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (previous && previous.focus) previous.focus();
+    };
+  }, [open, onClose]);
   if (!open) return null;
   return React.createElement('div', {
     style: { position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,35,32,.35)', display: 'flex', justifyContent: 'flex-end' },
     onClick: onClose
   },
     React.createElement('div', {
+      ref: drawerRef,
+      role: 'dialog',
+      'aria-modal': 'true',
+      'aria-labelledby': titleId,
+      'aria-describedby': subtitle ? subtitleId : undefined,
       onClick: e => e.stopPropagation(),
       style: {
         width, maxWidth: '100vw', height: '100%', background: '#fbfaf6',
@@ -313,8 +373,8 @@ function Drawer({ open, onClose, title, subtitle, children, width = 480, footer 
     },
       React.createElement('div', { style: { padding: '18px 24px', borderBottom: '1px solid #e4ded4', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexShrink: 0 } },
         React.createElement('div', null,
-          React.createElement('h2', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 18, fontWeight: 700, color: '#1a2320', margin: 0, letterSpacing: '-0.015em' } }, title),
-          subtitle && React.createElement('p', { style: { fontSize: 12.5, color: '#8a9490', margin: '3px 0 0' } }, subtitle)
+          React.createElement('h2', { id: titleId, style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 18, fontWeight: 700, color: '#1a2320', margin: 0, letterSpacing: '-0.015em' } }, title),
+          subtitle && React.createElement('p', { id: subtitleId, style: { fontSize: 12.5, color: '#8a9490', margin: '3px 0 0' } }, subtitle)
         ),
         React.createElement(IconButton, { name: 'x', title: 'Zatvoriť', onClick: onClose })
       ),

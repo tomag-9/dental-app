@@ -16,10 +16,7 @@ from apps.jobs.models import Job
 from .models import Clinic, Doctor, Patient
 from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 
-
-_XLSX_CONTENT_TYPE = (
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+_XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def _xlsx_response(header, rows, sheet_title, filename):
