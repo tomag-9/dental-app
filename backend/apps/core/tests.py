@@ -1346,12 +1346,27 @@ class LabSettingsValidationTests(APITestCase):
 class LabRolePermissionTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Perm Lab")
+        self.other_lab = Lab.objects.create(name="Other Perm Lab")
         self.admin = User.objects.create_user(
             username="perm_admin",
             password="pw",
             email="perm@test.sk",
             role="admin",
             lab=self.lab,
+        )
+        self.other_admin = User.objects.create_user(
+            username="perm_other_admin",
+            password="pw",
+            email="perm_other@test.sk",
+            role="admin",
+            lab=self.other_lab,
+        )
+        self.superadmin = User.objects.create_user(
+            username="perm_superadmin",
+            password="pw",
+            email="perm_super@test.sk",
+            role="superadmin",
+            is_superuser=True,
         )
 
     def test_list_permissions_empty(self):
@@ -1396,6 +1411,21 @@ class LabRolePermissionTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(LabRolePermission.objects.filter(id=override.id).exists())
+
+    def test_admin_cannot_manage_other_lab_permissions(self):
+        self.client.force_authenticate(user=self.other_admin)
+        resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_superadmin_can_manage_any_lab_permissions(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.post(
+            f"/api/core/labs/{self.lab.id}/permissions/",
+            {"role": "technician", "action": "jobs.write", "allowed": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["role"], "technician")
 
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")

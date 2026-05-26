@@ -534,48 +534,62 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="status-config")
     def status_config(self, request):
+        status_order = [
+            "new",
+            "in_progress",
+            "completed",
+            "finished_unfactured",
+            "finished_factured",
+            "cancelled",
+            "closed",
+        ]
+
+        def transitions(status_name):
+            allowed = self.allowed_transitions.get(status_name, set())
+            return [status for status in status_order if status in allowed]
+
         config = {
             "new": {
                 "label": "Nová",
                 "label_en": "New",
                 "color": "blue",
-                "allowed_transitions": ["in_progress", "cancelled"],
+                "allowed_transitions": transitions("new"),
             },
             "in_progress": {
                 "label": "V procese",
                 "label_en": "In Progress",
                 "color": "yellow",
-                "allowed_transitions": ["completed", "cancelled"],
+                "allowed_transitions": transitions("in_progress"),
             },
             "completed": {
                 "label": "Dokončená",
                 "label_en": "Completed",
                 "color": "green",
-                "allowed_transitions": ["in_progress"],
+                "allowed_transitions": transitions("completed"),
             },
             "cancelled": {
                 "label": "Zrušená",
                 "label_en": "Cancelled",
                 "color": "red",
-                "allowed_transitions": ["new"],
+                "allowed_transitions": transitions("cancelled"),
             },
             "finished_factured": {
                 "label": "Vyfakturovaná",
                 "label_en": "Invoiced",
                 "color": "purple",
-                "allowed_transitions": [],
+                "allowed_transitions": transitions("finished_factured"),
             },
             "finished_unfactured": {
                 "label": "Ukončená – nevyfakturovaná",
                 "label_en": "Closed – Not Invoiced",
                 "color": "gray",
-                "allowed_transitions": ["in_progress"],
+                "allowed_transitions": transitions("finished_unfactured"),
             },
             "closed": {
                 "label": "Uzavretá",
                 "label_en": "Closed",
                 "color": "slate",
-                "allowed_transitions": [],
+                "allowed_transitions": transitions("closed"),
             },
         }
         return Response(config)

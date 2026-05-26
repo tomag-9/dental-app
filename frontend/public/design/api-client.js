@@ -27,6 +27,10 @@
     const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
     const data = await readJson(response);
     if (!response.ok) {
+      if (response.status === 401) {
+        logout();
+        window.dispatchEvent(new CustomEvent('molaris-auth-expired'));
+      }
       const error = new Error(data && data.detail ? data.detail : 'API request failed');
       error.status = response.status;
       error.data = data;
@@ -199,6 +203,7 @@
   }
 
   function savedUser() {
+    if (!isAuthenticated()) return null;
     try { return JSON.parse(localStorage.getItem(userKey) || 'null'); } catch { return null; }
   }
 

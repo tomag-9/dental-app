@@ -10,12 +10,7 @@ function App() {
   const initialRole = (typeof window !== 'undefined' && window.__INITIAL_ROLE) || 'admin';
   const initialPage = initialRole === 'superadmin' ? 'sa_overview' : 'dashboard';
 
-  const [user, setUser] = React.useState(window.MolarisAPI.savedUser() || {
-    name:     initialRole === 'superadmin' ? 'Admin Platform'    : 'Ján Novák',
-    email:    initialRole === 'superadmin' ? 'admin@molaris.sk'   : 'jan.novak@molaris.sk',
-    role:     initialRole,
-    initials: initialRole === 'superadmin' ? 'AP' : 'JN',
-  });
+  const [user, setUser] = React.useState(() => window.MolarisAPI.savedUser());
   const [page, setPage] = React.useState(initialPage);
   const [jobId, setJobId] = React.useState(null);
   const [patientId, setPatientId] = React.useState(null);
@@ -27,7 +22,12 @@ function App() {
       if (event && event.detail) setUser(event.detail);
     };
     window.addEventListener('molaris-user-updated', onUserUpdate);
-    return () => window.removeEventListener('molaris-user-updated', onUserUpdate);
+    const onAuthExpired = () => setUser(null);
+    window.addEventListener('molaris-auth-expired', onAuthExpired);
+    return () => {
+      window.removeEventListener('molaris-user-updated', onUserUpdate);
+      window.removeEventListener('molaris-auth-expired', onAuthExpired);
+    };
   }, []);
 
   React.useEffect(() => {

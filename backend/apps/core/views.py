@@ -1820,7 +1820,14 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
         user = request.user
         if is_superadmin(user):
             return Lab.objects.filter(pk=lab_pk).first()
-        if is_admin_or_superadmin(user) and getattr(user, "lab_id", None) == lab_pk:
+        try:
+            requested_lab_id = int(lab_pk)
+        except (TypeError, ValueError):
+            return None
+        if (
+            is_admin_or_superadmin(user)
+            and getattr(user, "lab_id", None) == requested_lab_id
+        ):
             return user.lab
         return None
 

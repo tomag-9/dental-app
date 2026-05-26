@@ -21,6 +21,7 @@ from apps.jobs.models import (
     Technician,
     Vacation,
 )
+from apps.jobs.views import JobViewSet
 
 
 class DentalNotationTests(APITestCase):
@@ -1185,6 +1186,16 @@ class JobStatusConfigTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         resp = self.client.get("/api/jobs/jobs/status-config/")
         self.assertEqual(resp.data["closed"]["allowed_transitions"], [])
+
+    def test_status_config_matches_enforced_transitions(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/jobs/jobs/status-config/")
+        self.assertEqual(resp.status_code, 200)
+        for status_name, allowed in JobViewSet.allowed_transitions.items():
+            self.assertCountEqual(
+                resp.data[status_name]["allowed_transitions"],
+                allowed,
+            )
 
 
 class JobStatusChangeAuditLogTests(APITestCase):
