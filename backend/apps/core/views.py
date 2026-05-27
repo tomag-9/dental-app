@@ -1029,6 +1029,41 @@ class UserViewSet(viewsets.ModelViewSet):
             return
         self._assert_in_scope_or_superadmin(requester, target)
 
+    def _validate_update_contract(self, requester, target, data):
+        def requested_bool(value):
+            if isinstance(value, str):
+                return value.lower() not in ("false", "0", "no", "")
+            return bool(value)
+
+        if is_superadmin(requester):
+            return
+        if is_superadmin(target):
+            raise PermissionDenied("Cannot manage superadmin users")
+
+        requested_role = data.get("role")
+        if requested_role == "superadmin":
+            raise PermissionDenied("Only superadmin can assign superadmin role")
+        if (
+            target.id == requester.id
+            and requested_role
+            and requested_role != target.role
+        ):
+            raise PermissionDenied("Cannot change your own role")
+
+        if "lab" in data:
+            try:
+                requested_lab_id = int(data["lab"])
+            except (TypeError, ValueError):
+                raise ValidationError({"lab": "Invalid lab"})
+            if requested_lab_id != getattr(requester, "lab_id", None):
+                raise PermissionDenied("Cannot move users to another lab")
+
+        if (
+            "is_active" in data
+            and requested_bool(data["is_active"]) != target.is_active
+        ):
+            raise PermissionDenied("Only superadmin can change user active state")
+
     def get_queryset(self):
         user = self.request.user
         if is_superadmin(user):
@@ -1054,6 +1089,7 @@ class UserViewSet(viewsets.ModelViewSet):
         self._precheck_target_scope(request.user)
         target = self.get_object()
         self._assert_in_scope_or_superadmin(request.user, target)
+        self._validate_update_contract(request.user, target, request.data)
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
@@ -1061,6 +1097,7 @@ class UserViewSet(viewsets.ModelViewSet):
         self._precheck_target_scope(request.user)
         target = self.get_object()
         self._assert_in_scope_or_superadmin(request.user, target)
+        self._validate_update_contract(request.user, target, request.data)
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -1812,7 +1849,7 @@ class PermissionsMatrixView(APIView):
 
 
 class LabRolePermissionViewSet(viewsets.ViewSet):
-    """Manage per-lab role permission overrides. Admin-only."""
+    """Manage per-lab role permission metadata overrides. Admin-only."""
 
     permission_classes = [permissions.IsAuthenticated]
 

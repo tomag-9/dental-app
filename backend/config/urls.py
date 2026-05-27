@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.core.access import IsAdminOrSuperadminPermission
 from apps.core.views import (
     AuditLogViewSet,
     DashboardStatsView,
@@ -50,10 +51,17 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     # Swagger/Schema
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/",
+        SpectacularAPIView.as_view(permission_classes=[IsAdminOrSuperadminPermission]),
+        name="schema",
+    ),
     path(
         "api/docs/",
-        SpectacularSwaggerView.as_view(url_name="schema"),
+        SpectacularSwaggerView.as_view(
+            url_name="schema",
+            permission_classes=[IsAdminOrSuperadminPermission],
+        ),
         name="swagger-ui",
     ),
 ]

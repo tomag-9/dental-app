@@ -259,6 +259,73 @@ class CoreUserFlowsApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_admin_cannot_escalate_user_to_superadmin_via_user_aliases(self):
+        self.client.force_authenticate(user=self.admin_a)
+        for base_url in ("/api/core/users", "/api/users"):
+            response = self.client.patch(
+                f"{base_url}/{self.user_a.id}/",
+                {"role": "superadmin"},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.user_a.refresh_from_db()
+        self.assertEqual(self.user_a.role, "user")
+
+    def test_admin_cannot_move_user_to_another_lab_via_user_aliases(self):
+        self.client.force_authenticate(user=self.admin_a)
+        for base_url in ("/api/core/users", "/api/users"):
+            response = self.client.patch(
+                f"{base_url}/{self.user_a.id}/",
+                {"lab": self.lab_b.id},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.user_a.refresh_from_db()
+        self.assertEqual(self.user_a.lab_id, self.lab_a.id)
+
+    def test_admin_cannot_change_is_active_via_user_aliases(self):
+        self.client.force_authenticate(user=self.admin_a)
+        for base_url in ("/api/core/users", "/api/users"):
+            response = self.client.patch(
+                f"{base_url}/{self.user_a.id}/",
+                {"is_active": "false"},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.user_a.refresh_from_db()
+        self.assertTrue(self.user_a.is_active)
+
+    def test_admin_cannot_edit_superadmin_or_change_own_role(self):
+        self.client.force_authenticate(user=self.admin_a)
+        superadmin_response = self.client.patch(
+            f"/api/core/users/{self.superadmin.id}/",
+            {"nickname": "not_allowed"},
+            format="json",
+        )
+        self.assertEqual(superadmin_response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self_role_response = self.client.patch(
+            f"/api/core/users/{self.admin_a.id}/",
+            {"role": "user"},
+            format="json",
+        )
+        self.assertEqual(self_role_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.admin_a.refresh_from_db()
+        self.assertEqual(self.admin_a.role, "admin")
+
+    def test_superadmin_can_update_sensitive_user_fields(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.patch(
+            f"/api/core/users/{self.user_a.id}/",
+            {"lab": self.lab_b.id, "role": "admin", "is_active": False},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user_a.refresh_from_db()
+        self.assertEqual(self.user_a.lab_id, self.lab_b.id)
+        self.assertEqual(self.user_a.role, "admin")
+        self.assertFalse(self.user_a.is_active)
+
     def test_admin_can_create_team_invitation_for_own_lab(self):
         self.client.force_authenticate(user=self.admin_a)
 
@@ -1354,6 +1421,20 @@ class LabRolePermissionTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.user = User.objects.create_user(
+            username="perm_user",
+            password="pw",
+            email="perm_user@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+        self.technician = User.objects.create_user(
+            username="perm_technician",
+            password="pw",
+            email="perm_technician@test.sk",
+            role="technician",
+            lab=self.lab,
+        )
         self.other_admin = User.objects.create_user(
             username="perm_other_admin",
             password="pw",
@@ -1417,6 +1498,12 @@ class LabRolePermissionTests(APITestCase):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
         self.assertEqual(resp.status_code, 403)
 
+    def test_regular_user_and_technician_cannot_manage_permissions(self):
+        for user in (self.user, self.technician):
+            self.client.force_authenticate(user=user)
+            resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
+            self.assertEqual(resp.status_code, 403)
+
     def test_superadmin_can_manage_any_lab_permissions(self):
         self.client.force_authenticate(user=self.superadmin)
         resp = self.client.post(
@@ -1427,6 +1514,64 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["role"], "technician")
 
+    def test_permission_override_is_metadata_only_for_runtime_permissions(self):
+        from apps.core.models import LabRolePermission
+
+        LabRolePermission.objects.create(
+            lab=self.lab,
+            role="admin",
+            action="create_invoice",
+            allowed=False,
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/core/permissions/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["actions"]["create_invoice"])
+
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
         self.assertEqual(resp.status_code, 401)
+
+
+class SchemaDocsPolicyTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Schema Docs Lab")
+        self.admin = User.objects.create_user(
+            username="schema_admin",
+            password="pw",
+            email="schema_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.user = User.objects.create_user(
+            username="schema_user",
+            password="pw",
+            email="schema_user@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+        self.superadmin = User.objects.create_user(
+            username="schema_superadmin",
+            password="pw",
+            email="schema_super@test.sk",
+            role="superadmin",
+            is_superuser=True,
+        )
+
+    def test_schema_and_docs_require_authentication(self):
+        for url in ("/api/schema/", "/api/docs/"):
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_schema_and_docs_are_admin_only(self):
+        self.client.force_authenticate(user=self.user)
+        for url in ("/api/schema/", "/api/docs/"):
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_schema_and_docs_allow_admin_and_superadmin(self):
+        for user in (self.admin, self.superadmin):
+            self.client.force_authenticate(user=user)
+            for url in ("/api/schema/", "/api/docs/"):
+                resp = self.client.get(url)
+                self.assertEqual(resp.status_code, status.HTTP_200_OK)
