@@ -9,6 +9,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -16,6 +17,7 @@ from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent, Vacation
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
+from .auth import MolarisTokenObtainPairSerializer
 from .models import (
     AuditLog,
     Lab,
@@ -799,6 +801,12 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
     serializer_class = TeamInvitationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_throttles(self):
+        if self.action == "accept":
+            self.throttle_scope = "invitation_accept"
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
     def get_permissions(self):
         if self.action == "accept":
             return [permissions.AllowAny()]
@@ -859,7 +867,11 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
         )
         _send_invitation_email(invitation)
 
-    @action(detail=True, methods=["post"], permission_classes=[permissions.AllowAny])
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[permissions.AllowAny],
+    )
     @transaction.atomic
     def accept(self, request, pk=None):
         invitation = TeamInvitation.objects.select_related("lab").filter(pk=pk).first()
@@ -1008,6 +1020,12 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        if self.action == "signup":
+            self.throttle_scope = "signup"
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def _assert_can_manage_users(self, requester):
         if not is_admin_or_superadmin(requester):
@@ -1380,34 +1398,14 @@ class SessionLoginView(APIView):
     """JWT login that also persists a UserSession record."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
     def post(self, request):
-        from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-        serializer = TokenObtainPairSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = serializer.user
-        refresh = serializer.validated_data["refresh"]
-
-        from rest_framework_simplejwt.tokens import RefreshToken as _RT
-
-        token_obj = _RT(refresh)
-        jti = token_obj["jti"]
-        exp = timezone.datetime.fromtimestamp(token_obj["exp"], tz=timezone.utc)
-
-        device_info = request.META.get("HTTP_USER_AGENT", "")[:500]
-        UserSession.objects.update_or_create(
-            jti=jti,
-            defaults={
-                "user": user,
-                "ip_address": _client_ip(request),
-                "device_info": device_info,
-                "expires_at": exp,
-                "revoked": False,
-            },
+        serializer = MolarisTokenObtainPairSerializer(
+            data=request.data, context={"request": request}
         )
-
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data)
 
 
@@ -1456,6 +1454,12 @@ class LabApiKeyViewSet(viewsets.ViewSet):
     """Generate and manage lab API keys (hashed storage, plaintext shown once)."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        if self.action == "create":
+            self.throttle_scope = "api_key_create"
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def _assert_admin(self, user):
         if not is_admin_or_superadmin(user):
@@ -1616,6 +1620,15 @@ class TwoFactorView(APIView):
     """TOTP-based 2FA: setup, verify (activate), disable."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_throttles(self):
+        if (
+            self.request.method == "POST"
+            and self.request.query_params.get("action", "setup") == "verify"
+        ):
+            self.throttle_scope = "two_factor_verify"
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request):
         """Return current 2FA status for the user."""

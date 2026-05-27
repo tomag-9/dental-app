@@ -2,9 +2,9 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.core.access import IsAdminOrSuperadminPermission
+from apps.core.auth import MolarisTokenObtainPairView, MolarisTokenRefreshView
 from apps.core.views import (
     AuditLogViewSet,
     DashboardStatsView,
@@ -48,8 +48,8 @@ urlpatterns = [
     path("api/finance/", include("apps.finance.urls")),
     path("api/inventory/", include("apps.inventory.urls")),
     # Auth
-    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/token/", MolarisTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", MolarisTokenRefreshView.as_view(), name="token_refresh"),
     # Swagger/Schema
     path(
         "api/schema/",
