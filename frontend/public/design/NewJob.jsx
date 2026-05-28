@@ -17,9 +17,7 @@ function NewJob({ open, onClose }) {
     toothColor: '',
     patientLabel: '',
     patientAge: '',
-    items: [
-      { code: 'KOR-ZIR', name: 'Korunka zirkónová', tooth: '14', tooth_scope: '', qty: 1, price: 280.00 }
-    ]
+    items: []
   });
 
   const steps = [
@@ -35,7 +33,7 @@ function NewJob({ open, onClose }) {
   const selectedPatient = (workspace.patients || []).find((patient) => String(patient.id) === String(data.patient));
   const patientMeta = getNewJobPatientMeta(selectedPatient, data);
 
-  const reset = () => { setStep(0); setData(d => ({ ...d, patient: '', patientLabel: '', patientAge: '', clinic: '', doctor: '', technician: '', due: '', note: '', toothColor: '' })); };
+  const reset = () => { setStep(0); setData(d => ({ ...d, patient: '', patientLabel: '', patientAge: '', clinic: '', doctor: '', technician: '', due: '', note: '', toothColor: '', items: [] })); };
   const canSubmit = data.patient && data.clinic && data.items.length && data.items.every((it) => it.code && Number(it.qty) > 0);
   const submit = async () => {
     if (!canSubmit) { setError('Vyberte pacienta, kliniku a aspoň jednu položku z cenníka.'); return; }
@@ -208,31 +206,24 @@ function StepPatient({ data, set, setData, workspace }) {
         setData((current) => ({ ...current, patient: e.target.value, patientLabel: meta.name, patientAge: meta.age || '' }));
       },
       type: 'select',
-      options: patients.length ? patients.map((p) => ({ value: String(p.id), label: `${p.first} ${p.last}` })) : [
-        { value: 'kovacova', label: 'Mária Kováčová' },
-        { value: 'horvath',  label: 'Peter Horváth' },
-        { value: 'blahova',  label: 'Jana Blahová' },
-        { value: 'new',      label: '+ Vytvoriť nového pacienta…' },
-      ]
+      options: patients.length
+        ? patients.map((p) => ({ value: String(p.id), label: `${p.first} ${p.last}` }))
+        : [{ value: '', label: 'Žiadni pacienti' }]
     }),
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
       React.createElement(FormField, {
         label: 'Klinika', required: true, value: data.clinic, onChange: e => set('clinic', e.target.value),
         type: 'select',
-        options: clinics.length ? clinics.map((c) => ({ value: String(c.id), label: c.name })) : [
-          { value: 'ba', label: 'Klinika Bratislava' },
-          { value: 'ke', label: 'ZubMed Košice' },
-          { value: 'za', label: 'DentaPrima Žilina' },
-        ]
+        options: clinics.length
+          ? clinics.map((c) => ({ value: String(c.id), label: c.name }))
+          : [{ value: '', label: 'Žiadne kliniky' }]
       }),
       React.createElement(FormField, {
         label: 'Odosielajúci lekár', required: true, value: data.doctor, onChange: e => set('doctor', e.target.value),
         type: 'select',
-        options: doctors.length ? doctors.map((d) => ({ value: String(d.id), label: `${d.title ? d.title + ' ' : ''}${d.first} ${d.last}` })) : [
-          { value: 'novak',   label: 'MUDr. Pavol Novák' },
-          { value: 'blaho',   label: 'MUDr. Eva Blaho' },
-          { value: 'sloboda', label: 'MUDr. Igor Sloboda' },
-        ]
+        options: doctors.length
+          ? doctors.map((d) => ({ value: String(d.id), label: `${d.title ? d.title + ' ' : ''}${d.first} ${d.last}` }))
+          : [{ value: '', label: 'Žiadni lekári' }]
       })
     ),
     React.createElement(FormField, {
@@ -240,12 +231,7 @@ function StepPatient({ data, set, setData, workspace }) {
       value: data.technician, onChange: e => set('technician', e.target.value),
       type: 'select',
       helpText: 'Voliteľné — môžete prideliť neskôr.',
-      options: technicians.length ? technicians.map((t) => ({ value: String(t.id), label: `${t.first} ${t.last} — vyťaženie ${t.workload} %` })) : [
-        { value: 'novak-j',  label: 'Ján Novák — vyťaženie 85 %' },
-        { value: 'mrazova',  label: 'Anna Mrázová — vyťaženie 72 %' },
-        { value: 'bartos',   label: 'Marek Bartoš — vyťaženie 60 %' },
-        { value: 'polak',    label: 'Štefan Polák — vyťaženie 95 %' },
-      ]
+      options: [{ value: '', label: 'Nepridelený' }].concat(technicians.map((t) => ({ value: String(t.id), label: `${t.first} ${t.last} — vyťaženie ${t.workload} %` })))
     })
   );
 }
@@ -254,15 +240,7 @@ function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
   const [notation, setNotation] = React.useState('fdi');
   const [selectedTooth, setSelectedTooth] = React.useState(String(data.items[0]?.tooth || 26));
   const [quick, setQuick] = React.useState('');
-  const designCatalog = window.PROC_CATALOG || [];
-  const fallbackCatalog = designCatalog.length ? designCatalog : [
-    { code: 'KOR-ZIR', name: 'Korunka zirkónová', cat: 'crown', price: 280.00 },
-    { code: 'MOS-3Z',  name: 'Mostík 3-členný', cat: 'bridge', price: 540.00 },
-    { code: 'INL-KER', name: 'Inlay keramický', cat: 'filling', price: 210.00 },
-    { code: 'PRO-CEL', name: 'Snímateľná prot.', cat: 'denture', price: 480.00 },
-    { code: 'IMP-KOR', name: 'Korunka na implantát', cat: 'implant', price: 320.00 },
-  ];
-  const catalog = (workspace.priceList && workspace.priceList.length ? workspace.priceList : fallbackCatalog)
+  const catalog = (workspace.priceList || [])
     .map((item) => {
       const known = (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]) || {};
       return {
@@ -344,7 +322,7 @@ function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
             value: quick,
             onChange: (event) => setQuick(event.target.value),
             onKeyDown: (event) => { if (event.key === 'Enter') runQuickAdd(); },
-            placeholder: 'Rýchle zadanie: 26 KOR-ZIR 1 alebo U KOR-ZIR 1',
+            placeholder: 'Rýchle zadanie: 26 KOD 1 alebo U KOD 1',
             style: { width: 260, padding: '6px 10px 6px 28px', border: '1px solid #0d7c6b', borderRadius: 6, fontSize: 12, fontFamily: 'ui-monospace,monospace', outline: 'none', background: '#fff', color: '#1a2320' }
           }),
           React.createElement('span', { style: { position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#0d7c6b' } }, '↵')

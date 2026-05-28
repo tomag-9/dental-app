@@ -9,25 +9,6 @@ function JobDetail({ jobId, onBack }) {
   const [editFields, setEditFields] = React.useState({ description: '', due_date: '', priority: 'normal', technician: '' });
   const workspaceJob = workspace.jobs && workspace.jobs.find((item) => String(item.id) === String(jobId));
   const rawJob = workspaceJob && workspaceJob.raw;
-  const fallbackJob = {
-    id: jobId || 12,
-    patient: { name: 'Mária Kováčová', birth: '8512151234', phone: '+421 911 222 333' },
-    clinic: 'Klinika Bratislava',
-    doctor: 'MUDr. Pavol Novák',
-    type: 'Mostík 3-členný zirkónový',
-    status: 'in_progress',
-    statusLabel: 'V priebehu',
-    technician: 'Ján Novák',
-    received: '28. 4. 2025',
-    due: '15. 5. 2025',
-    delivered: null,
-    note: 'Pacientka má alergiu na nikel. Prosíme dodať čistý zirkón. Skúška hotového mostíka pred glazúrou.',
-    items: [
-      { name: 'Korunka zirkónová',  tooth: '14', price: 280.00 },
-      { name: 'Mostík 3-členný',    tooth: '15-17', price: 540.00 },
-      { name: 'Inlay keramický',    tooth: '46', price: 210.00 },
-    ],
-  };
   const statusLabels = {
     new: 'Nová',
     in_progress: 'V priebehu',
@@ -37,7 +18,64 @@ function JobDetail({ jobId, onBack }) {
     finished_unfactured: 'Nevyfakturovaná',
     closed: 'Uzavretá',
   };
-  const job = rawJob ? {
+  const detailHeader = (title, subtitle) => React.createElement(PageHeader, {
+    title,
+    subtitle,
+    breadcrumbs: [{ label: 'Práce', onClick: onBack }, { label: title }],
+    actions: [
+      React.createElement(Button, { key: 'b', variant: 'outline', onClick: onBack },
+        React.createElement(Icon, { name: 'arrowLeft', size: 14 }), 'Späť na zoznam'),
+    ]
+  });
+
+  React.useEffect(() => {
+    if (!rawJob) return;
+    setEditFields({
+      description: rawJob.description || '',
+      due_date: rawJob.due_date || '',
+      priority: rawJob.priority || 'normal',
+      technician: rawJob.technician ? String(rawJob.technician) : '',
+    });
+  }, [rawJob && rawJob.id]);
+
+  if (workspace.loading && !rawJob) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      detailHeader('Práca', 'Načítavam detail práce.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam prácu…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error && !rawJob) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      detailHeader('Práca', 'Detail práce sa nepodarilo načítať.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať prácu',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
+
+  if (!rawJob) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      detailHeader('Práca nenájdená', 'V API sa nenašla práca pre tento identifikátor.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(EmptyState, { title: 'Práca nenájdená', description: 'Skontrolujte výber práce alebo sa vráťte na zoznam.' })
+        )
+      )
+    );
+  }
+
+  const job = {
     id: rawJob.id,
     patient: {
       name: workspaceJob.patient,
@@ -60,25 +98,8 @@ function JobDetail({ jobId, onBack }) {
       scope: item.tooth_scope || '',
       price: Number(item.total || item.unit_price || 0),
     })),
-  } : fallbackJob;
+  };
 
-  React.useEffect(() => {
-    if (!rawJob) return;
-    setEditFields({
-      description: rawJob.description || '',
-      due_date: rawJob.due_date || '',
-      priority: rawJob.priority || 'normal',
-      technician: rawJob.technician ? String(rawJob.technician) : '',
-    });
-  }, [rawJob && rawJob.id]);
-
-  const fallbackTimeline = [
-    { date: '28. 4. 2025 09:14', actor: 'Recepcia', event: 'Práca prijatá', note: 'Z odberu kuriéra. Zaevidovaná do systému.', icon: 'inbox', color: '#0d7c6b' },
-    { date: '29. 4. 2025 14:30', actor: 'Ján Novák', event: 'Pridelená technikovi', note: 'Priradené k pracovnej fronte.', icon: 'user', color: '#0d7c6b' },
-    { date: '2. 5. 2025 11:08',  actor: 'Ján Novák', event: 'Skenovanie dokončené', note: 'Digitálny model v archíve.', icon: 'check', color: '#16a34a' },
-    { date: '5. 5. 2025 16:45',  actor: 'Anna Mrázová', event: 'Modelovanie ukončené', note: 'Pripravené na frézovanie.', icon: 'wrench', color: '#0d7c6b' },
-    { date: '8. 5. 2025 10:22',  actor: 'Systém',    event: 'Frézovanie spustené', note: 'CAM stroj #2.', icon: 'activity', color: '#d97706' },
-  ];
   const timeline = rawJob && rawJob.timeline && rawJob.timeline.length
     ? rawJob.timeline.map((event) => ({
         date: event.created_at ? new Date(event.created_at).toLocaleString('sk-SK') : '—',
@@ -88,7 +109,7 @@ function JobDetail({ jobId, onBack }) {
         icon: event.event === 'status_changed' ? 'activity' : event.event === 'assigned' ? 'user' : 'check',
         color: event.event === 'status_changed' ? '#d97706' : '#0d7c6b',
       }))
-    : fallbackTimeline;
+    : [];
 
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
   const total = job.items.reduce((s, it) => s + it.price, 0);
@@ -233,7 +254,8 @@ function JobDetail({ jobId, onBack }) {
           React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Položky práce')),
           React.createElement(CardContent, null,
             React.createElement('div', { style: { border: '1px solid #ece7dc', borderRadius: 8, overflow: 'hidden', background: '#fff' } },
-              ...job.items.map((it, i) => React.createElement('div', {
+              ...(job.items.length
+                ? job.items.map((it, i) => React.createElement('div', {
                 key: i,
                 style: { display: 'grid', gridTemplateColumns: '40px 1fr 100px 110px', alignItems: 'center', padding: '12px 14px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5', gap: 10 }
               },
@@ -246,7 +268,8 @@ function JobDetail({ jobId, onBack }) {
                 ),
                 React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490', textAlign: 'right' } }, '1×'),
                 React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, color: '#1a2320', textAlign: 'right' } }, fmt(it.price))
-              )),
+              ))
+                : [React.createElement(EmptyState, { key: 'empty-items', title: 'Žiadne položky', description: 'Táto práca zatiaľ nemá položky.' })]),
               React.createElement('div', { style: { padding: '12px 14px', background: '#fbfaf6', borderTop: '1px solid #f0ede5', display: 'flex', justifyContent: 'space-between', fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, color: '#1a2320' } },
                 React.createElement('span', null, 'Spolu (bez DPH)'),
                 React.createElement('span', null, fmt(total))
@@ -270,7 +293,8 @@ function JobDetail({ jobId, onBack }) {
         React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'História')),
         React.createElement(CardContent, null,
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' } },
-            ...timeline.map((t, i) => React.createElement('div', {
+            ...(timeline.length
+              ? timeline.map((t, i) => React.createElement('div', {
               key: i,
               style: { display: 'flex', gap: 12, paddingBottom: i === timeline.length - 1 ? 0 : 18, position: 'relative' }
             },
@@ -288,6 +312,7 @@ function JobDetail({ jobId, onBack }) {
                 t.note && React.createElement('div', { style: { fontSize: 12, color: '#5a6b66', marginTop: 5, padding: '6px 10px', background: '#fbfaf6', borderRadius: 6, border: '1px solid #f0ede5' } }, t.note)
               )
             ))
+              : [React.createElement(EmptyState, { key: 'empty-timeline', title: 'Žiadna história', description: 'Pre túto prácu zatiaľ nie je evidovaná časová os.' })])
           ),
           React.createElement('div', { style: { marginTop: 16, paddingTop: 16, borderTop: '1px solid #f0ede5' } },
             React.createElement(Button, { variant: 'outline', size: 'sm', style: { width: '100%' } },

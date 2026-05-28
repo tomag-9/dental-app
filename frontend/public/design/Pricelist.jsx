@@ -4,19 +4,7 @@ function Pricelist({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const workspace = window.MolarisAPI.useWorkspace();
-  const fallbackItems = [
-    { id: 1,  code: 'KOR-ZIR',  name: 'Korunka zirkónová',          category: 'koruny',   unit: 'ks', price: 280.00, vat: 20 },
-    { id: 2,  code: 'KOR-KER',  name: 'Korunka celokeramická',      category: 'koruny',   unit: 'ks', price: 240.00, vat: 20 },
-    { id: 3,  code: 'KOR-KOV',  name: 'Korunka kovokeramická',      category: 'koruny',   unit: 'ks', price: 180.00, vat: 20 },
-    { id: 4,  code: 'MOS-3Z',   name: 'Mostík 3-členný zirkón',     category: 'mostiky',  unit: 'ks', price: 540.00, vat: 20 },
-    { id: 5,  code: 'MOS-4Z',   name: 'Mostík 4-členný zirkón',     category: 'mostiky',  unit: 'ks', price: 720.00, vat: 20 },
-    { id: 6,  code: 'INL-KER',  name: 'Inlay keramický',            category: 'vyplne',   unit: 'ks', price: 210.00, vat: 20 },
-    { id: 7,  code: 'PRO-CEL',  name: 'Celková snímateľná protéza', category: 'protezy',  unit: 'ks', price: 480.00, vat: 20 },
-    { id: 8,  code: 'PRO-CIA',  name: 'Čiastočná snímateľná prot.', category: 'protezy',  unit: 'ks', price: 380.00, vat: 20 },
-    { id: 9,  code: 'IMP-ABU',  name: 'Implantátový abutment',      category: 'implant',  unit: 'ks', price: 120.00, vat: 20 },
-    { id: 10, code: 'IMP-KOR',  name: 'Korunka na implantát',       category: 'implant',  unit: 'ks', price: 320.00, vat: 20 },
-  ];
-  const items = workspace.priceList && workspace.priceList.length ? workspace.priceList : fallbackItems;
+  const items = workspace.priceList || [];
   const cats = { all: 'Všetky', koruny: 'Korunky', mostiky: 'Mostíky', vyplne: 'Výplne', protezy: 'Protézy', implant: 'Implantológia' };
   const filtered = items.filter(i => {
     const m = !search || [i.code, i.name].some(v => v.toLowerCase().includes(search.toLowerCase()));
@@ -25,17 +13,44 @@ function Pricelist({ onNavigate, onCreate }) {
     return true;
   });
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Cenník',
+    subtitle: 'Konfigurácia cien dentálnych výkonov a platnosti cenníka.',
+    breadcrumbs: [{ label: 'Financie', onClick: () => onNavigate('finance') }, { label: 'Cenník' }],
+    actions: [
+      React.createElement(Button, { key: 'imp', variant: 'outline', disabled: workspace.loading }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať CSV'),
+      React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať položku'),
+    ]
+  });
+
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam cenník…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať cenník',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Cenník',
-      subtitle: 'Konfigurácia cien dentálnych výkonov a platnosti cenníka.',
-      breadcrumbs: [{ label: 'Financie', onClick: () => onNavigate('finance') }, { label: 'Cenník' }],
-      actions: [
-        React.createElement(Button, { key: 'imp', variant: 'outline' }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať CSV'),
-        React.createElement(Button, { key: 'add', onClick: onCreate }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať položku'),
-      ]
-    }),
+    pageHeader,
 
     React.createElement(Card, null,
       React.createElement(CardHeader, { style: { padding: 14, borderBottom: '1px solid #f0ede5', display: 'flex', alignItems: 'center', gap: 12 } },

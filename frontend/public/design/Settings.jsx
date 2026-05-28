@@ -359,14 +359,6 @@ function TeamPanel() {
       });
   }, []);
 
-  const fallbackMembers = [
-    { name: 'Ján Novák',  role: 'Administrátor', email: 'jan.novak@dl.sk',   status: 'active' },
-    { name: 'Anna Mrázová', role: 'Technik',      email: 'anna.m@dl.sk',     status: 'active' },
-    { name: 'Marek Bartoš', role: 'Technik',      email: 'marek.b@dl.sk',    status: 'active' },
-    { name: 'Tereza H.',    role: 'Junior tech.', email: 'tereza.h@dl.sk',   status: 'pending' },
-  ];
-  const visibleMembers = members.length > 0 ? members : fallbackMembers;
-
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Tím a oprávnenia', desc: 'Členovia laboratória s prístupom do aplikácie.' }),
     React.createElement('div', { style: { padding: 22 } },
@@ -375,7 +367,11 @@ function TeamPanel() {
       ),
       React.createElement('div', { style: { border: '1px solid #ece7dc', borderRadius: 8, overflow: 'hidden', background: '#fff' } },
         loading ? React.createElement('div', { style: { padding: 16, textAlign: 'center', color: '#8a9490' } }, 'Načítavam...')
-        : visibleMembers.map((m, i) => React.createElement('div', {
+        : members.length === 0
+          ? React.createElement('div', { style: { padding: 16 } },
+              React.createElement(EmptyState, { title: 'Žiadni členovia', description: 'Backend nevrátil žiadnych členov tímu.' })
+            )
+          : members.map((m, i) => React.createElement('div', {
           key: m.id || i,
           style: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
         },

@@ -3,31 +3,52 @@
 function Doctors({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
-  const fallbackDoctors = [
-    { id: 1, title: 'MUDr.', first: 'Pavol', last: 'Novák',   clinic: 'Klinika Bratislava', specialty: 'Protetika',     phone: '+421 905 111 222', email: 'novak@klinikaba.sk', activeJobs: 4 },
-    { id: 2, title: 'MUDr.', first: 'Eva',   last: 'Blaho',   clinic: 'ZubMed Košice',      specialty: 'Implantológia', phone: '+421 905 333 444', email: 'blaho@zubmed.sk',   activeJobs: 3 },
-    { id: 3, title: 'MUDr.', first: 'Igor',  last: 'Sloboda', clinic: 'DentaPrima Žilina',  specialty: 'Konzervačná',   phone: '+421 905 555 666', email: 'sloboda@dp.sk',     activeJobs: 2 },
-    { id: 4, title: 'MUDr.', first: 'Monika',last: 'Krížová', clinic: 'Klinika Bratislava', specialty: 'Estetická',     phone: '+421 905 777 888', email: 'krizova@klinikaba.sk', activeJobs: 1 },
-    { id: 5, title: 'MDDr.', first: 'Jakub', last: 'Polák',   clinic: 'Smile Centrum Nitra', specialty: 'Ortodoncia',   phone: '+421 905 999 000', email: 'polak@smile.sk',    activeJobs: 0 },
-    { id: 6, title: 'MUDr.', first: 'Lucia', last: 'Šimková', clinic: 'Estetika Prešov',    specialty: 'Protetika',     phone: '+421 905 121 343', email: 'simkova@est.sk',    activeJobs: 0 },
-  ];
-  const doctors = workspace.doctors && workspace.doctors.length ? workspace.doctors : fallbackDoctors;
+  const doctors = workspace.doctors || [];
   const filtered = doctors.filter(d => !search || `${d.first} ${d.last} ${d.clinic} ${d.specialty}`.toLowerCase().includes(search.toLowerCase()));
-  const initials = d => `${d.first[0]}${d.last[0]}`;
+  const initials = d => `${(d.first || '?')[0]}${(d.last || '?')[0]}`;
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Lekári',
+    subtitle: 'Odosielajúci lekári a ich kontaktné údaje.',
+    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať lekára')]
+  });
+
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam lekárov…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať lekárov',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Lekári',
-      subtitle: 'Odosielajúci lekári a ich kontaktné údaje.',
-      actions: [React.createElement(Button, { key: 'add', onClick: onCreate }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať lekára')]
-    }),
+    pageHeader,
     React.createElement(Card, null,
       React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },
         React.createElement(CardTitle, null, `Všetci lekári (${filtered.length})`),
         React.createElement(SearchInput, { value: search, onChange: setSearch, placeholder: 'Meno, klinika, špecializácia…', width: 300 })
       ),
       React.createElement(CardContent, { style: { paddingTop: 0 } },
-        React.createElement(DataTable, {
+        filtered.length === 0
+          ? React.createElement(EmptyState, { title: 'Žiadni lekári', description: search ? 'Skúste upraviť vyhľadávanie.' : 'Začnite vytvorením prvého lekára.' })
+          : React.createElement(DataTable, {
           columns: [
             { key: 'name', label: 'Lekár', render: d => React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
                 React.createElement('div', { style: { width: 32, height: 32, borderRadius: '50%', background: '#d4f0eb', color: '#085c4e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 11, fontWeight: 700 } }, initials(d)),

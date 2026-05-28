@@ -28,18 +28,54 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
       .catch(() => {});
   }, [patientId]);
 
-  const fallbackPatient = {
-    id: patientId || 1,
-    title: '',
-    first: 'Mária', last: 'Kováčová',
-    birth: '8512151234', insurance: 'VšZP', age: 39,
-    phone: '+421 911 222 333', email: 'kovacova@email.sk',
-    address: 'Pribinova 24, 811 09 Bratislava',
-    clinic: 'Klinika Bratislava', doctor: 'MUDr. Pavol Novák',
-    note: 'Alergia na nikel. Preferuje obeč ranné termíny.',
-    firstVisit: '14. 3. 2023', totalSpent: 4280.00,
-  };
-  const p = workspacePatient ? {
+  const pageHeader = (title, subtitle) => React.createElement(PageHeader, {
+    title,
+    subtitle,
+    breadcrumbs: [{ label: 'Pacienti', onClick: onBack }, { label: title }],
+    actions: [
+      React.createElement(Button, { key: 'b', variant: 'outline', onClick: onBack },
+        React.createElement(Icon, { name: 'arrowLeft', size: 14 }), 'Späť'),
+    ]
+  });
+
+  if (workspace.loading && !workspacePatient) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader('Pacient', 'Načítavam detail pacienta.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam pacienta…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error && !workspacePatient) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader('Pacient', 'Detail pacienta sa nepodarilo načítať.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať pacienta',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
+
+  if (!workspacePatient) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader('Pacient nenájdený', 'V API sa nenašla karta pacienta pre tento identifikátor.'),
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(EmptyState, { title: 'Pacient nenájdený', description: 'Skontrolujte výber pacienta alebo sa vráťte na zoznam.' })
+        )
+      )
+    );
+  }
+
+  const p = {
     id: workspacePatient.id,
     title: '',
     first: workspacePatient.first,
@@ -55,15 +91,9 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
     note: 'Bez poznámky.',
     firstVisit: workspacePatient.raw.created_at ? new Date(workspacePatient.raw.created_at).toLocaleDateString('sk-SK') : '—',
     totalSpent: revenueStats ? parseFloat(revenueStats.total_revenue) : (patientJobs || []).reduce((sum, job) => sum + Number(job.raw.price || 0), 0),
-  } : fallbackPatient;
+  };
 
-  const fallbackJobs = [
-    { id: 12, type: 'Mostík 3-členný zirkón', status: 'in_progress', statusLabel: 'V priebehu', received: '28. 4. 2025', due: '15. 5. 2025', total: 540.00 },
-    { id: 5,  type: 'Korunka zirkónová',      status: 'completed',   statusLabel: 'Dokončená',  received: '12. 2. 2025', due: '5. 3. 2025',  total: 280.00 },
-    { id: 2,  type: 'Inlay keramický',        status: 'completed',   statusLabel: 'Dokončená',  received: '20. 11. 2024',due: '8. 12. 2024', total: 210.00 },
-    { id: 1,  type: 'Konzultácia + skenovanie',status: 'completed',  statusLabel: 'Dokončená',  received: '14. 3. 2023', due: '14. 3. 2023', total: 80.00 },
-  ];
-  const jobs = patientJobs && patientJobs.length
+  const jobs = patientJobs
     ? patientJobs.map((job) => ({
         id: job.id,
         type: job.type,
@@ -73,10 +103,10 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
         due: job.due,
         total: Number(job.raw.price || 0),
       }))
-    : fallbackJobs;
+    : [];
 
   const fmt = n => Number(n).toFixed(2).replace('.', ',') + ' €';
-  const initials = `${p.first[0]}${p.last[0]}`;
+  const initials = `${(p.first || '?')[0]}${(p.last || '?')[0]}`;
 
   const toothMapEntries = toothMap ? Object.entries(toothMap) : [];
 
@@ -125,7 +155,9 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
             React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490' } }, jobs.length, ' záznamov od ', p.firstVisit)
           ),
           React.createElement(CardContent, { style: { paddingTop: 0 } },
-            React.createElement(DataTable, {
+            jobs.length === 0
+              ? React.createElement(EmptyState, { title: 'Žiadne práce', description: 'Pacient zatiaľ nemá evidované práce.' })
+              : React.createElement(DataTable, {
               onRowClick: r => onOpenJob && onOpenJob(r.id),
               columns: [
                 { key: 'id', label: 'ID', width: 70, render: r => React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: '#0d7c6b' } }, `#${r.id}`) },

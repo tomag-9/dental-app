@@ -3,23 +3,43 @@
 function Clinics({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
-  const fallbackClinics = [
-    { id: 1, name: 'Klinika Bratislava', address: 'Hviezdoslavovo nám. 12, Bratislava', ico: '12345678', phone: '+421 2 5293 1234', email: 'info@klinikaba.sk', doctors: 4, activeJobs: 8, ytd: 18420.00 },
-    { id: 2, name: 'ZubMed Košice', address: 'Hlavná 64, Košice', ico: '23456789', phone: '+421 55 6789 012', email: 'kontakt@zubmed.sk', doctors: 3, activeJobs: 5, ytd: 12340.50 },
-    { id: 3, name: 'DentaPrima Žilina', address: 'Národná 23, Žilina', ico: '34567890', phone: '+421 41 5642 089', email: 'info@dentaprima.sk', doctors: 2, activeJobs: 3, ytd: 7820.00 },
-    { id: 4, name: 'Smile Centrum Nitra', address: 'Štefánikova 18, Nitra', ico: '45678901', phone: '+421 37 6589 444', email: 'recepcia@smile.sk', doctors: 2, activeJobs: 2, ytd: 4120.00 },
-    { id: 5, name: 'Estetika Prešov', address: 'Hlavná 89, Prešov', ico: '56789012', phone: '+421 51 7421 998', email: 'info@estetika.sk', doctors: 1, activeJobs: 0, ytd: 980.00 },
-  ];
-  const clinics = workspace.clinics && workspace.clinics.length ? workspace.clinics : fallbackClinics;
+  const clinics = workspace.clinics || [];
   const filtered = clinics.filter(c => !search || [c.name, c.address, c.ico].some(v => v.toLowerCase().includes(search.toLowerCase())));
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Kliniky',
+    subtitle: 'Klientske kliniky a ich zmluvné údaje.',
+    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať kliniku')]
+  });
+
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam kliniky…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať kliniky',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Kliniky',
-      subtitle: 'Klientske kliniky a ich zmluvné údaje.',
-      actions: [React.createElement(Button, { key: 'add', onClick: onCreate }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať kliniku')]
-    }),
+    pageHeader,
 
     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 } },
       React.createElement('div', { style: { fontSize: 13, color: '#5a6b66' } },
@@ -30,7 +50,9 @@ function Clinics({ onNavigate, onCreate }) {
     ),
 
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 } },
-      ...filtered.map(c => React.createElement(Card, { key: c.id, style: { display: 'flex', flexDirection: 'column' } },
+      ...(filtered.length === 0
+        ? [React.createElement(EmptyState, { key: 'empty', title: 'Žiadne kliniky', description: search ? 'Skúste upraviť vyhľadávanie.' : 'Začnite vytvorením prvej kliniky.' })]
+        : filtered.map(c => React.createElement(Card, { key: c.id, style: { display: 'flex', flexDirection: 'column' } },
         React.createElement('div', { style: { padding: '18px 20px 14px', borderBottom: '1px solid #f0ede5' } },
           React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 12 } },
             React.createElement('div', { style: { width: 44, height: 44, borderRadius: 10, background: '#d4f0eb', color: '#0d7c6b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
@@ -61,7 +83,7 @@ function Clinics({ onNavigate, onCreate }) {
           React.createElement(MiniStat, { label: 'Práce',   value: c.activeJobs, highlight: c.activeJobs > 0 }),
           React.createElement(MiniStat, { label: 'YTD',     value: fmt(c.ytd) })
         )
-      ))
+      )))
     )
   );
 }

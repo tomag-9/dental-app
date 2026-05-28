@@ -390,15 +390,15 @@
 
   async function loadWorkspace() {
     const [stats, jobsRaw, patientsRaw, clinicsRaw, doctors, technicians, invoices, priceList, warehouse] = await Promise.all([
-      request('/dashboard/stats/').catch(() => null),
-      request('/jobs/jobs/').catch(() => []),
-      request('/crm/patients/').catch(() => []),
-      request('/crm/clinics/').catch(() => []),
-      request('/crm/doctors/').catch(() => []),
-      request('/jobs/technicians/').catch(() => []),
-      request('/invoices/').catch(() => []),
-      request('/finance/price-list/').catch(() => []),
-      request('/warehouse/').catch(() => []),
+      request('/dashboard/stats/'),
+      request('/jobs/jobs/'),
+      request('/crm/patients/'),
+      request('/crm/clinics/'),
+      request('/crm/doctors/'),
+      request('/jobs/technicians/'),
+      request('/invoices/'),
+      request('/finance/price-list/'),
+      request('/warehouse/'),
     ]);
     const jobs = jobsRaw.map(normalize.job);
     const patients = patientsRaw.map((patient) => normalize.patient(patient, jobs));

@@ -9,6 +9,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "lint": "eslint src",
     "smoke:auth": "node scripts/auth-smoke.mjs",
+    "smoke:no-prod-mocks": "node scripts/no-prod-mocks-smoke.mjs",
     "smoke:visual": "node scripts/visual-smoke.mjs"
   },
   "dependencies": {

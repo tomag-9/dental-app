@@ -5,21 +5,7 @@ function Calendar({ onNavigate }) {
   const [weekOffset, setWeekOffset] = React.useState(0);
   const workspace = window.MolarisAPI.useWorkspace();
 
-  // Synthetic events keyed by day-of-week (0=Mon..6=Sun)
-  const fallbackEvents = [
-    { day: 0, start: 9,  duration: 1.5, title: 'Korunka — Mária Kováčová',  type: 'job',     ref: '#12' },
-    { day: 0, start: 11, duration: 1,   title: 'Konzultácia — Klinika BA',  type: 'meeting' },
-    { day: 0, start: 14, duration: 2,   title: 'Mostík — Peter Horváth',    type: 'job',     ref: '#11' },
-    { day: 1, start: 8,  duration: 2.5, title: 'Implantát — T. Varga',      type: 'job',     ref: '#9'  },
-    { day: 1, start: 13, duration: 1,   title: 'Odber dojmu — ZubMed',      type: 'pickup' },
-    { day: 2, start: 10, duration: 3,   title: 'Zirkón — viaceré práce',    type: 'job',     ref: '×4'  },
-    { day: 2, start: 15, duration: 1.5, title: 'Termín odovzdania — DP',    type: 'deadline' },
-    { day: 3, start: 9,  duration: 2,   title: 'Snímateľná protéza — JB',   type: 'job',     ref: '#10' },
-    { day: 4, start: 11, duration: 1.5, title: 'Faktúra revízia — admin',   type: 'meeting' },
-    { day: 4, start: 14, duration: 2.5, title: 'Skener kalibrácia',          type: 'meeting' },
-    { day: 5, start: 10, duration: 1,   title: 'Doručenie kuriér',           type: 'pickup' },
-  ];
-  const events = workspace.calendarEvents && workspace.calendarEvents.length ? workspace.calendarEvents : fallbackEvents;
+  const events = workspace.calendarEvents || [];
 
   const eventStyles = {
     job:      { bg: '#d4f0eb', border: '#0d7c6b', text: '#085c4e' },
@@ -29,30 +15,81 @@ function Calendar({ onNavigate }) {
   };
 
   const days = ['Pon', 'Uto', 'Str', 'Štv', 'Pia', 'Sob', 'Ned'];
-  const dates = ['12', '13', '14', '15', '16', '17', '18']; // synthetic week
   const hours = Array.from({ length: 11 }, (_, i) => 7 + i); // 7..17
-  const today = 1; // highlight Tuesday
+  const todayDate = new Date();
+  const monday = new Date(todayDate);
+  monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + weekOffset * 7);
+  const weekDates = days.map((_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    return date;
+  });
+  const dates = weekDates.map((date) => String(date.getDate()));
+  const today = weekOffset === 0 ? (todayDate.getDay() + 6) % 7 : -1;
+  const fmtDay = (date) => date.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' });
+  const rangeTitle = `${fmtDay(weekDates[0])} – ${fmtDay(weekDates[6])}`;
+  const upcoming = events
+    .slice()
+    .sort((a, b) => ((Number(a.day) || 0) - (Number(b.day) || 0)) || ((Number(a.start) || 0) - (Number(b.start) || 0)))
+    .slice(0, 6)
+    .map((event) => {
+      const start = Number(event.start) || 8;
+      const duration = Number(event.duration) || 1;
+      const startHour = Math.floor(start);
+      const startMinute = Math.round((start - startHour) * 60);
+      const end = start + duration;
+      const endHour = Math.floor(end);
+      const endMinute = Math.round((end - endHour) * 60);
+      const time = `${String(startHour).padStart(2, '0')}:${String(startMinute).padStart(2, '0')} – ${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
+      return {
+        date: fmtDay(weekDates[event.day] || weekDates[0]),
+        day: days[event.day] || '',
+        title: event.title,
+        time,
+        type: event.type || 'job',
+      };
+    });
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Kalendár',
+    subtitle: 'Termíny prác, odovzdania a stretnutia.',
+    actions: [
+      React.createElement(Tabs, {
+        key: 'view', value: view, onChange: setView,
+        tabs: [{ value: 'week', label: 'Týždeň' }, { value: 'month', label: 'Mesiac' }]
+      }),
+      React.createElement(Button, { key: 'add', disabled: workspace.loading },
+        React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať termín'),
+    ]
+  });
 
-  const upcoming = [
-    { date: '13. máj', day: 'Uto', title: 'Implantát — T. Varga', time: '08:00 – 10:30', type: 'job' },
-    { date: '14. máj', day: 'Str', title: 'Termín odovzdania — DP', time: '15:00 – 16:30', type: 'deadline' },
-    { date: '15. máj', day: 'Štv', title: 'Skener kalibrácia', time: '14:00 – 16:30', type: 'meeting' },
-    { date: '16. máj', day: 'Pia', title: 'Doručenie kuriér', time: '10:00 – 11:00', type: 'pickup' },
-  ];
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam kalendár…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať kalendár',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Kalendár',
-      subtitle: 'Termíny prác, odovzdania a stretnutia.',
-      actions: [
-        React.createElement(Tabs, {
-          key: 'view', value: view, onChange: setView,
-          tabs: [{ value: 'week', label: 'Týždeň' }, { value: 'month', label: 'Mesiac' }]
-        }),
-        React.createElement(Button, { key: 'add' },
-          React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať termín'),
-      ]
-    }),
+    pageHeader,
 
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 16, alignItems: 'flex-start' } },
       // Calendar grid
@@ -60,7 +97,7 @@ function Calendar({ onNavigate }) {
         React.createElement(CardHeader, { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
           React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
             React.createElement(IconButton, { name: 'chevronLeft', onClick: () => setWeekOffset(weekOffset - 1) }),
-            React.createElement(CardTitle, null, '12. – 18. máj 2026'),
+            React.createElement(CardTitle, null, rangeTitle),
             React.createElement(IconButton, { name: 'chevronRight', onClick: () => setWeekOffset(weekOffset + 1) }),
           ),
           React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setWeekOffset(0) }, 'Dnes')
@@ -105,9 +142,9 @@ function Calendar({ onNavigate }) {
                   style: { height: 48, borderTop: h === 7 ? 'none' : '1px solid #f0ede5' }
                 })),
                 ...events.filter(e => e.day === dayIdx).map((e, i) => {
-                  const s = eventStyles[e.type];
-                  const top = (e.start - 7) * 48 + 2;
-                  const height = e.duration * 48 - 4;
+                  const s = eventStyles[e.type] || eventStyles.job;
+                  const top = ((Number(e.start) || 8) - 7) * 48 + 2;
+                  const height = (Number(e.duration) || 1) * 48 - 4;
                   return React.createElement('div', {
                     key: i,
                     style: {
@@ -145,9 +182,11 @@ function Calendar({ onNavigate }) {
         React.createElement(Card, null,
           React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Najbližšie termíny')),
           React.createElement(CardContent, null,
-            React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+            upcoming.length === 0
+              ? React.createElement(EmptyState, { title: 'Žiadne termíny', description: 'Kalendár zatiaľ neobsahuje žiadne práce ani udalosti.' })
+              : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
               ...upcoming.map((u, i) => {
-                const s = eventStyles[u.type];
+                const s = eventStyles[u.type] || eventStyles.job;
                 return React.createElement('div', {
                   key: i,
                   style: { display: 'flex', gap: 10, padding: 10, borderRadius: 8, background: '#fbfaf6', border: '1px solid #ece7dc' }
@@ -174,10 +213,10 @@ function Calendar({ onNavigate }) {
           React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Tento týždeň')),
           React.createElement(CardContent, null,
             React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
-              React.createElement(KVRow, { label: 'Práce v termíne', value: '8' }),
-              React.createElement(KVRow, { label: 'Po termíne', value: '1', tone: 'red' }),
-              React.createElement(KVRow, { label: 'Stretnutia', value: '4' }),
-              React.createElement(KVRow, { label: 'Voľné kapacity', value: '14 h' }),
+              React.createElement(KVRow, { label: 'Práce v termíne', value: String(events.filter((event) => event.type === 'job').length) }),
+              React.createElement(KVRow, { label: 'Po termíne', value: String(events.filter((event) => event.type === 'deadline').length), tone: events.some((event) => event.type === 'deadline') ? 'red' : undefined }),
+              React.createElement(KVRow, { label: 'Stretnutia', value: String(events.filter((event) => event.type === 'meeting').length) }),
+              React.createElement(KVRow, { label: 'Odber/Doručenie', value: String(events.filter((event) => event.type === 'pickup').length) }),
             )
           )
         )

@@ -3,26 +3,48 @@
 function Technicians({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
-  const fallbackTechs = [
-    { id: 1, first: 'Ján',    last: 'Novák',     role: 'Senior technik', specialty: 'Zirkón, CAD/CAM', email: 'jan.novak@dl.sk',    workload: 85, jobsThisMonth: 18 },
-    { id: 2, first: 'Anna',   last: 'Mrázová',   role: 'Technik',         specialty: 'Keramika',         email: 'anna.mrazova@dl.sk', workload: 72, jobsThisMonth: 14 },
-    { id: 3, first: 'Marek',  last: 'Bartoš',    role: 'Technik',         specialty: 'Snímateľné',       email: 'marek.bartos@dl.sk', workload: 60, jobsThisMonth: 11 },
-    { id: 4, first: 'Tereza', last: 'Hrušková',  role: 'Junior technik',  specialty: 'Modelovanie',      email: 'tereza.h@dl.sk',     workload: 45, jobsThisMonth: 7 },
-    { id: 5, first: 'Štefan', last: 'Polák',     role: 'Technik',         specialty: 'Implantológia',    email: 'stefan.polak@dl.sk', workload: 95, jobsThisMonth: 22 },
-  ];
-  const techs = workspace.technicians && workspace.technicians.length ? workspace.technicians : fallbackTechs;
+  const techs = workspace.technicians || [];
   const filtered = techs.filter(t => !search || `${t.first} ${t.last} ${t.specialty} ${t.role}`.toLowerCase().includes(search.toLowerCase()));
-  const initials = t => `${t.first[0]}${t.last[0]}`;
+  const initials = t => `${(t.first || '?')[0]}${(t.last || '?')[0]}`;
   const loadColor = w => w >= 90 ? '#c0392b' : w >= 75 ? '#d97706' : w >= 50 ? '#0d7c6b' : '#8a9490';
+  const pageHeader = React.createElement(PageHeader, {
+    title: 'Technici',
+    subtitle: 'Tím technických pracovníkov a ich vyťaženie.',
+    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať technika')]
+  });
+
+  if (workspace.loading) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(LoadingState, { message: 'Načítavam technikov…' })
+        )
+      )
+    );
+  }
+
+  if (workspace.error) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      pageHeader,
+      React.createElement(Card, null,
+        React.createElement(CardContent, null,
+          React.createElement(ErrorState, {
+            title: 'Nepodarilo sa načítať technikov',
+            message: workspace.error,
+            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+          })
+        )
+      )
+    );
+  }
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Technici',
-      subtitle: 'Tím technických pracovníkov a ich vyťaženie.',
-      actions: [React.createElement(Button, { key: 'add', onClick: onCreate }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať technika')]
-    }),
+    pageHeader,
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 } },
-      ...filtered.map(t => React.createElement(Card, { key: t.id },
+      ...(filtered.length === 0
+        ? [React.createElement(EmptyState, { key: 'empty', title: 'Žiadni technici', description: search ? 'Skúste upraviť vyhľadávanie.' : 'Začnite vytvorením prvého technika.' })]
+        : filtered.map(t => React.createElement(Card, { key: t.id },
         React.createElement('div', { style: { padding: '18px 20px', display: 'flex', alignItems: 'flex-start', gap: 12 } },
           React.createElement('div', { style: { width: 44, height: 44, borderRadius: '50%', background: '#d4f0eb', color: '#085c4e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 14, fontWeight: 700, flexShrink: 0 } }, initials(t)),
           React.createElement('div', { style: { flex: 1, minWidth: 0 } },
@@ -45,7 +67,7 @@ function Technicians({ onNavigate, onCreate }) {
           React.createElement('span', { style: { color: '#8a9490' } }, 'Tento mesiac'),
           React.createElement('span', { style: { fontWeight: 700, color: '#1a2320', fontFamily: 'Plus Jakarta Sans,sans-serif' } }, `${t.jobsThisMonth} prác`)
         )
-      ))
+      )))
     )
   );
 }
