@@ -39,12 +39,43 @@
     return data;
   }
 
-  async function login(username, password) {
-    const token = await request('/token/', {
-      method: 'POST',
-      body: JSON.stringify({ username, password }),
-      headers: {},
-    });
+  function isTotpRequiredError(error) {
+    const detail = String((error && error.data && error.data.detail) || error.message || '');
+    const code = String((error && error.data && error.data.code) || error.code || '');
+    return error && error.status === 401 && (
+      code === 'totp_required' ||
+      detail.toLowerCase().includes('totp code required')
+    );
+  }
+
+  function isTotpInvalidError(error) {
+    const detail = String((error && error.data && error.data.detail) || error.message || '');
+    const code = String((error && error.data && error.data.code) || error.code || '');
+    return error && error.status === 401 && (
+      code === 'totp_invalid' ||
+      detail.toLowerCase().includes('invalid totp code')
+    );
+  }
+
+  async function login(username, password, totpCode = '') {
+    const payload = { username, password };
+    if (totpCode) payload.totp_code = totpCode;
+    let token;
+    try {
+      token = await request('/token/', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: {},
+      });
+    } catch (error) {
+      if (isTotpRequiredError(error)) {
+        error.requiresTotp = true;
+      }
+      if (isTotpInvalidError(error)) {
+        error.invalidTotp = true;
+      }
+      throw error;
+    }
     localStorage.setItem(tokenKey, token.access);
     localStorage.setItem(refreshKey, token.refresh);
     const me = await request('/core/users/me/');
@@ -440,6 +471,8 @@
     markAllNotificationsRead,
     fetchMe,
     updateMe,
+    isTotpRequiredError,
+    isTotpInvalidError,
     updateLab,
     fetchLabMembers,
     authUrl,
