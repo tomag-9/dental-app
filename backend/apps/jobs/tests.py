@@ -71,6 +71,13 @@ class VacationApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.regular_a = User.objects.create_user(
+            username="vacation_regular_a",
+            email="vacation_regular_a@test.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
+        )
         self.superadmin = User.objects.create_user(
             username="superadmin",
             email="vacation_superadmin@test.com",
@@ -138,6 +145,20 @@ class VacationApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(response.data["lab"])
 
+    def test_regular_user_cannot_create_vacation(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            reverse("vacation-list"),
+            {
+                "start": timezone.now().isoformat(),
+                "end": (timezone.now() + timezone.timedelta(days=1)).isoformat(),
+                "description": "Regular user write",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class CalendarApiTests(APITestCase):
     def setUp(self):
@@ -156,6 +177,13 @@ class CalendarApiTests(APITestCase):
             password="password123",
             role="admin",
             lab=self.lab_b,
+        )
+        self.regular_a = User.objects.create_user(
+            username="calendar_regular_a",
+            email="calendar_regular_a@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
         )
         self.superadmin = User.objects.create_user(
             username="calendar_superadmin",
@@ -307,6 +335,21 @@ class CalendarApiTests(APITestCase):
         self.assertIn(f"job:{job_a.id}", event_ids)
         self.assertIn(f"job:{job_b.id}", event_ids)
 
+    def test_regular_user_cannot_create_calendar_event(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            reverse("calendarevent-list"),
+            {
+                "title": "Blocked",
+                "event_type": "meeting",
+                "start": timezone.now().isoformat(),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(CalendarEvent.objects.filter(title="Blocked").exists())
+
 
 class JobValidationApiTests(APITestCase):
     """Test job validation and filtering behavior matching legacy backend."""
@@ -336,6 +379,13 @@ class JobValidationApiTests(APITestCase):
             email="superadmin@test.com",
             password="password123",
             role="superadmin",
+        )
+        self.regular_a = User.objects.create_user(
+            username="job_regular_a",
+            email="job_regular_a@test.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
         )
 
         # Create price list entries
@@ -442,6 +492,24 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["description"], "Valid job")
         self.assertEqual(response.data["lab"], self.lab_a.id)
+
+    def test_regular_user_cannot_create_job(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            reverse("job-list"),
+            {
+                "patient": self.patient_a.id,
+                "clinic": self.clinic_a.id,
+                "doctor": self.doctor_a.id,
+                "technician": self.technician_a.id,
+                "price": 150.0,
+                "description": "Forbidden job",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Job.objects.filter(description="Forbidden job").exists())
 
     def test_create_job_with_invalid_procedure_code_returns_400(self):
         """Invalid procedure code should return 400."""
@@ -928,6 +996,13 @@ class TechnicianApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.regular_a = User.objects.create_user(
+            username="tech_regular_a",
+            email="tech_regular_a@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
+        )
         self.superadmin = User.objects.create_user(
             username="tech_superadmin",
             email="tech_superadmin@example.com",
@@ -1043,6 +1118,17 @@ class TechnicianApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+
+    def test_regular_user_cannot_create_technician(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            reverse("technician-list"),
+            {"first_name": "Blocked", "last_name": "Technician"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Technician.objects.filter(first_name="Blocked").exists())
 
 
 class WorkOrderEndpointTests(APITestCase):
@@ -1216,6 +1302,13 @@ class JobStatusChangeAuditLogTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.regular = User.objects.create_user(
+            username="auditjob_regular",
+            password="pw",
+            email="auditjob_regular@test.sk",
+            role="user",
+            lab=self.lab,
+        )
         self.job = Job.objects.create(
             lab=self.lab,
             clinic=self.clinic,
@@ -1241,6 +1334,18 @@ class JobStatusChangeAuditLogTests(APITestCase):
         self.assertEqual(log.entity_id, str(self.job.id))
         self.assertEqual(log.metadata["from_status"], "new")
         self.assertEqual(log.metadata["to_status"], "in_progress")
+
+    def test_regular_user_cannot_transition_status(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/transition-status/",
+            {"status": "in_progress"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.status, "new")
 
 
 class QuickCreateJobTests(APITestCase):
@@ -1442,6 +1547,13 @@ class JobBulkUpdateTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.regular = User.objects.create_user(
+            username="bulk_regular",
+            password="pw",
+            email="bulk_regular@test.sk",
+            role="user",
+            lab=self.lab,
+        )
         self.patient = Patient.objects.create(
             lab=self.lab,
             first_name="Bulk",
@@ -1509,6 +1621,18 @@ class JobBulkUpdateTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 401)
 
+    def test_regular_user_cannot_bulk_update(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id], "priority": "high"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.job1.refresh_from_db()
+        self.assertEqual(self.job1.priority, "normal")
+
 
 class JobAttachmentTests(APITestCase):
     def setUp(self):
@@ -1519,6 +1643,13 @@ class JobAttachmentTests(APITestCase):
             password="pw",
             email="attach@test.sk",
             role="admin",
+            lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="attach_regular",
+            password="pw",
+            email="attach_regular@test.sk",
+            role="user",
             lab=self.lab,
         )
         self.patient = Patient.objects.create(
@@ -1569,6 +1700,17 @@ class JobAttachmentTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/attachments/")
         self.assertEqual(resp.status_code, 401)
+
+    def test_regular_user_cannot_create_attachment(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {"file_name": "scan.pdf", "file_url": "https://example.com/scan.pdf"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.job.attachments.count(), 0)
 
 
 class CalendarEventContactFieldsTests(APITestCase):

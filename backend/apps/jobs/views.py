@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    IsReadOnlyOrAdminOrSuperadminPermission,
     TenantScopedQuerysetMixin,
     is_admin_or_superadmin,
     is_superadmin,
@@ -70,7 +71,10 @@ def _notify_lab_admins(lab, notification_type, title, message, url=None):
 class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Technician.objects.all()
     serializer_class = TechnicianSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         return self.get_tenant_scoped_queryset(Technician.objects.all())
@@ -82,7 +86,10 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
     allowed_transitions = {
         "new": {"in_progress", "cancelled"},
         "in_progress": {"completed", "cancelled"},
@@ -727,7 +734,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 class VacationViewSet(viewsets.ModelViewSet):
     queryset = Vacation.objects.all()
     serializer_class = VacationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         user = self.request.user
@@ -751,7 +761,10 @@ class VacationViewSet(viewsets.ModelViewSet):
 class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = CalendarEvent.objects.all()
     serializer_class = CalendarEventSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         return self.get_tenant_scoped_queryset(

@@ -210,6 +210,17 @@ class WarehouseItemCrudApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
 
+    def test_non_admin_cannot_create_warehouse_item(self):
+        self.client.force_authenticate(user=self.user_a)
+        response = self.client.post(
+            reverse("warehouseitem-list"),
+            {"name": "Blocked item", "quantity": 1},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(WarehouseItem.objects.filter(name="Blocked item").exists())
+
     def test_superadmin_can_list_items_across_labs(self):
         WarehouseItem.objects.create(
             lab=self.lab_a,
@@ -320,6 +331,13 @@ class WarehouseBulkImportTests(APITestCase):
             password="password123",
             role="user",
         )
+        self.regular = User.objects.create_user(
+            username="bulk_regular",
+            email="bulk_regular@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab,
+        )
         self.import_url = reverse("warehouseitem-bulk-import")
         self.import_partial_url = reverse("warehouseitem-bulk-import-partial")
 
@@ -372,6 +390,13 @@ class WarehouseBulkImportTests(APITestCase):
         self.client.force_authenticate(user=self.no_lab_user)
         response = self.client.post(self.import_url, self._valid_items(), format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bulk_import_non_admin_denied(self):
+        self.client.force_authenticate(user=self.regular)
+        response = self.client.post(self.import_url, self._valid_items(), format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(WarehouseItem.objects.filter(lab=self.lab).count(), 0)
 
     def test_bulk_import_requires_list(self):
         """Sending a dict instead of a list returns 400."""

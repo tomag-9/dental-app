@@ -10,6 +10,7 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.core.access import IsReadOnlyOrAdminOrSuperadminPermission
 from apps.core.access import TenantScopedQuerysetMixin
 from apps.core.access import is_superadmin
 from apps.core.exports import limited_export_queryset
@@ -58,7 +59,10 @@ def _check_low_stock_notification(item):
 class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = WarehouseItem.objects.all()
     serializer_class = WarehouseItemSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         return self.get_tenant_scoped_queryset(WarehouseItem.objects.all())
