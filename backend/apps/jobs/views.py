@@ -169,6 +169,11 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         user = self.request.user
+        if is_superadmin(user):
+            job = serializer.save(lab=self._get_lab_from_request_data())
+            self._record_timeline(job, "created", note="Práca bola vytvorená.")
+            return
+
         if not hasattr(user, "lab") or not user.lab:
             raise ValidationError("User is not assigned to any lab")
 

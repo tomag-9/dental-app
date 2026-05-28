@@ -16,10 +16,10 @@ from apps.core.models import (
     UserSession,
 )
 from apps.core.test_helpers import RoleMatrixTestMixin
-from apps.crm.models import Clinic, Patient
-from apps.finance.models import Invoice, Subscription
+from apps.crm.models import Clinic, Doctor, Patient
+from apps.finance.models import Invoice, PriceList, Subscription
 from apps.inventory.models import WarehouseItem
-from apps.jobs.models import CalendarEvent, Job, Vacation
+from apps.jobs.models import CalendarEvent, Job, Technician, Vacation
 
 
 class CoreUserFlowsApiTests(APITestCase):
@@ -1099,6 +1099,214 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         self.assertEqual(scoped.status_code, status.HTTP_200_OK)
         self.assertEqual(self.response_ids(root), self.response_ids(scoped))
         self.assertEqual(self.response_ids(root), {self.event_a.id})
+
+
+class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    def setUp(self):
+        self.setup_role_matrix(prefix="write_matrix")
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Write Clinic A")
+        self.doctor_a = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            first_name="Write",
+            last_name="Doctor",
+        )
+        self.patient_a = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Write",
+            last_name="Patient",
+            birth_number="800101/1234",
+        )
+        self.technician_model_a = Technician.objects.create(
+            lab=self.lab_a,
+            first_name="Write",
+            last_name="Technician",
+        )
+        PriceList.objects.create(
+            lab=self.lab_a,
+            code="WRITE-CROWN",
+            description="Write matrix crown",
+            price="100.00",
+        )
+
+    def _call_json(self, method, url, payload=None):
+        client_method = getattr(self.client, method.lower())
+        if payload is None:
+            return client_method(url)
+        return client_method(url, payload, format="json")
+
+    def assert_write_role_matrix(self, request_factory, success_status):
+        method, url, payload = request_factory("anonymous")
+        anonymous = self._call_json(method, url, payload)
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        expectations = {
+            "admin": success_status,
+            "superadmin": success_status,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "no_lab": status.HTTP_403_FORBIDDEN,
+        }
+        for role, expected_status in expectations.items():
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                method, url, payload = request_factory(role)
+                response = self._call_json(method, url, payload)
+                self.assertEqual(
+                    response.status_code,
+                    expected_status,
+                    getattr(response, "data", response.content),
+                )
+                self.client.force_authenticate(user=None)
+
+    def _job_payload(self, role, suffix):
+        return {
+            "lab": self.lab_a.id,
+            "patient": self.patient_a.id,
+            "clinic": self.clinic_a.id,
+            "doctor": self.doctor_a.id,
+            "technician": self.technician_model_a.id,
+            "description": f"{suffix} job {role}",
+            "price": "100.00",
+        }
+
+    def _new_job(self, role, suffix="matrix"):
+        return Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient_a,
+            clinic=self.clinic_a,
+            doctor=self.doctor_a,
+            technician=self.technician_model_a,
+            status="new",
+            description=f"{suffix} target {role}",
+            price="100.00",
+        )
+
+    def test_job_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: ("POST", "/api/jobs/jobs/", self._job_payload(role, "create")),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_job_update_role_matrix(self):
+        def request_factory(role):
+            job = self._new_job(role, "update")
+            return (
+                "PATCH",
+                f"/api/jobs/jobs/{job.id}/",
+                {"description": f"updated by {role}"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_job_bulk_update_role_matrix(self):
+        def request_factory(role):
+            job = self._new_job(role, "bulk")
+            return (
+                "POST",
+                "/api/jobs/jobs/bulk-update/",
+                {"job_ids": [job.id], "priority": "high"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_job_transition_status_role_matrix(self):
+        def request_factory(role):
+            job = self._new_job(role, "transition")
+            return (
+                "POST",
+                f"/api/jobs/jobs/{job.id}/transition-status/",
+                {"status": "in_progress"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_technician_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/jobs/technicians/",
+                {
+                    "lab": self.lab_a.id,
+                    "first_name": f"Matrix {role}",
+                    "last_name": "Technician",
+                },
+            ),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_vacation_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/jobs/vacations/",
+                {
+                    "lab": self.lab_a.id,
+                    "start": timezone.now().isoformat(),
+                    "end": (timezone.now() + timezone.timedelta(days=1)).isoformat(),
+                    "description": f"Matrix vacation {role}",
+                },
+            ),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_calendar_event_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/jobs/calendar-events/",
+                {
+                    "lab": self.lab_a.id,
+                    "title": f"Matrix event {role}",
+                    "event_type": "meeting",
+                    "start": timezone.now().isoformat(),
+                },
+            ),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_invoice_create_role_matrix(self):
+        def request_factory(role):
+            job = self._new_job(role, "invoice")
+            job.status = "completed"
+            job.save(update_fields=["status"])
+            return (
+                "POST",
+                "/api/finance/invoices/",
+                {"clinic_id": self.clinic_a.id, "job_ids": [job.id]},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_201_CREATED)
+
+    def test_price_list_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/finance/price-list/",
+                {
+                    "lab": self.lab_a.id,
+                    "code": f"MATRIX-{role.upper()}",
+                    "description": f"Matrix price {role}",
+                    "price": "42.00",
+                },
+            ),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_warehouse_create_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/inventory/warehouse/",
+                {
+                    "lab": self.lab_a.id,
+                    "name": f"Matrix item {role}",
+                    "sku": f"MATRIX-{role.upper()}",
+                    "quantity": 2,
+                },
+            ),
+            status.HTTP_201_CREATED,
+        )
 
 
 class LabSlugTests(APITestCase):
