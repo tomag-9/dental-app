@@ -1,6 +1,8 @@
 import pyotp
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -1129,15 +1131,20 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             price="100.00",
         )
 
-    def _call_json(self, method, url, payload=None):
+    def _call_request(self, method, url, payload=None, request_format="json"):
         client_method = getattr(self.client, method.lower())
         if payload is None:
             return client_method(url)
-        return client_method(url, payload, format="json")
+        return client_method(url, payload, format=request_format)
 
     def assert_write_role_matrix(self, request_factory, success_status):
-        method, url, payload = request_factory("anonymous")
-        anonymous = self._call_json(method, url, payload)
+        request_args = request_factory("anonymous")
+        if len(request_args) == 3:
+            method, url, payload = request_args
+            request_format = "json"
+        else:
+            method, url, payload, request_format = request_args
+        anonymous = self._call_request(method, url, payload, request_format)
         self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
 
         expectations = {
@@ -1150,8 +1157,13 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         for role, expected_status in expectations.items():
             with self.subTest(role=role):
                 self.client.force_authenticate(user=self.role_users[role])
-                method, url, payload = request_factory(role)
-                response = self._call_json(method, url, payload)
+                request_args = request_factory(role)
+                if len(request_args) == 3:
+                    method, url, payload = request_args
+                    request_format = "json"
+                else:
+                    method, url, payload, request_format = request_args
+                response = self._call_request(method, url, payload, request_format)
                 self.assertEqual(
                     response.status_code,
                     expected_status,
@@ -1180,6 +1192,41 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             status="new",
             description=f"{suffix} target {role}",
             price="100.00",
+        )
+
+    def _new_invoice(self, role, suffix="matrix", **kwargs):
+        defaults = {
+            "lab": self.lab_a,
+            "clinic": self.clinic_a,
+            "number": f"{suffix.upper()}-{role.upper()}-{Invoice.objects.count() + 1}",
+            "status": "issued",
+            "total_amount": "100.00",
+            "vat_rate": "20.00",
+        }
+        defaults.update(kwargs)
+        return Invoice.objects.create(**defaults)
+
+    def _new_price_item(self, role, suffix="matrix"):
+        return PriceList.objects.create(
+            lab=self.lab_a,
+            code=f"{suffix.upper()}-{role.upper()}-{PriceList.objects.count() + 1}",
+            description=f"{suffix} item {role}",
+            price="42.00",
+        )
+
+    def _new_warehouse_item(self, role, suffix="matrix"):
+        return WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name=f"{suffix} warehouse {role}",
+            sku=f"{suffix.upper()}-{role.upper()}-{WarehouseItem.objects.count() + 1}",
+            quantity=2,
+        )
+
+    def _csv_upload(self, role):
+        return SimpleUploadedFile(
+            f"matrix-{role}.csv",
+            b"name,sku,quantity\nImported Item,IMP-001,3\n",
+            content_type="text/csv",
         )
 
     def test_job_create_role_matrix(self):
@@ -1304,6 +1351,117 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
                     "sku": f"MATRIX-{role.upper()}",
                     "quantity": 2,
                 },
+            ),
+            status.HTTP_201_CREATED,
+        )
+
+    def test_job_attachment_create_role_matrix(self):
+        def request_factory(role):
+            job = self._new_job(role, "attachment")
+            return (
+                "POST",
+                f"/api/jobs/jobs/{job.id}/attachments/",
+                {
+                    "file_name": f"matrix-{role}.pdf",
+                    "file_url": f"https://example.com/matrix-{role}.pdf",
+                    "file_type": "application/pdf",
+                },
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_201_CREATED)
+
+    def test_invoice_status_role_matrix(self):
+        def request_factory(role):
+            invoice = self._new_invoice(role, "status")
+            return (
+                "PUT",
+                f"/api/finance/invoices/{invoice.id}/status/",
+                {"status": "paid"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_invoice_delete_role_matrix(self):
+        def request_factory(role):
+            invoice = self._new_invoice(role, "delete")
+            return ("DELETE", f"/api/finance/invoices/{invoice.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_invoice_send_email_role_matrix(self):
+        def request_factory(role):
+            invoice = self._new_invoice(role, "email")
+            return (
+                "POST",
+                f"/api/finance/invoices/{invoice.id}/send-email/",
+                {"email": f"{role}@example.com"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_invoice_overdue_reminders_role_matrix(self):
+        def request_factory(role):
+            self._new_invoice(
+                role,
+                "reminder",
+                due_date=timezone.localdate() - timezone.timedelta(days=1),
+            )
+            return ("POST", "/api/finance/invoices/send-overdue-reminders/", {})
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_price_list_duplicate_role_matrix(self):
+        def request_factory(role):
+            item = self._new_price_item(role, "duplicate")
+            return ("POST", f"/api/finance/price-list/{item.id}/duplicate/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_201_CREATED)
+
+    def test_price_list_update_role_matrix(self):
+        def request_factory(role):
+            item = self._new_price_item(role, "update")
+            return (
+                "PATCH",
+                f"/api/finance/price-list/{item.id}/",
+                {"description": f"updated {role}"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_price_list_delete_role_matrix(self):
+        def request_factory(role):
+            item = self._new_price_item(role, "delete")
+            return ("DELETE", f"/api/finance/price-list/{item.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    def test_warehouse_update_role_matrix(self):
+        def request_factory(role):
+            item = self._new_warehouse_item(role, "update")
+            return (
+                "PATCH",
+                f"/api/inventory/warehouse/{item.id}/",
+                {"quantity": 5},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_warehouse_delete_role_matrix(self):
+        def request_factory(role):
+            item = self._new_warehouse_item(role, "delete")
+            return ("DELETE", f"/api/inventory/warehouse/{item.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    def test_warehouse_import_csv_role_matrix(self):
+        self.assert_write_role_matrix(
+            lambda role: (
+                "POST",
+                "/api/inventory/warehouse/import-csv/",
+                {"file": self._csv_upload(role), "lab": self.lab_a.id},
+                "multipart",
             ),
             status.HTTP_201_CREATED,
         )

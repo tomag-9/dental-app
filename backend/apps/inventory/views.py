@@ -309,7 +309,11 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         Invalid rows are skipped; returns counts of imported and skipped items.
         """
         user = request.user
-        if not (hasattr(user, "lab") and user.lab):
+        if is_superadmin(user):
+            lab = self._get_lab_from_request_data()
+        elif hasattr(user, "lab") and user.lab:
+            lab = user.lab
+        else:
             return Response(
                 {"detail": "No lab associated with user"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -339,7 +343,6 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         _MAX_ROWS = 5_000
 
-        lab = user.lab
         valid_items = []
         skipped = 0
         row_errors = {}
