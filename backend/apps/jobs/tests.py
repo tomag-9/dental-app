@@ -1678,12 +1678,14 @@ class JobAttachmentTests(APITestCase):
                 "file_name": "photo.jpg",
                 "file_url": "https://example.com/photo.jpg",
                 "file_type": "image/jpeg",
+                "file_size": 1024,
             },
             format="json",
         )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["file_name"], "photo.jpg")
         self.assertEqual(resp.data["uploaded_by"], self.user.id)
+        self.assertNotIn("file_size", resp.data)
 
     def test_list_attachments_after_create(self):
         self.client.force_authenticate(user=self.user)
@@ -1711,6 +1713,83 @@ class JobAttachmentTests(APITestCase):
 
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(self.job.attachments.count(), 0)
+
+    def test_attachment_rejects_non_https_url(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "scan.pdf",
+                "file_url": "http://example.com/scan.pdf",
+                "file_type": "application/pdf",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file_url", resp.data)
+
+    def test_attachment_rejects_unsupported_file_type(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "script.html",
+                "file_url": "https://example.com/script.html",
+                "file_type": "text/html",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file_type", resp.data)
+
+    def test_attachment_rejects_extension_mismatch(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "photo.png",
+                "file_url": "https://example.com/photo.png",
+                "file_type": "application/pdf",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file_name", resp.data)
+
+    def test_attachment_rejects_oversized_file_size_hint(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "scan.pdf",
+                "file_url": "https://example.com/scan.pdf",
+                "file_type": "application/pdf",
+                "file_size": 25 * 1024 * 1024 + 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("file_size", resp.data)
+
+    def test_attachment_allows_dental_scan_type(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            f"/api/jobs/jobs/{self.job.id}/attachments/",
+            {
+                "file_name": "scan.stl",
+                "file_url": "https://example.com/scan.stl",
+                "file_type": "model/stl",
+                "file_size": 2048,
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.data["file_type"], "model/stl")
 
 
 class CalendarEventContactFieldsTests(APITestCase):

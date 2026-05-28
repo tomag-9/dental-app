@@ -1,4 +1,6 @@
 from decimal import Decimal
+from pathlib import Path
+from urllib.parse import urlparse
 
 from django.utils import timezone
 from rest_framework import serializers
@@ -375,6 +377,23 @@ class CalendarEventSerializer(serializers.ModelSerializer):
 
 class JobAttachmentSerializer(serializers.ModelSerializer):
     uploaded_by_name = serializers.SerializerMethodField()
+    file_size = serializers.IntegerField(
+        required=False,
+        write_only=True,
+        min_value=1,
+        max_value=25 * 1024 * 1024,
+    )
+
+    _ALLOWED_FILE_TYPES = {
+        "application/pdf": {".pdf"},
+        "image/jpeg": {".jpg", ".jpeg"},
+        "image/png": {".png"},
+        "image/webp": {".webp"},
+        "model/stl": {".stl"},
+        "model/obj": {".obj"},
+        "model/ply": {".ply"},
+        "application/sla": {".stl"},
+    }
 
     class Meta:
         model = JobAttachment
@@ -384,6 +403,7 @@ class JobAttachmentSerializer(serializers.ModelSerializer):
             "file_name",
             "file_url",
             "file_type",
+            "file_size",
             "uploaded_by",
             "uploaded_by_name",
             "created_at",
@@ -395,6 +415,37 @@ class JobAttachmentSerializer(serializers.ModelSerializer):
             "uploaded_by_name",
             "created_at",
         )
+
+    def validate_file_url(self, value):
+        parsed = urlparse(value)
+        if parsed.scheme != "https":
+            raise serializers.ValidationError(
+                "Attachment URLs must use HTTPS external storage."
+            )
+        if not parsed.netloc:
+            raise serializers.ValidationError("Attachment URL must include a host.")
+        return value
+
+    def validate_file_type(self, value):
+        if not value:
+            return value
+        normalized = value.strip().lower()
+        if normalized not in self._ALLOWED_FILE_TYPES:
+            raise serializers.ValidationError("Unsupported attachment file type.")
+        return normalized
+
+    def validate(self, data):
+        file_type = data.get("file_type")
+        if file_type:
+            extension = Path(data.get("file_name") or "").suffix.lower()
+            allowed_extensions = self._ALLOWED_FILE_TYPES[file_type]
+            if extension not in allowed_extensions:
+                allowed = ", ".join(sorted(allowed_extensions))
+                raise serializers.ValidationError(
+                    {"file_name": f"File extension must match {file_type}: {allowed}."}
+                )
+        data.pop("file_size", None)
+        return data
 
     def get_uploaded_by_name(self, obj):
         if not obj.uploaded_by:
