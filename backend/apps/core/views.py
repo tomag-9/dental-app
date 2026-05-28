@@ -1082,6 +1082,21 @@ class UserViewSet(viewsets.ModelViewSet):
         ):
             raise PermissionDenied("Only superadmin can change user active state")
 
+    def _audit_snapshot(self, user):
+        return {
+            "email": user.email,
+            "role": user.role,
+            "lab_id": user.lab_id,
+            "is_active": user.is_active,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "nickname": user.nickname,
+        }
+
+    def _audit_changed_fields(self, before, user):
+        after = self._audit_snapshot(user)
+        return sorted(field for field, value in before.items() if after[field] != value)
+
     def get_queryset(self):
         user = self.request.user
         if is_superadmin(user):
@@ -1108,6 +1123,7 @@ class UserViewSet(viewsets.ModelViewSet):
         target = self.get_object()
         self._assert_in_scope_or_superadmin(request.user, target)
         self._validate_update_contract(request.user, target, request.data)
+        self._audit_before_update = self._audit_snapshot(target)
         return super().update(request, *args, **kwargs)
 
     def partial_update(self, request, *args, **kwargs):
@@ -1116,6 +1132,7 @@ class UserViewSet(viewsets.ModelViewSet):
         target = self.get_object()
         self._assert_in_scope_or_superadmin(request.user, target)
         self._validate_update_contract(request.user, target, request.data)
+        self._audit_before_update = self._audit_snapshot(target)
         return super().partial_update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
@@ -1141,6 +1158,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 entity_id=user.id,
                 lab=user.lab,
                 description=f"User {user.username} created",
+                metadata={"role": user.role, "lab_id": user.lab_id},
             )
             return
         user = serializer.save()
@@ -1151,7 +1169,38 @@ class UserViewSet(viewsets.ModelViewSet):
             entity_id=user.id,
             lab=user.lab,
             description=f"User {user.username} created",
+            metadata={"role": user.role, "lab_id": user.lab_id},
         )
+
+    def perform_update(self, serializer):
+        user = serializer.save()
+        before = getattr(self, "_audit_before_update", self._audit_snapshot(user))
+        changed_fields = self._audit_changed_fields(before, user)
+        _write_audit_log(
+            self.request,
+            action="user.updated",
+            entity_type="user",
+            entity_id=user.id,
+            lab=user.lab,
+            description=f"User {user.username} updated",
+            metadata={
+                "fields": changed_fields,
+                "role": user.role,
+                "lab_id": user.lab_id,
+            },
+        )
+
+    def perform_destroy(self, instance):
+        _write_audit_log(
+            self.request,
+            action="user.deleted",
+            entity_type="user",
+            entity_id=instance.id,
+            lab=instance.lab,
+            description=f"User {instance.username} deleted",
+            metadata={"role": instance.role, "lab_id": instance.lab_id},
+        )
+        instance.delete()
 
     @action(
         detail=False,

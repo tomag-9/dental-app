@@ -256,6 +256,150 @@ class CoreUserFlowsApiTests(APITestCase):
         response = self.client.get("/api/core/users/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_admin_create_user_writes_audit_log_with_metadata(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.post(
+            "/api/core/users/",
+            {
+                "username": "audit_created_user",
+                "email": "audit_created_user@example.com",
+                "password": "password123",
+                "role": "technician",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = User.objects.get(username="audit_created_user")
+        log = AuditLog.objects.filter(action="user.created").latest("created_at")
+        self.assertEqual(log.entity_id, str(created.id))
+        self.assertEqual(log.actor, self.admin_a)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["role"], "technician")
+        self.assertEqual(log.metadata["lab_id"], self.lab_a.id)
+
+    def test_superadmin_create_user_writes_audit_log_for_requested_lab(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            "/api/core/users/",
+            {
+                "username": "audit_super_created",
+                "email": "audit_super_created@example.com",
+                "password": "password123",
+                "role": "admin",
+                "lab": self.lab_b.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = User.objects.get(username="audit_super_created")
+        log = AuditLog.objects.filter(action="user.created").latest("created_at")
+        self.assertEqual(log.entity_id, str(created.id))
+        self.assertEqual(log.actor, self.superadmin)
+        self.assertEqual(log.lab, self.lab_b)
+        self.assertEqual(log.metadata["role"], "admin")
+        self.assertEqual(log.metadata["lab_id"], self.lab_b.id)
+
+    def test_admin_update_user_writes_audit_log_with_changed_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.patch(
+            f"/api/core/users/{self.user_a.id}/",
+            {"first_name": "Audit", "last_name": "Updated"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        log = AuditLog.objects.filter(action="user.updated").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.user_a.id))
+        self.assertEqual(log.actor, self.admin_a)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["fields"], ["first_name", "last_name"])
+        self.assertEqual(log.metadata["role"], "user")
+        self.assertEqual(log.metadata["lab_id"], self.lab_a.id)
+
+    def test_superadmin_sensitive_user_update_writes_audit_log(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.patch(
+            f"/api/core/users/{self.user_a.id}/",
+            {"lab": self.lab_b.id, "role": "admin", "is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        log = AuditLog.objects.filter(action="user.updated").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.user_a.id))
+        self.assertEqual(log.actor, self.superadmin)
+        self.assertEqual(log.lab, self.lab_b)
+        self.assertEqual(log.metadata["fields"], ["is_active", "lab_id", "role"])
+        self.assertEqual(log.metadata["role"], "admin")
+        self.assertEqual(log.metadata["lab_id"], self.lab_b.id)
+
+    def test_admin_delete_user_writes_audit_log(self):
+        target = User.objects.create_user(
+            username="delete_audit_user",
+            email="delete_audit_user@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
+        )
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.delete(f"/api/core/users/{target.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(id=target.id).exists())
+        log = AuditLog.objects.filter(action="user.deleted").latest("created_at")
+        self.assertEqual(log.entity_id, str(target.id))
+        self.assertEqual(log.actor, self.admin_a)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["role"], "user")
+        self.assertEqual(log.metadata["lab_id"], self.lab_a.id)
+
+    def test_superadmin_delete_cross_lab_user_writes_audit_log(self):
+        target = User.objects.create_user(
+            username="delete_cross_lab_audit_user",
+            email="delete_cross_lab_audit_user@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_b,
+        )
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.delete(f"/api/core/users/{target.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        log = AuditLog.objects.filter(action="user.deleted").latest("created_at")
+        self.assertEqual(log.entity_id, str(target.id))
+        self.assertEqual(log.actor, self.superadmin)
+        self.assertEqual(log.lab, self.lab_b)
+        self.assertEqual(log.metadata["role"], "user")
+        self.assertEqual(log.metadata["lab_id"], self.lab_b.id)
+
+    def test_toggle_active_audit_log_records_actor_lab_and_state(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.put(
+            f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        log = AuditLog.objects.filter(action="user.toggle_active").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.user_a.id))
+        self.assertEqual(log.actor, self.superadmin)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["is_active"], False)
+
+    def test_impersonation_audit_log_records_actor_lab_and_target(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.post(
+            f"/api/core/users/superadmin/{self.user_a.id}/impersonate/"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        log = AuditLog.objects.filter(action="user.impersonated").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.user_a.id))
+        self.assertEqual(log.actor, self.superadmin)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["impersonated_by"], self.superadmin.id)
+
     def test_admin_can_only_update_users_in_same_lab(self):
         self.client.force_authenticate(user=self.admin_a)
         response = self.client.patch(
@@ -856,6 +1000,20 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         self.assertNotIn(self.admin_b.id, self.response_ids(root))
         self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
 
+    def test_user_list_role_matrix_contract(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/core/users/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "admin": status.HTTP_200_OK,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
     def test_user_detail_aliases_share_serializer_fields(self):
         self.client.force_authenticate(user=self.admin_a)
         root = self.client.get(f"/api/users/{self.user_a.id}/")
@@ -865,6 +1023,20 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         self.assertEqual(scoped.status_code, status.HTTP_200_OK)
         self.assertEqual(root.data["id"], scoped.data["id"])
         self.assertEqual(set(root.data.keys()), set(scoped.data.keys()))
+
+    def test_user_detail_role_matrix_contract(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/core/users/{self.user_a.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "admin": status.HTTP_200_OK,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
 
     def test_invoice_aliases_have_same_lab_scoping_and_serializer_contract(self):
         self.client.force_authenticate(user=self.admin_a)
