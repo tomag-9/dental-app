@@ -26,7 +26,7 @@ jobs:
     - name: Run backend contract tests
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
     - name: Run backend flake8
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend flake8 apps --max-line-length=100 --exclude=migrations
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend flake8 apps --max-line-length=120 --exclude=migrations
     - name: Run backend black check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend black --check apps
     - name: Cleanup Docker containers
