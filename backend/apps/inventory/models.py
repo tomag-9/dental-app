@@ -27,3 +27,11 @@ class WarehouseItem(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.quantity} {self.unit})"
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["lab", "sku"],
+                name="inventory_w_lab_id_1c6952_idx",
+            ),
+        ]

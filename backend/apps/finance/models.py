@@ -80,6 +80,18 @@ class Invoice(models.Model):
     def __str__(self):
         return self.number
 
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["lab", "status", "due_date"],
+                name="finance_inv_lab_sta_00fb4f_idx",
+            ),
+            models.Index(
+                fields=["lab", "status", "paid_at"],
+                name="finance_inv_lab_sta_b60bb7_idx",
+            ),
+        ]
+
 
 class InvoiceItem(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="items")

@@ -1,9 +1,10 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Invoice, InvoiceItem, PriceList, Subscription
+from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 
 
 class PriceListSerializer(serializers.ModelSerializer):
@@ -146,23 +147,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return _sk_date(d)
 
     def get_subtotal_amount(self, obj):
-        vat_rate = Decimal(str(obj.vat_rate or 0))
-        discount = Decimal(str(obj.discount_percent or 0))
-        total = Decimal(str(obj.total_amount or 0))
-        # Reverse: total = (subtotal * (1 - discount/100)) * (1 + vat/100)
-        divisor = (Decimal("1") - discount / Decimal("100")) * (
-            Decimal("1") + vat_rate / Decimal("100")
-        )
-        if divisor <= 0:
-            return f"{total:.2f}"
-        subtotal = (total / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        subtotal = self._subtotal(obj)
         return f"{subtotal:.2f}"
 
     def get_vat_amount(self, obj):
-        total = Decimal(str(obj.total_amount or 0))
-        subtotal = Decimal(self.get_subtotal_amount(obj))
-        vat = (total - subtotal).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        return f"{vat:.2f}"
+        amounts = calculate_invoice_amounts(
+            self._subtotal(obj), obj.vat_rate, obj.discount_percent
+        )
+        return f"{amounts['vat_amount']:.2f}"
+
+    def _subtotal(self, obj):
+        items = obj.items.all()
+        if items:
+            return sum(
+                (Decimal(str(item.line_total or 0)) for item in items), Decimal()
+            )
+        return reverse_invoice_subtotal(
+            obj.total_amount, obj.vat_rate, obj.discount_percent
+        )
 
     def get_is_overdue(self, obj):
         return bool(

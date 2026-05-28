@@ -752,6 +752,29 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(response.data["metrics"]["unread_notifications"], 1)
 
 
+class AliasAuthenticationTests(APITestCase):
+    def test_root_and_app_alias_lists_require_authentication(self):
+        aliases = [
+            "/api/users/",
+            "/api/core/users/",
+            "/api/labs/",
+            "/api/core/labs/",
+            "/api/invoices/",
+            "/api/finance/invoices/",
+            "/api/warehouse/",
+            "/api/inventory/warehouse/",
+            "/api/vacations/",
+            "/api/jobs/vacations/",
+            "/api/calendar-events/",
+            "/api/jobs/calendar-events/",
+        ]
+
+        for alias in aliases:
+            with self.subTest(alias=alias):
+                response = self.client.get(alias)
+                self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
 class LabSlugTests(APITestCase):
     def test_slug_auto_generated_on_create(self):
         from apps.core.models import Lab

@@ -146,6 +146,12 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["recipient", "read_at"],
+                name="core_notifi_recipie_5f8814_idx",
+            ),
+        ]
 
     @property
     def is_read(self):

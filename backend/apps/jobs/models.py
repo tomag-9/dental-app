@@ -82,6 +82,14 @@ class Job(models.Model):
     def __str__(self):
         return f"Job {self.id} - {self.patient}"
 
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["lab", "status", "due_date"],
+                name="jobs_job_lab_id_7cdf67_idx",
+            ),
+        ]
+
 
 class JobItem(models.Model):
     PROCEDURE_CATEGORY_CHOICES = (
@@ -244,6 +252,12 @@ class CalendarEvent(models.Model):
 
     class Meta:
         ordering = ["start", "id"]
+        indexes = [
+            models.Index(
+                fields=["lab", "start", "end"],
+                name="jobs_calend_lab_id_39c7ad_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.event_type}: {self.title}"

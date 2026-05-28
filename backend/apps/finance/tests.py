@@ -1,10 +1,15 @@
+import threading
+
+from django.db import connection
+from django.test import TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.finance.calculations import calculate_invoice_amounts
 from apps.finance.models import Invoice, InvoiceSequence, PriceList, Subscription
 from apps.jobs.models import Job, Technician
 
@@ -446,6 +451,27 @@ class PriceListCrudApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)  # Only lab_a items
 
+    def test_list_price_list_items_supports_bounded_pagination(self):
+        for index in range(3):
+            PriceList.objects.create(
+                lab=self.lab_a,
+                code=f"PAGE-{index}",
+                description=f"Page item {index}",
+                price=10.0,
+            )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.get(reverse("pricelist-list"), {"page_size": 2})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(len(response.data["results"]), 2)
+
+        page_response = self.client.get(reverse("pricelist-list"), {"page": 1})
+        self.assertEqual(page_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(page_response.data["count"], 3)
+        self.assertEqual(len(page_response.data["results"]), 3)
+
     def test_superadmin_lists_price_list_items_across_labs(self):
         PriceList.objects.create(
             lab=self.lab_a,
@@ -862,6 +888,62 @@ class InvoiceSequenceTests(APITestCase):
         self.assertEqual(seq.last_number, 1)
 
 
+class ConcurrentInvoiceSequenceTests(TransactionTestCase):
+    reset_sequences = True
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Concurrent Seq Lab", invoice_prefix="CON")
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Clinic")
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="A", last_name="B"
+        )
+        self.job = Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=self.clinic,
+            status="completed",
+            price="10.00",
+        )
+        self.admin = User.objects.create_user(
+            username="concurrent_admin",
+            email="concurrent_admin@example.com",
+            password="pass",
+            role="admin",
+            lab=self.lab,
+        )
+
+    def test_parallel_invoice_creation_uses_unique_numbers(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("select_for_update concurrency is enforced by PostgreSQL")
+
+        barrier = threading.Barrier(5)
+        responses = []
+        lock = threading.Lock()
+
+        def create_invoice():
+            client = APIClient()
+            client.force_authenticate(user=self.admin)
+            barrier.wait()
+            response = client.post(
+                "/api/finance/invoices/",
+                {"clinic_id": self.clinic.id, "job_ids": [self.job.id]},
+                format="json",
+            )
+            with lock:
+                responses.append(response)
+
+        threads = [threading.Thread(target=create_invoice) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual([response.status_code for response in responses], [201] * 5)
+        numbers = [response.data["number"] for response in responses]
+        self.assertEqual(len(numbers), len(set(numbers)))
+        self.assertEqual(InvoiceSequence.objects.get(lab=self.lab).last_number, 5)
+
+
 class ProcedureCatalogTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Catalog Lab")
@@ -1276,6 +1358,61 @@ class InvoiceVatRateSnapshotTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("vat_rate", resp.data)
         self.assertEqual(resp.data["vat_rate"], "20.00")
+
+    def test_invoice_amounts_without_vat_or_discount(self):
+        amounts = calculate_invoice_amounts("100.00", vat_rate="0.00")
+
+        self.assertEqual(amounts["subtotal_amount"], 100)
+        self.assertEqual(amounts["discount_amount"], 0)
+        self.assertEqual(amounts["taxable_amount"], 100)
+        self.assertEqual(amounts["vat_amount"], 0)
+        self.assertEqual(amounts["total_amount"], 100)
+
+    def test_invoice_amounts_with_vat_and_no_discount(self):
+        amounts = calculate_invoice_amounts("100.00", vat_rate="20.00")
+
+        self.assertEqual(amounts["subtotal_amount"], 100)
+        self.assertEqual(amounts["discount_amount"], 0)
+        self.assertEqual(amounts["taxable_amount"], 100)
+        self.assertEqual(amounts["vat_amount"], 20)
+        self.assertEqual(amounts["total_amount"], 120)
+
+    def test_invoice_amounts_with_vat_and_discount(self):
+        amounts = calculate_invoice_amounts(
+            "100.00", vat_rate="20.00", discount_percent="10.00"
+        )
+
+        self.assertEqual(amounts["subtotal_amount"], 100)
+        self.assertEqual(amounts["discount_amount"], 10)
+        self.assertEqual(amounts["taxable_amount"], 90)
+        self.assertEqual(amounts["vat_amount"], 18)
+        self.assertEqual(amounts["total_amount"], 108)
+
+    def test_serializer_vat_amount_uses_discounted_tax_base(self):
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "discount_percent": "10.00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["subtotal_amount"], "100.00")
+        self.assertEqual(resp.data["vat_amount"], "18.00")
+        self.assertEqual(resp.data["total_amount"], "108.00")
 
 
 class InvoiceAgingBucketsTests(APITestCase):

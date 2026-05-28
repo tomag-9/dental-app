@@ -30,6 +30,7 @@ from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
+from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList, Subscription
 from .serializers import (
     InvoiceCreateSerializer,
@@ -46,7 +47,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.get_tenant_scoped_queryset(PriceList.objects.all())
+        return self.get_tenant_scoped_queryset(PriceList.objects.order_by("code", "id"))
 
     def perform_create(self, serializer):
         self.save_with_request_lab(serializer)
@@ -274,14 +275,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 )
                 subtotal += item.line_total
 
-        discount = Decimal(str(invoice.discount_percent or 0))
-        discount_amount = (subtotal * discount / Decimal("100")).quantize(
-            Decimal("0.01")
+        amounts = calculate_invoice_amounts(
+            subtotal, invoice.vat_rate, invoice.discount_percent
         )
-        discounted = subtotal - discount_amount
-        vat_rate = Decimal(str(invoice.vat_rate or 0))
-        vat_amount = (discounted * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
-        invoice.total_amount = discounted + vat_amount
+        invoice.total_amount = amounts["total_amount"]
         invoice.save(update_fields=["total_amount"])
 
         # Legacy parity: creating/issuing an invoice marks linked jobs as factured.
@@ -504,17 +501,17 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         vat_rate = Decimal(str(invoice.vat_rate or 0))
         discount = Decimal(str(invoice.discount_percent or 0))
         total = Decimal(str(invoice.total_amount or 0))
-        divisor = (
-            (1 - discount / 100) * (1 + vat_rate / 100)
-            if (1 - discount / 100) * (1 + vat_rate / 100) > 0
-            else Decimal("1")
-        )
-        subtotal = (total / divisor).quantize(Decimal("0.01"))
-        vat_amount = (total - subtotal).quantize(Decimal("0.01"))
+        line_totals = [Decimal(str(item.line_total or 0)) for item in items]
+        if line_totals:
+            subtotal = sum(line_totals, Decimal("0.00"))
+        else:
+            subtotal = reverse_invoice_subtotal(total, vat_rate, discount)
+        amounts = calculate_invoice_amounts(subtotal, vat_rate, discount)
+        vat_amount = amounts["vat_amount"]
 
         ty -= 6 * mm
         pdf.setFont("Helvetica", 9)
-        pdf.drawRightString(160 * mm, ty, "Základ DPH:")
+        pdf.drawRightString(160 * mm, ty, "Medzisúčet:")
         pdf.drawRightString(R, ty, f"{subtotal:.2f} EUR")
         if discount > 0:
             ty -= 5 * mm
@@ -522,8 +519,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pdf.drawRightString(
                 R,
                 ty,
-                f"-{(subtotal * discount / 100).quantize(Decimal('0.01')):.2f} EUR",
+                f"-{amounts['discount_amount']:.2f} EUR",
             )
+            ty -= 5 * mm
+            pdf.drawRightString(160 * mm, ty, "Základ DPH:")
+            pdf.drawRightString(R, ty, f"{amounts['taxable_amount']:.2f} EUR")
         ty -= 5 * mm
         pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
         pdf.drawRightString(R, ty, f"{vat_amount:.2f} EUR")
