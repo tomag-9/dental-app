@@ -26,7 +26,11 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
+from apps.core.access import (
+    IsReadOnlyOrAdminOrSuperadminPermission,
+    TenantScopedQuerysetMixin,
+    is_superadmin,
+)
 from apps.core.exports import limited_export_queryset
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
@@ -45,7 +49,10 @@ from .serializers import (
 class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = PriceList.objects.all()
     serializer_class = PriceListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         return self.get_tenant_scoped_queryset(PriceList.objects.order_by("code", "id"))
@@ -122,7 +129,10 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def _invoice_number(self, lab):
         seq, _ = InvoiceSequence.objects.select_for_update().get_or_create(lab=lab)

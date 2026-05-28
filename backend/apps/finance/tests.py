@@ -131,6 +131,13 @@ class InvoiceLifecycleApiTests(APITestCase):
             role="admin",
             lab=self.lab_b,
         )
+        self.regular_a = User.objects.create_user(
+            username="invoice_regular_a",
+            email="invoice_regular_a@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
+        )
 
         self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Clinic A")
         self.doctor_a = Doctor.objects.create(
@@ -358,6 +365,54 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertTrue(response.data["is_overdue"])
         self.assertEqual(response.data["days_overdue"], 3)
 
+    def test_regular_user_cannot_create_invoice(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a1.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Invoice.objects.filter(items__job=self.job_a1).exists())
+
+    def test_regular_user_cannot_update_invoice_status(self):
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="REG-STATUS-1",
+            status="issued",
+            total_amount="120.00",
+            vat_rate="20.00",
+        )
+
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.put(
+            f"/api/finance/invoices/{invoice.id}/status/",
+            {"status": "paid"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.status, "issued")
+
+    def test_regular_user_cannot_delete_invoice(self):
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="REG-DELETE-1",
+            status="issued",
+            total_amount="120.00",
+            vat_rate="20.00",
+        )
+
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.delete(f"/api/finance/invoices/{invoice.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Invoice.objects.filter(id=invoice.id).exists())
+
 
 class PriceListCrudApiTests(APITestCase):
     """Test CRUD operations for PriceList model."""
@@ -379,6 +434,13 @@ class PriceListCrudApiTests(APITestCase):
             password="password123",
             role="admin",
             lab=self.lab_b,
+        )
+        self.regular_a = User.objects.create_user(
+            username="pricelist_regular_a",
+            email="pricelist_regular_a@example.com",
+            password="password123",
+            role="user",
+            lab=self.lab_a,
         )
         self.superadmin = User.objects.create_user(
             username="pricelist_superadmin",
@@ -652,6 +714,31 @@ class PriceListCrudApiTests(APITestCase):
         response = self.client.post(reverse("pricelist-duplicate", args=[item_b.id]))
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_regular_user_cannot_create_price_list_item(self):
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(
+            reverse("pricelist-list"),
+            {"code": "REG-001", "description": "Regular item", "price": 12.0},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(PriceList.objects.filter(code="REG-001").exists())
+
+    def test_regular_user_cannot_duplicate_price_list_item(self):
+        item = PriceList.objects.create(
+            lab=self.lab_a,
+            code="REG-DUP",
+            description="Regular duplicate",
+            price=10.0,
+        )
+
+        self.client.force_authenticate(user=self.regular_a)
+        response = self.client.post(reverse("pricelist-duplicate", args=[item.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(PriceList.objects.filter(code="REG-DUP-COPY").exists())
 
 
 class FinanceStatsViewTests(APITestCase):
@@ -1586,6 +1673,13 @@ class InvoiceSendEmailTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.regular = User.objects.create_user(
+            username="email_regular",
+            password="pw",
+            email="email_regular@test.sk",
+            role="user",
+            lab=self.lab,
+        )
         self.clinic = Clinic.objects.create(
             lab=self.lab,
             name="Email Klinika",
@@ -1658,6 +1752,23 @@ class InvoiceSendEmailTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 401)
+
+    def test_regular_user_cannot_send_email(self):
+        from django.core import mail
+        from django.test import override_settings
+
+        self.client.force_authenticate(user=self.regular)
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
+            resp = self.client.post(
+                f"/api/finance/invoices/{self.invoice.id}/send-email/",
+                {"email": "recipient@test.sk"},
+                format="json",
+            )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(mail.outbox), 0)
 
 
 class InvoiceListFilterTests(APITestCase):
@@ -1753,6 +1864,13 @@ class OverdueReminderTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
+        self.regular = User.objects.create_user(
+            username="overdue_regular",
+            password="pw",
+            email="overdue_regular@test.sk",
+            role="user",
+            lab=self.lab,
+        )
         self.clinic_with_email = Clinic.objects.create(
             lab=self.lab,
             name="Email Clinic",
@@ -1824,6 +1942,19 @@ class OverdueReminderTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
         self.assertEqual(resp.status_code, 401)
+
+    def test_regular_user_cannot_send_overdue_reminders(self):
+        from django.core import mail
+        from django.test import override_settings
+
+        self.client.force_authenticate(user=self.regular)
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
+            resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(mail.outbox), 0)
 
 
 class InvoiceAgingTests(APITestCase):
