@@ -21,15 +21,16 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
 
   const isSuperadmin = user.role === 'superadmin';
   const isAdmin = user.role === 'admin';
-  const roleLabels = { admin: 'Administrátor', superadmin: 'Superadmin', user: 'Používateľ' };
+  const isTechnician = user.role === 'technician';
+  const roleLabels = { admin: 'Administrátor', superadmin: 'Superadmin', user: 'Používateľ', technician: 'Technik' };
 
   // ── Link configs ────────────────────────────────────────────────────────────────
   // Admin / regular user — operational app
   const adminMain = [
     { id: 'dashboard',   name: 'Nástenka',   icon: 'dashboard' },
     { id: 'jobs',        name: 'Práce',       icon: 'briefcase' },
-    { id: 'patients',    name: 'Pacienti',    icon: 'users' },
-    { id: 'inventory',   name: 'Sklad',       icon: 'package' },
+    ...(!isTechnician ? [{ id: 'patients', name: 'Pacienti', icon: 'users' }] : []),
+    ...(isAdmin ? [{ id: 'inventory', name: 'Sklad', icon: 'package' }] : []),
     { id: 'calendar',    name: 'Kalendár',    icon: 'calendar' },
   ];
   const adminFinance = [
@@ -45,7 +46,7 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
   const adminBottom = [
     // Permissions is admin-only (regular users don't see it)
     ...(isAdmin ? [{ id: 'permissions', name: 'Oprávnenia', icon: 'shield' }] : []),
-    { id: 'settings',    name: 'Nastavenia',  icon: 'settings' },
+    ...(isAdmin ? [{ id: 'settings', name: 'Nastavenia', icon: 'settings' }] : []),
   ];
 
   // Superadmin — platform control only

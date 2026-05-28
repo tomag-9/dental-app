@@ -10,6 +10,7 @@
     "lint": "eslint src",
     "smoke:auth": "node scripts/auth-smoke.mjs",
     "smoke:no-prod-mocks": "node scripts/no-prod-mocks-smoke.mjs",
+    "smoke:permissions": "node scripts/permissions-smoke.mjs",
     "smoke:visual": "node scripts/visual-smoke.mjs"
   },
   "dependencies": {

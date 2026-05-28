@@ -187,6 +187,23 @@
     return request(`/users/${suffix}`);
   }
 
+  async function fetchPermissionsMatrix() {
+    return request('/core/permissions/matrix/');
+  }
+
+  async function fetchLabRolePermissions(labId) {
+    if (!labId) throw new Error('Lab ID is required');
+    return request(`/core/labs/${labId}/permissions/`);
+  }
+
+  async function saveLabRolePermission(labId, payload) {
+    if (!labId) throw new Error('Lab ID is required');
+    return request(`/core/labs/${labId}/permissions/`, {
+      method: 'POST',
+      body: JSON.stringify(payload || {}),
+    });
+  }
+
   async function fetchNotifications(limit = 8) {
     const qs = new URLSearchParams();
     if (limit) qs.set('limit', String(limit));
@@ -475,6 +492,9 @@
     isTotpInvalidError,
     updateLab,
     fetchLabMembers,
+    fetchPermissionsMatrix,
+    fetchLabRolePermissions,
+    saveLabRolePermission,
     authUrl,
     downloadInvoicePdf,
     logout,

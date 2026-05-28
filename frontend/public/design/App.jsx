@@ -47,9 +47,12 @@ function App() {
     if (user && user.role !== 'superadmin' && String(page).startsWith('sa_')) {
       setPage('dashboard');
     }
-  }, [user && user.role]);
+    if (user && page !== normalizePageForRole(page, user.role)) {
+      setPage(normalizePageForRole(page, user.role));
+    }
+  }, [user && user.role, page]);
 
-  const navigate = (p) => { setJobId(null); setPatientId(null); setPage(p); };
+  const navigate = (p) => { setJobId(null); setPatientId(null); setPage(normalizePageForRole(p, user && user.role)); };
   const openJob = (id) => { setJobId(id); setPage('job_detail'); };
   const openPatient = (id) => { setPatientId(id); setPage('patient_detail'); };
 
@@ -75,7 +78,7 @@ function App() {
     case 'doctors':         pageEl = React.createElement(Doctors,       { onNavigate: navigate, onCreate: () => setCreateType('doctor') }); break;
     case 'technicians':     pageEl = React.createElement(Technicians,   { onNavigate: navigate, onCreate: () => setCreateType('technician') }); break;
     case 'settings':        pageEl = React.createElement(Settings,      { onNavigate: navigate, user }); break;
-    case 'permissions':     pageEl = React.createElement(Permissions,   { onNavigate: navigate }); break;
+    case 'permissions':     pageEl = React.createElement(Permissions,   { onNavigate: navigate, user }); break;
     // Superadmin pages — all resolve to <Superadmin currentPage=… />
     case 'sa_overview':
     case 'sa_tenants':
@@ -131,3 +134,17 @@ function App() {
 // Mount once scripts have loaded.
 const __molarisRoot = ReactDOM.createRoot(document.getElementById('root'));
 __molarisRoot.render(React.createElement(App));
+
+function normalizePageForRole(page, role) {
+  const pageId = String(page || '');
+  if (role === 'superadmin') {
+    return pageId.startsWith('sa_') || pageId === 'settings' ? pageId : 'sa_overview';
+  }
+  if (pageId.startsWith('sa_') || pageId === 'superadmin') return 'dashboard';
+  const adminOnly = new Set(['finance', 'invoices', 'pricelist', 'inventory', 'clinics', 'doctors', 'technicians', 'permissions', 'settings']);
+  if (role !== 'admin' && adminOnly.has(pageId)) return 'dashboard';
+  if (role === 'technician' && ['patients', 'patient_detail'].includes(pageId)) return 'dashboard';
+  return pageId;
+}
+
+Object.assign(window, { normalizePageForRole });
