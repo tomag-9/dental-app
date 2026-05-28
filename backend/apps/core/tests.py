@@ -15,9 +15,11 @@ from apps.core.models import (
     User,
     UserSession,
 )
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Patient
 from apps.finance.models import Invoice, Subscription
-from apps.jobs.models import Job
+from apps.inventory.models import WarehouseItem
+from apps.jobs.models import CalendarEvent, Job, Vacation
 
 
 class CoreUserFlowsApiTests(APITestCase):
@@ -752,7 +754,60 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(response.data["metrics"]["unread_notifications"], 1)
 
 
-class AliasAuthenticationTests(APITestCase):
+class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
+    def setUp(self):
+        self.setup_role_matrix(prefix="alias")
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Alias Clinic A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Alias Clinic B")
+        self.invoice_a = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="ALIAS-A-001",
+            total_amount="120.00",
+        )
+        self.invoice_b = Invoice.objects.create(
+            lab=self.lab_b,
+            clinic=self.clinic_b,
+            number="ALIAS-B-001",
+            total_amount="240.00",
+        )
+        self.item_a = WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Alias Item A",
+            sku="ALIAS-A",
+            quantity=10,
+        )
+        self.item_b = WarehouseItem.objects.create(
+            lab=self.lab_b,
+            name="Alias Item B",
+            sku="ALIAS-B",
+            quantity=20,
+        )
+        self.vacation_a = Vacation.objects.create(
+            lab=self.lab_a,
+            start=timezone.now(),
+            end=timezone.now() + timezone.timedelta(days=1),
+            description="Alias Vacation A",
+        )
+        self.vacation_b = Vacation.objects.create(
+            lab=self.lab_b,
+            start=timezone.now(),
+            end=timezone.now() + timezone.timedelta(days=1),
+            description="Alias Vacation B",
+        )
+        self.event_a = CalendarEvent.objects.create(
+            lab=self.lab_a,
+            title="Alias Event A",
+            event_type="meeting",
+            start=timezone.now(),
+        )
+        self.event_b = CalendarEvent.objects.create(
+            lab=self.lab_b,
+            title="Alias Event B",
+            event_type="meeting",
+            start=timezone.now(),
+        )
+
     def test_root_and_app_alias_lists_require_authentication(self):
         aliases = [
             "/api/users/",
@@ -773,6 +828,105 @@ class AliasAuthenticationTests(APITestCase):
             with self.subTest(alias=alias):
                 response = self.client.get(alias)
                 self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_role_matrix_helper_covers_alias_list_auth_contract(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/warehouse/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "admin": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "no_lab": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_user_aliases_have_same_lab_scoping_and_serializer_contract(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/users/")
+        scoped = self.client.get("/api/core/users/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertIn(self.admin_a.id, self.response_ids(root))
+        self.assertIn(self.user_a.id, self.response_ids(root))
+        self.assertNotIn(self.admin_b.id, self.response_ids(root))
+        self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
+
+    def test_user_detail_aliases_share_serializer_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get(f"/api/users/{self.user_a.id}/")
+        scoped = self.client.get(f"/api/core/users/{self.user_a.id}/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(root.data["id"], scoped.data["id"])
+        self.assertEqual(set(root.data.keys()), set(scoped.data.keys()))
+
+    def test_invoice_aliases_have_same_lab_scoping_and_serializer_contract(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/invoices/")
+        scoped = self.client.get("/api/finance/invoices/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertEqual(self.response_ids(root), {self.invoice_a.id})
+        self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
+
+    def test_invoice_detail_aliases_share_serializer_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get(f"/api/invoices/{self.invoice_a.id}/")
+        scoped = self.client.get(f"/api/finance/invoices/{self.invoice_a.id}/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(root.data["id"], scoped.data["id"])
+        self.assertEqual(set(root.data.keys()), set(scoped.data.keys()))
+
+    def test_warehouse_aliases_have_same_lab_scoping_and_serializer_contract(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/warehouse/")
+        scoped = self.client.get("/api/inventory/warehouse/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertEqual(self.response_ids(root), {self.item_a.id})
+        self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
+
+    def test_warehouse_detail_aliases_share_serializer_fields(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get(f"/api/warehouse/{self.item_a.id}/")
+        scoped = self.client.get(f"/api/inventory/warehouse/{self.item_a.id}/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(root.data["id"], scoped.data["id"])
+        self.assertEqual(set(root.data.keys()), set(scoped.data.keys()))
+
+    def test_vacation_aliases_have_same_lab_scoping(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/vacations/")
+        scoped = self.client.get("/api/jobs/vacations/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertEqual(self.response_ids(root), {self.vacation_a.id})
+
+    def test_calendar_event_aliases_have_same_lab_scoping(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/calendar-events/")
+        scoped = self.client.get("/api/jobs/calendar-events/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertEqual(self.response_ids(root), {self.event_a.id})
 
 
 class LabSlugTests(APITestCase):
