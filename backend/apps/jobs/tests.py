@@ -1,3 +1,4 @@
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -1769,3 +1770,11 @@ class JobExportCsvTests(APITestCase):
         self.assertIn("id", header)
         self.assertIn("status", header)
         self.assertGreaterEqual(ws.max_row, 2)
+
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_export_enforces_row_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/jobs/jobs/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")

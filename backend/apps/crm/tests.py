@@ -1,3 +1,4 @@
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import serializers as drf_serializers
@@ -1065,6 +1066,20 @@ class CrmCsvExportTests(APITestCase):
     def test_unauthenticated_export_denied(self):
         resp = self.client.get("/api/crm/patients/export/")
         self.assertEqual(resp.status_code, 401)
+
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_patient_export_enforces_row_limit(self):
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Peter",
+            last_name="Limit",
+            birth_number="8555215557",
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")
 
 
 class DoctorCsvExportTests(APITestCase):

@@ -1,6 +1,7 @@
 from io import BytesIO
 
 import openpyxl
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -616,3 +617,11 @@ class InventoryXlsxExportTests(APITestCase):
     def test_export_unauthenticated_returns_401(self):
         resp = self.client.get("/api/inventory/warehouse/export/?export_format=xlsx")
         self.assertEqual(resp.status_code, 401)
+
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_export_enforces_row_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/inventory/warehouse/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")

@@ -19,6 +19,7 @@ from apps.core.access import (
     is_admin_or_superadmin,
     is_superadmin,
 )
+from apps.core.exports import limited_export_queryset
 
 from .models import (
     CalendarEvent,
@@ -613,7 +614,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             "created_at",
         ]
         rows = []
-        for job in qs:
+        for job in limited_export_queryset(qs, "jobs"):
             patient = (
                 f"{job.patient.first_name} {job.patient.last_name}".strip()
                 if job.patient

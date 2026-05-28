@@ -1,7 +1,7 @@
 import threading
 
 from django.db import connection
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -1111,6 +1111,14 @@ class InvoiceCSVExportTests(APITestCase):
         self.assertIn("EXP-001", numbers)
         self.assertIn("EXP-002", numbers)
 
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_export_enforces_row_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/invoices/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")
+
 
 class ProformaInvoiceTests(APITestCase):
     def setUp(self):
@@ -2001,3 +2009,11 @@ class PriceListExportCsvTests(APITestCase):
         ]
         self.assertIn("KOR-001", codes)
         self.assertIn("MOS-002", codes)
+
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_export_enforces_row_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/finance/price-list/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")

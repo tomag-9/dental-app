@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import TenantScopedQuerysetMixin, is_superadmin
+from apps.core.exports import limited_export_queryset
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
@@ -88,7 +89,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 str(item.valid_from) if item.valid_from else "",
                 str(item.valid_to) if item.valid_to else "",
             ]
-            for item in qs
+            for item in limited_export_queryset(qs, "price-list")
         ]
         if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
@@ -645,7 +646,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
                 inv.created_at.strftime("%Y-%m-%d"),
             ]
-            for inv in qs
+            for inv in limited_export_queryset(qs, "invoices")
         ]
 
         if request.query_params.get("export_format") == "xlsx":

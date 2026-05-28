@@ -11,6 +11,7 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from apps.core.access import TenantScopedQuerysetMixin, is_admin_or_superadmin
+from apps.core.exports import limited_export_queryset
 from apps.jobs.models import Job
 
 from .models import Clinic, Doctor, Patient
@@ -93,7 +94,9 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 c.bank_details or "",
                 c.created_at.date().isoformat() if c.created_at else "",
             ]
-            for c in self.get_queryset().order_by("name")
+            for c in limited_export_queryset(
+                self.get_queryset().order_by("name"), "clinics"
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Kliniky", "clinics.xlsx")
@@ -151,9 +154,12 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 d.clinic.name if d.clinic else "",
                 d.created_at.date().isoformat() if d.created_at else "",
             ]
-            for d in self.get_queryset()
-            .select_related("clinic")
-            .order_by("last_name", "first_name")
+            for d in limited_export_queryset(
+                self.get_queryset()
+                .select_related("clinic")
+                .order_by("last_name", "first_name"),
+                "doctors",
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Lekári", "doctors.xlsx")
@@ -293,7 +299,9 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 p.email or "",
                 p.created_at.date().isoformat() if p.created_at else "",
             ]
-            for p in self.get_queryset().order_by("last_name", "first_name")
+            for p in limited_export_queryset(
+                self.get_queryset().order_by("last_name", "first_name"), "patients"
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Pacienti", "patients.xlsx")

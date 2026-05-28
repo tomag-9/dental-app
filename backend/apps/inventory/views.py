@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.core.access import TenantScopedQuerysetMixin
 from apps.core.access import is_superadmin
+from apps.core.exports import limited_export_queryset
 
 from .models import WarehouseItem
 from .serializers import WarehouseItemImportSerializer, WarehouseItemSerializer
@@ -135,7 +136,9 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 item.location or "",
                 item.notes or "",
             ]
-            for item in self.get_queryset().order_by("name")
+            for item in limited_export_queryset(
+                self.get_queryset().order_by("name"), "inventory"
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
