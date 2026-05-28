@@ -32,6 +32,7 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
+from apps.core.models import AuditLog
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
@@ -44,6 +45,18 @@ from .serializers import (
     PriceListSerializer,
     SubscriptionSerializer,
 )
+
+
+def _write_invoice_audit(request, invoice, action, metadata=None, description=None):
+    AuditLog.objects.create(
+        actor=request.user if getattr(request, "user", None).is_authenticated else None,
+        lab=invoice.lab,
+        action=action,
+        entity_type="invoice",
+        entity_id=str(invoice.id),
+        description=description or f"Invoice {invoice.number}: {action}",
+        metadata=metadata or {},
+    )
 
 
 class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -305,6 +318,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         payload = InvoiceStatusUpdateSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         new_status = payload.validated_data["status"]
+        old_status = invoice.status
 
         invoice.status = new_status
         if new_status == "issued" and not invoice.issued_at:
@@ -314,6 +328,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice.save(update_fields=["status", "issued_at", "paid_at"])
 
         self._sync_jobs_for_invoice_status(invoice, new_status)
+        _write_invoice_audit(
+            request,
+            invoice,
+            "invoice.status_changed",
+            metadata={"from_status": old_status, "to_status": new_status},
+        )
 
         return Response(InvoiceSerializer(invoice, context={"request": request}).data)
 
@@ -396,6 +416,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
+        _write_invoice_audit(
+            request,
+            invoice,
+            "invoice.email_sent",
+            metadata={"sent_to": recipient},
+        )
         return Response({"sent_to": recipient, "invoice": invoice.number})
 
     def _render_invoice_pdf(self, invoice, buffer):
@@ -564,6 +590,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         invoice = self.get_object()
         self._sync_jobs_for_invoice_status(invoice, "cancelled")
+        _write_invoice_audit(
+            request,
+            invoice,
+            "invoice.deleted",
+            metadata={"number": invoice.number, "status": invoice.status},
+        )
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=["post"], url_path="send-overdue-reminders")
@@ -616,6 +648,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
             try:
                 msg.send(fail_silently=False)
+                _write_invoice_audit(
+                    request,
+                    invoice,
+                    "invoice.reminder_sent",
+                    metadata={"sent_to": recipient, "days_overdue": days_overdue},
+                )
                 sent.append(invoice.number)
             except Exception as exc:
                 failed.append({"invoice": invoice.number, "reason": str(exc)})

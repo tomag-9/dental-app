@@ -300,6 +300,18 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                     self._record_timeline(
                         job, "updated", note="Hromadná zmena priority."
                     )
+                    from apps.core.models import AuditLog
+
+                    actor = request.user if request.user.is_authenticated else None
+                    AuditLog.objects.create(
+                        actor=actor,
+                        lab=job.lab,
+                        action="job.bulk_priority_changed",
+                        entity_type="job",
+                        entity_id=str(job.id),
+                        description=f"Job #{job.id} priority changed in bulk",
+                        metadata={"priority": new_priority},
+                    )
 
                 updated.append(job.id)
 

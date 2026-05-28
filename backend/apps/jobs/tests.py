@@ -1581,6 +1581,26 @@ class JobBulkUpdateTests(APITestCase):
         self.job1.refresh_from_db()
         self.assertEqual(self.job1.status, "in_progress")
 
+    def test_bulk_status_update_writes_audit_log(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id, self.job2.id], "status": "in_progress"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        logs = AuditLog.objects.filter(
+            action="job.status_changed",
+            entity_id__in=[str(self.job1.id), str(self.job2.id)],
+        )
+        self.assertEqual(logs.count(), 2)
+        for log in logs:
+            self.assertEqual(log.actor, self.user)
+            self.assertEqual(log.lab, self.lab)
+            self.assertEqual(log.metadata["from_status"], "new")
+            self.assertEqual(log.metadata["to_status"], "in_progress")
+
     def test_bulk_update_invalid_transition_skipped(self):
         self.client.force_authenticate(user=self.user)
         # job3 is completed, new→completed is invalid from new
@@ -1603,6 +1623,23 @@ class JobBulkUpdateTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.job1.refresh_from_db()
         self.assertEqual(self.job1.priority, "high")
+
+    def test_bulk_priority_update_writes_audit_log(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id], "priority": "high"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        log = AuditLog.objects.filter(action="job.bulk_priority_changed").latest(
+            "created_at"
+        )
+        self.assertEqual(log.entity_id, str(self.job1.id))
+        self.assertEqual(log.actor, self.user)
+        self.assertEqual(log.lab, self.lab)
+        self.assertEqual(log.metadata["priority"], "high")
 
     def test_empty_job_ids_returns_400(self):
         self.client.force_authenticate(user=self.user)

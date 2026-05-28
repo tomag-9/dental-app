@@ -7,7 +7,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from apps.core.models import Lab, User
+from apps.core.models import AuditLog, Lab, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.calculations import calculate_invoice_amounts
 from apps.finance.models import Invoice, InvoiceSequence, PriceList, Subscription
@@ -310,6 +310,54 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertEqual(cancelled_resp.status_code, status.HTTP_200_OK)
         self.job_a1.refresh_from_db()
         self.assertEqual(self.job_a1.status, "finished_unfactured")
+
+    def test_status_transition_writes_audit_log(self):
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="AUD-STATUS-1",
+            status="issued",
+            total_amount="120.00",
+            vat_rate="20.00",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.put(
+            f"/api/finance/invoices/{invoice.id}/status/",
+            {"status": "paid"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        log = AuditLog.objects.filter(action="invoice.status_changed").latest(
+            "created_at"
+        )
+        self.assertEqual(log.entity_id, str(invoice.id))
+        self.assertEqual(log.actor, self.admin_a)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["from_status"], "issued")
+        self.assertEqual(log.metadata["to_status"], "paid")
+
+    def test_delete_invoice_writes_audit_log(self):
+        invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number="AUD-DELETE-1",
+            status="issued",
+            total_amount="120.00",
+            vat_rate="20.00",
+        )
+
+        self.client.force_authenticate(user=self.admin_a)
+        response = self.client.delete(f"/api/finance/invoices/{invoice.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        log = AuditLog.objects.filter(action="invoice.deleted").latest("created_at")
+        self.assertEqual(log.entity_id, str(invoice.id))
+        self.assertEqual(log.actor, self.admin_a)
+        self.assertEqual(log.lab, self.lab_a)
+        self.assertEqual(log.metadata["number"], "AUD-DELETE-1")
+        self.assertEqual(log.metadata["status"], "issued")
 
     def test_qr_and_pdf_endpoints(self):
         self.client.force_authenticate(user=self.admin_a)
@@ -1712,6 +1760,26 @@ class InvoiceSendEmailTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn(self.invoice.number, mail.outbox[0].subject)
 
+    def test_send_email_writes_audit_log(self):
+        from django.test import override_settings
+
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
+            resp = self.client.post(
+                f"/api/finance/invoices/{self.invoice.id}/send-email/",
+                {"email": "recipient@test.sk"},
+                format="json",
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        log = AuditLog.objects.filter(action="invoice.email_sent").latest("created_at")
+        self.assertEqual(log.entity_id, str(self.invoice.id))
+        self.assertEqual(log.actor, self.admin)
+        self.assertEqual(log.lab, self.lab)
+        self.assertEqual(log.metadata["sent_to"], "recipient@test.sk")
+
     def test_send_email_falls_back_to_clinic_contact(self):
         from django.test import override_settings
 
@@ -1927,6 +1995,25 @@ class OverdueReminderTests(APITestCase):
         self.assertEqual(resp.data["failed"][0]["invoice"], "OD-0002")
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("OD-0001", mail.outbox[0].subject)
+
+    def test_send_overdue_reminders_writes_audit_log(self):
+        from django.test import override_settings
+
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
+        ):
+            resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
+
+        self.assertEqual(resp.status_code, 200)
+        log = AuditLog.objects.filter(action="invoice.reminder_sent").latest(
+            "created_at"
+        )
+        self.assertEqual(log.entity_id, str(self.overdue_inv.id))
+        self.assertEqual(log.actor, self.admin)
+        self.assertEqual(log.lab, self.lab)
+        self.assertEqual(log.metadata["sent_to"], "clinic@test.sk")
+        self.assertEqual(log.metadata["days_overdue"], 1)
 
     def test_paid_invoices_not_included(self):
         from django.test import override_settings

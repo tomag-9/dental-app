@@ -1530,6 +1530,15 @@ class LabApiKeyViewSet(viewsets.ViewSet):
             hashed_key=hashed,
             created_by=request.user,
         )
+        _write_audit_log(
+            request,
+            action="api_key.created",
+            entity_type="lab_api_key",
+            entity_id=key.id,
+            lab=lab,
+            description=f"API key {key.name} created",
+            metadata={"name": key.name, "prefix": key.prefix},
+        )
         return Response(
             {
                 "id": key.id,
@@ -1554,6 +1563,15 @@ class LabApiKeyViewSet(viewsets.ViewSet):
             )
         key.is_active = False
         key.save(update_fields=["is_active"])
+        _write_audit_log(
+            request,
+            action="api_key.revoked",
+            entity_type="lab_api_key",
+            entity_id=key.id,
+            lab=key.lab,
+            description=f"API key {key.name} revoked",
+            metadata={"name": key.name, "prefix": key.prefix},
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1921,6 +1939,15 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
             action=action_name,
             defaults={"allowed": allowed},
         )
+        _write_audit_log(
+            request,
+            action="permission_override.saved",
+            entity_type="lab_role_permission",
+            entity_id=override.id,
+            lab=lab,
+            description=f"Permission override {role}:{action_name}={allowed}",
+            metadata={"role": role, "action": action_name, "allowed": allowed},
+        )
         return Response(
             {
                 "id": override.id,
@@ -1935,7 +1962,24 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
         lab = self._get_lab(request, lab_pk)
         if not lab:
             raise PermissionDenied("Access denied or lab not found.")
-        deleted, _ = LabRolePermission.objects.filter(lab=lab, pk=pk).delete()
-        if not deleted:
+        override = LabRolePermission.objects.filter(lab=lab, pk=pk).first()
+        if not override:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        metadata = {
+            "role": override.role,
+            "action": override.action,
+            "allowed": override.allowed,
+        }
+        entity_id = override.id
+        description = f"Permission override {override.role}:{override.action} deleted"
+        override.delete()
+        _write_audit_log(
+            request,
+            action="permission_override.deleted",
+            entity_type="lab_role_permission",
+            entity_id=entity_id,
+            lab=lab,
+            description=description,
+            metadata=metadata,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
