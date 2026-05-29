@@ -1102,6 +1102,133 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         self.assertEqual(self.response_ids(root), self.response_ids(scoped))
         self.assertEqual(self.response_ids(root), {self.event_a.id})
 
+    def test_labs_aliases_have_same_lab_scoping_and_serializer_contract(self):
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/labs/")
+        scoped = self.client.get("/api/core/labs/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertEqual(self.response_ids(root), {self.lab_a.id})
+        self.assertNotIn(self.lab_b.id, self.response_ids(root))
+        self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
+
+    def test_labs_alias_superadmin_sees_all_labs(self):
+        self.client.force_authenticate(user=self.superadmin)
+        root = self.client.get("/api/labs/")
+        scoped = self.client.get("/api/core/labs/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        self.assertIn(self.lab_a.id, self.response_ids(root))
+        self.assertIn(self.lab_b.id, self.response_ids(root))
+
+    def test_labs_alias_no_lab_user_gets_empty_list(self):
+        self.client.force_authenticate(user=self.no_lab_user)
+        for url in ["/api/labs/", "/api/core/labs/"]:
+            with self.subTest(url=url):
+                resp = self.client.get(url)
+                self.assertEqual(resp.status_code, status.HTTP_200_OK)
+                self.assertEqual(len(resp.data), 0)
+
+    def test_audit_logs_aliases_superadmin_only(self):
+        # Non-superadmin roles get 403 from both aliases.
+        for role_user in [
+            self.admin_a,
+            self.user_a,
+            self.technician_a,
+            self.no_lab_user,
+        ]:
+            with self.subTest(user=role_user.username):
+                self.client.force_authenticate(user=role_user)
+                for url in ["/api/audit-logs/", "/api/core/audit-logs/"]:
+                    resp = self.client.get(url)
+                    self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, url)
+
+    def test_audit_logs_aliases_superadmin_sees_same_records(self):
+        AuditLog.objects.create(
+            action="test.event",
+            entity_type="test",
+            entity_id=1,
+            lab=self.lab_a,
+        )
+        self.client.force_authenticate(user=self.superadmin)
+        root = self.client.get("/api/audit-logs/")
+        scoped = self.client.get("/api/core/audit-logs/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+
+    def test_team_invitations_aliases_admin_sees_same_lab_scope(self):
+        TeamInvitation.objects.create(
+            lab=self.lab_a,
+            email="invite_a@test.com",
+            role="user",
+            invited_by=self.admin_a,
+            token="token-a-alias",
+            status="pending",
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        TeamInvitation.objects.create(
+            lab=self.lab_b,
+            email="invite_b@test.com",
+            role="user",
+            invited_by=self.admin_b,
+            token="token-b-alias",
+            status="pending",
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/team-invitations/")
+        scoped = self.client.get("/api/core/team-invitations/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        # admin_a only sees their own lab's invitation.
+        self.assertEqual(len(root.data), 1)
+        self.assertEqual(root.data[0]["email"], "invite_a@test.com")
+
+    def test_team_invitations_aliases_user_gets_empty_list(self):
+        # Regular users and technicians cannot manage invitations, but the endpoint
+        # returns an empty list (not 403) because get_queryset returns qs.none().
+        for role_user in [self.user_a, self.technician_a]:
+            with self.subTest(user=role_user.username):
+                self.client.force_authenticate(user=role_user)
+                for url in ["/api/team-invitations/", "/api/core/team-invitations/"]:
+                    resp = self.client.get(url)
+                    self.assertEqual(resp.status_code, status.HTTP_200_OK, url)
+                    self.assertEqual(len(resp.data), 0, url)
+
+    def test_notifications_aliases_recipient_scoped(self):
+        Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.admin_a,
+            type="info",
+            title="Notif for admin_a",
+            message="msg",
+        )
+        Notification.objects.create(
+            lab=self.lab_a,
+            recipient=self.user_a,
+            type="info",
+            title="Notif for user_a",
+            message="msg",
+        )
+        self.client.force_authenticate(user=self.admin_a)
+        root = self.client.get("/api/notifications/")
+        scoped = self.client.get("/api/core/notifications/")
+
+        self.assertEqual(root.status_code, status.HTTP_200_OK)
+        self.assertEqual(scoped.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.response_ids(root), self.response_ids(scoped))
+        # admin_a only sees their own notification.
+        self.assertEqual(len(root.data), 1)
+        self.assertEqual(root.data[0]["title"], "Notif for admin_a")
+
 
 class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     def setUp(self):

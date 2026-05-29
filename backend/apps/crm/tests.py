@@ -882,6 +882,104 @@ class CrmSearchFilterTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.data), 1)
 
+    def test_search_is_scoped_to_authenticated_lab(self):
+        other_lab = Lab.objects.create(name="Other Lab")
+        Patient.objects.create(
+            lab=other_lab,
+            first_name="Kral",
+            last_name="Other",
+            birth_number="800101/0001",
+        )
+        Clinic.objects.create(lab=other_lab, name="Kral Klinika Other")
+        Doctor.objects.create(lab=other_lab, first_name="Kral", last_name="Other")
+
+        # patients: own lab has "Peter Kral" (last_name match) → 1 result
+        # clinics: own lab has no "Kral" clinic → 0 results
+        # doctors: own lab has no "Kral" doctor → 0 results
+        expected_counts = {
+            "/api/crm/patients/?search=Kral": 1,
+            "/api/crm/clinics/?search=Kral": 0,
+            "/api/crm/doctors/?search=Kral": 0,
+        }
+        for url, expected in expected_counts.items():
+            with self.subTest(url=url):
+                resp = self.client.get(url)
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(
+                    len(resp.data), expected, f"unexpected count for {url}"
+                )
+                for record in resp.data:
+                    self.assertNotEqual(record.get("lab"), other_lab.id)
+
+    def test_clinic_search_by_ico(self):
+        Clinic.objects.create(lab=self.lab, name="Zubna klinika", ico="12345678")
+        resp = self.client.get("/api/crm/clinics/?search=12345678")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["ico"], "12345678")
+
+    def test_patient_search_case_insensitive(self):
+        resp = self.client.get("/api/crm/patients/?search=KRAL")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Kral")
+
+
+class DoctorClinicFilterTests(APITestCase):
+    """Tests for ?clinic= filter on DoctorViewSet."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Filter Lab")
+        self.admin = User.objects.create_user(
+            username="filter_admin", password="pw", role="admin", lab=self.lab
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.clinic_a = Clinic.objects.create(lab=self.lab, name="Klinika A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab, name="Klinika B")
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_a, first_name="Jan", last_name="A"
+        )
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_a, first_name="Maria", last_name="A2"
+        )
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_b, first_name="Peter", last_name="B"
+        )
+
+    def test_filter_doctors_by_clinic(self):
+        resp = self.client.get(f"/api/crm/doctors/?clinic={self.clinic_a.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+        last_names = {doc["last_name"] for doc in resp.data}
+        self.assertEqual(last_names, {"A", "A2"})
+
+    def test_filter_doctors_by_other_clinic(self):
+        resp = self.client.get(f"/api/crm/doctors/?clinic={self.clinic_b.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "B")
+
+    def test_no_filter_returns_all_lab_doctors(self):
+        resp = self.client.get("/api/crm/doctors/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 3)
+
+    def test_filter_with_nonexistent_clinic_returns_empty(self):
+        resp = self.client.get("/api/crm/doctors/?clinic=99999")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+    def test_clinic_filter_scoped_to_lab(self):
+        other_lab = Lab.objects.create(name="Other Filter Lab")
+        other_clinic = Clinic.objects.create(lab=other_lab, name="Other Clinic")
+        Doctor.objects.create(
+            lab=other_lab, clinic=other_clinic, first_name="Ghost", last_name="Doc"
+        )
+        # Filtering by other lab's clinic ID returns empty (tenant-scoped).
+        resp = self.client.get(f"/api/crm/doctors/?clinic={other_clinic.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
 
 class PatientRevenueStatsTests(APITestCase):
     def setUp(self):
