@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import _validate_birth_number, _validate_dic, _validate_ico
 from apps.finance.models import Invoice, InvoiceItem
@@ -1228,3 +1229,232 @@ class DoctorCsvExportTests(APITestCase):
     def test_unauthenticated_export_denied(self):
         resp = self.client.get("/api/crm/doctors/export/")
         self.assertEqual(resp.status_code, 401)
+
+
+class CrmRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Full role matrix coverage for CRM endpoints.
+
+    Covers: anonymous 401, no_lab, user, technician, admin, superadmin
+    for patients, clinics, and doctors CRUD endpoints.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="crm_matrix")
+        self.clinic = Clinic.objects.create(lab=self.lab_a, name="Matrix Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic,
+            first_name="Matrix",
+            last_name="Doctor",
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Matrix",
+            last_name="Patient",
+            birth_number="8001011234",
+        )
+
+    # ── Patient endpoints ────────────────────────────────────────────────────
+
+    def test_patient_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/patients/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_patient_create_role_matrix(self):
+        # birth_number is unique per lab so each successful create needs a different value
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {"first_name": "X", "last_name": "Y", "birth_number": "9001015001"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/crm/patients/",
+                    {
+                        "first_name": "X",
+                        "last_name": "Y",
+                        "birth_number": "9001015001",
+                        "lab": self.lab_a.id,
+                    },
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.client.force_authenticate(user=None)
+
+        self.client.force_authenticate(user=self.role_users["admin"])
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Admin",
+                "last_name": "Patient",
+                "birth_number": "9001015002",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.client.force_authenticate(user=None)
+
+        self.client.force_authenticate(user=self.role_users["superadmin"])
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Super",
+                "last_name": "Patient",
+                "birth_number": "9001015003",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.client.force_authenticate(user=None)
+
+    def test_patient_retrieve_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/crm/patients/{self.patient.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_patient_update_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/crm/patients/{self.patient.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"first_name": "Updated"},
+            format="json",
+        )
+
+    def test_patient_delete_role_matrix(self):
+        def _delete_matrix(role):
+            """Create a fresh patient per role so delete always succeeds for admin."""
+            import random
+
+            suffix = random.randint(10000, 99999)
+            p = Patient.objects.create(
+                lab=self.lab_a,
+                first_name="Del",
+                last_name=f"Patient{suffix}",
+                birth_number=f"90010{suffix}",
+            )
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/crm/patients/{p.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # Anonymous
+        resp = self.client.delete(f"/api/crm/patients/{self.patient.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        expectations = {
+            "no_lab": status.HTTP_404_NOT_FOUND,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(
+                    resp.status_code, expected, f"DELETE patient as {role}"
+                )
+
+    # ── Clinic endpoints ─────────────────────────────────────────────────────
+
+    def test_clinic_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/clinics/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_clinic_create_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "POST",
+            "/api/crm/clinics/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_201_CREATED,
+                "superadmin": status.HTTP_201_CREATED,
+            },
+            data={"name": "Nova Klinika", "lab": self.lab_a.id},
+            format="json",
+        )
+
+    # ── Doctor endpoints ─────────────────────────────────────────────────────
+
+    def test_doctor_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/doctors/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_doctor_create_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "POST",
+            "/api/crm/doctors/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_201_CREATED,
+                "superadmin": status.HTTP_201_CREATED,
+            },
+            data={
+                "clinic": self.clinic.id,
+                "first_name": "Novy",
+                "last_name": "Lekar",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )

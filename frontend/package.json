@@ -11,7 +11,8 @@
     "smoke:auth": "node scripts/auth-smoke.mjs",
     "smoke:no-prod-mocks": "node scripts/no-prod-mocks-smoke.mjs",
     "smoke:permissions": "node scripts/permissions-smoke.mjs",
-    "smoke:visual": "node scripts/visual-smoke.mjs"
+    "smoke:visual": "node scripts/visual-smoke.mjs",
+    "smoke:role-nav": "node scripts/role-nav-smoke.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
