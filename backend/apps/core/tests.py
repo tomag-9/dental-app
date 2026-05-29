@@ -1466,6 +1466,183 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             status.HTTP_201_CREATED,
         )
 
+    def _new_vacation_item(self, role, suffix="matrix"):
+        return Vacation.objects.create(
+            lab=self.lab_a,
+            start=timezone.now(),
+            end=timezone.now() + timezone.timedelta(days=1),
+            description=f"{suffix} vacation {role}",
+        )
+
+    def _new_calendar_event_item(self, role, suffix="matrix"):
+        return CalendarEvent.objects.create(
+            lab=self.lab_a,
+            title=f"{suffix} event {role}",
+            event_type="meeting",
+            start=timezone.now(),
+        )
+
+    def _new_technician_item(self, role, suffix="matrix"):
+        return Technician.objects.create(
+            lab=self.lab_a,
+            first_name=f"{suffix.capitalize()}",
+            last_name=f"Tech {role}",
+        )
+
+    def test_vacation_update_role_matrix(self):
+        def request_factory(role):
+            vacation = self._new_vacation_item(role, "vac_update")
+            return (
+                "PATCH",
+                f"/api/jobs/vacations/{vacation.id}/",
+                {"description": f"updated {role}"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_vacation_delete_role_matrix(self):
+        def request_factory(role):
+            vacation = self._new_vacation_item(role, "vac_delete")
+            return ("DELETE", f"/api/jobs/vacations/{vacation.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    def test_calendar_event_update_role_matrix(self):
+        def request_factory(role):
+            event = self._new_calendar_event_item(role, "cal_update")
+            return (
+                "PATCH",
+                f"/api/jobs/calendar-events/{event.id}/",
+                {"title": f"updated {role}"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_calendar_event_delete_role_matrix(self):
+        def request_factory(role):
+            event = self._new_calendar_event_item(role, "cal_delete")
+            return ("DELETE", f"/api/jobs/calendar-events/{event.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    def test_technician_update_role_matrix(self):
+        def request_factory(role):
+            tech = self._new_technician_item(role, "tech_update")
+            return (
+                "PATCH",
+                f"/api/jobs/technicians/{tech.id}/",
+                {"first_name": f"updated {role}"},
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_200_OK)
+
+    def test_technician_delete_role_matrix(self):
+        def request_factory(role):
+            tech = self._new_technician_item(role, "tech_delete")
+            return ("DELETE", f"/api/jobs/technicians/{tech.id}/", None)
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_204_NO_CONTENT)
+
+    def test_warehouse_import_partial_role_matrix(self):
+        def request_factory(role):
+            url = "/api/inventory/warehouse/import-partial/"
+            if role == "superadmin":
+                url = f"{url}?lab={self.lab_a.id}"
+            return (
+                "POST",
+                url,
+                [
+                    {
+                        "name": f"Matrix partial {role}",
+                        "sku": f"PARTIAL-{role.upper()}-{WarehouseItem.objects.count()}",
+                        "quantity": 1,
+                    }
+                ],
+            )
+
+        self.assert_write_role_matrix(request_factory, status.HTTP_201_CREATED)
+
+
+class CrossDomainExportRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """Role matrix tests for all export endpoints (GET, read-only or admin-only)."""
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="export_matrix")
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Export Clinic A")
+        Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            first_name="Export",
+            last_name="Doctor",
+        )
+        Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Export",
+            last_name="Patient",
+            birth_number="9001011234",
+        )
+        WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Export Item",
+            sku="EXPMAT-001",
+            quantity=1,
+        )
+
+    def _admin_only_expectations(self):
+        return {
+            "anonymous": status.HTTP_401_UNAUTHORIZED,
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_200_OK,
+            "superadmin": status.HTTP_200_OK,
+        }
+
+    def _read_allowed_expectations(self):
+        return {
+            "anonymous": status.HTTP_401_UNAUTHORIZED,
+            "no_lab": status.HTTP_200_OK,
+            "user": status.HTTP_200_OK,
+            "technician": status.HTTP_200_OK,
+            "admin": status.HTTP_200_OK,
+            "superadmin": status.HTTP_200_OK,
+        }
+
+    def test_clinic_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/clinics/export/", self._read_allowed_expectations()
+        )
+
+    def test_doctor_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/doctors/export/", self._admin_only_expectations()
+        )
+
+    def test_patient_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/patients/export/", self._admin_only_expectations()
+        )
+
+    def test_jobs_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/jobs/jobs/export/", self._read_allowed_expectations()
+        )
+
+    def test_invoice_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/finance/invoices/export/", self._read_allowed_expectations()
+        )
+
+    def test_pricelist_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/finance/price-list/export/", self._read_allowed_expectations()
+        )
+
+    def test_inventory_export_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET", "/api/inventory/warehouse/export/", self._read_allowed_expectations()
+        )
+
 
 class LabSlugTests(APITestCase):
     def test_slug_auto_generated_on_create(self):

@@ -25,6 +25,10 @@ jobs:
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test --noinput --verbosity=2
     - name: Run backend contract tests
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
+    - name: Run backend coverage report
+      run: |
+        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend \
+          sh -c "coverage run --rcfile=.coveragerc manage.py test --noinput && coverage xml && coverage report --skip-covered"
     - name: Run backend flake8
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend flake8 apps --max-line-length=120 --exclude=migrations
     - name: Run backend black check

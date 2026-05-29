@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
 from rest_framework import permissions, status, viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -171,14 +172,36 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             writer.writerow(row)
         return response
 
+    def _resolve_import_lab(self, request):
+        """Return the Lab for an import request, raising Response on error."""
+        from apps.core.models import Lab
+
+        user = request.user
+        if is_superadmin(user):
+            lab_id = request.query_params.get("lab") or request.query_params.get(
+                "lab_id"
+            )
+            if not lab_id:
+                raise ValidationError(
+                    {"lab": "Superadmin must supply ?lab=<id> query parameter."}
+                )
+            try:
+                return Lab.objects.get(pk=lab_id)
+            except (TypeError, ValueError, Lab.DoesNotExist):
+                raise ValidationError({"lab": "Invalid lab"})
+        if hasattr(user, "lab") and user.lab:
+            return user.lab
+        return None
+
     @action(detail=False, methods=["post"], url_path="import")
     def bulk_import(self, request):
         """
         Import multiple warehouse items in a single atomic transaction.
         Validates all rows first; returns 400 if any row is invalid.
+        Superadmin must supply ?lab=<id> query parameter.
         """
-        user = request.user
-        if not (hasattr(user, "lab") and user.lab):
+        lab = self._resolve_import_lab(request)
+        if lab is None:
             return Response(
                 {"detail": "No lab associated with user"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -206,7 +229,6 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        lab = user.lab
         with transaction.atomic():
             created = WarehouseItem.objects.bulk_create(
                 [
@@ -237,9 +259,10 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         """
         Import multiple warehouse items, skipping invalid rows.
         Returns count of imported and skipped items.
+        Superadmin must supply ?lab=<id> query parameter.
         """
-        user = request.user
-        if not (hasattr(user, "lab") and user.lab):
+        lab = self._resolve_import_lab(request)
+        if lab is None:
             return Response(
                 {"detail": "No lab associated with user"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -252,7 +275,6 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        lab = user.lab
         valid_items = []
         skipped = 0
         for item_data in items_data:

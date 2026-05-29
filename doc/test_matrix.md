@@ -1,6 +1,6 @@
 # Endpoint Test Matrix
 
-Updated: 2026-05-28
+Updated: 2026-05-29
 
 This checklist is the required coverage standard for API endpoints. Each new
 endpoint should either add tests for the relevant scenarios or document why a
@@ -39,13 +39,16 @@ scenario does not apply.
 | CRM | `/api/crm/doctors/` | `DoctorCrudApiTests`, `CrmAdminOnlyWriteTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, filter, empty, side_effect | High |
 | Jobs | `/api/jobs/jobs/` | `JobValidationApiTests`, `JobBulkUpdateTests`, `JobStatusChangeAuditLogTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, filter, empty, side_effect, audit | High |
 | Jobs | `/api/jobs/jobs/{id}/attachments/` | `JobAttachmentTests` | 401, user, technician, admin, cross_lab, invalid, side_effect | High |
-| Jobs | `/api/jobs/technicians/` | `TechnicianApiTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, side_effect | Medium |
-| Jobs | `/api/jobs/vacations/`, `/api/vacations/` | `VacationApiTests`, `AliasAuthenticationTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, alias | Medium |
-| Jobs | `/api/jobs/calendar-events/`, `/api/calendar-events/` | `CalendarApiTests`, `AliasAuthenticationTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, alias | Medium |
+| Jobs | `/api/jobs/technicians/` | `TechnicianApiTests`, `CrossDomainWriteRoleMatrixTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, side_effect, create/update/delete role matrix | Medium |
+| Jobs | `/api/jobs/vacations/`, `/api/vacations/` | `VacationApiTests`, `AliasAuthenticationTests`, `CrossDomainWriteRoleMatrixTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, alias, create/update/delete role matrix | Medium |
+| Jobs | `/api/jobs/calendar-events/`, `/api/calendar-events/` | `CalendarApiTests`, `AliasAuthenticationTests`, `CrossDomainWriteRoleMatrixTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, empty, alias, create/update/delete role matrix | Medium |
 | Finance | `/api/finance/invoices/`, `/api/invoices/` | `InvoiceLifecycleApiTests`, `InvoiceSendEmailTests`, `AliasAuthenticationTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, filter, empty, side_effect, audit, alias | High |
 | Finance | `/api/finance/price-list/` | `PriceListCrudApiTests`, `PriceListExportCsvTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, duplicate, empty, side_effect | Medium |
 | Finance | `/api/finance/subscriptions/` | `SubscriptionApiTests` | 401, no_lab, admin, superadmin, cross_lab, invalid, empty | Medium |
-| Inventory | `/api/inventory/warehouse/`, `/api/warehouse/` | `WarehouseItemCrudApiTests`, `WarehouseBulkImportTests`, `AliasAuthenticationTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, filter, empty, import/export, side_effect, alias | High |
+| Inventory | `/api/inventory/warehouse/`, `/api/warehouse/` | `WarehouseItemCrudApiTests`, `WarehouseBulkImportTests`, `AliasAuthenticationTests`, `CrossDomainWriteRoleMatrixTests`, `CrossDomainExportRoleMatrixTests` | 401, user, technician, admin, superadmin, cross_lab, invalid, filter, empty, import/export, side_effect, alias, import-partial role matrix, export role matrix | High |
+| CRM exports | `/api/crm/patients/export/`, `/api/crm/clinics/export/`, `/api/crm/doctors/export/` | `CrossDomainExportRoleMatrixTests` | 401, no_lab, user, technician, admin, superadmin (doctors/patients admin-only; clinics read-allowed) | Medium |
+| Jobs export | `/api/jobs/jobs/export/` | `CrossDomainExportRoleMatrixTests` | 401, no_lab, user, technician, admin, superadmin (read-allowed) | Medium |
+| Finance exports | `/api/finance/invoices/export/`, `/api/finance/price-list/export/` | `CrossDomainExportRoleMatrixTests` | 401, no_lab, user, technician, admin, superadmin (read-allowed) | Medium |
 
 ## Helper Standard
 
