@@ -50,6 +50,15 @@ const checks = [
     file: 'Settings.jsx',
     forbidden: ['fallbackMembers', 'jan.novak@dl.sk', 'anna.m@dl.sk'],
   },
+  {
+    file: 'Topbar.jsx',
+    forbidden: [
+      'fallbackNotifications',
+      'Nová práca pridelená',
+      'INV-2025-012',
+      'Lucia Šimková',
+    ],
+  },
 ];
 
 const failures = [];

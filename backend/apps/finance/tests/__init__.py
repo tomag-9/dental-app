@@ -4,6 +4,14 @@ Re-export all test classes for backward compatibility.
 """
 
 from apps.finance.tests.test_export import InvoiceCSVExportTests
+from apps.finance.tests.test_invoice_service import (
+    CreateInvoiceTests,
+    DeleteInvoiceTests,
+    GenerateInvoiceNumberTests,
+    SendInvoiceEmailTests,
+    SyncJobsForInvoiceStatusTests,
+    UpdateInvoiceStatusTests,
+)
 from apps.finance.tests.test_invoice_actions import (
     InvoiceListFilterTests,
     InvoiceSendEmailTests,
@@ -35,6 +43,12 @@ from apps.finance.tests.test_subscription import (
 )
 
 __all__ = [
+    "GenerateInvoiceNumberTests",
+    "SyncJobsForInvoiceStatusTests",
+    "CreateInvoiceTests",
+    "UpdateInvoiceStatusTests",
+    "DeleteInvoiceTests",
+    "SendInvoiceEmailTests",
     "SubscriptionApiTests",
     "SubscriptionExtendedFieldsTests",
     "InvoiceLifecycleApiTests",

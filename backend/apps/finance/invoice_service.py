@@ -1,0 +1,208 @@
+"""
+Thin service layer for invoice business logic.
+
+Extracted from InvoiceViewSet so the logic can be tested independently
+and reused without going through the HTTP layer.
+"""
+
+from decimal import Decimal
+
+from django.conf import settings as django_settings
+from django.core.mail import EmailMessage
+from django.db import transaction
+from django.utils import timezone
+
+from apps.core.models import AuditLog
+from apps.jobs.models import Job
+
+from .calculations import calculate_invoice_amounts
+from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList
+
+# ---------------------------------------------------------------------------
+# Pure helpers
+# ---------------------------------------------------------------------------
+
+
+def generate_invoice_number(lab):
+    """Generate the next sequential invoice number for *lab* (must be called inside a transaction)."""
+    seq, _ = InvoiceSequence.objects.select_for_update().get_or_create(lab=lab)
+    seq.last_number += 1
+    seq.save(update_fields=["last_number"])
+    prefix = (getattr(lab, "invoice_prefix", None) or "INV").strip() or "INV"
+    year = timezone.now().year
+    return f"{prefix}-{year}-{seq.last_number:04d}"
+
+
+def sync_jobs_for_invoice_status(invoice, new_status):
+    """Sync the statuses of jobs linked to *invoice* when invoice status changes."""
+    job_ids = (
+        InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False).values_list("job_id", flat=True).distinct()
+    )
+    jobs = Job.objects.filter(id__in=job_ids)
+    if new_status == "paid":
+        jobs.update(status="closed")
+    elif new_status == "issued":
+        jobs.update(status="finished_factured")
+    elif new_status == "cancelled":
+        jobs.update(status="finished_unfactured")
+
+
+def write_invoice_audit(actor, invoice, action, metadata=None, description=None):
+    """Write an audit log entry for *invoice*. ``actor`` is the acting User (may be None)."""
+    AuditLog.objects.create(
+        actor=actor,
+        lab=invoice.lab,
+        action=action,
+        entity_type="invoice",
+        entity_id=str(invoice.id),
+        description=description or f"Invoice {invoice.number}: {action}",
+        metadata=metadata or {},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Public service functions
+# ---------------------------------------------------------------------------
+
+
+@transaction.atomic
+def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percent=None):
+    """
+    Create an invoice for *clinic* covering *jobs*.
+
+    The caller is responsible for validating that *clinic* and *jobs* are
+    accessible to *actor* before calling this function.
+
+    Returns the created ``Invoice`` instance.
+    """
+    if discount_percent is None:
+        discount_percent = Decimal("0")
+
+    now = timezone.now()
+    due_date = timezone.localdate() + timezone.timedelta(days=clinic.lab.invoice_due_days)
+
+    invoice = Invoice.objects.create(
+        clinic=clinic,
+        lab_id=clinic.lab_id,
+        number=generate_invoice_number(clinic.lab),
+        status="issued",
+        document_type=document_type,
+        vat_rate=clinic.lab.vat_rate,
+        discount_percent=discount_percent,
+        issued_at=now,
+        due_date=due_date,
+    )
+
+    price_map = {pl.code: pl for pl in PriceList.objects.filter(lab=clinic.lab)}
+    subtotal = Decimal("0.00")
+
+    for job in jobs:
+        procedures = job.procedure_codes or []
+        quantities = job.procedure_quantities or {}
+
+        if not procedures:
+            quantity = 1
+            unit_price = Decimal(str(job.price or 0))
+            item = InvoiceItem.objects.create(
+                invoice=invoice,
+                job=job,
+                description=job.description or "Dental work",
+                quantity=quantity,
+                unit_price=unit_price,
+                line_total=unit_price * quantity,
+            )
+            subtotal += item.line_total
+            continue
+
+        for code in procedures:
+            quantity = int(quantities.get(code, 1))
+            pl_entry = price_map.get(str(code))
+            if len(procedures) == 1:
+                unit_price = Decimal(str(job.price or 0))
+            elif pl_entry:
+                unit_price = Decimal(str(pl_entry.price))
+            else:
+                unit_price = Decimal("0")
+            description = (pl_entry.description if pl_entry else None) or str(code)
+            item = InvoiceItem.objects.create(
+                invoice=invoice,
+                job=job,
+                description=description,
+                quantity=quantity,
+                unit_price=unit_price,
+                line_total=unit_price * quantity,
+            )
+            subtotal += item.line_total
+
+    amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
+    invoice.total_amount = amounts["total_amount"]
+    invoice.save(update_fields=["total_amount"])
+
+    sync_jobs_for_invoice_status(invoice, "issued")
+
+    return invoice
+
+
+def update_invoice_status(actor, invoice, new_status):
+    """
+    Update *invoice* status to *new_status*, sync linked jobs, and write audit log.
+
+    Returns the updated ``Invoice`` instance.
+    """
+    old_status = invoice.status
+    invoice.status = new_status
+    if new_status == "issued" and not invoice.issued_at:
+        invoice.issued_at = timezone.now()
+    if new_status == "paid" and not invoice.paid_at:
+        invoice.paid_at = timezone.now()
+    invoice.save(update_fields=["status", "issued_at", "paid_at"])
+
+    sync_jobs_for_invoice_status(invoice, new_status)
+    write_invoice_audit(
+        actor,
+        invoice,
+        "invoice.status_changed",
+        metadata={"from_status": old_status, "to_status": new_status},
+    )
+    return invoice
+
+
+def delete_invoice(actor, invoice):
+    """
+    Sync linked job statuses to *cancelled*, write audit log, and delete *invoice*.
+    """
+    sync_jobs_for_invoice_status(invoice, "cancelled")
+    write_invoice_audit(
+        actor,
+        invoice,
+        "invoice.deleted",
+        metadata={"number": invoice.number, "status": invoice.status},
+    )
+    invoice.delete()
+
+
+def send_invoice_email(actor, invoice, pdf_bytes, recipient):
+    """
+    Send *invoice* PDF (pre-rendered bytes) to *recipient* and write audit log.
+
+    Raises an exception from ``EmailMessage.send`` on delivery failure —
+    callers should catch and convert to an appropriate HTTP response.
+    """
+    lab = invoice.lab
+    doc_label = "Faktúra" if invoice.document_type == "invoice" else "Proforma faktúra"
+    subject = f"{doc_label} č. {invoice.number}"
+    body = (
+        f"Dobrý deň,\n\n"
+        f"V prílohe nájdete {doc_label.lower()} č. {invoice.number}.\n\n"
+        f"S pozdravom,\n{lab.name if lab else 'Dentálne laboratórium'}"
+    )
+    msg = EmailMessage(
+        subject=subject,
+        body=body,
+        from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+        to=[recipient],
+    )
+    msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
+    msg.send(fail_silently=False)
+
+    write_invoice_audit(actor, invoice, "invoice.email_sent", metadata={"sent_to": recipient})

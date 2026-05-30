@@ -21,12 +21,15 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
+from apps.core.models import AuditLog
+from apps.crm.models import Clinic, Patient
+from apps.crm.serializers import PatientSerializer
 
+from . import job_service
 from .models import (
     CalendarEvent,
     Job,
     JobAttachment,
-    JobTimelineEvent,
     Technician,
     Vacation,
 )
@@ -39,33 +42,7 @@ from .serializers import (
     VacationSerializer,
 )
 
-STATUS_LABELS = {
-    "new": "Nová",
-    "in_progress": "V riešení",
-    "completed": "Dokončená",
-    "cancelled": "Zrušená",
-    "finished_factured": "Dokončená/Fakturovaná",
-    "finished_unfactured": "Dokončená/Nefakturovaná",
-    "closed": "Uzavretá",
-}
-
-
-def _notify_lab_admins(lab, notification_type, title, message, url=None):
-    from apps.core.models import Notification, User
-
-    if not lab:
-        return
-    for admin in User.objects.filter(
-        lab=lab, role__in=("admin", "superadmin"), is_active=True
-    ):
-        Notification.objects.create(
-            lab=lab,
-            recipient=admin,
-            type=notification_type,
-            title=title,
-            message=message,
-            url=url,
-        )
+STATUS_LABELS = job_service.STATUS_LABELS
 
 
 class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -90,15 +67,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
     ]
-    allowed_transitions = {
-        "new": {"in_progress", "cancelled"},
-        "in_progress": {"completed", "cancelled"},
-        "completed": {"finished_unfactured", "finished_factured", "closed"},
-        "finished_unfactured": {"finished_factured", "closed"},
-        "finished_factured": {"closed"},
-        "cancelled": set(),
-        "closed": set(),
-    }
+    allowed_transitions = job_service.ALLOWED_TRANSITIONS
 
     def get_queryset(self):
         qs = self.get_tenant_scoped_queryset(
@@ -116,9 +85,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
-            statuses = [
-                value.strip() for value in status_filter.split(",") if value.strip()
-            ]
+            statuses = [value.strip() for value in status_filter.split(",") if value.strip()]
             qs = qs.filter(status__in=statuses)
 
         priority = self.request.query_params.get("priority")
@@ -144,11 +111,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass
 
-        search = (
-            self.request.query_params.get("search")
-            or self.request.query_params.get("q")
-            or ""
-        ).strip()
+        search = (self.request.query_params.get("search") or self.request.query_params.get("q") or "").strip()
         if search:
             search_filter = (
                 Q(description__icontains=search)
@@ -170,77 +133,20 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if is_superadmin(user):
-            job = serializer.save(lab=self._get_lab_from_request_data())
-            self._record_timeline(job, "created", note="Práca bola vytvorená.")
-            return
-
-        if not hasattr(user, "lab") or not user.lab:
+            lab = self._get_lab_from_request_data()
+        elif not hasattr(user, "lab") or not user.lab:
             raise ValidationError("User is not assigned to any lab")
-
-        # Always assign current user's lab
-        job = serializer.save(lab=user.lab)
-        self._record_timeline(job, "created", note="Práca bola vytvorená.")
-
-    # Fields whose before/after values we track in the timeline.
-    _TRACKED_FIELDS = (
-        "due_date",
-        "priority",
-        "description",
-        "price",
-        "technician_id",
-        "tooth_color",
-    )
+        else:
+            lab = user.lab
+        job_service.create_job(user, serializer, lab)
 
     def perform_update(self, serializer):
-        old = serializer.instance
-        old_status = old.status
-        old_technician_id = old.technician_id
-        old_snapshot = {f: getattr(old, f) for f in self._TRACKED_FIELDS}
-
-        new_status = serializer.validated_data.get("status", old_status)
-        if new_status != old_status:
-            allowed = self.allowed_transitions.get(old_status, set())
-            if new_status not in allowed:
-                raise ValidationError(
-                    f"Invalid status transition from {old_status} to {new_status}"
-                )
-        job = serializer.save()
-
-        changed = {
-            f: {"from": str(old_snapshot[f]), "to": str(getattr(job, f))}
-            for f in self._TRACKED_FIELDS
-            if old_snapshot[f] != getattr(job, f)
-        }
-
-        if old_status != job.status:
-            self._record_timeline(
-                job,
-                "status_changed",
-                note="Stav práce bol zmenený.",
-                from_status=old_status,
-                to_status=job.status,
-                changed_fields=changed or None,
-            )
-        elif old_technician_id != job.technician_id:
-            self._record_timeline(
-                job,
-                "assigned",
-                note="Technik bol zmenený.",
-                changed_fields=changed or None,
-            )
-        else:
-            self._record_timeline(
-                job,
-                "updated",
-                note="Práca bola upravená.",
-                changed_fields=changed or None,
-            )
+        job_service.update_job(self.request.user, serializer)
 
     def destroy(self, request, *args, **kwargs):
         job = self.get_object()
-        if job.status == "closed" or job.invoice_items.exists():
-            raise ValidationError("Closed or invoiced jobs cannot be deleted")
-        return super().destroy(request, *args, **kwargs)
+        job_service.delete_job(job)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"], url_path="bulk-update")
     def bulk_update(self, request):
@@ -275,9 +181,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 if new_status:
                     if new_status == job.status:
                         pass
-                    elif new_status not in self.allowed_transitions.get(
-                        job.status, set()
-                    ):
+                    elif new_status not in self.allowed_transitions.get(job.status, set()):
                         skip_reason = f"Invalid transition {job.status}→{new_status}"
                 if skip_reason:
                     skipped.append({"id": job.id, "reason": skip_reason})
@@ -293,21 +197,18 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                     update_fields.append("priority")
                 job.save(update_fields=update_fields)
 
+                actor = request.user if request.user.is_authenticated else None
                 if new_status and old_status != job.status:
-                    self._record_timeline(
+                    job_service.record_job_timeline(
                         job,
+                        actor,
                         "status_changed",
                         note="Hromadná zmena stavu.",
                         from_status=old_status,
                         to_status=job.status,
                     )
                 elif new_priority:
-                    self._record_timeline(
-                        job, "updated", note="Hromadná zmena priority."
-                    )
-                    from apps.core.models import AuditLog
-
-                    actor = request.user if request.user.is_authenticated else None
+                    job_service.record_job_timeline(job, actor, "updated", note="Hromadná zmena priority.")
                     AuditLog.objects.create(
                         actor=actor,
                         lab=job.lab,
@@ -332,42 +233,8 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data["status"]
-        if new_status == job.status:
-            return Response(self.get_serializer(job).data)
-
-        allowed = self.allowed_transitions.get(job.status, set())
-        if new_status not in allowed:
-            raise ValidationError(
-                f"Invalid status transition from {job.status} to {new_status}"
-            )
-
-        old_status = job.status
-        job.status = new_status
-        job.save(update_fields=["status", "updated_at"])
-        self._record_timeline(
-            job,
-            "status_changed",
-            note=serializer.validated_data.get("note") or "Stav práce bol zmenený.",
-            from_status=old_status,
-            to_status=new_status,
-        )
-        patient = job.patient
-        patient_name = (
-            f"{patient.first_name} {patient.last_name}".strip()
-            if patient
-            else f"#{job.id}"
-        )
-        _notify_lab_admins(
-            lab=job.lab,
-            notification_type="job",
-            title=f"Stav práce #{job.id} zmenený na {STATUS_LABELS.get(new_status, new_status)}",
-            message=(
-                f"Pacient: {patient_name}. "
-                f"Zmena: {STATUS_LABELS.get(old_status, old_status)}"
-                f" → {STATUS_LABELS.get(new_status, new_status)}"
-            ),
-            url=f"/jobs/{job.id}",
-        )
+        note = serializer.validated_data.get("note")
+        job = job_service.transition_job_status(request.user, job, new_status, note)
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"], url_path="work_order")
@@ -377,10 +244,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         def _name(obj, fields=("first_name", "last_name")):
             if not obj:
                 return None
-            return (
-                " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip()
-                or None
-            )
+            return " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip() or None
 
         items = [
             {
@@ -478,14 +342,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
           }
         Patient is matched by birth_number if provided and already exists; otherwise created.
         """
-        from apps.crm.models import Clinic, Patient
-        from apps.crm.serializers import PatientSerializer
-
         user = request.user
         if not is_superadmin(user) and not getattr(user, "lab_id", None):
-            return Response(
-                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
         if not is_admin_or_superadmin(user):
             return Response(
                 {"detail": "Only admin or superadmin can create patients and jobs."},
@@ -495,9 +354,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         clinic_id = request.data.get("clinic_id")
         if not clinic_id:
-            return Response(
-                {"detail": "clinic_id is required"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "clinic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         clinic_qs = Clinic.objects.filter(id=clinic_id)
         if lab:
             clinic_qs = clinic_qs.filter(lab=lab)
@@ -532,18 +389,13 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             data={
                 "patient": patient.id,
                 "clinic": clinic.id,
-                **{
-                    k: v
-                    for k, v in job_data.items()
-                    if k not in ("patient", "clinic", "lab")
-                },
+                **{k: v for k, v in job_data.items() if k not in ("patient", "clinic", "lab")},
             }
         )
         job_ser.is_valid(raise_exception=True)
         job = job_ser.save(lab=lab, patient=patient, clinic=clinic)
-        self._record_timeline(
-            job, "created", note="Práca bola vytvorená (quick-create)."
-        )
+        actor = request.user if request.user.is_authenticated else None
+        job_service.record_job_timeline(job, actor, "created", note="Práca bola vytvorená (quick-create).")
 
         return Response(
             {
@@ -621,9 +473,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):
-        qs = self.get_queryset().select_related(
-            "patient", "clinic", "doctor", "technician"
-        )
+        qs = self.get_queryset().select_related("patient", "clinic", "doctor", "technician")
 
         header = [
             "id",
@@ -639,22 +489,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         ]
         rows = []
         for job in limited_export_queryset(qs, "jobs"):
-            patient = (
-                f"{job.patient.first_name} {job.patient.last_name}".strip()
-                if job.patient
-                else ""
-            )
+            patient = f"{job.patient.first_name} {job.patient.last_name}".strip() if job.patient else ""
             clinic = job.clinic.name if job.clinic else ""
-            doctor = (
-                f"{job.doctor.first_name} {job.doctor.last_name}".strip()
-                if job.doctor
-                else ""
-            )
-            technician = (
-                f"{job.technician.first_name} {job.technician.last_name}".strip()
-                if job.technician
-                else ""
-            )
+            doctor = f"{job.doctor.first_name} {job.doctor.last_name}".strip() if job.doctor else ""
+            technician = f"{job.technician.first_name} {job.technician.last_name}".strip() if job.technician else ""
             rows.append(
                 [
                     job.id,
@@ -682,10 +520,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument"
-                    ".spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument" ".spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="jobs.xlsx"'
             return response
@@ -704,48 +539,12 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         job = self.get_object()
         if request.method == "GET":
             qs = JobAttachment.objects.filter(job=job)
-            serializer = JobAttachmentSerializer(
-                qs, many=True, context={"request": request}
-            )
+            serializer = JobAttachmentSerializer(qs, many=True, context={"request": request})
             return Response(serializer.data)
-        serializer = JobAttachmentSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = JobAttachmentSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save(job=job, uploaded_by=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def _record_timeline(
-        self,
-        job,
-        event,
-        note=None,
-        from_status=None,
-        to_status=None,
-        changed_fields=None,
-    ):
-        actor = self.request.user if self.request.user.is_authenticated else None
-        JobTimelineEvent.objects.create(
-            job=job,
-            actor=actor,
-            event=event,
-            note=note,
-            from_status=from_status,
-            to_status=to_status,
-            changed_fields=changed_fields,
-        )
-        if event == "status_changed" and (from_status or to_status):
-            from apps.core.models import AuditLog
-
-            AuditLog.objects.create(
-                actor=actor,
-                lab=job.lab,
-                action="job.status_changed",
-                entity_type="job",
-                entity_id=str(job.id),
-                description=f"Job #{job.id} status: {from_status} → {to_status}",
-                metadata={"from_status": from_status, "to_status": to_status},
-            )
 
 
 class VacationViewSet(viewsets.ModelViewSet):
@@ -807,9 +606,7 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 def _calendar_window(request):
     today = timezone.localdate()
     start_date = parse_date(request.query_params.get("start", "")) or today
-    end_date = parse_date(request.query_params.get("end", "")) or (
-        start_date + timezone.timedelta(days=30)
-    )
+    end_date = parse_date(request.query_params.get("end", "")) or (start_date + timezone.timedelta(days=30))
     if end_date < start_date:
         raise ValidationError("end must be on or after start")
     return start_date, end_date
@@ -838,11 +635,7 @@ class CalendarView(APIView):
             .exclude(status__in=("cancelled", "closed"))
         )
         for job in jobs:
-            patient_name = (
-                f"{job.patient.first_name} {job.patient.last_name}".strip()
-                if job.patient_id
-                else ""
-            )
+            patient_name = f"{job.patient.first_name} {job.patient.last_name}".strip() if job.patient_id else ""
             events.append(
                 {
                     "id": f"job:{job.id}",

@@ -62,14 +62,6 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const fallbackNotifications = [
-    { id: 1, type: 'job',      icon: 'briefcase',  color: '#0d7c6b', title: 'Nová práca pridelená',  desc: '#13 — Lucia Šimková (Klinika Bratislava)', time: 'pred 8 min', unread: true },
-    { id: 2, type: 'invoice',  icon: 'euro',       color: '#16a34a', title: 'Faktúra zaplatená',     desc: 'INV-2025-012 · 1 240,00 €',               time: 'pred 1 h',   unread: true },
-    { id: 3, type: 'deadline', icon: 'alertCircle',color: '#d97706', title: 'Blížiaci sa termín',    desc: '#11 Peter Horváth — 12. 5. 2025',          time: 'pred 3 h',   unread: true },
-    { id: 4, type: 'stock',    icon: 'package',    color: '#c0392b', title: 'Nízky stav skladu',     desc: 'Akrylát ružový (88 g, min 100)',           time: 'včera',      unread: false },
-    { id: 5, type: 'team',     icon: 'user',       color: '#2563eb', title: 'Nový člen tímu',         desc: 'Tereza H. prijala pozvánku',               time: 'včera',      unread: false },
-  ];
-
 
 
   const mapPathToNavigate = (url) => {
@@ -144,7 +136,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
         setUnreadCount(result.unread_count || 0);
       } catch {
         if (!alive) return;
-        setUnreadCount(fallbackNotifications.filter(n => n.unread).length);
+        setUnreadCount(0);
       }
     };
     loadCount();
@@ -328,7 +320,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
               style: { padding: '28px 14px', textAlign: 'center', color: '#8a9490', fontSize: 12.5 }
             }, React.createElement(Icon, { name: 'bell', size: 24, color: '#d4ded8' }),
               React.createElement('div', { style: { marginTop: 8 } }, 'Žiadne notifikácie')),
-            !notifLoading && (notifApiLoaded ? notifItems : fallbackNotifications).map((n, i) => React.createElement('button', {
+            !notifLoading && notifApiLoaded && notifItems.map((n, i) => React.createElement('button', {
               key: n.id,
               style: {
                 display: 'flex', gap: 10, padding: '12px 14px', width: '100%', border: 'none', textAlign: 'left',

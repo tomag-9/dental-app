@@ -32,12 +32,12 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
-from apps.core.models import AuditLog
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
-from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList, Subscription
+from . import invoice_service
+from .models import Invoice, PriceList, Subscription
 from .serializers import (
     InvoiceCreateSerializer,
     InvoiceSerializer,
@@ -48,15 +48,10 @@ from .serializers import (
 
 
 def _write_invoice_audit(request, invoice, action, metadata=None, description=None):
-    AuditLog.objects.create(
-        actor=request.user if getattr(request, "user", None).is_authenticated else None,
-        lab=invoice.lab,
-        action=action,
-        entity_type="invoice",
-        entity_id=str(invoice.id),
-        description=description or f"Invoice {invoice.number}: {action}",
-        metadata=metadata or {},
-    )
+    actor = getattr(request, "user", None)
+    if actor is not None and not actor.is_authenticated:
+        actor = None
+    invoice_service.write_invoice_audit(actor, invoice, action, metadata, description)
 
 
 class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -123,9 +118,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="pricelist.xlsx"'
             return response
@@ -147,29 +140,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         IsReadOnlyOrAdminOrSuperadminPermission,
     ]
 
-    def _invoice_number(self, lab):
-        seq, _ = InvoiceSequence.objects.select_for_update().get_or_create(lab=lab)
-        seq.last_number += 1
-        seq.save(update_fields=["last_number"])
-        prefix = (getattr(lab, "invoice_prefix", None) or "INV").strip() or "INV"
-        year = timezone.now().year
-        return f"{prefix}-{year}-{seq.last_number:04d}"
-
-    def _sync_jobs_for_invoice_status(self, invoice, new_status):
-        job_ids = (
-            InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False)
-            .values_list("job_id", flat=True)
-            .distinct()
-        )
-        jobs = Job.objects.filter(id__in=job_ids)
-
-        if new_status == "paid":
-            jobs.update(status="closed")
-        elif new_status == "issued":
-            jobs.update(status="finished_factured")
-        elif new_status == "cancelled":
-            jobs.update(status="finished_unfactured")
-
     def _build_qr_svg(self, payload, size=128):
         widget = qr.QrCodeWidget(payload)
         x0, y0, x1, y1 = widget.getBounds()
@@ -185,9 +155,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Invoice.objects.select_related("clinic", "lab").prefetch_related(
-            "items__job__patient"
-        )
+        qs = Invoice.objects.select_related("clinic", "lab").prefetch_related("items__job__patient")
         if not is_superadmin(user):
             if getattr(user, "lab_id", None):
                 qs = qs.filter(lab_id=user.lab_id)
@@ -219,9 +187,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         clinic = Clinic.objects.filter(id=data["clinic_id"]).first()
         if not clinic:
-            return Response(
-                {"detail": "Clinic not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": "Clinic not found"}, status=status.HTTP_404_NOT_FOUND)
 
         user = request.user
         if not is_superadmin(user) and clinic.lab_id != getattr(user, "lab_id", None):
@@ -241,73 +207,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        now = timezone.now()
-        due_date = timezone.localdate() + timezone.timedelta(
-            days=clinic.lab.invoice_due_days
-        )
-        invoice = Invoice.objects.create(
+        invoice = invoice_service.create_invoice(
+            actor=user,
             clinic=clinic,
-            lab_id=clinic.lab_id,
-            number=self._invoice_number(clinic.lab),
-            status="issued",
+            jobs=jobs,
             document_type=data.get("document_type", "invoice"),
-            vat_rate=clinic.lab.vat_rate,
             discount_percent=data.get("discount_percent", Decimal("0")),
-            issued_at=now,
-            due_date=due_date,
         )
-
-        # Pre-load all PriceList entries for this lab into a lookup map.
-        price_map = {pl.code: pl for pl in PriceList.objects.filter(lab=clinic.lab)}
-
-        subtotal = Decimal("0.00")
-        for job in jobs:
-            procedures = job.procedure_codes or []
-            quantities = job.procedure_quantities or {}
-
-            if not procedures:
-                quantity = 1
-                unit_price = Decimal(str(job.price or 0))
-                item = InvoiceItem.objects.create(
-                    invoice=invoice,
-                    job=job,
-                    description=job.description or "Dental work",
-                    quantity=quantity,
-                    unit_price=unit_price,
-                    line_total=unit_price * quantity,
-                )
-                subtotal += item.line_total
-                continue
-
-            for code in procedures:
-                quantity = int(quantities.get(code, 1))
-                pl_entry = price_map.get(str(code))
-                if len(procedures) == 1:
-                    unit_price = Decimal(str(job.price or 0))
-                elif pl_entry:
-                    unit_price = Decimal(str(pl_entry.price))
-                else:
-                    unit_price = Decimal("0")
-                description = (pl_entry.description if pl_entry else None) or str(code)
-                item = InvoiceItem.objects.create(
-                    invoice=invoice,
-                    job=job,
-                    description=description,
-                    quantity=quantity,
-                    unit_price=unit_price,
-                    line_total=unit_price * quantity,
-                )
-                subtotal += item.line_total
-
-        amounts = calculate_invoice_amounts(
-            subtotal, invoice.vat_rate, invoice.discount_percent
-        )
-        invoice.total_amount = amounts["total_amount"]
-        invoice.save(update_fields=["total_amount"])
-
-        # Legacy parity: creating/issuing an invoice marks linked jobs as factured.
-        self._sync_jobs_for_invoice_status(invoice, "issued")
-
         out = InvoiceSerializer(invoice, context={"request": request})
         return Response(out.data, status=status.HTTP_201_CREATED)
 
@@ -318,32 +224,14 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         payload = InvoiceStatusUpdateSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         new_status = payload.validated_data["status"]
-        old_status = invoice.status
 
-        invoice.status = new_status
-        if new_status == "issued" and not invoice.issued_at:
-            invoice.issued_at = timezone.now()
-        if new_status == "paid" and not invoice.paid_at:
-            invoice.paid_at = timezone.now()
-        invoice.save(update_fields=["status", "issued_at", "paid_at"])
-
-        self._sync_jobs_for_invoice_status(invoice, new_status)
-        _write_invoice_audit(
-            request,
-            invoice,
-            "invoice.status_changed",
-            metadata={"from_status": old_status, "to_status": new_status},
-        )
-
+        invoice = invoice_service.update_invoice_status(request.user, invoice, new_status)
         return Response(InvoiceSerializer(invoice, context={"request": request}).data)
 
     @action(detail=True, methods=["get"], url_path="qr")
     def qr(self, request, pk=None):
         invoice = self.get_object()
-        payload = (
-            f"INVOICE|{invoice.number}|"
-            f"{Decimal(invoice.total_amount):.2f}|{invoice.status}"
-        )
+        payload = f"INVOICE|{invoice.number}|" f"{Decimal(invoice.total_amount):.2f}|{invoice.status}"
         svg_markup, _ = self._build_qr_svg(payload)
         if isinstance(svg_markup, bytes):
             content = svg_markup
@@ -359,69 +247,34 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf_bytes = buffer.getvalue()
         buffer.close()
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = (
-            f'inline; filename="faktura_{invoice.number}.pdf"'
-        )
+        response["Content-Disposition"] = f'inline; filename="faktura_{invoice.number}.pdf"'
         return response
 
     @action(detail=True, methods=["post"], url_path="send-email")
     def send_email(self, request, pk=None):
         """Email the invoice PDF to the clinic contact or a provided address."""
         invoice = self.get_object()
-        lab = invoice.lab
         clinic = invoice.clinic
 
-        recipient = (
-            request.data.get("email") or (clinic.contact_info or {}).get("email")
-            if clinic
-            else None
-        )
+        recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
         if not recipient:
             return Response(
-                {
-                    "detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."
-                },
+                {"detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Build PDF in memory
         buffer = BytesIO()
         self._render_invoice_pdf(invoice, buffer)
         pdf_bytes = buffer.getvalue()
         buffer.close()
 
-        doc_label = (
-            "Faktúra" if invoice.document_type == "invoice" else "Proforma faktúra"
-        )
-        subject = f"{doc_label} č. {invoice.number}"
-        body = (
-            f"Dobrý deň,\n\n"
-            f"V prílohe nájdete {doc_label.lower()} č. {invoice.number}.\n\n"
-            f"S pozdravom,\n{lab.name if lab else 'Dentálne laboratórium'}"
-        )
-        msg = EmailMessage(
-            subject=subject,
-            body=body,
-            from_email=getattr(
-                django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
-            ),
-            to=[recipient],
-        )
-        msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
         try:
-            msg.send(fail_silently=False)
+            invoice_service.send_invoice_email(request.user, invoice, pdf_bytes, recipient)
         except Exception as exc:
             return Response(
                 {"detail": f"Email delivery failed: {exc}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-
-        _write_invoice_audit(
-            request,
-            invoice,
-            "invoice.email_sent",
-            metadata={"sent_to": recipient},
-        )
         return Response({"sent_to": recipient, "invoice": invoice.number})
 
     def _render_invoice_pdf(self, invoice, buffer):
@@ -454,17 +307,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         _, qr_drawing = self._build_qr_svg(payload, size=72)
         renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 
-        doc_label = (
-            "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
-        )
+        doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(L, height - 18 * mm, doc_label)
         pdf.setFont("Helvetica", 10)
         pdf.drawString(L, height - 25 * mm, f"Číslo: {invoice.number}")
         issued_at = invoice.issued_at or timezone.now()
-        pdf.drawString(
-            L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}"
-        )
+        pdf.drawString(L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}")
         if invoice.due_date:
             pdf.drawString(
                 L,
@@ -589,14 +438,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         invoice = self.get_object()
-        self._sync_jobs_for_invoice_status(invoice, "cancelled")
-        _write_invoice_audit(
-            request,
-            invoice,
-            "invoice.deleted",
-            metadata={"number": invoice.number, "status": invoice.status},
-        )
-        return super().destroy(request, *args, **kwargs)
+        invoice_service.delete_invoice(request.user, invoice)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["post"], url_path="send-overdue-reminders")
     def send_overdue_reminders(self, request):
@@ -617,9 +460,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             clinic = invoice.clinic
             recipient = (clinic.contact_info or {}).get("email") if clinic else None
             if not recipient:
-                failed.append(
-                    {"invoice": invoice.number, "reason": "No recipient email"}
-                )
+                failed.append({"invoice": invoice.number, "reason": "No recipient email"})
                 continue
 
             buffer = BytesIO()
@@ -640,9 +481,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             msg = EmailMessage(
                 subject=subject,
                 body=body,
-                from_email=getattr(
-                    django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
-                ),
+                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
                 to=[recipient],
             )
             msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
@@ -709,9 +548,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="invoices.xlsx"'
             return response
@@ -811,20 +648,14 @@ class FinanceStatsView(APIView):
         elif lab_id:
             qs = Invoice.objects.filter(lab_id=lab_id)
         else:
-            return Response(
-                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
 
-        total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0.00")
+        total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
         pending_invoices = qs.filter(status="issued").count()
 
         today = timezone.localdate()
         overdue_qs = qs.filter(status="issued", due_date__lt=today)
-        overdue_amount = overdue_qs.aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0.00")
+        overdue_amount = overdue_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         this_start, this_end = _month_window(today)
         last_month = _months_ago(1)
@@ -854,7 +685,9 @@ class FinanceStatsView(APIView):
                 status="paid",
                 paid_at__date__gte=m_start,
                 paid_at__date__lte=m_end,
-            ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+            ).aggregate(
+                total=Sum("total_amount")
+            )["total"] or Decimal("0.00")
             monthly_revenue.append(
                 {
                     "month": month_date.strftime("%b %Y"),
@@ -868,9 +701,7 @@ class FinanceStatsView(APIView):
             start = invoice.issued_at or invoice.created_at
             if start and invoice.paid_at:
                 payment_days.append((invoice.paid_at.date() - start.date()).days)
-        average_payment_days = (
-            round(sum(payment_days) / len(payment_days), 1) if payment_days else 0.0
-        )
+        average_payment_days = round(sum(payment_days) / len(payment_days), 1) if payment_days else 0.0
 
         top_clinics = []
         top_clinic_rows = (
@@ -930,9 +761,7 @@ class ProcedureCatalogView(APIView):
         elif getattr(user, "lab_id", None):
             qs = PriceList.objects.filter(lab_id=user.lab_id)
         else:
-            return Response(
-                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
 
         from .models import PROCEDURE_CATEGORY_CHOICES
 
@@ -985,9 +814,7 @@ class InvoiceAgingView(APIView):
         elif getattr(user, "lab_id", None):
             qs = Invoice.objects.filter(status="issued", lab_id=user.lab_id)
         else:
-            return Response(
-                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
 
         today = timezone.localdate()
         buckets = {
