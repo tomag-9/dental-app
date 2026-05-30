@@ -32,6 +32,7 @@ backend/venv/
 .env.*
 env/*.env
 !env/*.env.example
+/doc
 
 # Misc
 instance/
@@ -40,6 +41,7 @@ backend/alembic.ini
 backend/alembic/env.py
 
 rebuild-dev.sh
+check-all.sh
 
 # Added by code-review-graph
 .code-review-graph/
