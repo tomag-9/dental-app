@@ -1,10 +1,15 @@
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import serializers as drf_serializers
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.crm.serializers import _validate_birth_number, _validate_dic, _validate_ico
+from apps.finance.models import Invoice, InvoiceItem
 from apps.jobs.models import Job, Technician
 
 
@@ -162,7 +167,7 @@ class PatientCrudApiTests(APITestCase):
 
     def test_list_patients(self):
         """Test listing patients."""
-        Patient.objects.create(
+        patient = Patient.objects.create(
             lab=self.lab,
             first_name="Alice",
             last_name="Smith",
@@ -182,6 +187,56 @@ class PatientCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
+        by_id = {item["id"]: item for item in response.data}
+        self.assertEqual(by_id[patient.id]["jobs_count"], 0)
+        self.assertEqual(by_id[patient.id]["active_jobs"], 0)
+        self.assertEqual(by_id[patient.id]["ytd_revenue"], "0.00")
+
+    def test_patient_aggregates_jobs_and_revenue(self):
+        clinic = Clinic.objects.create(lab=self.lab, name="Clinic A")
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Alice",
+            last_name="Smith",
+            birth_number="900101/1234",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="in_progress",
+            description="Active job",
+        )
+        Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="completed",
+            description="Done job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=clinic,
+            number="CRM-PAT-001",
+            status="paid",
+            total_amount="120.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="120.00",
+        )
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(reverse("patient-detail", args=[patient.id]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["jobs_count"], 2)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "120.00")
 
     def test_superadmin_lists_patients_across_labs(self):
         Patient.objects.create(
@@ -321,7 +376,7 @@ class ClinicCrudApiTests(APITestCase):
         self.client.force_authenticate(user=self.superadmin)
         response = self.client.post(
             reverse("clinic-list"),
-            {"lab": self.lab_b.id, "name": "Super Clinic", "ico": "87654321"},
+            {"lab": self.lab_b.id, "name": "Super Clinic"},
             format="json",
         )
 
@@ -360,6 +415,41 @@ class ClinicCrudApiTests(APITestCase):
     def test_get_clinic(self):
         """Test retrieving a specific clinic."""
         clinic = Clinic.objects.create(lab=self.lab, name="Test Clinic")
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Clinic",
+            last_name="Patient",
+            birth_number="940101/1111",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="new",
+            description="Active clinic job",
+        )
+        Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=clinic,
+            status="completed",
+            description="Done clinic job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=clinic,
+            number="CRM-CLINIC-001",
+            status="paid",
+            total_amount="75.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="75.00",
+        )
 
         self.client.force_authenticate(user=self.user)
         url = reverse("clinic-detail", args=[clinic.id])
@@ -368,6 +458,9 @@ class ClinicCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["name"], "Test Clinic")
+        self.assertEqual(response.data["jobs_count"], 2)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "75.00")
 
     def test_update_clinic(self):
         """Test updating a clinic."""
@@ -463,6 +556,35 @@ class DoctorCrudApiTests(APITestCase):
             first_name="Test",
             last_name="Doctor",
         )
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Doctor",
+            last_name="Patient",
+            birth_number="950101/1111",
+        )
+        active_job = Job.objects.create(
+            lab=self.lab,
+            patient=patient,
+            clinic=self.clinic,
+            doctor=doctor,
+            status="in_progress",
+            description="Active doctor job",
+        )
+        invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="CRM-DOCTOR-001",
+            status="paid",
+            total_amount="90.00",
+            paid_at=timezone.now(),
+        )
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            job=active_job,
+            description="Work",
+            quantity=1,
+            unit_price="90.00",
+        )
 
         self.client.force_authenticate(user=self.user)
         url = reverse("doctor-detail", args=[doctor.id])
@@ -471,6 +593,9 @@ class DoctorCrudApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["first_name"], "Test")
+        self.assertEqual(response.data["jobs_count"], 1)
+        self.assertEqual(response.data["active_jobs"], 1)
+        self.assertEqual(response.data["ytd_revenue"], "90.00")
 
     def test_update_doctor(self):
         """Test updating a doctor."""
@@ -513,3 +638,823 @@ class DoctorCrudApiTests(APITestCase):
         # Verify deletion
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class SlovakBirthNumberValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_birth_number(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_birth_number(value)
+
+    def test_valid_10_digit_with_slash(self):
+        self._ok("900101/1234")
+
+    def test_valid_10_digit_without_slash(self):
+        self._ok("9001011234")
+
+    def test_valid_9_digit(self):
+        # pre-1954 format — 9 digits
+        self._ok("490101123")
+
+    def test_invalid_too_short(self):
+        self._err("12345678")
+
+    def test_invalid_letters(self):
+        self._err("9001AB1234")
+
+    def test_invalid_month(self):
+        self._err("9013011234")
+
+    def test_invalid_day(self):
+        self._err("9001991234")
+
+    def test_valid_female_month(self):
+        # women get month + 50, so month 51 → January
+        self._ok("9051011234")
+
+    def test_api_rejects_invalid_birth_number(self):
+        lab = Lab.objects.create(name="ValidatorLab")
+        user = User.objects.create_user(
+            username="vlabuser", password="pw", role="admin", lab=lab
+        )
+        Clinic.objects.create(lab=lab, name="C")
+        self.client.force_authenticate(user=user)
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Test",
+                "last_name": "Patient",
+                "birth_number": "badvalue",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("birth_number", resp.data)
+
+
+class SlovakIcoValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_ico(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_ico(value)
+
+    def test_valid_ico(self):
+        # weights [8,7,6,5,4,3,2] × [3,6,1,9,0,5,7] = 146, 146%11=3, check=8
+        self._ok("36190578")
+
+    def test_invalid_not_8_digits(self):
+        self._err("1234567")
+
+    def test_invalid_contains_letters(self):
+        self._err("1234567A")
+
+    def test_invalid_checksum(self):
+        self._err("36190570")
+
+    def test_empty_skipped(self):
+        _validate_ico("")
+
+    def test_api_rejects_invalid_ico(self):
+        lab = Lab.objects.create(name="IcoLab")
+        user = User.objects.create_user(
+            username="icouser", password="pw", role="admin", lab=lab
+        )
+        self.client.force_authenticate(user=user)
+        resp = self.client.post(
+            "/api/crm/clinics/",
+            {
+                "name": "Test Clinic",
+                "ico": "BADICO",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ico", resp.data)
+
+
+class SlovakDicValidatorTests(APITestCase):
+    def _ok(self, value):
+        _validate_dic(value)
+
+    def _err(self, value):
+        with self.assertRaises(drf_serializers.ValidationError):
+            _validate_dic(value)
+
+    def test_valid_10_digit(self):
+        self._ok("2020123456")
+
+    def test_valid_sk_prefix(self):
+        self._ok("SK2020123456")
+
+    def test_invalid_format(self):
+        self._err("SK123")
+
+    def test_invalid_letters_without_prefix(self):
+        self._err("AB2020123456")
+
+    def test_empty_skipped(self):
+        _validate_dic("")
+
+    def test_api_rejects_invalid_dic(self):
+        lab = Lab.objects.create(name="DicLab")
+        user = User.objects.create_user(
+            username="dicuser", password="pw", role="admin", lab=lab
+        )
+        self.client.force_authenticate(user=user)
+        resp = self.client.post(
+            "/api/crm/clinics/",
+            {
+                "name": "Test Clinic",
+                "dic": "BADDIC",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("dic", resp.data)
+
+
+class PatientAgeTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="AgeLab")
+        self.user = User.objects.create_user(
+            username="ageuser", password="pw", role="admin", lab=self.lab
+        )
+
+    def test_age_returned_in_patient_api(self):
+        # birth_number 900101/1234 → year 1990, month 01, day 01
+        patient = Patient.objects.create(
+            lab=self.lab, first_name="A", last_name="B", birth_number="900101/1234"
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get(f"/api/crm/patients/{patient.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("age", resp.data)
+        age = resp.data["age"]
+        self.assertIsNotNone(age)
+        self.assertGreater(age, 30)
+
+    def test_age_none_for_unparseable_birth_number(self):
+        from apps.crm.serializers import _age_from_birth_number
+
+        self.assertIsNone(_age_from_birth_number("badvalue"))
+        self.assertIsNone(_age_from_birth_number(""))
+
+    def test_age_female_birth_number(self):
+        # month 51 → January female
+        from apps.crm.serializers import _age_from_birth_number
+
+        age = _age_from_birth_number("900101/1234")
+        self.assertIsNotNone(age)
+        self.assertGreater(age, 30)
+
+    def test_age_in_list_response(self):
+        Patient.objects.create(
+            lab=self.lab, first_name="X", last_name="Y", birth_number="900101/1234"
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/crm/patients/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("age", resp.data[0])
+
+
+class CrmSearchFilterTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Search Lab")
+        self.user = User.objects.create_user(
+            username="search_user", password="pw", role="admin", lab=self.lab
+        )
+        self.client.force_authenticate(user=self.user)
+        Clinic.objects.create(lab=self.lab, name="Alfa Klinika", ico=None)
+        Clinic.objects.create(lab=self.lab, name="Beta Centrum", ico=None)
+        Doctor.objects.create(lab=self.lab, first_name="Jan", last_name="Novak")
+        Doctor.objects.create(lab=self.lab, first_name="Maria", last_name="Horvatova")
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Peter",
+            last_name="Kral",
+            birth_number="900101/1234",
+        )
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Jana",
+            last_name="Blahova",
+            birth_number="910202/5678",
+        )
+
+    def test_clinic_search_by_name(self):
+        resp = self.client.get("/api/crm/clinics/?search=alfa")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["name"], "Alfa Klinika")
+
+    def test_clinic_search_no_match(self):
+        resp = self.client.get("/api/crm/clinics/?search=xyz")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+    def test_clinic_search_empty_returns_all(self):
+        resp = self.client.get("/api/crm/clinics/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+
+    def test_doctor_search_by_last_name(self):
+        resp = self.client.get("/api/crm/doctors/?search=novak")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Novak")
+
+    def test_doctor_search_by_first_name(self):
+        resp = self.client.get("/api/crm/doctors/?search=maria")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+
+    def test_patient_search_by_last_name(self):
+        resp = self.client.get("/api/crm/patients/?search=kral")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Kral")
+
+    def test_patient_search_by_birth_number(self):
+        resp = self.client.get("/api/crm/patients/?search=900101")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+
+    def test_search_is_scoped_to_authenticated_lab(self):
+        other_lab = Lab.objects.create(name="Other Lab")
+        Patient.objects.create(
+            lab=other_lab,
+            first_name="Kral",
+            last_name="Other",
+            birth_number="800101/0001",
+        )
+        Clinic.objects.create(lab=other_lab, name="Kral Klinika Other")
+        Doctor.objects.create(lab=other_lab, first_name="Kral", last_name="Other")
+
+        # patients: own lab has "Peter Kral" (last_name match) → 1 result
+        # clinics: own lab has no "Kral" clinic → 0 results
+        # doctors: own lab has no "Kral" doctor → 0 results
+        expected_counts = {
+            "/api/crm/patients/?search=Kral": 1,
+            "/api/crm/clinics/?search=Kral": 0,
+            "/api/crm/doctors/?search=Kral": 0,
+        }
+        for url, expected in expected_counts.items():
+            with self.subTest(url=url):
+                resp = self.client.get(url)
+                self.assertEqual(resp.status_code, 200)
+                self.assertEqual(
+                    len(resp.data), expected, f"unexpected count for {url}"
+                )
+                for record in resp.data:
+                    self.assertNotEqual(record.get("lab"), other_lab.id)
+
+    def test_clinic_search_by_ico(self):
+        Clinic.objects.create(lab=self.lab, name="Zubna klinika", ico="12345678")
+        resp = self.client.get("/api/crm/clinics/?search=12345678")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["ico"], "12345678")
+
+    def test_patient_search_case_insensitive(self):
+        resp = self.client.get("/api/crm/patients/?search=KRAL")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "Kral")
+
+
+class DoctorClinicFilterTests(APITestCase):
+    """Tests for ?clinic= filter on DoctorViewSet."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Filter Lab")
+        self.admin = User.objects.create_user(
+            username="filter_admin", password="pw", role="admin", lab=self.lab
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.clinic_a = Clinic.objects.create(lab=self.lab, name="Klinika A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab, name="Klinika B")
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_a, first_name="Jan", last_name="A"
+        )
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_a, first_name="Maria", last_name="A2"
+        )
+        Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic_b, first_name="Peter", last_name="B"
+        )
+
+    def test_filter_doctors_by_clinic(self):
+        resp = self.client.get(f"/api/crm/doctors/?clinic={self.clinic_a.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+        last_names = {doc["last_name"] for doc in resp.data}
+        self.assertEqual(last_names, {"A", "A2"})
+
+    def test_filter_doctors_by_other_clinic(self):
+        resp = self.client.get(f"/api/crm/doctors/?clinic={self.clinic_b.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["last_name"], "B")
+
+    def test_no_filter_returns_all_lab_doctors(self):
+        resp = self.client.get("/api/crm/doctors/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 3)
+
+    def test_filter_with_nonexistent_clinic_returns_empty(self):
+        resp = self.client.get("/api/crm/doctors/?clinic=99999")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+    def test_clinic_filter_scoped_to_lab(self):
+        other_lab = Lab.objects.create(name="Other Filter Lab")
+        other_clinic = Clinic.objects.create(lab=other_lab, name="Other Clinic")
+        Doctor.objects.create(
+            lab=other_lab, clinic=other_clinic, first_name="Ghost", last_name="Doc"
+        )
+        # Filtering by other lab's clinic ID returns empty (tenant-scoped).
+        resp = self.client.get(f"/api/crm/doctors/?clinic={other_clinic.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+
+class PatientRevenueStatsTests(APITestCase):
+    def setUp(self):
+        from apps.finance.models import InvoiceSequence
+
+        self.lab = Lab.objects.create(name="Revenue Stats Lab")
+        self.user = User.objects.create_user(
+            username="revstat_user",
+            password="pw",
+            email="revstat@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(name="RevClinic", lab=self.lab)
+        self.patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            birth_number="900101/1234",
+            lab=self.lab,
+        )
+        self.job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            patient=self.patient,
+            description="Test job",
+            status="completed",
+            price=150,
+        )
+        InvoiceSequence.objects.create(lab=self.lab, last_number=0)
+        self.invoice = Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="INV-2026-0001",
+            status="paid",
+            total_amount="150.00",
+        )
+        InvoiceItem.objects.create(
+            invoice=self.invoice,
+            job=self.job,
+            description="Test",
+            quantity=1,
+            unit_price="150.00",
+            line_total="150.00",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_patient_detail_includes_revenue_stats(self):
+        resp = self.client.get(f"/api/crm/patients/{self.patient.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("revenue_stats", resp.data)
+        stats = resp.data["revenue_stats"]
+        self.assertIn("total_revenue", stats)
+        self.assertIn("jobs_count", stats)
+        self.assertIn("avg_job_value", stats)
+        self.assertEqual(stats["jobs_count"], 1)
+        self.assertEqual(stats["total_revenue"], "150.00")
+
+
+class CrmAdminOnlyWriteTests(APITestCase):
+    """Only admin/superadmin can create, update, delete CRM records."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Write Guard Lab")
+        self.admin = User.objects.create_user(
+            username="crm_admin",
+            password="pw",
+            email="crm_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="crm_user",
+            password="pw",
+            email="crm_user@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Test Clinic")
+
+    def test_admin_can_create_clinic(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/crm/clinics/", {"name": "New Clinic"})
+        self.assertEqual(resp.status_code, 201)
+
+    def test_user_cannot_create_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post("/api/crm/clinics/", {"name": "Blocked Clinic"})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_cannot_update_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.patch(
+            f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_cannot_delete_clinic(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.delete(f"/api/crm/clinics/{self.clinic.id}/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_user_can_read_clinics(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/clinics/")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_admin_can_create_patient(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Jan",
+                "last_name": "Novak",
+                "birth_number": "9001015555",
+            },
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_user_cannot_create_patient(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Eva",
+                "last_name": "Nová",
+                "birth_number": "9055215557",
+            },
+        )
+        self.assertEqual(resp.status_code, 403)
+
+
+class CrmCsvExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Export Lab")
+        self.admin = User.objects.create_user(
+            username="export_admin",
+            password="pw",
+            email="export_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="export_user",
+            password="pw",
+            email="export@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+        self.clinic = Clinic.objects.create(
+            lab=self.lab, name="Export Clinic", ico="12345678"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Jana",
+            last_name="Novakova",
+            birth_number="8555215556",
+        )
+
+    def test_admin_can_export_patients_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("first_name", content)
+        self.assertIn("Novakova", content)
+
+    def test_user_cannot_export_patients_csv(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_clinics_export_returns_csv(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/clinics/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("name", content)
+        self.assertIn("Export Clinic", content)
+
+    def test_unauthenticated_export_denied(self):
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 401)
+
+    @override_settings(EXPORT_MAX_ROWS=1)
+    def test_patient_export_enforces_row_limit(self):
+        Patient.objects.create(
+            lab=self.lab,
+            first_name="Peter",
+            last_name="Limit",
+            birth_number="8555215557",
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
+        self.assertEqual(str(resp.data["max_rows"]), "1")
+
+
+class DoctorCsvExportTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Doctor Export Lab")
+        self.admin = User.objects.create_user(
+            username="doc_admin",
+            password="pw",
+            email="doc_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.regular = User.objects.create_user(
+            username="doc_regular",
+            password="pw",
+            email="doc_regular@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+        from apps.crm.models import Clinic
+
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Stomatológia Nováková")
+        from apps.crm.models import Doctor
+
+        Doctor.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            first_name="Mária",
+            last_name="Nováková",
+            title_before="MUDr.",
+        )
+
+    def test_admin_can_export_doctors_csv(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("text/csv", resp["Content-Type"])
+        content = resp.content.decode("utf-8")
+        self.assertIn("last_name", content)
+        self.assertIn("Nováková", content)
+        self.assertIn("Stomatológia", content)
+
+    def test_non_admin_export_denied(self):
+        self.client.force_authenticate(user=self.regular)
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_unauthenticated_export_denied(self):
+        resp = self.client.get("/api/crm/doctors/export/")
+        self.assertEqual(resp.status_code, 401)
+
+
+class CrmRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Full role matrix coverage for CRM endpoints.
+
+    Covers: anonymous 401, no_lab, user, technician, admin, superadmin
+    for patients, clinics, and doctors CRUD endpoints.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="crm_matrix")
+        self.clinic = Clinic.objects.create(lab=self.lab_a, name="Matrix Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic,
+            first_name="Matrix",
+            last_name="Doctor",
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Matrix",
+            last_name="Patient",
+            birth_number="8001011234",
+        )
+
+    # ── Patient endpoints ────────────────────────────────────────────────────
+
+    def test_patient_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/patients/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_patient_create_role_matrix(self):
+        # birth_number is unique per lab so each successful create needs a different value
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {"first_name": "X", "last_name": "Y", "birth_number": "9001015001"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/crm/patients/",
+                    {
+                        "first_name": "X",
+                        "last_name": "Y",
+                        "birth_number": "9001015001",
+                        "lab": self.lab_a.id,
+                    },
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.client.force_authenticate(user=None)
+
+        self.client.force_authenticate(user=self.role_users["admin"])
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Admin",
+                "last_name": "Patient",
+                "birth_number": "9001015002",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.client.force_authenticate(user=None)
+
+        self.client.force_authenticate(user=self.role_users["superadmin"])
+        resp = self.client.post(
+            "/api/crm/patients/",
+            {
+                "first_name": "Super",
+                "last_name": "Patient",
+                "birth_number": "9001015003",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.client.force_authenticate(user=None)
+
+    def test_patient_retrieve_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/crm/patients/{self.patient.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_patient_update_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/crm/patients/{self.patient.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"first_name": "Updated"},
+            format="json",
+        )
+
+    def test_patient_delete_role_matrix(self):
+        def _delete_matrix(role):
+            """Create a fresh patient per role so delete always succeeds for admin."""
+            import random
+
+            suffix = random.randint(10000, 99999)
+            p = Patient.objects.create(
+                lab=self.lab_a,
+                first_name="Del",
+                last_name=f"Patient{suffix}",
+                birth_number=f"90010{suffix}",
+            )
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/crm/patients/{p.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # Anonymous
+        resp = self.client.delete(f"/api/crm/patients/{self.patient.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        expectations = {
+            "no_lab": status.HTTP_404_NOT_FOUND,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(
+                    resp.status_code, expected, f"DELETE patient as {role}"
+                )
+
+    # ── Clinic endpoints ─────────────────────────────────────────────────────
+
+    def test_clinic_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/clinics/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_clinic_create_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "POST",
+            "/api/crm/clinics/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_201_CREATED,
+                "superadmin": status.HTTP_201_CREATED,
+            },
+            data={"name": "Nova Klinika", "lab": self.lab_a.id},
+            format="json",
+        )
+
+    # ── Doctor endpoints ─────────────────────────────────────────────────────
+
+    def test_doctor_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/crm/doctors/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    def test_doctor_create_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "POST",
+            "/api/crm/doctors/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_201_CREATED,
+                "superadmin": status.HTTP_201_CREATED,
+            },
+            data={
+                "clinic": self.clinic.id,
+                "first_name": "Novy",
+                "last_name": "Lekar",
+                "lab": self.lab_a.id,
+            },
+            format="json",
+        )

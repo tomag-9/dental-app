@@ -1,6 +1,10 @@
+from decimal import Decimal
+
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Invoice, InvoiceItem, PriceList, Subscription
+from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 
 
 class PriceListSerializer(serializers.ModelSerializer):
@@ -46,16 +50,54 @@ class InvoiceCreateSerializer(serializers.Serializer):
         child=serializers.IntegerField(min_value=1),
         allow_empty=False,
     )
+    document_type = serializers.ChoiceField(
+        choices=("invoice", "proforma"),
+        default="invoice",
+        required=False,
+    )
+    discount_percent = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        required=False,
+        min_value=0,
+        max_value=100,
+    )
 
 
 class InvoiceStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("draft", "issued", "paid", "cancelled"))
 
 
+def _sk_date(d):
+    """Format a date as DD.MM.YYYY (Slovak locale convention)."""
+    if d is None:
+        return None
+    return d.strftime("%d.%m.%Y")
+
+
+def _sk_amount(amount):
+    """Format a Decimal as '1 234,56 EUR' (Slovak locale convention)."""
+    if amount is None:
+        return None
+    # Slovak: thousands separator = space, decimal separator = comma
+    parts = f"{Decimal(str(amount)):.2f}".split(".")
+    integer_part = "{:,}".format(int(parts[0])).replace(",", " ")  # non-breaking space
+    return f"{integer_part},{parts[1]} EUR"
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     items = InvoiceItemSerializer(many=True, read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
     patient_names = serializers.SerializerMethodField()
+    subtotal_amount = serializers.SerializerMethodField()
+    vat_amount = serializers.SerializerMethodField()
+    is_overdue = serializers.SerializerMethodField()
+    days_overdue = serializers.SerializerMethodField()
+    related_jobs = serializers.SerializerMethodField()
+    formatted_total = serializers.SerializerMethodField()
+    formatted_due_date = serializers.SerializerMethodField()
+    formatted_issued_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -66,13 +108,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "clinic",
             "clinic_name",
             "status",
+            "document_type",
+            "vat_rate",
+            "discount_percent",
             "total_amount",
+            "subtotal_amount",
+            "vat_amount",
+            "formatted_total",
+            "formatted_due_date",
+            "formatted_issued_at",
+            "is_overdue",
+            "days_overdue",
             "created_at",
             "issued_at",
             "paid_at",
             "due_date",
             "items",
             "patient_names",
+            "related_jobs",
         )
 
     def get_patient_names(self, obj):
@@ -82,6 +135,71 @@ class InvoiceSerializer(serializers.ModelSerializer):
             if patient:
                 patient_names.add(f"{patient.first_name} {patient.last_name}")
         return sorted(patient_names)
+
+    def get_formatted_total(self, obj):
+        return _sk_amount(obj.total_amount)
+
+    def get_formatted_due_date(self, obj):
+        return _sk_date(obj.due_date)
+
+    def get_formatted_issued_at(self, obj):
+        d = obj.issued_at.date() if obj.issued_at else None
+        return _sk_date(d)
+
+    def get_subtotal_amount(self, obj):
+        subtotal = self._subtotal(obj)
+        return f"{subtotal:.2f}"
+
+    def get_vat_amount(self, obj):
+        amounts = calculate_invoice_amounts(
+            self._subtotal(obj), obj.vat_rate, obj.discount_percent
+        )
+        return f"{amounts['vat_amount']:.2f}"
+
+    def _subtotal(self, obj):
+        items = obj.items.all()
+        if items:
+            return sum(
+                (Decimal(str(item.line_total or 0)) for item in items), Decimal()
+            )
+        return reverse_invoice_subtotal(
+            obj.total_amount, obj.vat_rate, obj.discount_percent
+        )
+
+    def get_is_overdue(self, obj):
+        return bool(
+            obj.status == "issued"
+            and obj.due_date
+            and obj.due_date < timezone.localdate()
+        )
+
+    def get_days_overdue(self, obj):
+        if not self.get_is_overdue(obj):
+            return 0
+        return (timezone.localdate() - obj.due_date).days
+
+    def get_related_jobs(self, obj):
+        related = []
+        seen = set()
+        for item in obj.items.select_related("job__patient").order_by("job_id"):
+            job = item.job
+            if not job or job.id in seen:
+                continue
+            seen.add(job.id)
+            patient = job.patient
+            patient_name = (
+                f"{patient.first_name} {patient.last_name}".strip() if patient else ""
+            )
+            related.append(
+                {
+                    "id": job.id,
+                    "status": job.status,
+                    "description": job.description,
+                    "patient_name": patient_name,
+                    "due_date": job.due_date.isoformat() if job.due_date else None,
+                }
+            )
+        return related
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.core.models import Lab, User
+from apps.core.models import AuditLog, Lab, TeamInvitation, User
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceItem, PriceList, Subscription
 from apps.inventory.models import WarehouseItem
@@ -52,8 +52,15 @@ class UserAuthContractTests(APITestCase):
         # Lab object fields
         self.assertIn("id", response.data["lab"])
         self.assertIn("name", response.data["lab"])
+        self.assertIn("invoice_prefix", response.data["lab"])
+        self.assertIn("invoice_due_days", response.data["lab"])
+        self.assertIn("vat_rate", response.data["lab"])
+        self.assertIn("payment_method", response.data["lab"])
+        self.assertIn("invoice_default_note", response.data["lab"])
         self.assertIsInstance(response.data["lab"]["id"], int)
         self.assertEqual(response.data["lab"]["name"], "New Lab")
+        self.assertEqual(response.data["lab"]["invoice_prefix"], "INV")
+        self.assertEqual(response.data["lab"]["invoice_due_days"], 14)
 
         # User object fields
         self.assertIn("id", response.data["user"])
@@ -95,7 +102,15 @@ class UserAuthContractTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Critical fields
-        required_fields = ["id", "username", "email", "role", "lab", "is_active"]
+        required_fields = [
+            "id",
+            "username",
+            "email",
+            "role",
+            "lab",
+            "is_active",
+            "notification_preferences",
+        ]
         for field in required_fields:
             self.assertIn(field, response.data, f"Missing required field: {field}")
 
@@ -104,6 +119,129 @@ class UserAuthContractTests(APITestCase):
         self.assertIsInstance(response.data["username"], str)
         self.assertIsInstance(response.data["role"], str)
         self.assertIsInstance(response.data["is_active"], bool)
+        self.assertIsInstance(response.data["notification_preferences"], dict)
+
+
+class AuditLogContractTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Audit Lab")
+        self.superadmin = User.objects.create_user(
+            username="superadmin",
+            email="superadmin-audit@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+        AuditLog.objects.create(
+            actor=self.superadmin,
+            lab=self.lab,
+            action="lab.updated",
+            entity_type="lab",
+            entity_id=str(self.lab.id),
+            description="Lab updated",
+            metadata={"fields": ["city"]},
+        )
+
+    def test_audit_log_list_response_contract(self):
+        self.client.force_authenticate(user=self.superadmin)
+
+        response = self.client.get("/api/core/audit-logs/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = response.data[0]
+        for field in (
+            "id",
+            "actor",
+            "actor_username",
+            "lab",
+            "lab_name",
+            "action",
+            "entity_type",
+            "entity_id",
+            "description",
+            "metadata",
+            "ip_address",
+            "created_at",
+        ):
+            self.assertIn(field, item)
+        self.assertEqual(item["action"], "lab.updated")
+
+
+class TeamInvitationContractTests(APITestCase):
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Invite Lab")
+        self.admin = User.objects.create_user(
+            username="invite_admin",
+            email="invite-admin@example.com",
+            password="password123",
+            role="admin",
+            lab=self.lab,
+        )
+        TeamInvitation.objects.create(
+            lab=self.lab,
+            email="invited@example.com",
+            role="technician",
+            token="contract-token",
+            invited_by=self.admin,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+
+    def test_team_invitation_list_response_contract(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get("/api/core/team-invitations/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        item = response.data[0]
+        for field in (
+            "id",
+            "lab",
+            "lab_name",
+            "email",
+            "role",
+            "token",
+            "status",
+            "is_expired",
+            "invited_by",
+            "invited_by_username",
+            "accepted_by",
+            "accepted_by_username",
+            "expires_at",
+            "accepted_at",
+            "created_at",
+        ):
+            self.assertIn(field, item)
+        self.assertEqual(item["email"], "invited@example.com")
+        self.assertEqual(item["status"], "pending")
+        self.assertFalse(item["is_expired"])
+
+
+class SystemHealthContractTests(APITestCase):
+    def setUp(self):
+        self.superadmin = User.objects.create_user(
+            username="health_superadmin",
+            email="health-superadmin@example.com",
+            password="password123",
+            role="superadmin",
+            is_superuser=True,
+        )
+
+    def test_system_health_response_contract(self):
+        self.client.force_authenticate(user=self.superadmin)
+
+        response = self.client.get("/api/core/system-health/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("status", response.data)
+        self.assertIn("generated_at", response.data)
+        self.assertIn("checks", response.data)
+        self.assertIn("metrics", response.data)
+        self.assertIn("labs", response.data["metrics"])
+        self.assertIn("users", response.data["metrics"])
+        self.assertIn("pending_invitations", response.data["metrics"])
+        self.assertIn("unread_notifications", response.data["metrics"])
+        self.assertIsInstance(response.data["checks"], list)
+        self.assertIsInstance(response.data["metrics"]["labs"], int)
 
 
 class JobContractTests(APITestCase):
@@ -257,10 +395,15 @@ class InvoiceContractTests(APITestCase):
             "number",
             "status",
             "total_amount",
+            "subtotal_amount",
+            "vat_amount",
+            "is_overdue",
+            "days_overdue",
             "created_at",
             "clinic_name",
             "patient_names",
             "items",
+            "related_jobs",
         ]
         for field in required_fields:
             self.assertIn(field, response.data, f"Missing required field: {field}")
@@ -269,6 +412,9 @@ class InvoiceContractTests(APITestCase):
         self.assertEqual(response.data["clinic_name"], "Test Clinic")
         self.assertIsInstance(response.data["patient_names"], list)
         self.assertIn("Jane Patient", response.data["patient_names"])
+        self.assertIsInstance(response.data["related_jobs"], list)
+        self.assertFalse(response.data["is_overdue"])
+        self.assertEqual(response.data["vat_amount"], "0.00")
 
         # Items must be included
         self.assertGreater(len(response.data["items"]), 0)
@@ -316,8 +462,12 @@ class InvoiceContractTests(APITestCase):
         # Enriched fields must be present
         self.assertIn("clinic_name", invoice_data)
         self.assertIn("patient_names", invoice_data)
+        self.assertIn("related_jobs", invoice_data)
+        self.assertIn("is_overdue", invoice_data)
+        self.assertIn("days_overdue", invoice_data)
         self.assertEqual(invoice_data["clinic_name"], "Test Clinic")
         self.assertIsInstance(invoice_data["patient_names"], list)
+        self.assertIsInstance(invoice_data["related_jobs"], list)
 
 
 class PatientContractTests(APITestCase):
@@ -486,6 +636,7 @@ class WarehouseContractTests(APITestCase):
             min_threshold=10,
             category="Materials",
             location="A1",
+            supplier="Dental Supplier",
             cost_price=12.5,
         )
 
@@ -509,6 +660,7 @@ class WarehouseContractTests(APITestCase):
             "min_threshold",
             "category",
             "location",
+            "supplier",
             "cost_price",
             "notes",
             "created_at",
@@ -556,6 +708,9 @@ class DashboardStatsContractTests(APITestCase):
             "active_jobs",
             "completed_jobs",
             "total_revenue",
+            "current_period",
+            "monthly_totals",
+            "deltas",
             "recent_jobs",
             "recent_invoices",
             "today_schedule",
@@ -566,9 +721,44 @@ class DashboardStatsContractTests(APITestCase):
         self.assertIsInstance(response.data["total_patients"], int)
         self.assertIsInstance(response.data["active_jobs"], int)
         self.assertIsInstance(response.data["completed_jobs"], int)
+        self.assertIsInstance(response.data["current_period"], dict)
+        self.assertIn("start", response.data["current_period"])
+        self.assertIn("end", response.data["current_period"])
+        self.assertIsInstance(response.data["monthly_totals"], dict)
+        self.assertIn("new_patients", response.data["monthly_totals"])
+        self.assertIn("new_jobs", response.data["monthly_totals"])
+        self.assertIn("revenue", response.data["monthly_totals"])
+        self.assertIsInstance(response.data["deltas"], dict)
+        self.assertIn("new_patients", response.data["deltas"])
+        self.assertIn("new_jobs", response.data["deltas"])
+        self.assertIn("revenue", response.data["deltas"])
         self.assertIsInstance(response.data["recent_jobs"], list)
         self.assertIsInstance(response.data["recent_invoices"], list)
         self.assertIsInstance(response.data["today_schedule"], list)
+
+    def test_monthly_period_totals_include_current_month_activity(self):
+        Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=self.clinic,
+            status="new",
+        )
+        Invoice.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            number="DASH-MONTH-001",
+            status="paid",
+            total_amount="99.00",
+            paid_at=timezone.now(),
+        )
+
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get("/api/dashboard/stats/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(response.data["monthly_totals"]["new_patients"], 1)
+        self.assertGreaterEqual(response.data["monthly_totals"]["new_jobs"], 1)
+        self.assertEqual(response.data["monthly_totals"]["revenue"], "99.00")
 
     def test_today_schedule_contains_due_open_jobs_only(self):
         """Today schedule must include due open jobs and exclude completed ones."""

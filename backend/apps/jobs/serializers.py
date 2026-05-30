@@ -1,5 +1,8 @@
 from decimal import Decimal
+from pathlib import Path
+from urllib.parse import urlparse
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.core.access import is_superadmin
@@ -7,15 +10,63 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
-from .dental import validate_tooth_range
-from .models import Job, JobItem, JobTimelineEvent, Technician, Vacation
+from .dental import (
+    expand_fdi_range,
+    normalize_tooth_scope,
+    validate_bridge_span,
+    validate_tooth_range,
+)
+from .models import (
+    CalendarEvent,
+    Job,
+    JobAttachment,
+    JobItem,
+    JobTimelineEvent,
+    Technician,
+    Vacation,
+)
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
+    jobs_count = serializers.SerializerMethodField()
+    active_jobs = serializers.SerializerMethodField()
+    jobs_this_month = serializers.SerializerMethodField()
+
     class Meta:
         model = Technician
-        fields = "__all__"
-        read_only_fields = ["lab", "created_at"]
+        fields = (
+            "id",
+            "lab",
+            "first_name",
+            "last_name",
+            "title_before",
+            "title_after",
+            "contact_info",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "jobs_this_month",
+        )
+        read_only_fields = [
+            "lab",
+            "created_at",
+            "jobs_count",
+            "active_jobs",
+            "jobs_this_month",
+        ]
+
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+    def get_active_jobs(self, obj):
+        return obj.jobs.filter(status__in=("new", "in_progress")).count()
+
+    def get_jobs_this_month(self, obj):
+        today = timezone.localdate()
+        return obj.jobs.filter(
+            created_at__year=today.year,
+            created_at__month=today.month,
+        ).count()
 
 
 class JobItemSerializer(serializers.ModelSerializer):
@@ -29,16 +80,65 @@ class JobItemSerializer(serializers.ModelSerializer):
             "quantity",
             "unit_price",
             "total",
+            "procedure_category",
+            "material",
+            "color",
+            "bridge_span",
+            "tooth_scope",
+            "tooth_state",
             "created_at",
         )
         read_only_fields = ("id", "description", "unit_price", "total", "created_at")
 
     def validate_tooth(self, value):
+        if value and normalize_tooth_scope(value):
+            return value
         if value and not validate_tooth_range(value):
             raise serializers.ValidationError(
                 "Use canonical FDI tooth notation, for example 26 or 45-47."
             )
         return value
+
+    def validate_tooth_scope(self, value):
+        if value and not normalize_tooth_scope(value):
+            raise serializers.ValidationError(
+                "Use A, U, L, Q1, Q2, Q3 or Q4 for tooth scope."
+            )
+        return normalize_tooth_scope(value) or None
+
+    def validate_bridge_span(self, value):
+        if value and not validate_bridge_span(value):
+            raise serializers.ValidationError(
+                "Bridge span must be a same-arch FDI range covering at least two teeth."
+            )
+        return value
+
+    def validate(self, data):
+        procedure_category = data.get("procedure_category")
+        bridge_span = data.get("bridge_span")
+        tooth = data.get("tooth")
+        tooth_scope = data.get("tooth_scope")
+
+        inline_scope = normalize_tooth_scope(tooth)
+        if inline_scope:
+            data["tooth_scope"] = tooth_scope or inline_scope
+            data["tooth"] = None
+            tooth = None
+
+        if procedure_category == "bridge" and not bridge_span:
+            raise serializers.ValidationError(
+                {"bridge_span": "Bridge items require a bridge span."}
+            )
+
+        if bridge_span and tooth:
+            bridge_teeth = set(expand_fdi_range(bridge_span))
+            item_teeth = set(expand_fdi_range(tooth))
+            if item_teeth and not item_teeth.issubset(bridge_teeth):
+                raise serializers.ValidationError(
+                    {"tooth": "Tooth must be within the bridge span."}
+                )
+
+        return data
 
 
 class JobTimelineEventSerializer(serializers.ModelSerializer):
@@ -52,6 +152,7 @@ class JobTimelineEventSerializer(serializers.ModelSerializer):
             "note",
             "from_status",
             "to_status",
+            "changed_fields",
             "actor",
             "actor_name",
             "created_at",
@@ -223,6 +324,12 @@ class JobSerializer(serializers.ModelSerializer):
                 quantity=quantity,
                 unit_price=price_item.price,
                 total=Decimal("0.00"),
+                procedure_category=entry.get("procedure_category") or None,
+                material=entry.get("material") or None,
+                color=entry.get("color") or None,
+                bridge_span=entry.get("bridge_span") or None,
+                tooth_scope=entry.get("tooth_scope") or None,
+                tooth_state=entry.get("tooth_state") or "planned",
             )
             job_item.save()
             created_items.append(job_item)
@@ -259,3 +366,88 @@ class VacationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vacation
         fields = "__all__"
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarEvent
+        fields = "__all__"
+        read_only_fields = ["lab", "created_at"]
+
+
+class JobAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.SerializerMethodField()
+    file_size = serializers.IntegerField(
+        required=False,
+        write_only=True,
+        min_value=1,
+        max_value=25 * 1024 * 1024,
+    )
+
+    _ALLOWED_FILE_TYPES = {
+        "application/pdf": {".pdf"},
+        "image/jpeg": {".jpg", ".jpeg"},
+        "image/png": {".png"},
+        "image/webp": {".webp"},
+        "model/stl": {".stl"},
+        "model/obj": {".obj"},
+        "model/ply": {".ply"},
+        "application/sla": {".stl"},
+    }
+
+    class Meta:
+        model = JobAttachment
+        fields = (
+            "id",
+            "job",
+            "file_name",
+            "file_url",
+            "file_type",
+            "file_size",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        )
+        read_only_fields = (
+            "id",
+            "job",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        )
+
+    def validate_file_url(self, value):
+        parsed = urlparse(value)
+        if parsed.scheme != "https":
+            raise serializers.ValidationError(
+                "Attachment URLs must use HTTPS external storage."
+            )
+        if not parsed.netloc:
+            raise serializers.ValidationError("Attachment URL must include a host.")
+        return value
+
+    def validate_file_type(self, value):
+        if not value:
+            return value
+        normalized = value.strip().lower()
+        if normalized not in self._ALLOWED_FILE_TYPES:
+            raise serializers.ValidationError("Unsupported attachment file type.")
+        return normalized
+
+    def validate(self, data):
+        file_type = data.get("file_type")
+        if file_type:
+            extension = Path(data.get("file_name") or "").suffix.lower()
+            allowed_extensions = self._ALLOWED_FILE_TYPES[file_type]
+            if extension not in allowed_extensions:
+                allowed = ", ".join(sorted(allowed_extensions))
+                raise serializers.ValidationError(
+                    {"file_name": f"File extension must match {file_type}: {allowed}."}
+                )
+        data.pop("file_size", None)
+        return data
+
+    def get_uploaded_by_name(self, obj):
+        if not obj.uploaded_by:
+            return ""
+        return obj.uploaded_by.get_full_name() or obj.uploaded_by.username

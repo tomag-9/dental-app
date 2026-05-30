@@ -18,7 +18,9 @@ A web application for Slovak dental laboratories: manage patients, jobs (dental 
 
 ## Active branch
 
-**`develop`** is the working branch. `main` is stale (predates the Django+React refactor).
+**`develop`** is the long-lived working branch. Current parity/backlog work is
+tracked on **`new/version`** until it is merged back. `main` is stale (predates
+the Django+React refactor).
 
 ## Running the dev environment
 
@@ -37,9 +39,9 @@ docker compose --env-file env/dev.env.example -f compose/docker-compose.yml exec
 
 Default credentials after seeding: `admin` / `admin` and `user` / `user`.
 
-Frontend dev server: http://localhost:5173  
-Backend API: http://localhost:8000/api/  
-Swagger docs: http://localhost:8000/api/docs/
+Frontend dev server: http://localhost:5367  
+Backend API: http://localhost:8810/api/  
+Swagger docs: http://localhost:8810/api/docs/
 
 ## Running tests
 

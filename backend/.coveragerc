@@ -1,0 +1,26 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */tests*.py
+    */test_helpers.py
+    */test_contracts.py
+    seed_data.py
+# Enable parallel-mode so --parallel Django test workers each write a .coverage.* file
+concurrency = multiprocessing
+parallel = true
+
+[report]
+show_missing = true
+skip_covered = false
+fail_under = 0
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+
+[html]
+directory = coverage_html
+
+[xml]
+output = coverage.xml

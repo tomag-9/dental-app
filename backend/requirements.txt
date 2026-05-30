@@ -16,4 +16,8 @@ pyplusplus
 
 flake8
 black
+coverage
 djangorestframework-simplejwt
+pyotp
+qrcode[pil]
+openpyxl

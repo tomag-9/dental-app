@@ -85,7 +85,9 @@ DB_PORT = os.environ.get("SQL_PORT", "")
 if DB_ENGINE == "django.db.backends.postgresql":
     DATABASES = {
         "default": {
-            "ENGINE": DB_ENGINE,
+            # Custom backend: terminates lingering sessions before DROP DATABASE
+            # so teardown never fails with "database is being accessed by other users".
+            "ENGINE": "config.db_backends",
             "NAME": DB_NAME,
             "USER": DB_USER,
             "PASSWORD": DB_PASSWORD,
@@ -150,6 +152,17 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.OptionalPageNumberPagination",
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {
+        "login": os.environ.get("THROTTLE_LOGIN_RATE", "5/min"),
+        "signup": os.environ.get("THROTTLE_SIGNUP_RATE", "5/min"),
+        "invitation_accept": os.environ.get(
+            "THROTTLE_INVITATION_ACCEPT_RATE", "10/min"
+        ),
+        "two_factor_verify": os.environ.get("THROTTLE_2FA_VERIFY_RATE", "10/min"),
+        "api_key_create": os.environ.get("THROTTLE_API_KEY_CREATE_RATE", "5/min"),
+    },
 }
 
 # SPECTACULAR SETTINGS
@@ -174,3 +187,35 @@ else:
         "http://127.0.0.1:5173",
     ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Production hardening toggles. Defaults stay development-friendly; deployments
+# can enable them via environment without changing application code.
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "0") == "1"
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
+CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", "0") == "1"
+SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = (
+    os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "0") == "1"
+)
+SECURE_HSTS_PRELOAD = os.environ.get("SECURE_HSTS_PRELOAD", "0") == "1"
+_csrf_trusted_origins = os.environ.get("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in _csrf_trusted_origins.split(",") if origin.strip()
+]
+SECURE_PROXY_SSL_HEADER = (
+    ("HTTP_X_FORWARDED_PROTO", "https")
+    if os.environ.get("SECURE_PROXY_SSL_HEADER", "0") == "1"
+    else None
+)
+
+# Email
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "25"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "0") == "1"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentallab.sk")
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")

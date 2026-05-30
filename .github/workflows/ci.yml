@@ -6,10 +6,20 @@ on:
   pull_request:
     branches: [ "main", "develop" ]
 
+# Serialize runs per branch on the shared self-hosted runner so that the
+# Docker container cleanup step in one run never kills containers owned by
+# a concurrent run of the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  backend-check:
+  # ──────────────────────────────────────────────
+  # Fast lint — no DB required, runs without deps
+  # ──────────────────────────────────────────────
+  lint:
     runs-on: [self-hosted]
-    name: Backend Tests & Lint
+    name: Lint
     steps:
     - name: Prepare workspace
       run: |
@@ -21,15 +31,44 @@ jobs:
         clean: false
     - name: Build backend image
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
-    - name: Run backend tests
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test --noinput --verbosity=2
-    - name: Run backend contract tests
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py test apps.core.test_contracts --noinput --verbosity=2
-    - name: Run backend flake8
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend flake8 apps --max-line-length=100 --exclude=migrations
-    - name: Run backend black check
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend black --check apps
-    - name: Cleanup Docker containers
+    - name: Run flake8
+      run: |
+        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
+          run --no-deps --rm backend \
+          flake8 apps --max-line-length=120 --exclude=migrations --extend-ignore=E203,W503
+    - name: Run black check
+      run: |
+        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
+          run --no-deps --rm backend \
+          black --check apps
+    - name: Cleanup
+      if: always()
+      run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+
+  # ──────────────────────────────────────────────
+  # Full test suite + coverage in a single run
+  # (previously ran twice: once for tests, once for coverage)
+  # ──────────────────────────────────────────────
+  backend-tests:
+    runs-on: [self-hosted]
+    name: Backend Tests
+    steps:
+    - name: Prepare workspace
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE"
+        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+    - uses: actions/checkout@v4
+      with:
+        clean: false
+    - name: Build backend image
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
+    - name: Run tests with coverage
+      run: |
+        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend \
+          sh -c "coverage run --parallel-mode --rcfile=.coveragerc manage.py test --noinput --verbosity=2 --parallel \
+            && coverage combine && coverage xml && coverage report --skip-covered"
+    - name: Cleanup
       if: always()
       run: |
         if [ -f env/dev.env.example ]; then
@@ -38,6 +77,9 @@ jobs:
           docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
         fi
 
+  # ──────────────────────────────────────────────
+  # Frontend lint + build
+  # ──────────────────────────────────────────────
   frontend-check:
     runs-on: [self-hosted]
     name: Frontend Tests & Lint
@@ -56,7 +98,7 @@ jobs:
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run build
-    - name: Cleanup Docker containers
+    - name: Cleanup
       if: always()
       run: |
         if [ -f env/dev.env.example ]; then
@@ -65,8 +107,11 @@ jobs:
           docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
         fi
 
+  # ──────────────────────────────────────────────
+  # Docker image build — only on push to main/develop
+  # ──────────────────────────────────────────────
   docker-build:
-    needs: [backend-check, frontend-check]
+    needs: [lint, backend-tests, frontend-check]
     runs-on: [self-hosted]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     name: Build Docker Images
@@ -121,7 +166,6 @@ jobs:
         push: true
         tags: ${{ env.DOCKER_REGISTRY }}/dental-frontend:latest
       if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
-    - name: Cleanup Docker containers
+    - name: Cleanup
       if: always()
-      run: |
-        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+      run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f

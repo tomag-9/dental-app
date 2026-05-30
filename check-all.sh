@@ -48,16 +48,19 @@ run_step() {
 }
 
 run_backend_tests() {
-    local label="backend tests"
+    # Optional module argument, e.g. "apps.core apps.crm" for a quick local run
+    local modules="${*:-}"
+    local label="backend tests${modules:+ ($modules)}"
     local log_file="$TMP_DIR/backend_tests.log"
     local spinner='|/-\'
     local i=0
     local exit_code=0
 
+    # shellcheck disable=SC2086
     "${COMPOSE[@]}" exec -T \
         -e DJANGO_SETTINGS_MODULE=config.settings \
         -e SECRET_KEY=ci-cd-testing-secret-key-123 \
-        backend python manage.py test --noinput --verbosity=2 >"$log_file" 2>&1 &
+        backend python manage.py test --noinput --verbosity=2 $modules >"$log_file" 2>&1 &
     local pid=$!
 
     while kill -0 "$pid" 2>/dev/null; do
@@ -112,8 +115,12 @@ run_step "frontend build" "${COMPOSE[@]}" exec -T frontend npm run build
 run_step "black (format check)" "${COMPOSE[@]}" exec -T backend black apps config manage.py seed_data.py --check --exclude '/migrations/'
 run_step "flake8" "${COMPOSE[@]}" exec -T backend flake8 apps config manage.py seed_data.py --max-line-length=120 --exclude=migrations --extend-ignore=E203,W503
 
-run_backend_tests
+# Run basic tests locally. Full suite (jobs, finance, inventory role matrix, etc.) runs in CI.
+run_backend_tests apps.core apps.crm
 
+echo ""
+echo "ℹ️  Full test suite (all apps) runs in CI only."
+echo "   To run locally: docker compose ... exec backend python manage.py test --noinput"
 echo ""
 echo "========================================"
 if [ "${#FAILED[@]}" -eq 0 ]; then
