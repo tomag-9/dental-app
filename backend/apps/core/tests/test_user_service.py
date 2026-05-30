@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 
-from apps.core.models import AuditLog, Lab, User
 from apps.core import user_service
+from apps.core.models import AuditLog, Lab, User
 
 
 class UserServiceCreateTests(TestCase):

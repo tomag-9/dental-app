@@ -38,8 +38,8 @@ class InvoiceSendEmailTests(APITestCase):
         )
 
     def test_send_email_to_explicit_address(self):
-        from django.test import override_settings
         from django.core import mail
+        from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
         with override_settings(
@@ -192,8 +192,8 @@ class OverdueReminderTests(APITestCase):
         )
 
     def test_sends_reminders_for_overdue_issued_invoices(self):
-        from django.test import override_settings
         from django.core import mail
+        from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
         with override_settings(

@@ -1,6 +1,6 @@
+import secrets
 from datetime import timedelta
 from decimal import Decimal
-import secrets
 
 from django.db import connection, transaction
 from django.db.models import Count, Q, Sum
@@ -17,8 +17,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent, Vacation
 
-from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
 from . import user_service
+from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
 from .auth import MolarisTokenObtainPairSerializer
 from .models import (
     AuditLog,
@@ -407,8 +407,9 @@ class SystemHealthView(APIView):
         except ImportError:
             pass
 
-        import django
         import sys
+
+        import django
 
         lab_count = Lab.objects.count()
         user_count = User.objects.count()

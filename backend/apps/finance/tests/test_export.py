@@ -81,8 +81,9 @@ class InvoiceCSVExportTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("spreadsheetml", resp["Content-Type"])
         self.assertIn(".xlsx", resp["Content-Disposition"])
-        import openpyxl
         from io import BytesIO
+
+        import openpyxl
 
         wb = openpyxl.load_workbook(BytesIO(resp.content))
         ws = wb.active

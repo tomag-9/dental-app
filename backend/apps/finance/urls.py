@@ -5,8 +5,8 @@ from .views import (
     FinanceStatsView,
     InvoiceAgingView,
     InvoiceViewSet,
-    ProcedureCatalogView,
     PriceListViewSet,
+    ProcedureCatalogView,
     SubscriptionViewSet,
 )
 

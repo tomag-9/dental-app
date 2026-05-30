@@ -2,7 +2,6 @@ import csv
 from io import BytesIO, StringIO
 
 import openpyxl
-
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
@@ -558,8 +557,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             response = HttpResponse(
                 buf.read(),
                 content_type=(
-                    "application/vnd.openxmlformats-officedocument"
-                    ".spreadsheetml.sheet"
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 ),
             )
             response["Content-Disposition"] = 'attachment; filename="jobs.xlsx"'

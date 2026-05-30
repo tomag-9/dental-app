@@ -7,13 +7,15 @@ from django.db import transaction
 from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
 from django.http import HttpResponse
 from rest_framework import permissions, status, viewsets
-from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from apps.core.access import IsReadOnlyOrAdminOrSuperadminPermission
-from apps.core.access import TenantScopedQuerysetMixin
-from apps.core.access import is_superadmin
+from apps.core.access import (
+    IsReadOnlyOrAdminOrSuperadminPermission,
+    TenantScopedQuerysetMixin,
+    is_superadmin,
+)
 from apps.core.exports import limited_export_queryset
 
 from .models import WarehouseItem
@@ -158,8 +160,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             response = HttpResponse(
                 buf.read(),
                 content_type=(
-                    "application/vnd.openxmlformats-officedocument"
-                    ".spreadsheetml.sheet"
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 ),
             )
             response["Content-Disposition"] = 'attachment; filename="inventory.xlsx"'

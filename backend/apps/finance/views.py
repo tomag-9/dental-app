@@ -5,15 +5,13 @@ from decimal import Decimal
 from io import BytesIO, StringIO
 
 import openpyxl
-
-from django.utils.dateparse import parse_date
-
 from django.conf import settings as django_settings
 from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from reportlab.graphics import renderPDF, renderSVG
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
@@ -35,8 +33,8 @@ from apps.core.exports import limited_export_queryset
 from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
-from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from . import invoice_service
+from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
 from .serializers import (
     InvoiceCreateSerializer,

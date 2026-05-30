@@ -1,4 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 MONEY = Decimal("0.01")
 ONE_HUNDRED = Decimal("100")
