@@ -85,7 +85,9 @@ DB_PORT = os.environ.get("SQL_PORT", "")
 if DB_ENGINE == "django.db.backends.postgresql":
     DATABASES = {
         "default": {
-            "ENGINE": DB_ENGINE,
+            # Custom backend: terminates lingering sessions before DROP DATABASE
+            # so teardown never fails with "database is being accessed by other users".
+            "ENGINE": "config.db_backends",
             "NAME": DB_NAME,
             "USER": DB_USER,
             "PASSWORD": DB_PASSWORD,
