@@ -85,7 +85,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
-            statuses = [value.strip() for value in status_filter.split(",") if value.strip()]
+            statuses = [
+                value.strip() for value in status_filter.split(",") if value.strip()
+            ]
             qs = qs.filter(status__in=statuses)
 
         priority = self.request.query_params.get("priority")
@@ -111,7 +113,11 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 pass
 
-        search = (self.request.query_params.get("search") or self.request.query_params.get("q") or "").strip()
+        search = (
+            self.request.query_params.get("search")
+            or self.request.query_params.get("q")
+            or ""
+        ).strip()
         if search:
             search_filter = (
                 Q(description__icontains=search)
@@ -181,7 +187,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 if new_status:
                     if new_status == job.status:
                         pass
-                    elif new_status not in self.allowed_transitions.get(job.status, set()):
+                    elif new_status not in self.allowed_transitions.get(
+                        job.status, set()
+                    ):
                         skip_reason = f"Invalid transition {job.status}→{new_status}"
                 if skip_reason:
                     skipped.append({"id": job.id, "reason": skip_reason})
@@ -208,7 +216,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                         to_status=job.status,
                     )
                 elif new_priority:
-                    job_service.record_job_timeline(job, actor, "updated", note="Hromadná zmena priority.")
+                    job_service.record_job_timeline(
+                        job, actor, "updated", note="Hromadná zmena priority."
+                    )
                     AuditLog.objects.create(
                         actor=actor,
                         lab=job.lab,
@@ -244,7 +254,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         def _name(obj, fields=("first_name", "last_name")):
             if not obj:
                 return None
-            return " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip() or None
+            return (
+                " ".join(filter(None, (getattr(obj, f, "") for f in fields))).strip()
+                or None
+            )
 
         items = [
             {
@@ -344,7 +357,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         """
         user = request.user
         if not is_superadmin(user) and not getattr(user, "lab_id", None):
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN
+            )
         if not is_admin_or_superadmin(user):
             return Response(
                 {"detail": "Only admin or superadmin can create patients and jobs."},
@@ -354,7 +369,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         clinic_id = request.data.get("clinic_id")
         if not clinic_id:
-            return Response({"detail": "clinic_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "clinic_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         clinic_qs = Clinic.objects.filter(id=clinic_id)
         if lab:
             clinic_qs = clinic_qs.filter(lab=lab)
@@ -389,13 +406,19 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             data={
                 "patient": patient.id,
                 "clinic": clinic.id,
-                **{k: v for k, v in job_data.items() if k not in ("patient", "clinic", "lab")},
+                **{
+                    k: v
+                    for k, v in job_data.items()
+                    if k not in ("patient", "clinic", "lab")
+                },
             }
         )
         job_ser.is_valid(raise_exception=True)
         job = job_ser.save(lab=lab, patient=patient, clinic=clinic)
         actor = request.user if request.user.is_authenticated else None
-        job_service.record_job_timeline(job, actor, "created", note="Práca bola vytvorená (quick-create).")
+        job_service.record_job_timeline(
+            job, actor, "created", note="Práca bola vytvorená (quick-create)."
+        )
 
         return Response(
             {
@@ -473,7 +496,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):
-        qs = self.get_queryset().select_related("patient", "clinic", "doctor", "technician")
+        qs = self.get_queryset().select_related(
+            "patient", "clinic", "doctor", "technician"
+        )
 
         header = [
             "id",
@@ -489,10 +514,22 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         ]
         rows = []
         for job in limited_export_queryset(qs, "jobs"):
-            patient = f"{job.patient.first_name} {job.patient.last_name}".strip() if job.patient else ""
+            patient = (
+                f"{job.patient.first_name} {job.patient.last_name}".strip()
+                if job.patient
+                else ""
+            )
             clinic = job.clinic.name if job.clinic else ""
-            doctor = f"{job.doctor.first_name} {job.doctor.last_name}".strip() if job.doctor else ""
-            technician = f"{job.technician.first_name} {job.technician.last_name}".strip() if job.technician else ""
+            doctor = (
+                f"{job.doctor.first_name} {job.doctor.last_name}".strip()
+                if job.doctor
+                else ""
+            )
+            technician = (
+                f"{job.technician.first_name} {job.technician.last_name}".strip()
+                if job.technician
+                else ""
+            )
             rows.append(
                 [
                     job.id,
@@ -520,7 +557,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=("application/vnd.openxmlformats-officedocument" ".spreadsheetml.sheet"),
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument"
+                    ".spreadsheetml.sheet"
+                ),
             )
             response["Content-Disposition"] = 'attachment; filename="jobs.xlsx"'
             return response
@@ -539,9 +579,13 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         job = self.get_object()
         if request.method == "GET":
             qs = JobAttachment.objects.filter(job=job)
-            serializer = JobAttachmentSerializer(qs, many=True, context={"request": request})
+            serializer = JobAttachmentSerializer(
+                qs, many=True, context={"request": request}
+            )
             return Response(serializer.data)
-        serializer = JobAttachmentSerializer(data=request.data, context={"request": request})
+        serializer = JobAttachmentSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save(job=job, uploaded_by=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -606,7 +650,9 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 def _calendar_window(request):
     today = timezone.localdate()
     start_date = parse_date(request.query_params.get("start", "")) or today
-    end_date = parse_date(request.query_params.get("end", "")) or (start_date + timezone.timedelta(days=30))
+    end_date = parse_date(request.query_params.get("end", "")) or (
+        start_date + timezone.timedelta(days=30)
+    )
     if end_date < start_date:
         raise ValidationError("end must be on or after start")
     return start_date, end_date
@@ -635,7 +681,11 @@ class CalendarView(APIView):
             .exclude(status__in=("cancelled", "closed"))
         )
         for job in jobs:
-            patient_name = f"{job.patient.first_name} {job.patient.last_name}".strip() if job.patient_id else ""
+            patient_name = (
+                f"{job.patient.first_name} {job.patient.last_name}".strip()
+                if job.patient_id
+                else ""
+            )
             events.append(
                 {
                     "id": f"job:{job.id}",
