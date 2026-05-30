@@ -10,6 +10,7 @@ from .views import (
     LabApiKeyViewSet,
     LabRolePermissionViewSet,
     LabViewSet,
+    LogoutView,
     NotificationViewSet,
     PermissionsMatrixView,
     PermissionsView,
@@ -46,6 +47,7 @@ urlpatterns = [
         name="superadmin-metrics",
     ),
     path("auth/login/", SessionLoginView.as_view(), name="session-login"),
+    path("auth/logout/", LogoutView.as_view(), name="logout"),
     path(
         "dashboard/chart-data/",
         DashboardChartDataView.as_view(),

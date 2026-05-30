@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "drf_spectacular",
     "django_filters",
@@ -155,6 +156,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "config.pagination.OptionalPageNumberPagination",
     "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
     "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("THROTTLE_ANON_RATE", "20/min"),
         "login": os.environ.get("THROTTLE_LOGIN_RATE", "5/min"),
         "signup": os.environ.get("THROTTLE_SIGNUP_RATE", "5/min"),
         "invitation_accept": os.environ.get(
