@@ -199,6 +199,17 @@ function Permissions({ onNavigate, user }) {
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 22 } },
     pageHeader,
+
+    React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#faf8f4', border: '1px solid #e8e1d4', borderRadius: 8, fontSize: 12.5, color: '#5a6b66' } },
+      React.createElement(Icon, { name: 'info', size: 14, color: '#8a9490', style: { flexShrink: 0, marginTop: 1 } }),
+      React.createElement('span', null,
+        React.createElement('strong', { style: { color: '#1a2320' } }, 'Len metadáta — nie runtime enforcement. '),
+        'Tieto záznamy sledujú zamýšľané oprávnenia pre každú rolu a sú viditeľné v UI. Backend vynucuje prístup pevne zakódovanými DRF permission triedami nezávisle od týchto nastavení. Zmeny tu ',
+        React.createElement('em', null, 'nemenia'),
+        ' skutočné API autorizačné pravidlá.'
+      )
+    ),
+
     error && React.createElement(ErrorState, { title: 'Uloženie zlyhalo', message: error }),
     statusText && React.createElement('div', { style: { padding: '10px 14px', border: '1px solid #b0ddd5', background: '#f0faf7', borderRadius: 8, color: '#0d7c6b', fontSize: 12.5, fontWeight: 600 } }, statusText),
 

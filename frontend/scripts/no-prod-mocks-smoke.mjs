@@ -59,6 +59,10 @@ const checks = [
       'Lucia Šimková',
     ],
   },
+  {
+    file: 'Permissions.jsx',
+    forbidden: ['sen_tech', 'accountant', 'reception'],
+  },
 ];
 
 const failures = [];
