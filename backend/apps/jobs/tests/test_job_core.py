@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import PriceList
 from apps.jobs.models import Job, JobItem, JobTimelineEvent, Technician
@@ -896,3 +897,223 @@ class WorkOrderEndpointTests(APITestCase):
         self.client.force_authenticate(user=other_user)
         resp = self.client.get(f"/api/jobs/jobs/{self.job.id}/work_order/")
         self.assertEqual(resp.status_code, 404)
+
+
+class JobRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Full role matrix coverage for Job endpoints.
+
+    Covers: anonymous 401, no_lab, user, technician, admin, superadmin
+    for list, create, retrieve, update, delete, and transition-status.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="job_matrix")
+        self.clinic = Clinic.objects.create(lab=self.lab_a, name="Job Matrix Clinic")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic,
+            first_name="Job",
+            last_name="Doctor",
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Job",
+            last_name="Patient",
+            birth_number="8001021234",
+        )
+        self.technician_obj = Technician.objects.create(
+            lab=self.lab_a,
+            first_name="Job",
+            last_name="Technician",
+        )
+        self.job = Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            technician=self.technician_obj,
+            status="new",
+            description="Matrix job",
+            price="100.00",
+        )
+
+    def _job_payload(self, role):
+        return {
+            "lab": self.lab_a.id,
+            "patient": self.patient.id,
+            "clinic": self.clinic.id,
+            "doctor": self.doctor.id,
+            "price": "100.00",
+            "description": f"Created by {role}",
+        }
+
+    def _fresh_job(self):
+        return Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            technician=self.technician_obj,
+            status="new",
+            description="Fresh job for delete",
+            price="100.00",
+        )
+
+    # ── List ─────────────────────────────────────────────────────────────────
+
+    def test_job_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/jobs/jobs/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Create ───────────────────────────────────────────────────────────────
+
+    def test_job_create_role_matrix(self):
+        # anonymous
+        resp = self.client.post(
+            "/api/jobs/jobs/",
+            self._job_payload("anonymous"),
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/jobs/jobs/",
+                    self._job_payload(role),
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.client.force_authenticate(user=None)
+
+        for role in ["admin", "superadmin"]:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/jobs/jobs/",
+                    self._job_payload(role),
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+                self.client.force_authenticate(user=None)
+
+    # ── Retrieve ─────────────────────────────────────────────────────────────
+
+    def test_job_retrieve_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/jobs/jobs/{self.job.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Update ───────────────────────────────────────────────────────────────
+
+    def test_job_update_role_matrix(self):
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/jobs/jobs/{self.job.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"description": "Updated description"},
+            format="json",
+        )
+
+    # ── Delete ───────────────────────────────────────────────────────────────
+
+    def test_job_delete_role_matrix(self):
+        def _delete_matrix(role):
+            j = self._fresh_job()
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/jobs/jobs/{j.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # anonymous
+        resp = self.client.delete(f"/api/jobs/jobs/{self.job.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        expectations = {
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(resp.status_code, expected, f"DELETE job as {role}")
+
+    # ── transition-status ────────────────────────────────────────────────────
+
+    def test_job_transition_status_role_matrix(self):
+        def _transition_matrix(role):
+            j = Job.objects.create(
+                lab=self.lab_a,
+                patient=self.patient,
+                clinic=self.clinic,
+                doctor=self.doctor,
+                status="new",
+                description=f"Transition job {role}",
+                price="100.00",
+            )
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.post(
+                f"/api/jobs/jobs/{j.id}/transition-status/",
+                {"status": "in_progress"},
+                format="json",
+            )
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # anonymous — use the shared job
+        j_anon = self._fresh_job()
+        resp = self.client.post(
+            f"/api/jobs/jobs/{j_anon.id}/transition-status/",
+            {"status": "in_progress"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        expectations = {
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_200_OK,
+            "superadmin": status.HTTP_200_OK,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _transition_matrix(role)
+                self.assertEqual(
+                    resp.status_code, expected, f"transition-status as {role}"
+                )

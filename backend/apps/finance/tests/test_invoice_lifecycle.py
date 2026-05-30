@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
 from apps.core.models import AuditLog, Lab, User
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceSequence
 from apps.jobs.models import Job, Technician
@@ -630,3 +631,219 @@ class InvoiceSkFormatTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.data["formatted_due_date"])
         self.assertIsNone(resp.data["formatted_issued_at"])
+
+
+class InvoiceRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Full role matrix coverage for Invoice endpoints.
+
+    Covers: anonymous 401, no_lab, user, technician, admin, superadmin
+    for list, create, retrieve, update, delete, and status-change.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="inv_matrix")
+        self.clinic = Clinic.objects.create(
+            lab=self.lab_a, name="Invoice Matrix Clinic"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Invoice",
+            last_name="Patient",
+            birth_number="8001031234",
+        )
+        self.tech = Technician.objects.create(
+            lab=self.lab_a, first_name="Invoice", last_name="Tech"
+        )
+        self.job = Job.objects.create(
+            lab=self.lab_a,
+            patient=self.patient,
+            clinic=self.clinic,
+            status="completed",
+            description="Matrix invoice job",
+            price="100.00",
+        )
+        self.invoice = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic,
+            number="INVMAT-001",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
+        )
+        self._inv_counter = 1
+
+    def _next_number(self):
+        self._inv_counter += 1
+        return f"INVMAT-{self._inv_counter:04d}"
+
+    def _fresh_invoice(self):
+        inv = Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic,
+            number=self._next_number(),
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
+        )
+        return inv
+
+    # ── List ─────────────────────────────────────────────────────────────────
+
+    def test_invoice_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/finance/invoices/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Create ───────────────────────────────────────────────────────────────
+
+    def test_invoice_create_role_matrix(self):
+        # Anonymous
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic.id, "job_ids": []},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/finance/invoices/",
+                    {"clinic_id": self.clinic.id, "job_ids": []},
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.client.force_authenticate(user=None)
+
+        # admin and superadmin — need a completed job each time
+        for role in ["admin", "superadmin"]:
+            with self.subTest(role=role):
+                job = Job.objects.create(
+                    lab=self.lab_a,
+                    patient=self.patient,
+                    clinic=self.clinic,
+                    status="completed",
+                    description=f"Create invoice job {role}",
+                    price="50.00",
+                )
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/finance/invoices/",
+                    {"clinic_id": self.clinic.id, "job_ids": [job.id]},
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+                self.client.force_authenticate(user=None)
+
+    # ── Retrieve ─────────────────────────────────────────────────────────────
+
+    def test_invoice_retrieve_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/finance/invoices/{self.invoice.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Update ───────────────────────────────────────────────────────────────
+
+    def test_invoice_update_role_matrix(self):
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/finance/invoices/{self.invoice.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"vat_rate": "21.00"},
+            format="json",
+        )
+
+    # ── Delete ───────────────────────────────────────────────────────────────
+
+    def test_invoice_delete_role_matrix(self):
+        def _delete_matrix(role):
+            inv = self._fresh_invoice()
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/finance/invoices/{inv.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # anonymous
+        anon_inv = self._fresh_invoice()
+        resp = self.client.delete(f"/api/finance/invoices/{anon_inv.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        expectations = {
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(
+                    resp.status_code, expected, f"DELETE invoice as {role}"
+                )
+
+    # ── Status change ────────────────────────────────────────────────────────
+
+    def test_invoice_status_role_matrix(self):
+        def _status_matrix(role):
+            inv = self._fresh_invoice()
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.put(
+                f"/api/finance/invoices/{inv.id}/status/",
+                {"status": "paid"},
+                format="json",
+            )
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # anonymous
+        anon_inv = self._fresh_invoice()
+        resp = self.client.put(
+            f"/api/finance/invoices/{anon_inv.id}/status/",
+            {"status": "paid"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        expectations = {
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_200_OK,
+            "superadmin": status.HTTP_200_OK,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _status_matrix(role)
+                self.assertEqual(resp.status_code, expected, f"POST status as {role}")

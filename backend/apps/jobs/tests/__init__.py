@@ -16,6 +16,7 @@ from apps.jobs.tests.test_job_actions import (
     JobStatusNotificationTests,
 )
 from apps.jobs.tests.test_job_core import (
+    JobRoleMatrixTests,
     JobStatusConfigTests,
     JobValidationApiTests,
     QuickCreateJobTests,
@@ -41,4 +42,5 @@ __all__ = [
     "JobExportCsvTests",
     "TechnicianApiTests",
     "JobAttachmentTests",
+    "JobRoleMatrixTests",
 ]

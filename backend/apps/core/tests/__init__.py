@@ -34,9 +34,17 @@ from apps.core.tests.test_superadmin import (
     SystemHealthRuntimeTests,
 )
 from apps.core.tests.test_user_flows import CoreUserFlowsApiTests
+from apps.core.tests.test_user_service import (
+    UserServiceCreateTests,
+    UserServiceDeleteTests,
+    UserServiceUpdateTests,
+)
 
 __all__ = [
     "CoreUserFlowsApiTests",
+    "UserServiceCreateTests",
+    "UserServiceUpdateTests",
+    "UserServiceDeleteTests",
     "SessionEndpointsTests",
     "AuthLoginFlowTests",
     "AuthThrottleTests",

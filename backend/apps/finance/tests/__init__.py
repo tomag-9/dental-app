@@ -19,6 +19,7 @@ from apps.finance.tests.test_invoice_finance import (
 from apps.finance.tests.test_invoice_lifecycle import (
     ConcurrentInvoiceSequenceTests,
     InvoiceLifecycleApiTests,
+    InvoiceRoleMatrixTests,
     InvoiceSequenceTests,
     InvoiceSkFormatTests,
     ProformaInvoiceTests,
@@ -37,6 +38,7 @@ __all__ = [
     "SubscriptionApiTests",
     "SubscriptionExtendedFieldsTests",
     "InvoiceLifecycleApiTests",
+    "InvoiceRoleMatrixTests",
     "InvoiceSequenceTests",
     "ConcurrentInvoiceSequenceTests",
     "ProformaInvoiceTests",

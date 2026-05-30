@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
+from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.inventory.models import WarehouseItem
 
 
@@ -650,3 +651,157 @@ class InventoryXlsxExportTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp.data["code"], "export_row_limit_exceeded")
         self.assertEqual(str(resp.data["max_rows"]), "1")
+
+
+class InventoryRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Full role matrix coverage for WarehouseItem endpoints.
+
+    Covers: anonymous 401, no_lab, user, technician, admin, superadmin
+    for list, create, retrieve, update, and delete.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="inv_rm")
+        self.item = WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Matrix Item",
+            sku="INVMAT-SKU-001",
+            quantity=10,
+        )
+        self._sku_counter = 1
+
+    def _next_sku(self):
+        self._sku_counter += 1
+        return f"INVMAT-SKU-{self._sku_counter:04d}"
+
+    def _fresh_item(self):
+        return WarehouseItem.objects.create(
+            lab=self.lab_a,
+            name="Fresh Item",
+            sku=self._next_sku(),
+            quantity=5,
+        )
+
+    # ── List ─────────────────────────────────────────────────────────────────
+
+    def test_warehouse_list_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            "/api/inventory/warehouse/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_200_OK,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Create ───────────────────────────────────────────────────────────────
+
+    def test_warehouse_create_role_matrix(self):
+        def _payload(role):
+            return {
+                "lab": self.lab_a.id,
+                "name": f"Matrix item {role}",
+                "sku": f"INVRM-{role.upper()[:6]}",
+                "quantity": 2,
+            }
+
+        # anonymous
+        resp = self.client.post(
+            "/api/inventory/warehouse/",
+            _payload("anonymous"),
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/inventory/warehouse/",
+                    _payload(role),
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.client.force_authenticate(user=None)
+
+        for role in ["admin", "superadmin"]:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/inventory/warehouse/",
+                    _payload(role),
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+                self.client.force_authenticate(user=None)
+
+    # ── Retrieve ─────────────────────────────────────────────────────────────
+
+    def test_warehouse_retrieve_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "GET",
+            f"/api/inventory/warehouse/{self.item.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_200_OK,
+                "technician": status.HTTP_200_OK,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+        )
+
+    # ── Update ───────────────────────────────────────────────────────────────
+
+    def test_warehouse_update_role_matrix(self):
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/inventory/warehouse/{self.item.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"quantity": 20},
+            format="json",
+        )
+
+    # ── Delete ───────────────────────────────────────────────────────────────
+
+    def test_warehouse_delete_role_matrix(self):
+        def _delete_matrix(role):
+            item = self._fresh_item()
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/inventory/warehouse/{item.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        # anonymous
+        anon_item = self._fresh_item()
+        resp = self.client.delete(f"/api/inventory/warehouse/{anon_item.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # no_lab gets 403 (permission check fires before queryset scoping for writes)
+        expectations = {
+            "no_lab": status.HTTP_403_FORBIDDEN,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(
+                    resp.status_code, expected, f"DELETE warehouse as {role}"
+                )

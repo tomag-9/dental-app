@@ -17,6 +17,7 @@ from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent, Vacation
 
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
+from . import user_service
 from .auth import MolarisTokenObtainPairSerializer
 from .models import (
     AuditLog,
@@ -1143,64 +1144,15 @@ class UserViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        requester = self.request.user
-        self._assert_can_manage_users(requester)
-        # Keep non-superadmins within their own lab and prevent role escalation.
-        if not is_superadmin(requester):
-            role = serializer.validated_data.get("role")
-            if role == "superadmin":
-                raise PermissionDenied("Only superadmin can assign superadmin role")
-            user = serializer.save(lab=requester.lab)
-            _write_audit_log(
-                self.request,
-                action="user.created",
-                entity_type="user",
-                entity_id=user.id,
-                lab=user.lab,
-                description=f"User {user.username} created",
-                metadata={"role": user.role, "lab_id": user.lab_id},
-            )
-            return
-        user = serializer.save()
-        _write_audit_log(
-            self.request,
-            action="user.created",
-            entity_type="user",
-            entity_id=user.id,
-            lab=user.lab,
-            description=f"User {user.username} created",
-            metadata={"role": user.role, "lab_id": user.lab_id},
-        )
+        user_service.create_user(self.request.user, serializer)
 
     def perform_update(self, serializer):
-        user = serializer.save()
-        before = getattr(self, "_audit_before_update", self._audit_snapshot(user))
-        changed_fields = self._audit_changed_fields(before, user)
-        _write_audit_log(
-            self.request,
-            action="user.updated",
-            entity_type="user",
-            entity_id=user.id,
-            lab=user.lab,
-            description=f"User {user.username} updated",
-            metadata={
-                "fields": changed_fields,
-                "role": user.role,
-                "lab_id": user.lab_id,
-            },
+        user_service.update_user(
+            self.request.user, serializer.instance, serializer, self.request.data
         )
 
     def perform_destroy(self, instance):
-        _write_audit_log(
-            self.request,
-            action="user.deleted",
-            entity_type="user",
-            entity_id=instance.id,
-            lab=instance.lab,
-            description=f"User {instance.username} deleted",
-            metadata={"role": instance.role, "lab_id": instance.lab_id},
-        )
-        instance.delete()
+        user_service.delete_user(self.request.user, instance)
 
     @action(
         detail=False,
