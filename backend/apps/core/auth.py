@@ -3,7 +3,7 @@ from datetime import datetime, timezone as datetime_timezone
 import pyotp
 from rest_framework import permissions
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework_simplejwt.serializers import (
     TokenObtainPairSerializer,
     TokenRefreshSerializer,
@@ -94,7 +94,7 @@ class MolarisTokenRefreshSerializer(TokenRefreshSerializer):
 class MolarisTokenObtainPairView(TokenObtainPairView):
     permission_classes = [permissions.AllowAny]
     serializer_class = MolarisTokenObtainPairSerializer
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [AnonRateThrottle, ScopedRateThrottle]
     throttle_scope = "login"
 
 

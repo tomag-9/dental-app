@@ -245,6 +245,18 @@
   }
 
   function logout() {
+    const refresh = localStorage.getItem(refreshKey);
+    const access = localStorage.getItem(tokenKey);
+    if (refresh) {
+      fetch(`${API_BASE}/core/auth/logout/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(access ? { Authorization: `Bearer ${access}` } : {}),
+        },
+        body: JSON.stringify({ refresh_token: refresh }),
+      }).catch(() => {});
+    }
     localStorage.removeItem(tokenKey);
     localStorage.removeItem(refreshKey);
     localStorage.removeItem(userKey);

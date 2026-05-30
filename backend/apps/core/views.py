@@ -9,8 +9,9 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.finance.models import Subscription
@@ -312,6 +313,21 @@ class PermissionsView(APIView):
 
     def get(self, request):
         return Response(_role_permission_payload(request.user))
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh_token")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+                UserSession.objects.filter(jti=token["jti"]).update(revoked=True)
+            except TokenError:
+                pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SystemHealthView(APIView):
@@ -1291,6 +1307,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.set_password(data["new_password"])
         user.save(update_fields=["password"])
+        UserSession.objects.filter(user=user, revoked=False).update(revoked=True)
         _write_audit_log(
             request,
             action="user.password_changed",
@@ -1399,7 +1416,7 @@ class SessionLoginView(APIView):
     """JWT login that also persists a UserSession record."""
 
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [AnonRateThrottle, ScopedRateThrottle]
     throttle_scope = "login"
 
     def post(self, request):
