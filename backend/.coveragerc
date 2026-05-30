@@ -6,6 +6,9 @@ omit =
     */test_helpers.py
     */test_contracts.py
     seed_data.py
+# Enable parallel-mode so --parallel Django test workers each write a .coverage.* file
+concurrency = multiprocessing
+parallel = true
 
 [report]
 show_missing = true
