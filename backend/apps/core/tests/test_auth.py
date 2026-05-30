@@ -218,6 +218,74 @@ class AuthLoginFlowTests(APITestCase):
         self.assertEqual(refresh.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+class LogoutViewTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.lab = Lab.objects.create(name="Logout Lab")
+        self.user = User.objects.create_user(
+            username="logout_user",
+            password="pw123456",
+            email="logout@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+
+    def _login(self):
+        resp = self.client.post(
+            "/api/token/",
+            {"username": self.user.username, "password": "pw123456"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        return resp.data["access"], resp.data["refresh"]
+
+    def test_logout_blacklists_refresh_token(self):
+        access, refresh = self._login()
+        resp = self.client.post(
+            "/api/core/auth/logout/",
+            {"refresh_token": refresh},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 204)
+        refresh_resp = self.client.post(
+            "/api/token/refresh/", {"refresh": refresh}, format="json"
+        )
+        self.assertEqual(refresh_resp.status_code, 401)
+
+    def test_logout_revokes_user_session(self):
+        _access, refresh = self._login()
+        jti = RefreshToken(refresh)["jti"]
+        self.assertTrue(UserSession.objects.filter(jti=jti, revoked=False).exists())
+        self.client.post(
+            "/api/core/auth/logout/",
+            {"refresh_token": refresh},
+            format="json",
+        )
+        self.assertTrue(UserSession.objects.filter(jti=jti, revoked=True).exists())
+
+    def test_logout_with_invalid_token_returns_204(self):
+        resp = self.client.post(
+            "/api/core/auth/logout/",
+            {"refresh_token": "this.is.garbage"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 204)
+
+    def test_logout_with_empty_body_returns_204(self):
+        resp = self.client.post("/api/core/auth/logout/", {}, format="json")
+        self.assertEqual(resp.status_code, 204)
+
+    def test_logout_works_without_access_token(self):
+        """Client with expired access token can still blacklist their refresh token."""
+        _access, refresh = self._login()
+        resp = self.client.post(
+            "/api/core/auth/logout/",
+            {"refresh_token": refresh},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 204)
+
+
 class AuthThrottleTests(APITestCase):
     def setUp(self):
         cache.clear()
