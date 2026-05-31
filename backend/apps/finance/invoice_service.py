@@ -12,7 +12,7 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.models import AuditLog
+from apps.core.services import write_audit_log
 from apps.jobs.models import Job
 
 from .calculations import calculate_invoice_amounts
@@ -49,12 +49,12 @@ def sync_jobs_for_invoice_status(invoice, new_status):
 
 def write_invoice_audit(actor, invoice, action, metadata=None, description=None):
     """Write an audit log entry for *invoice*. ``actor`` is the acting User (may be None)."""
-    AuditLog.objects.create(
+    write_audit_log(
         actor=actor,
         lab=invoice.lab,
         action=action,
         entity_type="invoice",
-        entity_id=str(invoice.id),
+        entity_id=invoice.id,
         description=description or f"Invoice {invoice.number}: {action}",
         metadata=metadata or {},
     )

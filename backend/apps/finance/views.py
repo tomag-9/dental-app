@@ -30,10 +30,9 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
-from apps.crm.models import Clinic
-from apps.jobs.models import Job
 
 from . import invoice_service
+from . import services as finance_services
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
 from .serializers import (
@@ -177,53 +176,31 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         return qs
 
-    @transaction.atomic
     def create(self, request, *args, **kwargs):
         payload = InvoiceCreateSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
         data = payload.validated_data
 
-        clinic = Clinic.objects.filter(id=data["clinic_id"]).first()
-        if not clinic:
-            return Response({"detail": "Clinic not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        user = request.user
-        if not is_superadmin(user) and clinic.lab_id != getattr(user, "lab_id", None):
-            raise PermissionDenied("Forbidden")
-
-        jobs = list(Job.objects.filter(id__in=data["job_ids"]).select_related("lab"))
-        if len(jobs) != len(set(data["job_ids"])):
-            return Response(
-                {"detail": "One or more jobs not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        clinic_lab_jobs = [job for job in jobs if job.lab_id == clinic.lab_id]
-        if len(clinic_lab_jobs) != len(jobs):
-            return Response(
-                {"detail": "All jobs must belong to the same clinic lab"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        invoice = invoice_service.create_invoice(
-            actor=user,
-            clinic=clinic,
-            jobs=jobs,
+        invoice = finance_services.create_invoice_from_jobs(
+            user=request.user,
+            clinic_id=data["clinic_id"],
+            job_ids=data["job_ids"],
             document_type=data.get("document_type", "invoice"),
             discount_percent=data.get("discount_percent", Decimal("0")),
         )
-        out = InvoiceSerializer(invoice, context={"request": request})
-        return Response(out.data, status=status.HTTP_201_CREATED)
+        return Response(InvoiceSerializer(invoice, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["put"], url_path="status")
-    @transaction.atomic
     def update_status(self, request, pk=None):
         invoice = self.get_object()
         payload = InvoiceStatusUpdateSerializer(data=request.data)
         payload.is_valid(raise_exception=True)
-        new_status = payload.validated_data["status"]
 
-        invoice = invoice_service.update_invoice_status(request.user, invoice, new_status)
+        invoice = finance_services.update_invoice_status(
+            user=request.user,
+            invoice=invoice,
+            status=payload.validated_data["status"],
+        )
         return Response(InvoiceSerializer(invoice, context={"request": request}).data)
 
     @action(detail=True, methods=["get"], url_path="qr")
