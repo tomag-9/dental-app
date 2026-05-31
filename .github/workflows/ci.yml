@@ -35,7 +35,7 @@ jobs:
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
           run --no-deps --rm backend \
-          sh -c "ruff check apps --select=E,F,W,I --ignore=E203 --line-length=120 && ruff format --check apps"
+          sh -c "ruff check apps && ruff format --check apps"
     - name: Cleanup
       if: always()
       run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
