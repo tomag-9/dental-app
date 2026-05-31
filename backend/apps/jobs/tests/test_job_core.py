@@ -336,9 +336,7 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(patient_response.status_code, status.HTTP_200_OK)
         self.assertEqual(clinic_response.status_code, status.HTTP_200_OK)
         self.assertEqual(other_lab_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            [item["id"] for item in patient_response.data], [self.job_a.id]
-        )
+        self.assertEqual([item["id"] for item in patient_response.data], [self.job_a.id])
         self.assertEqual([item["id"] for item in clinic_response.data], [self.job_a.id])
         self.assertEqual(other_lab_response.data, [])
 
@@ -405,9 +403,7 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(item.description, self.price_valid.description)
         self.assertEqual(item.unit_price, self.price_valid.price)
         self.assertEqual(item.tooth, "11")
-        self.assertTrue(
-            JobTimelineEvent.objects.filter(job=job, event="created").exists()
-        )
+        self.assertTrue(JobTimelineEvent.objects.filter(job=job, event="created").exists())
 
     def test_create_job_rejects_invalid_fdi_tooth_item(self):
         """Nested items must use valid FDI tooth or same-arch ranges."""
@@ -809,12 +805,8 @@ class WorkOrderEndpointTests(APITestCase):
         from apps.crm.models import Clinic, Doctor, Patient
         from apps.jobs.models import Job, JobItem, Technician
 
-        self.lab = Lab.objects.create(
-            name="WO Lab", phone="0900000", email="lab@test.sk"
-        )
-        self.user = User.objects.create_user(
-            username="wo_user", password="pw", role="admin", lab=self.lab
-        )
+        self.lab = Lab.objects.create(name="WO Lab", phone="0900000", email="lab@test.sk")
+        self.user = User.objects.create_user(username="wo_user", password="pw", role="admin", lab=self.lab)
         self.clinic = Clinic.objects.create(lab=self.lab, name="WO Clinic")
         self.doctor = Doctor.objects.create(
             lab=self.lab,
@@ -829,9 +821,7 @@ class WorkOrderEndpointTests(APITestCase):
             last_name="Test",
             birth_number="900101/1234",
         )
-        self.tech = Technician.objects.create(
-            lab=self.lab, first_name="Tech", last_name="One"
-        )
+        self.tech = Technician.objects.create(lab=self.lab, first_name="Tech", last_name="One")
         self.job = Job.objects.create(
             lab=self.lab,
             clinic=self.clinic,
@@ -1114,6 +1104,4 @@ class JobRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         for role, expected in expectations.items():
             with self.subTest(role=role):
                 resp = _transition_matrix(role)
-                self.assertEqual(
-                    resp.status_code, expected, f"transition-status as {role}"
-                )
+                self.assertEqual(resp.status_code, expected, f"transition-status as {role}")

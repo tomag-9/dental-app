@@ -54,9 +54,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, null=True)  # Making email unique
     nickname = models.CharField(max_length=150, unique=True, null=True, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="user")
-    lab = models.ForeignKey(
-        Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     notification_preferences = models.JSONField(default=dict, blank=True)
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     totp_secret = models.CharField(max_length=64, blank=True, null=True)
@@ -77,9 +75,7 @@ class TeamInvitation(models.Model):
         ("expired", "Expired"),
     )
 
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="team_invitations"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="team_invitations")
     email = models.EmailField()
     role = models.CharField(max_length=20, choices=User.ROLE_CHOICES, default="user")
     token = models.CharField(max_length=64, unique=True)

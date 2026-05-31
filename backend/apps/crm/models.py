@@ -29,9 +29,7 @@ class Clinic(models.Model):
 
 class Doctor(models.Model):
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="doctors")
-    clinic = models.ForeignKey(
-        Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name="doctors"
-    )
+    clinic = models.ForeignKey(Clinic, on_delete=models.SET_NULL, null=True, blank=True, related_name="doctors")
     first_name = models.CharField(max_length=100, null=False)
     last_name = models.CharField(max_length=100, null=False)
     title_before = models.CharField(max_length=50, blank=True, null=True)

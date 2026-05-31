@@ -51,9 +51,7 @@ def _notify_lab_admins(lab, notification_type, title, message, url=None):
 
     if not lab:
         return
-    for admin in User.objects.filter(
-        lab=lab, role__in=("admin", "superadmin"), is_active=True
-    ):
+    for admin in User.objects.filter(lab=lab, role__in=("admin", "superadmin"), is_active=True):
         Notification.objects.create(
             lab=lab,
             recipient=admin,
@@ -131,9 +129,7 @@ def update_job(actor, serializer):
     if new_status != old_status:
         allowed = ALLOWED_TRANSITIONS.get(old_status, set())
         if new_status not in allowed:
-            raise ValidationError(
-                f"Invalid status transition from {old_status} to {new_status}"
-            )
+            raise ValidationError(f"Invalid status transition from {old_status} to {new_status}")
 
     job = serializer.save()
 
@@ -195,9 +191,7 @@ def transition_job_status(actor, job, new_status, note=None):
 
     allowed = ALLOWED_TRANSITIONS.get(job.status, set())
     if new_status not in allowed:
-        raise ValidationError(
-            f"Invalid status transition from {job.status} to {new_status}"
-        )
+        raise ValidationError(f"Invalid status transition from {job.status} to {new_status}")
 
     old_status = job.status
     job.status = new_status
@@ -213,9 +207,7 @@ def transition_job_status(actor, job, new_status, note=None):
     )
 
     patient = job.patient
-    patient_name = (
-        f"{patient.first_name} {patient.last_name}".strip() if patient else f"#{job.id}"
-    )
+    patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else f"#{job.id}"
     _notify_lab_admins(
         lab=job.lab,
         notification_type="job",

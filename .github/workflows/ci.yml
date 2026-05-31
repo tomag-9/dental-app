@@ -59,7 +59,7 @@ jobs:
     - name: Build backend image
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
     - name: Check for missing migrations
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend python manage.py migrate --check
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --no-deps --rm backend python manage.py makemigrations --check --dry-run
     - name: Run tests with coverage
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend \

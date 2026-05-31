@@ -224,19 +224,13 @@ class SendInvoiceEmailTests(InvoiceServiceSetupMixin, TestCase):
     def test_writes_audit_log_on_send(self):
         before = AuditLog.objects.count()
         with patch("django.core.mail.EmailMessage.send"):
-            invoice_service.send_invoice_email(
-                self.admin, self.invoice, b"PDF", "test@example.com"
-            )
+            invoice_service.send_invoice_email(self.admin, self.invoice, b"PDF", "test@example.com")
         self.assertEqual(AuditLog.objects.count(), before + 1)
         log = AuditLog.objects.latest("id")
         self.assertEqual(log.action, "invoice.email_sent")
         self.assertEqual(log.metadata["sent_to"], "test@example.com")
 
     def test_raises_on_email_failure(self):
-        with patch(
-            "django.core.mail.EmailMessage.send", side_effect=Exception("SMTP error")
-        ):
+        with patch("django.core.mail.EmailMessage.send", side_effect=Exception("SMTP error")):
             with self.assertRaises(Exception):
-                invoice_service.send_invoice_email(
-                    self.admin, self.invoice, b"PDF", "bad@example.com"
-                )
+                invoice_service.send_invoice_email(self.admin, self.invoice, b"PDF", "bad@example.com")
