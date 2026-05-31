@@ -242,9 +242,7 @@ class LogoutViewTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 204)
-        refresh_resp = self.client.post(
-            "/api/token/refresh/", {"refresh": refresh}, format="json"
-        )
+        refresh_resp = self.client.post("/api/token/refresh/", {"refresh": refresh}, format="json")
         self.assertEqual(refresh_resp.status_code, 401)
 
     def test_logout_revokes_user_session(self):
