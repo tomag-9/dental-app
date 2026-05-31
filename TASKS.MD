@@ -36,9 +36,9 @@ Effort:   💀 Hard · ⚡ Medium · ✅ Easy
 ## PR 4 — Frontend source restructure
 > 🟠 High · ⚡ Medium · Move files, update imports, verify build.
 
-- [ ] Move all production React code from `frontend/public/design/` into `frontend/src/` with a proper module layout (`components/`, `hooks/`, `pages/`, `api/`)
-- [ ] Update `vite.config.js` entry points and verify `npm run build` passes after move
-- [ ] Update all relative import paths broken by the move
+- [x] Move all production React code from `frontend/public/design/` into `frontend/src/` with a proper module layout (`components/`, `hooks/`, `pages/`, `api/`)
+- [x] Update `vite.config.js` entry points and verify `npm run build` passes after move
+- [x] Update all relative import paths broken by the move
 
 ---
 

@@ -11,6 +11,11 @@ export default [
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
       globals: {
         ...globals.browser,
         React: 'readonly',
