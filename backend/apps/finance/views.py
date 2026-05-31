@@ -35,6 +35,7 @@ from . import invoice_service
 from . import services as finance_services
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
+from .selectors import invoices_for_user, price_list_for_user
 from .serializers import (
     InvoiceCreateSerializer,
     InvoiceSerializer,
@@ -60,7 +61,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        return self.get_tenant_scoped_queryset(PriceList.objects.order_by("code", "id"))
+        return price_list_for_user(self.request.user).order_by("code", "id")
 
     def perform_create(self, serializer):
         self.save_with_request_lab(serializer)
@@ -151,13 +152,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         return renderSVG.drawToString(drawing), drawing
 
     def get_queryset(self):
-        user = self.request.user
-        qs = Invoice.objects.select_related("clinic", "lab").prefetch_related("items__job__patient")
-        if not is_superadmin(user):
-            if getattr(user, "lab_id", None):
-                qs = qs.filter(lab_id=user.lab_id)
-            else:
-                return qs.none()
+        qs = invoices_for_user(self.request.user)
+        qs = qs.select_related("clinic", "lab").prefetch_related("items__job__patient")
 
         params = self.request.query_params
         if status_filter := params.get("status"):

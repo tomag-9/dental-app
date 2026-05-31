@@ -15,6 +15,7 @@ from apps.core.exports import limited_export_queryset
 from apps.jobs.models import Job
 
 from .models import Clinic, Doctor, Patient
+from .selectors import clinics_for_user, doctors_for_user, patients_for_user
 from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 
 _XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -56,7 +57,7 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = self.get_tenant_scoped_queryset(Clinic.objects.all())
+        qs = clinics_for_user(self.request.user)
         search = self.request.query_params.get("search", "").strip()
         if search:
             qs = qs.filter(Q(name__icontains=search) | Q(ico__icontains=search))
@@ -105,7 +106,7 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = self.get_tenant_scoped_queryset(Doctor.objects.all())
+        queryset = doctors_for_user(self.request.user)
         clinic_id = self.request.query_params.get("clinic")
         if clinic_id:
             queryset = queryset.filter(clinic_id=clinic_id)
@@ -164,7 +165,7 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = self.get_tenant_scoped_queryset(Patient.objects.all())
+        qs = patients_for_user(self.request.user)
         search = self.request.query_params.get("search", "").strip()
         if search:
             qs = qs.filter(

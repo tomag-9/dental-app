@@ -8,9 +8,82 @@ from rest_framework.test import APITestCase
 from apps.core.models import Lab, User
 from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.crm.selectors import clinics_for_user, doctors_for_user, patients_for_user
 from apps.crm.serializers import _validate_birth_number, _validate_dic, _validate_ico
 from apps.finance.models import Invoice, InvoiceItem
 from apps.jobs.models import Job, Technician
+
+
+class CrmSelectorTests(APITestCase):
+    def setUp(self):
+        self.lab_a = Lab.objects.create(name="CRM Selector Lab A")
+        self.lab_b = Lab.objects.create(name="CRM Selector Lab B")
+        self.user_a = User.objects.create_user(
+            username="crm_selector_a",
+            email="crm_selector_a@example.com",
+            password="pw",
+            lab=self.lab_a,
+        )
+        self.user_without_lab = User.objects.create_user(
+            username="crm_selector_no_lab",
+            email="crm_selector_no_lab@example.com",
+            password="pw",
+        )
+        self.superadmin = User.objects.create_user(
+            username="crm_selector_superadmin",
+            email="crm_selector_superadmin@example.com",
+            password="pw",
+            role="superadmin",
+            is_superuser=True,
+        )
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Clinic A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Clinic B")
+        self.doctor_a = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            first_name="A",
+            last_name="Doc",
+        )
+        self.doctor_b = Doctor.objects.create(
+            lab=self.lab_b,
+            clinic=self.clinic_b,
+            first_name="B",
+            last_name="Doc",
+        )
+        self.patient_a = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="A",
+            last_name="Patient",
+            birth_number="111111/1111",
+        )
+        self.patient_b = Patient.objects.create(
+            lab=self.lab_b,
+            first_name="B",
+            last_name="Patient",
+            birth_number="222222/2222",
+        )
+
+    def test_selectors_scope_to_users_lab(self):
+        self.assertEqual(list(clinics_for_user(self.user_a)), [self.clinic_a])
+        self.assertEqual(list(doctors_for_user(self.user_a)), [self.doctor_a])
+        self.assertEqual(list(patients_for_user(self.user_a)), [self.patient_a])
+
+    def test_selectors_return_all_for_superadmin_and_none_without_lab(self):
+        self.assertCountEqual(
+            clinics_for_user(self.superadmin),
+            [self.clinic_a, self.clinic_b],
+        )
+        self.assertCountEqual(
+            doctors_for_user(self.superadmin),
+            [self.doctor_a, self.doctor_b],
+        )
+        self.assertCountEqual(
+            patients_for_user(self.superadmin),
+            [self.patient_a, self.patient_b],
+        )
+        self.assertFalse(clinics_for_user(self.user_without_lab).exists())
+        self.assertFalse(doctors_for_user(self.user_without_lab).exists())
+        self.assertFalse(patients_for_user(self.user_without_lab).exists())
 
 
 class PatientCumulativeToothMapApiTests(APITestCase):
