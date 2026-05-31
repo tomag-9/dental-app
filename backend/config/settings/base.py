@@ -1,15 +1,12 @@
 """
-Django settings for config project.
+Django base settings — shared across all environments.
 """
 
 import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-
-# Quick-start development settings - unsuitable for production
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-me")
 
 DEBUG = os.environ.get("DEBUG", "0") == "1"
@@ -18,8 +15,6 @@ ALLOWED_HOSTS = os.environ.get(
     "DJANGO_ALLOWED_HOSTS", "localhost 127.0.0.1 [::1] backend"
 ).split(" ")
 
-
-# Application definition
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -51,6 +46,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.ContentSecurityPolicyMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -75,7 +71,6 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
-# Use PostgreSQL in Docker, SQLite locally if env vars missing
 DB_ENGINE = os.environ.get("SQL_ENGINE", "django.db.backends.sqlite3")
 DB_NAME = os.environ.get("SQL_DATABASE", BASE_DIR / "db.sqlite3")
 DB_USER = os.environ.get("SQL_USER", "")
@@ -105,8 +100,6 @@ else:
     }
 
 
-# Password validation
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -122,31 +115,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Default primary key field type
-
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Custom User Model
 AUTH_USER_MODEL = "core.User"
 
-# DRF Configuration
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -167,7 +147,6 @@ REST_FRAMEWORK = {
     },
 }
 
-# SPECTACULAR SETTINGS
 SPECTACULAR_SETTINGS = {
     "TITLE": "Dental Lab API",
     "DESCRIPTION": "API for Dental Lab Management System",
@@ -175,7 +154,6 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# CORS Configuration
 _cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
 if _cors_origins:
     CORS_ALLOWED_ORIGINS = [
@@ -190,8 +168,7 @@ else:
     ]
 CORS_ALLOW_CREDENTIALS = True
 
-# Production hardening toggles. Defaults stay development-friendly; deployments
-# can enable them via environment without changing application code.
+# Production hardening toggles — defaults stay dev-friendly; override in production.py.
 SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "0") == "1"
 SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "0") == "1"
 CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", "0") == "1"
@@ -210,7 +187,6 @@ SECURE_PROXY_SSL_HEADER = (
     else None
 )
 
-# Email
 EMAIL_BACKEND = os.environ.get(
     "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
 )
