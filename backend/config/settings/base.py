@@ -155,8 +155,9 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-# httpOnly JWT cookie settings (used by apps.core.auth)
-JWT_COOKIE_SECURE = os.environ.get("JWT_COOKIE_SECURE", "0") == "1"
+# httpOnly JWT cookie settings (used by apps.core.cookie_auth)
+# Default secure=True so production is safe if the env var is forgotten; dev.py overrides to False.
+JWT_COOKIE_SECURE = os.environ.get("JWT_COOKIE_SECURE", "1") == "1"
 JWT_COOKIE_SAMESITE = os.environ.get("JWT_COOKIE_SAMESITE", "Strict")
 
 SPECTACULAR_SETTINGS = {

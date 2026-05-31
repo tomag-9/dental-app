@@ -8,14 +8,17 @@ rest_framework_simplejwt.views at module level here would create a circular impo
 rest_framework_simplejwt.views itself imports rest_framework.views → rest_framework.schemas.
 
 Rules for this file:
-  - Only import from django.* and rest_framework.exceptions (both are fully loaded before
+  - Only import from stdlib, django.*, and rest_framework.exceptions (all fully loaded before
     DEFAULT_AUTHENTICATION_CLASSES is first accessed).
   - Import rest_framework_simplejwt.authentication lazily (inside methods).
 """
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.middleware.csrf import CsrfViewMiddleware
 from rest_framework import exceptions
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 _ACCESS_COOKIE = "molaris_access"
 _REFRESH_COOKIE = "molaris_refresh"
@@ -29,17 +32,26 @@ class _CSRFCheck(CsrfViewMiddleware):
 
 
 def _cookie_params():
-    secure = getattr(settings, "JWT_COOKIE_SECURE", not settings.DEBUG)
+    secure = getattr(settings, "JWT_COOKIE_SECURE", True)
     samesite = getattr(settings, "JWT_COOKIE_SAMESITE", "Strict")
     return secure, samesite
 
 
+def _jwt_max_ages():
+    """Derive cookie lifetimes from SIMPLE_JWT so they stay in sync with token expiry."""
+    simple_jwt = getattr(settings, "SIMPLE_JWT", {})
+    access = simple_jwt.get("ACCESS_TOKEN_LIFETIME", timedelta(minutes=15))
+    refresh = simple_jwt.get("REFRESH_TOKEN_LIFETIME", timedelta(days=7))
+    return int(access.total_seconds()), int(refresh.total_seconds())
+
+
 def set_jwt_cookies(response, access, refresh):
     secure, samesite = _cookie_params()
+    access_max_age, refresh_max_age = _jwt_max_ages()
     response.set_cookie(
         _ACCESS_COOKIE,
         str(access),
-        max_age=15 * 60,
+        max_age=access_max_age,
         httponly=True,
         secure=secure,
         samesite=samesite,
@@ -48,7 +60,7 @@ def set_jwt_cookies(response, access, refresh):
     response.set_cookie(
         _REFRESH_COOKIE,
         str(refresh),
-        max_age=7 * 24 * 3600,
+        max_age=refresh_max_age,
         httponly=True,
         secure=secure,
         samesite=samesite,
@@ -74,10 +86,10 @@ class JWTCookieAuthentication:
         if raw_token is None:
             return self._jwt().authenticate(request)
 
+        jwt = self._jwt()
         try:
-            jwt = self._jwt()
             validated_token = jwt.get_validated_token(raw_token)
-        except Exception:
+        except (TokenError, InvalidToken):
             return None
 
         self._enforce_csrf(request)

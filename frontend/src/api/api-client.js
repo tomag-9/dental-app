@@ -277,10 +277,7 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
     fetch(`${API_BASE}/core/auth/logout/`, {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': getCsrfToken(),
-      },
+      headers: { 'X-CSRFToken': getCsrfToken() },
     }).catch(() => {});
     localStorage.removeItem(userKey);
   }
