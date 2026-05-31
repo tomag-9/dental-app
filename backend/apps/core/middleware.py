@@ -6,12 +6,13 @@ class ContentSecurityPolicyMiddleware:
     migration (PR 8) stabilises the auth surface.
     """
 
+    # cdn.jsdelivr.net is required by drf-spectacular's Swagger UI for its JS/CSS/fonts.
     CSP = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data: blob:; "
-        "font-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data: blob: https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
         "connect-src 'self'; "
         "frame-ancestors 'none';"
     )

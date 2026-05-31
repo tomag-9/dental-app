@@ -58,7 +58,7 @@ run_backend_tests() {
 
     # shellcheck disable=SC2086
     "${COMPOSE[@]}" exec -T \
-        -e DJANGO_SETTINGS_MODULE=config.settings \
+        -e DJANGO_SETTINGS_MODULE=config.settings.dev \
         -e SECRET_KEY=ci-cd-testing-secret-key-123 \
         backend python manage.py test --noinput --verbosity=2 $modules >"$log_file" 2>&1 &
     local pid=$!
