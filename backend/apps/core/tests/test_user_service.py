@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 from django.test import TestCase
 from rest_framework.exceptions import PermissionDenied
 
-from apps.core.models import AuditLog, Lab, User
 from apps.core import user_service
+from apps.core.models import AuditLog, Lab, User
 
 
 class UserServiceCreateTests(TestCase):
@@ -141,9 +141,7 @@ class UserServiceUpdateTests(TestCase):
         serializer.save.side_effect = fake_save
 
         audit_count_before = AuditLog.objects.count()
-        user_service.update_user(
-            self.admin, self.target, serializer, {"first_name": "Changed"}
-        )
+        user_service.update_user(self.admin, self.target, serializer, {"first_name": "Changed"})
 
         self.assertEqual(AuditLog.objects.count(), audit_count_before + 1)
         log = AuditLog.objects.latest("id")

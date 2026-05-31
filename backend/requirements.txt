@@ -14,8 +14,7 @@ ipython
 werkzeug
 pyplusplus
 
-flake8
-black
+ruff
 coverage
 djangorestframework-simplejwt
 pyotp

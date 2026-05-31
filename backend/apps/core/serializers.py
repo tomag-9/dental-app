@@ -173,9 +173,7 @@ class TeamInvitationSerializer(serializers.ModelSerializer):
             if self.instance:
                 pending = pending.exclude(pk=self.instance.pk)
             if pending.exists():
-                raise serializers.ValidationError(
-                    {"email": "Pending invitation already exists for this email."}
-                )
+                raise serializers.ValidationError({"email": "Pending invitation already exists for this email."})
         return attrs
 
 
@@ -186,9 +184,7 @@ class TeamInvitationAcceptSerializer(serializers.Serializer):
 
 
 class MeUpdateSerializer(serializers.Serializer):
-    nickname = serializers.CharField(
-        max_length=150, required=False, allow_blank=True, allow_null=True
-    )
+    nickname = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False, allow_null=True)
     password = serializers.CharField(write_only=True, required=False, min_length=6)
     role = serializers.ChoiceField(
@@ -207,15 +203,11 @@ class PasswordChangeSerializer(serializers.Serializer):
 
 class SignupRequestSerializer(serializers.Serializer):
     lab_name = serializers.CharField(max_length=255)
-    lab_address = serializers.CharField(
-        max_length=255, required=False, allow_blank=True
-    )
+    lab_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
     lab_city = serializers.CharField(max_length=100, required=False, allow_blank=True)
     lab_email = serializers.EmailField(required=False, allow_null=True)
 
-    nickname = serializers.CharField(
-        max_length=150, required=False, allow_blank=True, allow_null=True
-    )
+    nickname = serializers.CharField(max_length=150, required=False, allow_blank=True, allow_null=True)
     email = serializers.EmailField(required=False, allow_null=True)
     password = serializers.CharField(write_only=True, min_length=6)
 

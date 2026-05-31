@@ -1,5 +1,4 @@
 import pyotp
-
 from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import status
@@ -134,9 +133,7 @@ class AuthLoginFlowTests(APITestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         jti = RefreshToken(resp.data["refresh"])["jti"]
-        self.assertTrue(
-            UserSession.objects.filter(user=self.user, jti=jti, revoked=False).exists()
-        )
+        self.assertTrue(UserSession.objects.filter(user=self.user, jti=jti, revoked=False).exists())
 
     def test_session_login_creates_user_session(self):
         resp = self.client.post(
@@ -146,9 +143,7 @@ class AuthLoginFlowTests(APITestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         jti = RefreshToken(resp.data["refresh"])["jti"]
-        self.assertTrue(
-            UserSession.objects.filter(user=self.user, jti=jti, revoked=False).exists()
-        )
+        self.assertTrue(UserSession.objects.filter(user=self.user, jti=jti, revoked=False).exists())
 
     def test_2fa_enabled_user_requires_totp_code_at_login(self):
         self.user.totp_secret = pyotp.random_base32()
@@ -247,9 +242,7 @@ class LogoutViewTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 204)
-        refresh_resp = self.client.post(
-            "/api/token/refresh/", {"refresh": refresh}, format="json"
-        )
+        refresh_resp = self.client.post("/api/token/refresh/", {"refresh": refresh}, format="json")
         self.assertEqual(refresh_resp.status_code, 401)
 
     def test_logout_revokes_user_session(self):
@@ -313,12 +306,8 @@ class AuthThrottleTests(APITestCase):
 
     def test_login_endpoint_is_throttled(self):
         payload = {"username": self.user.username, "password": "wrong"}
-        statuses = [
-            self.client.post("/api/token/", payload).status_code for _ in range(11)
-        ]
-        self._assert_throttled_after_allowed_responses(
-            statuses, status.HTTP_401_UNAUTHORIZED
-        )
+        statuses = [self.client.post("/api/token/", payload).status_code for _ in range(11)]
+        self._assert_throttled_after_allowed_responses(statuses, status.HTTP_401_UNAUTHORIZED)
 
     def test_signup_endpoint_is_throttled(self):
         statuses = []
@@ -334,9 +323,7 @@ class AuthThrottleTests(APITestCase):
                     format="json",
                 ).status_code
             )
-        self._assert_throttled_after_allowed_responses(
-            statuses, status.HTTP_201_CREATED
-        )
+        self._assert_throttled_after_allowed_responses(statuses, status.HTTP_201_CREATED)
 
     def test_invitation_accept_endpoint_is_throttled(self):
         invitation = TeamInvitation.objects.create(
@@ -351,9 +338,7 @@ class AuthThrottleTests(APITestCase):
         payload = {"token": "wrong-token", "password": "pw123456"}
 
         statuses = [self.client.post(url, payload).status_code for _ in range(11)]
-        self._assert_throttled_after_allowed_responses(
-            statuses, status.HTTP_403_FORBIDDEN
-        )
+        self._assert_throttled_after_allowed_responses(statuses, status.HTTP_403_FORBIDDEN)
 
     def test_two_factor_verify_endpoint_is_throttled(self):
         self.client.force_authenticate(user=self.user)
@@ -361,13 +346,8 @@ class AuthThrottleTests(APITestCase):
         self.assertEqual(setup.status_code, status.HTTP_200_OK)
         payload = {"code": "000000"}
 
-        statuses = [
-            self.client.post("/api/core/2fa/?action=verify", payload).status_code
-            for _ in range(11)
-        ]
-        self._assert_throttled_after_allowed_responses(
-            statuses, status.HTTP_400_BAD_REQUEST
-        )
+        statuses = [self.client.post("/api/core/2fa/?action=verify", payload).status_code for _ in range(11)]
+        self._assert_throttled_after_allowed_responses(statuses, status.HTTP_400_BAD_REQUEST)
 
     def test_api_key_create_endpoint_is_throttled(self):
         self.client.force_authenticate(user=self.admin)
@@ -380,9 +360,7 @@ class AuthThrottleTests(APITestCase):
                     format="json",
                 ).status_code
             )
-        self._assert_throttled_after_allowed_responses(
-            statuses, status.HTTP_201_CREATED
-        )
+        self._assert_throttled_after_allowed_responses(statuses, status.HTTP_201_CREATED)
 
 
 class TwoFactorTests(APITestCase):

@@ -3,10 +3,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 
 def is_superadmin(user):
-    return bool(
-        getattr(user, "is_superuser", False)
-        or getattr(user, "role", None) == "superadmin"
-    )
+    return bool(getattr(user, "is_superuser", False) or getattr(user, "role", None) == "superadmin")
 
 
 def is_lab_admin(user):
@@ -68,11 +65,7 @@ class IsAdminOrSuperadminPermission(permissions.BasePermission):
     """Allow only tenant admins and platform superadmins."""
 
     def has_permission(self, request, view):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and is_admin_or_superadmin(request.user)
-        )
+        return bool(request.user and request.user.is_authenticated and is_admin_or_superadmin(request.user))
 
 
 class IsReadOnlyOrAdminOrSuperadminPermission(permissions.BasePermission):

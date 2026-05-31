@@ -58,9 +58,7 @@ class ImpersonationTests(APITestCase):
 
     def test_superadmin_can_impersonate(self):
         self.client.force_authenticate(user=self.superadmin)
-        resp = self.client.post(
-            f"/api/core/users/superadmin/{self.target.id}/impersonate/"
-        )
+        resp = self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("access_token", resp.data)
         self.assertIn("refresh_token", resp.data)
@@ -70,9 +68,7 @@ class ImpersonationTests(APITestCase):
         self.client.force_authenticate(user=self.superadmin)
         before = AuditLog.objects.filter(action="user.impersonated").count()
         self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
-        self.assertEqual(
-            AuditLog.objects.filter(action="user.impersonated").count(), before + 1
-        )
+        self.assertEqual(AuditLog.objects.filter(action="user.impersonated").count(), before + 1)
 
     def test_regular_user_cannot_impersonate(self):
         regular = User.objects.create_user(
@@ -83,9 +79,7 @@ class ImpersonationTests(APITestCase):
             lab=self.lab,
         )
         self.client.force_authenticate(user=regular)
-        resp = self.client.post(
-            f"/api/core/users/superadmin/{self.target.id}/impersonate/"
-        )
+        resp = self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
         self.assertEqual(resp.status_code, 403)
 
     def test_impersonate_nonexistent_user_returns_404(self):

@@ -31,16 +31,11 @@ jobs:
         clean: false
     - name: Build backend image
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
-    - name: Run flake8
+    - name: Run ruff
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
           run --no-deps --rm backend \
-          flake8 apps --max-line-length=120 --exclude=migrations --extend-ignore=E203,W503
-    - name: Run black check
-      run: |
-        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
-          run --no-deps --rm backend \
-          black --check apps
+          sh -c "ruff check apps && ruff format --check apps"
     - name: Cleanup
       if: always()
       run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
@@ -63,11 +58,13 @@ jobs:
         clean: false
     - name: Build backend image
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
+    - name: Check for missing migrations
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --no-deps --rm backend python manage.py makemigrations --check --dry-run
     - name: Run tests with coverage
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend \
           sh -c "coverage run --parallel-mode --rcfile=.coveragerc manage.py test --noinput --verbosity=2 --parallel \
-            && coverage combine && coverage xml && coverage report --skip-covered"
+            && coverage combine && coverage xml && coverage report --skip-covered --fail-under=80"
     - name: Cleanup
       if: always()
       run: |
@@ -129,13 +126,13 @@ jobs:
       with:
         clean: false
     - name: Log in to Docker Hub
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         username: ${{ env.DOCKER_USERNAME }}
         password: ${{ env.DOCKER_PASSWORD }}
       if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Build Backend Image
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v6
       with:
         context: ./backend
         file: backend/Dockerfile
@@ -143,7 +140,7 @@ jobs:
         tags: local/dental-backend:latest
       if: env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' || env.DOCKER_REGISTRY == ''
     - name: Build and Push Backend (with credentials)
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v6
       with:
         context: ./backend
         file: backend/Dockerfile
@@ -151,7 +148,7 @@ jobs:
         tags: ${{ env.DOCKER_REGISTRY }}/dental-backend:latest
       if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Build Frontend Image
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v6
       with:
         context: ./frontend
         file: frontend/Dockerfile
@@ -159,7 +156,7 @@ jobs:
         tags: local/dental-frontend:latest
       if: env.DOCKER_USERNAME == '' || env.DOCKER_PASSWORD == '' || env.DOCKER_REGISTRY == ''
     - name: Build and Push Frontend (with credentials)
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@v6
       with:
         context: ./frontend
         file: frontend/Dockerfile

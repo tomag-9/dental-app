@@ -517,36 +517,22 @@ class CrossDomainExportRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         }
 
     def test_clinic_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/crm/clinics/export/", self._read_allowed_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/crm/clinics/export/", self._read_allowed_expectations())
 
     def test_doctor_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/crm/doctors/export/", self._admin_only_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/crm/doctors/export/", self._admin_only_expectations())
 
     def test_patient_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/crm/patients/export/", self._admin_only_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/crm/patients/export/", self._admin_only_expectations())
 
     def test_jobs_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/jobs/jobs/export/", self._read_allowed_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/jobs/jobs/export/", self._read_allowed_expectations())
 
     def test_invoice_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/finance/invoices/export/", self._read_allowed_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/finance/invoices/export/", self._read_allowed_expectations())
 
     def test_pricelist_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/finance/price-list/export/", self._read_allowed_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/finance/price-list/export/", self._read_allowed_expectations())
 
     def test_inventory_export_role_matrix(self):
-        self.assert_endpoint_matrix(
-            "GET", "/api/inventory/warehouse/export/", self._read_allowed_expectations()
-        )
+        self.assert_endpoint_matrix("GET", "/api/inventory/warehouse/export/", self._read_allowed_expectations())

@@ -38,13 +38,11 @@ class InvoiceSendEmailTests(APITestCase):
         )
 
     def test_send_email_to_explicit_address(self):
-        from django.test import override_settings
         from django.core import mail
+        from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {"email": "recipient@test.sk"},
@@ -59,9 +57,7 @@ class InvoiceSendEmailTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {"email": "recipient@test.sk"},
@@ -79,9 +75,7 @@ class InvoiceSendEmailTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {},
@@ -121,9 +115,7 @@ class InvoiceSendEmailTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.regular)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post(
                 f"/api/finance/invoices/{self.invoice.id}/send-email/",
                 {"email": "recipient@test.sk"},
@@ -192,13 +184,11 @@ class OverdueReminderTests(APITestCase):
         )
 
     def test_sends_reminders_for_overdue_issued_invoices(self):
-        from django.test import override_settings
         from django.core import mail
+        from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
         self.assertEqual(resp.status_code, 200)
         self.assertIn("OD-0001", resp.data["sent"])
@@ -212,15 +202,11 @@ class OverdueReminderTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
 
         self.assertEqual(resp.status_code, 200)
-        log = AuditLog.objects.filter(action="invoice.reminder_sent").latest(
-            "created_at"
-        )
+        log = AuditLog.objects.filter(action="invoice.reminder_sent").latest("created_at")
         self.assertEqual(log.entity_id, str(self.overdue_inv.id))
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
@@ -231,9 +217,7 @@ class OverdueReminderTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.admin)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
         sent_numbers = resp.data["sent"] + [f["invoice"] for f in resp.data["failed"]]
         self.assertNotIn("OD-0003", sent_numbers)
@@ -247,9 +231,7 @@ class OverdueReminderTests(APITestCase):
         from django.test import override_settings
 
         self.client.force_authenticate(user=self.regular)
-        with override_settings(
-            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"
-        ):
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             resp = self.client.post("/api/finance/invoices/send-overdue-reminders/")
 
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
