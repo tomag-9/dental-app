@@ -3,6 +3,7 @@ Django base settings — shared across all environments.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -130,6 +131,8 @@ AUTH_USER_MODEL = "core.User"
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        # Cookie-based auth takes priority; header-based JWT kept for API clients / tests.
+        "apps.core.cookie_auth.JWTCookieAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
@@ -146,6 +149,15 @@ REST_FRAMEWORK = {
         "api_key_create": os.environ.get("THROTTLE_API_KEY_CREATE_RATE", "5/min"),
     },
 }
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
+
+# httpOnly JWT cookie settings (used by apps.core.auth)
+JWT_COOKIE_SECURE = os.environ.get("JWT_COOKIE_SECURE", "0") == "1"
+JWT_COOKIE_SAMESITE = os.environ.get("JWT_COOKIE_SAMESITE", "Strict")
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Dental Lab API",

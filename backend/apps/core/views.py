@@ -20,6 +20,7 @@ from apps.jobs.models import CalendarEvent, Vacation
 from . import user_service
 from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
 from .auth import MolarisTokenObtainPairSerializer
+from .cookie_auth import _REFRESH_COOKIE, clear_jwt_cookies
 from .models import (
     AuditLog,
     Lab,
@@ -305,15 +306,30 @@ class LogoutView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        refresh_token = request.data.get("refresh_token")
-        if refresh_token:
+        # Accept refresh token from cookie (new) or request body (backward compat).
+        refresh_raw = request.COOKIES.get(_REFRESH_COOKIE) or request.data.get("refresh_token")
+        if refresh_raw:
             try:
-                token = RefreshToken(refresh_token)
+                token = RefreshToken(refresh_raw)
                 token.blacklist()
                 UserSession.objects.filter(jti=token["jti"]).update(revoked=True)
             except TokenError:
                 pass
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_jwt_cookies(response)
+        return response
+
+
+class CsrfView(APIView):
+    """Seeds the csrftoken cookie so the frontend can make authenticated mutations."""
+
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        from django.middleware.csrf import get_token
+
+        return Response({"csrfToken": get_token(request)})
 
 
 class SystemHealthView(APIView):
