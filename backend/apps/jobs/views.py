@@ -33,6 +33,7 @@ from .models import (
     Technician,
     Vacation,
 )
+from .selectors import calendar_events_for_user, jobs_for_user, technicians_for_user
 from .serializers import (
     CalendarEventSerializer,
     JobAttachmentSerializer,
@@ -54,7 +55,7 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        return self.get_tenant_scoped_queryset(Technician.objects.all())
+        return technicians_for_user(self.request.user)
 
     def perform_create(self, serializer):
         self.save_with_request_lab(serializer)
@@ -70,8 +71,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     allowed_transitions = job_service.ALLOWED_TRANSITIONS
 
     def get_queryset(self):
-        qs = self.get_tenant_scoped_queryset(
-            Job.objects.select_related("patient", "clinic", "doctor", "technician")
+        qs = (
+            jobs_for_user(self.request.user)
+            .select_related("patient", "clinic", "doctor", "technician")
             .prefetch_related("items", "timeline__actor")
             .order_by("-created_at")
         )
@@ -583,9 +585,8 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        return self.get_tenant_scoped_queryset(
-            CalendarEvent.objects.select_related("related_job").order_by("start", "id")
-        )
+        qs = calendar_events_for_user(self.request.user)
+        return qs.select_related("related_job").order_by("start", "id")
 
     def _validate_related_job_scope(self, serializer):
         related_job = serializer.validated_data.get("related_job")
@@ -617,6 +618,10 @@ class CalendarView(APIView):
 
     def _tenant_filter(self, model):
         user = self.request.user
+        if model is Job:
+            return jobs_for_user(user)
+        if model is CalendarEvent:
+            return calendar_events_for_user(user)
         if is_superadmin(user):
             return model.objects.all()
         lab_id = getattr(user, "lab_id", None)

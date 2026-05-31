@@ -14,18 +14,21 @@ def is_admin_or_superadmin(user):
     return is_superadmin(user) or is_lab_admin(user)
 
 
+def tenant_scoped_queryset(queryset, user, lab_filter_field="lab"):
+    if is_superadmin(user):
+        return queryset
+    lab_id = getattr(user, "lab_id", None)
+    if lab_id:
+        return queryset.filter(**{f"{lab_filter_field}_id": lab_id})
+    return queryset.none()
+
+
 class TenantScopedQuerysetMixin:
     lab_filter_field = "lab"
 
     def get_tenant_scoped_queryset(self, queryset=None):
         qs = queryset if queryset is not None else super().get_queryset()
-        user = self.request.user
-        if is_superadmin(user):
-            return qs
-        lab_id = getattr(user, "lab_id", None)
-        if lab_id:
-            return qs.filter(**{f"{self.lab_filter_field}_id": lab_id})
-        return qs.none()
+        return tenant_scoped_queryset(qs, self.request.user, self.lab_filter_field)
 
     def save_with_request_lab(self, serializer):
         user = self.request.user
