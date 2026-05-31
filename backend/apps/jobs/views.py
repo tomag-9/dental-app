@@ -25,6 +25,7 @@ from apps.crm.models import Clinic, Patient
 from apps.crm.serializers import PatientSerializer
 
 from . import job_service
+from . import services as job_services
 from .models import (
     CalendarEvent,
     Job,
@@ -233,7 +234,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         new_status = serializer.validated_data["status"]
         note = serializer.validated_data.get("note")
-        job = job_service.transition_job_status(request.user, job, new_status, note)
+        job = job_services.transition_job_status(user=request.user, job=job, new_status=new_status, note=note)
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["get"], url_path="work_order")

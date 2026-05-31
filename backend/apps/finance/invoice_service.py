@@ -13,7 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.services import write_audit_log
-from apps.jobs.models import Job
+from apps.jobs import services as jobs_services
 
 from .calculations import calculate_invoice_amounts
 from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList
@@ -35,16 +35,13 @@ def generate_invoice_number(lab):
 
 def sync_jobs_for_invoice_status(invoice, new_status):
     """Sync the statuses of jobs linked to *invoice* when invoice status changes."""
-    job_ids = (
+    job_ids = list(
         InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False).values_list("job_id", flat=True).distinct()
     )
-    jobs = Job.objects.filter(id__in=job_ids)
-    if new_status == "paid":
-        jobs.update(status="closed")
-    elif new_status == "issued":
-        jobs.update(status="finished_factured")
-    elif new_status == "cancelled":
-        jobs.update(status="finished_unfactured")
+    if new_status == "cancelled":
+        jobs_services.mark_jobs_invoice_cancelled(job_ids)
+    else:
+        jobs_services.mark_jobs_invoiced(job_ids, invoice_status=new_status)
 
 
 def write_invoice_audit(actor, invoice, action, metadata=None, description=None):
