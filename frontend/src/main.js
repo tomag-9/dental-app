@@ -6,51 +6,40 @@ window.React = React;
 window.ReactDOM = ReactDOM;
 window.__API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8810/api';
 
-const designScripts = [
-  'api-client.js',
-  'Icon.jsx',
-  'Logo.jsx',
-  'Shared.jsx',
-  'CreateDrawers.jsx',
-  'polozky-shared.jsx',
-  'variant-detail.jsx',
-  'Dashboard.jsx',
-  'Jobs.jsx',
-  'JobDetail.jsx',
-  'Patients.jsx',
-  'PatientDetail.jsx',
-  'Finance.jsx',
-  'Invoices.jsx',
-  'Pricelist.jsx',
-  'Inventory.jsx',
-  'Calendar.jsx',
-  'Clinics.jsx',
-  'Doctors.jsx',
-  'Technicians.jsx',
-  'Settings.jsx',
-  'Permissions.jsx',
-  'Superadmin.jsx',
-  'Sidebar.jsx',
-  'Topbar.jsx',
-  'NewJob.jsx',
-  'Login.jsx',
-  'App.jsx',
+const appModules = [
+  () => import('./api/api-client.js'),
+  () => import('./components/Icon.jsx'),
+  () => import('./components/Logo.jsx'),
+  () => import('./components/Shared.jsx'),
+  () => import('./components/CreateDrawers.jsx'),
+  () => import('./components/polozky-shared.jsx'),
+  () => import('./components/variant-detail.jsx'),
+  () => import('./pages/Dashboard.jsx'),
+  () => import('./pages/Jobs.jsx'),
+  () => import('./pages/JobDetail.jsx'),
+  () => import('./pages/Patients.jsx'),
+  () => import('./pages/PatientDetail.jsx'),
+  () => import('./pages/Finance.jsx'),
+  () => import('./pages/Invoices.jsx'),
+  () => import('./pages/Pricelist.jsx'),
+  () => import('./pages/Inventory.jsx'),
+  () => import('./pages/Calendar.jsx'),
+  () => import('./pages/Clinics.jsx'),
+  () => import('./pages/Doctors.jsx'),
+  () => import('./pages/Technicians.jsx'),
+  () => import('./pages/Settings.jsx'),
+  () => import('./pages/Permissions.jsx'),
+  () => import('./pages/Superadmin.jsx'),
+  () => import('./components/Sidebar.jsx'),
+  () => import('./components/Topbar.jsx'),
+  () => import('./components/NewJob.jsx'),
+  () => import('./pages/Login.jsx'),
+  () => import('./App.jsx'),
 ];
 
-function loadScript(name) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `/design/${name}`;
-    script.async = false;
-    script.onload = resolve;
-    script.onerror = () => reject(new Error(`Failed to load ${name}`));
-    document.body.appendChild(script);
-  });
-}
-
 async function boot() {
-  for (const name of designScripts) {
-    await loadScript(name);
+  for (const loadModule of appModules) {
+    await loadModule();
   }
 }
 
