@@ -37,9 +37,9 @@ def create_invoice_from_jobs(*, user, clinic_id, job_ids, document_type="invoice
     """
     Validate access, look up clinic and jobs, and create an invoice.
 
-    Raises ``NotFound`` if clinic or jobs are missing.
+    Raises ``NotFound`` if clinic is missing.
     Raises ``PermissionDenied`` if *user* does not own the clinic's lab.
-    Raises ``ValidationError`` if jobs are inconsistent with the clinic.
+    Raises ``ValidationError`` if jobs are missing or inconsistent with the clinic.
 
     Returns the created ``Invoice`` instance.
     """
@@ -71,6 +71,7 @@ def create_invoice_from_jobs(*, user, clinic_id, job_ids, document_type="invoice
 # ---------------------------------------------------------------------------
 
 
+@transaction.atomic
 def update_invoice_status(*, user, invoice, status):
     """
     Update *invoice* to *status*, sync linked job statuses, and write audit log.
