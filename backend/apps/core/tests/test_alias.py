@@ -7,7 +7,7 @@ from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic
 from apps.finance.models import Invoice
 from apps.inventory.models import WarehouseItem
-from apps.jobs.models import CalendarEvent, Job, Technician, Vacation
+from apps.jobs.models import CalendarEvent, Vacation
 
 
 class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
@@ -352,9 +352,6 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     def setUp(self):
         self.setup_role_matrix(prefix="alias_write")
         self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Alias Write Clinic A")
-        self.technician_model_a = Technician.objects.create(
-            lab=self.lab_a, first_name="Alias", last_name="Tech"
-        )
 
     def _new_invoice(self, suffix):
         return Invoice.objects.create(
@@ -364,22 +361,6 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             status="issued",
             total_amount="100.00",
             vat_rate="20.00",
-        )
-
-    def _new_warehouse_item(self, suffix):
-        return WarehouseItem.objects.create(
-            lab=self.lab_a,
-            name=f"AW {suffix}",
-            sku=f"AW-{suffix}-{WarehouseItem.objects.count() + 1}",
-            quantity=1,
-        )
-
-    def _new_vacation(self, suffix):
-        return Vacation.objects.create(
-            lab=self.lab_a,
-            start=timezone.now(),
-            end=timezone.now() + timezone.timedelta(days=1),
-            description=f"AW vacation {suffix}",
         )
 
     def _assert_alias_create_matrix(self, url, payload_factory, success_status):
