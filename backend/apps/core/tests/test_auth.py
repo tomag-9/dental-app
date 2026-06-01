@@ -442,3 +442,91 @@ class TwoFactorTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get("/api/core/2fa/")
         self.assertEqual(resp.status_code, 401)
+
+
+class CookieAuthTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.lab = Lab.objects.create(name="Cookie Lab")
+        self.user = User.objects.create_user(
+            username="cookie_user",
+            password="pw123456",
+            email="cookie@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+
+    def _login_cookie(self):
+        resp = self.client.post(
+            "/api/token/",
+            {"username": self.user.username, "password": "pw123456"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        return resp
+
+    def test_login_sets_httponly_access_cookie(self):
+        resp = self._login_cookie()
+        self.assertIn("molaris_access", resp.cookies)
+        self.assertTrue(resp.cookies["molaris_access"]["httponly"])
+
+    def test_login_sets_httponly_refresh_cookie(self):
+        resp = self._login_cookie()
+        self.assertIn("molaris_refresh", resp.cookies)
+        self.assertTrue(resp.cookies["molaris_refresh"]["httponly"])
+
+    def test_login_still_returns_tokens_in_body(self):
+        resp = self._login_cookie()
+        self.assertIn("access", resp.data)
+        self.assertIn("refresh", resp.data)
+
+    def test_cookie_authentication_grants_access(self):
+        login_resp = self._login_cookie()
+        access_token = login_resp.cookies["molaris_access"].value
+        self.client.cookies["molaris_access"] = access_token
+        resp = self.client.get("/api/core/users/me/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["username"], self.user.username)
+
+    def test_refresh_via_cookie_sets_new_access_cookie(self):
+        login_resp = self._login_cookie()
+        self.client.cookies["molaris_refresh"] = login_resp.cookies["molaris_refresh"].value
+        resp = self.client.post("/api/token/refresh/", {}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("molaris_access", resp.cookies)
+
+    def test_refresh_still_accepts_body_token(self):
+        login_resp = self._login_cookie()
+        resp = self.client.post(
+            "/api/token/refresh/",
+            {"refresh": login_resp.data["refresh"]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("access", resp.data)
+
+    def test_logout_via_cookie_clears_cookies(self):
+        login_resp = self._login_cookie()
+        self.client.cookies["molaris_refresh"] = login_resp.cookies["molaris_refresh"].value
+        resp = self.client.post("/api/core/auth/logout/", {}, format="json")
+        self.assertEqual(resp.status_code, 204)
+        # Django signals cookie deletion via Max-Age=0
+        self.assertIn("molaris_access", resp.cookies)
+        self.assertIn("molaris_refresh", resp.cookies)
+        self.assertEqual(resp.cookies["molaris_access"]["max-age"], 0)
+        self.assertEqual(resp.cookies["molaris_refresh"]["max-age"], 0)
+
+    def test_logout_via_cookie_blacklists_refresh_token(self):
+        login_resp = self._login_cookie()
+        refresh_raw = login_resp.data["refresh"]
+        self.client.cookies["molaris_refresh"] = login_resp.cookies["molaris_refresh"].value
+        self.client.post("/api/core/auth/logout/", {}, format="json")
+        # Refresh token should now be blacklisted
+        resp = self.client.post("/api/token/refresh/", {"refresh": refresh_raw}, format="json")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_csrf_endpoint_seeds_csrf_cookie(self):
+        resp = self.client.get("/api/core/csrf/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("csrfToken", resp.data)
+        self.assertIn("csrftoken", resp.cookies)

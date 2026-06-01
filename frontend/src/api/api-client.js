@@ -8,9 +8,12 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
     ? rawBase.replace(/\/$/, '')
     : `${rawBase.replace(/\/$/, '')}/api`;
 
-  const tokenKey = 'molaris.access';
-  const refreshKey = 'molaris.refresh';
   const userKey = 'molaris.user';
+
+  function getCsrfToken() {
+    const match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
 
   const readJson = async (response) => {
     const text = await response.text();
@@ -18,17 +21,42 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
     try { return JSON.parse(text); } catch { return text; }
   };
 
+  let _refreshInFlight = null;
+  async function _silentRefresh() {
+    if (_refreshInFlight) return _refreshInFlight;
+    _refreshInFlight = fetch(`${API_BASE}/token/refresh/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+    })
+      .then((resp) => resp.ok)
+      .catch(() => false)
+      .finally(() => { _refreshInFlight = null; });
+    return _refreshInFlight;
+  }
+
   async function request(path, options = {}) {
-    const access = localStorage.getItem(tokenKey);
+    const method = (options.method || 'GET').toUpperCase();
+    const csrfSafe = /^(GET|HEAD|OPTIONS|TRACE)$/.test(method);
     const headers = {
       Accept: 'application/json',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(access ? { Authorization: `Bearer ${access}` } : {}),
+      ...(!csrfSafe ? { 'X-CSRFToken': getCsrfToken() } : {}),
       ...(options.headers || {}),
     };
-    const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
     const data = await readJson(response);
     if (!response.ok) {
+      if (response.status === 401 && !options._retried && !path.startsWith('/token/')) {
+        const refreshed = await _silentRefresh();
+        if (refreshed) {
+          return request(path, { ...options, _retried: true });
+        }
+      }
       if (response.status === 401) {
         logout();
         window.dispatchEvent(new CustomEvent('molaris-auth-expired'));
@@ -78,8 +106,7 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
       }
       throw error;
     }
-    localStorage.setItem(tokenKey, token.access);
-    localStorage.setItem(refreshKey, token.refresh);
+    // Tokens are now stored as httpOnly cookies by the server.
     const me = await request('/core/users/me/');
     const name = [me.first_name, me.last_name].filter(Boolean).join(' ') || me.nickname || me.username;
     const user = {
@@ -230,9 +257,8 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
   }
 
   async function downloadInvoicePdf(id, filename) {
-    const access = localStorage.getItem(tokenKey);
     const response = await fetch(authUrl(`/invoices/${id}/pdf/`), {
-      headers: access ? { Authorization: `Bearer ${access}` } : {},
+      credentials: 'include',
     });
     if (!response.ok) throw new Error('PDF download failed');
     const blob = await response.blob();
@@ -247,30 +273,21 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
   }
 
   function logout() {
-    const refresh = localStorage.getItem(refreshKey);
-    const access = localStorage.getItem(tokenKey);
-    if (refresh) {
-      fetch(`${API_BASE}/core/auth/logout/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(access ? { Authorization: `Bearer ${access}` } : {}),
-        },
-        body: JSON.stringify({ refresh_token: refresh }),
-      }).catch(() => {});
-    }
-    localStorage.removeItem(tokenKey);
-    localStorage.removeItem(refreshKey);
+    // Fire-and-forget: server blacklists the refresh cookie and clears both cookies.
+    fetch(`${API_BASE}/core/auth/logout/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-CSRFToken': getCsrfToken() },
+    }).catch(() => {});
     localStorage.removeItem(userKey);
   }
 
   function savedUser() {
-    if (!isAuthenticated()) return null;
     try { return JSON.parse(localStorage.getItem(userKey) || 'null'); } catch { return null; }
   }
 
   function isAuthenticated() {
-    return !!localStorage.getItem(tokenKey);
+    return !!localStorage.getItem(userKey);
   }
 
   const fmtDate = (value) => value ? new Date(value).toLocaleDateString('sk-SK') : '—';
@@ -454,7 +471,7 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
     };
   }
 
-  const useWorkspace = createUseWorkspace({ loadWorkspace, tokenKey });
+  const useWorkspace = createUseWorkspace({ loadWorkspace, tokenKey: userKey });
 
   window.MolarisAPI = {
     API_BASE,

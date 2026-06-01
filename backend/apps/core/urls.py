@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 # This is kept for backward compatibility and nested access (/api/core/users/, /api/core/labs/)
 from .views import (
     AuditLogViewSet,
+    CsrfView,
     DashboardChartDataView,
     GlobalSearchView,
     LabApiKeyViewSet,
@@ -46,6 +47,7 @@ urlpatterns = [
     ),
     path("auth/login/", SessionLoginView.as_view(), name="session-login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("csrf/", CsrfView.as_view(), name="csrf"),
     path(
         "dashboard/chart-data/",
         DashboardChartDataView.as_view(),
