@@ -471,6 +471,120 @@ class CrossDomainWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         self.assert_write_role_matrix(request_factory, status.HTTP_201_CREATED)
 
 
+class CrossLabReadIsolationTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Verify tenant read isolation across all main list endpoints.
+
+    Superadmin sees records from every lab; other authenticated roles see only
+    their own lab's records.  No role (except superadmin) may observe data from
+    a foreign lab.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="read_iso")
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Read Iso Clinic A")
+        self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Read Iso Clinic B")
+        self.tech_model_a = Technician.objects.create(
+            lab=self.lab_a, first_name="Iso", last_name="Tech A"
+        )
+        self.tech_model_b = Technician.objects.create(
+            lab=self.lab_b, first_name="Iso", last_name="Tech B"
+        )
+        doctor_a = Doctor.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            first_name="Iso",
+            last_name="Doctor A",
+        )
+        patient_a = Patient.objects.create(
+            lab=self.lab_a,
+            first_name="Iso",
+            last_name="Patient A",
+            birth_number="8001015678",
+        )
+        self.job_a = Job.objects.create(
+            lab=self.lab_a,
+            patient=patient_a,
+            clinic=self.clinic_a,
+            doctor=doctor_a,
+            technician=self.tech_model_a,
+            status="new",
+            description="Isolation job A",
+            price="50.00",
+        )
+        doctor_b = Doctor.objects.create(
+            lab=self.lab_b,
+            clinic=self.clinic_b,
+            first_name="Iso",
+            last_name="Doctor B",
+        )
+        patient_b = Patient.objects.create(
+            lab=self.lab_b,
+            first_name="Iso",
+            last_name="Patient B",
+            birth_number="8001019999",
+        )
+        self.job_b = Job.objects.create(
+            lab=self.lab_b,
+            patient=patient_b,
+            clinic=self.clinic_b,
+            doctor=doctor_b,
+            technician=self.tech_model_b,
+            status="new",
+            description="Isolation job B",
+            price="75.00",
+        )
+
+    def _assert_cross_lab_isolation(self, url, own_id, foreign_id):
+        """Assert lab scoping for a list endpoint with two known record IDs."""
+        self.client.force_authenticate(user=self.admin_a)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        ids = self.response_ids(resp)
+        self.assertIn(own_id, ids, f"admin_a should see their own record at {url}")
+        self.assertNotIn(foreign_id, ids, f"admin_a must not see lab_b record at {url}")
+        self.client.force_authenticate(user=None)
+
+        for role_user in [self.user_a, self.technician_a]:
+            self.client.force_authenticate(user=role_user)
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, 200)
+            ids = self.response_ids(resp)
+            self.assertNotIn(
+                foreign_id,
+                ids,
+                f"{role_user.role} must not see lab_b record at {url}",
+            )
+            self.client.force_authenticate(user=None)
+
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        ids = self.response_ids(resp)
+        self.assertIn(own_id, ids, f"superadmin should see lab_a record at {url}")
+        self.assertIn(foreign_id, ids, f"superadmin should see lab_b record at {url}")
+        self.client.force_authenticate(user=None)
+
+    def test_jobs_list_cross_lab_isolation(self):
+        self._assert_cross_lab_isolation("/api/jobs/jobs/", self.job_a.id, self.job_b.id)
+
+    def test_technicians_list_cross_lab_isolation(self):
+        self._assert_cross_lab_isolation(
+            "/api/jobs/technicians/",
+            self.tech_model_a.id,
+            self.tech_model_b.id,
+        )
+
+    def test_detail_cross_lab_isolation(self):
+        """A user from lab A gets 404 when accessing a resource that belongs to lab B."""
+        self.client.force_authenticate(user=self.admin_a)
+        resp = self.client.get(f"/api/jobs/jobs/{self.job_b.id}/")
+        self.assertEqual(resp.status_code, 404)
+
+        resp = self.client.get(f"/api/jobs/technicians/{self.tech_model_b.id}/")
+        self.assertEqual(resp.status_code, 404)
+
+
 class CrossDomainExportRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     """Role matrix tests for all export endpoints (GET, read-only or admin-only)."""
 
