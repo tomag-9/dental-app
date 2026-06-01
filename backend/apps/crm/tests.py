@@ -1489,3 +1489,86 @@ class CrmRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             },
             format="json",
         )
+
+    def test_doctor_update_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/crm/doctors/{self.doctor.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"first_name": "Updated"},
+            format="json",
+        )
+
+    def test_doctor_delete_role_matrix(self):
+        def _delete_matrix(role):
+            doc = Doctor.objects.create(
+                lab=self.lab_a,
+                clinic=self.clinic,
+                first_name=f"Del{role}",
+                last_name="Doctor",
+            )
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/crm/doctors/{doc.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        resp = self.client.delete(f"/api/crm/doctors/{self.doctor.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        expectations = {
+            "no_lab": status.HTTP_404_NOT_FOUND,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(resp.status_code, expected, f"DELETE doctor as {role}")
+
+    def test_clinic_update_role_matrix(self):
+        self.assert_endpoint_matrix(
+            "PATCH",
+            f"/api/crm/clinics/{self.clinic.id}/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_404_NOT_FOUND,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"name": "Updated Clinic"},
+            format="json",
+        )
+
+    def test_clinic_delete_role_matrix(self):
+        def _delete_matrix(role):
+            clinic = Clinic.objects.create(lab=self.lab_a, name=f"Del{role}Clinic")
+            self.client.force_authenticate(user=self.role_users[role])
+            resp = self.client.delete(f"/api/crm/clinics/{clinic.id}/")
+            self.client.force_authenticate(user=None)
+            return resp
+
+        resp = self.client.delete(f"/api/crm/clinics/{self.clinic.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        expectations = {
+            "no_lab": status.HTTP_404_NOT_FOUND,
+            "user": status.HTTP_403_FORBIDDEN,
+            "technician": status.HTTP_403_FORBIDDEN,
+            "admin": status.HTTP_204_NO_CONTENT,
+            "superadmin": status.HTTP_204_NO_CONTENT,
+        }
+        for role, expected in expectations.items():
+            with self.subTest(role=role):
+                resp = _delete_matrix(role)
+                self.assertEqual(resp.status_code, expected, f"DELETE clinic as {role}")

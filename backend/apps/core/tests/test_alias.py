@@ -338,3 +338,214 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         # admin_a only sees their own notification.
         self.assertEqual(len(root.data), 1)
         self.assertEqual(root.data[0]["title"], "Notif for admin_a")
+
+
+class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
+    """
+    Confirm that root-level API aliases enforce the same write-operation role
+    restrictions as their app-scoped counterparts across ALL six roles.
+
+    The alias route must not bypass any permission check that the canonical
+    route applies.
+    """
+
+    def setUp(self):
+        self.setup_role_matrix(prefix="alias_write")
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Alias Write Clinic A")
+
+    def _new_invoice(self, suffix):
+        return Invoice.objects.create(
+            lab=self.lab_a,
+            clinic=self.clinic_a,
+            number=f"AW-{suffix}-{Invoice.objects.count() + 1}",
+            status="issued",
+            total_amount="100.00",
+            vat_rate="20.00",
+        )
+
+    def _assert_alias_create_matrix(self, url, payload_factory, success_status):
+        """Assert the full 6-role permission matrix for a create (POST) alias route."""
+        resp = self.client.post(url, payload_factory("anonymous"), format="json")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED, f"POST {url} anonymous")
+
+        deny_roles = ["no_lab", "user", "technician"]
+        allow_roles = [("admin", self.admin_a), ("superadmin", self.superadmin)]
+
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(url, payload_factory(role), format="json")
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, f"POST {url} as {role}")
+                self.client.force_authenticate(user=None)
+
+        for role, user in allow_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=user)
+                resp = self.client.post(url, payload_factory(role), format="json")
+                self.assertEqual(resp.status_code, success_status, f"POST {url} as {role}")
+                self.client.force_authenticate(user=None)
+
+    def _assert_alias_delete_matrix(self, url_factory):
+        """Assert the full 6-role permission matrix for a delete alias route.
+
+        url_factory receives a role string and must return (url, fresh_object) where
+        fresh_object is newly created per role so the admin delete succeeds.
+        """
+        obj_url, _ = url_factory("anonymous")
+        resp = self.client.delete(obj_url)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                obj_url, _ = url_factory(role)
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.delete(obj_url)
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, f"DELETE {obj_url} as {role}")
+                self.client.force_authenticate(user=None)
+
+        for role, user in [("admin", self.admin_a), ("superadmin", self.superadmin)]:
+            with self.subTest(role=role):
+                obj_url, _ = url_factory(role)
+                self.client.force_authenticate(user=user)
+                resp = self.client.delete(obj_url)
+                self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT, f"DELETE {obj_url} as {role}")
+                self.client.force_authenticate(user=None)
+
+    def test_invoice_alias_create_role_matrix(self):
+        """POST /api/invoices/ must enforce the same role matrix as /api/finance/invoices/.
+
+        Non-admin roles must be rejected with 403 (permission).  Admin/superadmin
+        reach the serializer; empty job_ids returns 400, which confirms the
+        permission layer was passed — the alias is not bypassing it.
+        """
+        resp = self.client.post(
+            "/api/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": []},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED, "POST /api/invoices/ anonymous")
+
+        deny_roles = ["no_lab", "user", "technician"]
+        for role in deny_roles:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/invoices/",
+                    {"clinic_id": self.clinic_a.id, "job_ids": []},
+                    format="json",
+                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, f"POST /api/invoices/ as {role}")
+                self.client.force_authenticate(user=None)
+
+        # admin/superadmin pass the permission layer — serializer rejects empty job_ids
+        # with 400, confirming the alias does not bypass permissions.
+        for role in ["admin", "superadmin"]:
+            with self.subTest(role=role):
+                self.client.force_authenticate(user=self.role_users[role])
+                resp = self.client.post(
+                    "/api/invoices/",
+                    {"clinic_id": self.clinic_a.id, "job_ids": []},
+                    format="json",
+                )
+                self.assertNotEqual(
+                    resp.status_code,
+                    status.HTTP_403_FORBIDDEN,
+                    f"POST /api/invoices/ as {role} must not be blocked at permission layer",
+                )
+                self.client.force_authenticate(user=None)
+
+    def test_invoice_alias_delete_role_matrix(self):
+        """DELETE /api/invoices/<id>/ must enforce the same role matrix as the scoped route."""
+        counter = [0]
+
+        def factory(role):
+            counter[0] += 1
+            inv = Invoice.objects.create(
+                lab=self.lab_a,
+                clinic=self.clinic_a,
+                number=f"AWDEL-{role}-{counter[0]}",
+                status="issued",
+                total_amount="100.00",
+            )
+            return (f"/api/invoices/{inv.id}/", inv)
+
+        self._assert_alias_delete_matrix(factory)
+
+    def test_invoice_alias_status_role_matrix(self):
+        """PUT /api/invoices/<id>/status/ must enforce the same role matrix via the root alias."""
+        invoice = self._new_invoice("status_matrix")
+        self.assert_endpoint_matrix(
+            "PUT",
+            f"/api/invoices/{invoice.id}/status/",
+            {
+                "anonymous": status.HTTP_401_UNAUTHORIZED,
+                "no_lab": status.HTTP_403_FORBIDDEN,
+                "user": status.HTTP_403_FORBIDDEN,
+                "technician": status.HTTP_403_FORBIDDEN,
+                "admin": status.HTTP_200_OK,
+                "superadmin": status.HTTP_200_OK,
+            },
+            data={"status": "paid"},
+            format="json",
+        )
+
+    def test_warehouse_alias_create_role_matrix(self):
+        """POST /api/warehouse/ must enforce the same role matrix as the scoped route."""
+        counter = [0]
+
+        def payload_factory(role):
+            counter[0] += 1
+            return {
+                "lab": self.lab_a.id,
+                "name": f"Alias Item {role} {counter[0]}",
+                "sku": f"AWSK-{role.upper()}-{counter[0]}",
+                "quantity": 1,
+            }
+
+        self._assert_alias_create_matrix("/api/warehouse/", payload_factory, status.HTTP_201_CREATED)
+
+    def test_warehouse_alias_delete_role_matrix(self):
+        """DELETE /api/warehouse/<id>/ must enforce the same role matrix via the root alias."""
+        counter = [0]
+
+        def factory(role):
+            counter[0] += 1
+            item = WarehouseItem.objects.create(
+                lab=self.lab_a,
+                name=f"AW del {role}",
+                sku=f"AWDEL-{role.upper()}-{counter[0]}",
+                quantity=1,
+            )
+            return (f"/api/warehouse/{item.id}/", item)
+
+        self._assert_alias_delete_matrix(factory)
+
+    def test_vacation_alias_create_role_matrix(self):
+        """POST /api/vacations/ must enforce the same role matrix as the scoped route."""
+        self._assert_alias_create_matrix(
+            "/api/vacations/",
+            lambda role: {
+                "lab": self.lab_a.id,
+                "start": timezone.now().isoformat(),
+                "end": (timezone.now() + timezone.timedelta(days=1)).isoformat(),
+                "description": f"Alias vacation {role}",
+            },
+            status.HTTP_201_CREATED,
+        )
+
+    def test_vacation_alias_delete_role_matrix(self):
+        """DELETE /api/vacations/<id>/ must enforce the same role matrix via the root alias."""
+        counter = [0]
+
+        def factory(role):
+            counter[0] += 1
+            vac = Vacation.objects.create(
+                lab=self.lab_a,
+                start=timezone.now(),
+                end=timezone.now() + timezone.timedelta(days=1),
+                description=f"AW del vacation {role} {counter[0]}",
+            )
+            return (f"/api/vacations/{vac.id}/", vac)
+
+        self._assert_alias_delete_matrix(factory)
