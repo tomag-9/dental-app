@@ -484,12 +484,8 @@ class CrossLabReadIsolationTests(RoleMatrixTestMixin, APITestCase):
         self.setup_role_matrix(prefix="read_iso")
         self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Read Iso Clinic A")
         self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Read Iso Clinic B")
-        self.tech_model_a = Technician.objects.create(
-            lab=self.lab_a, first_name="Iso", last_name="Tech A"
-        )
-        self.tech_model_b = Technician.objects.create(
-            lab=self.lab_b, first_name="Iso", last_name="Tech B"
-        )
+        self.tech_model_a = Technician.objects.create(lab=self.lab_a, first_name="Iso", last_name="Tech A")
+        self.tech_model_b = Technician.objects.create(lab=self.lab_b, first_name="Iso", last_name="Tech B")
         doctor_a = Doctor.objects.create(
             lab=self.lab_a,
             clinic=self.clinic_a,
