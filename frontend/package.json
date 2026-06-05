@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "gen:types": "openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
     "smoke:auth": "node scripts/auth-smoke.mjs",
     "smoke:no-prod-mocks": "node scripts/no-prod-mocks-smoke.mjs",
     "smoke:permissions": "node scripts/permissions-smoke.mjs",
@@ -25,6 +27,8 @@
     "@eslint/js": "^9.17.0",
     "@playwright/test": "^1.60.0",
     "eslint": "^9.17.0",
-    "globals": "^15.14.0"
+    "globals": "^15.14.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
   }
 }
