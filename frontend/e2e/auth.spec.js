@@ -1,62 +1,87 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
+import { loginAs, BASE } from './helpers.js';
 
 /**
- * Auth + navigation smoke tests.
+ * Auth smoke tests: login / logout / session expiry.
  *
  * Requires a running dev stack (docker compose up).
  * Run with: npm run test:e2e
  *
- * Uses the seeded credentials: admin / admin
+ * Seeded credentials: admin / admin  and  user / user
  */
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:5173';
-
 test.describe('Login page', () => {
-  test('renders login form without crashing', async ({ page }) => {
+  test('renders login form', async ({ page }) => {
     await page.goto(BASE);
     await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
-  test('shows error on invalid credentials', async ({ page }) => {
+  test('shows Slovak error on wrong credentials', async ({ page }) => {
     await page.goto(BASE);
-    await page.fill('input[type="text"], input[name="username"]', 'baduser');
-    await page.fill('input[type="password"]', 'badpass');
+    await page.fill('input[type="text"]', 'nobody');
+    await page.fill('input[type="password"]', 'wrongpass');
     await page.click('button[type="submit"]');
-    // Backend returns 401 — frontend should surface an error message.
-    await expect(page.locator('body')).toContainText(/.+/);
+    await expect(page.locator('body')).toContainText('Neplatné prihlasovacie údaje', { timeout: 8000 });
+  });
+
+  test('empty username shows client-side validation', async ({ page }) => {
+    await page.goto(BASE);
+    await page.fill('input[type="password"]', 'something');
+    await page.click('button[type="submit"]');
+    await expect(page.locator('body')).toContainText('Vyplňte všetky polia', { timeout: 4000 });
   });
 });
 
-test.describe('Authenticated navigation', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto(BASE);
-    await page.fill('input[type="text"], input[name="username"]', 'admin');
-    await page.fill('input[type="password"]', 'admin');
-    await page.click('button[type="submit"]');
-    // Wait for the app shell to appear after login.
-    await page.waitForTimeout(1500);
-  });
-
-  test('dashboard loads after login', async ({ page }) => {
-    // The main app content area should be visible.
-    await expect(page.locator('body')).not.toContainText('Login');
-  });
-
-  test('sidebar is present for admin user', async ({ page }) => {
-    // The sidebar nav should be rendered for authenticated admin users.
+test.describe('Successful login and app shell', () => {
+  test('admin login lands on dashboard with sidebar', async ({ page }) => {
+    await loginAs(page, 'admin', 'admin');
     const nav = page.locator('nav, [role="navigation"]');
     await expect(nav.first()).toBeVisible();
+    await expect(page.locator('body')).toContainText('Práce');
   });
 
-  test('unauthenticated direct navigation redirects to login', async ({ page }) => {
-    // Clear auth state and try to access the app.
+  test('logout button is visible after login', async ({ page }) => {
+    await loginAs(page, 'admin', 'admin');
+    await expect(page.locator('[title="Odhlásiť sa"]')).toBeVisible();
+  });
+});
+
+test.describe('Logout', () => {
+  test('clicking logout returns to login form', async ({ page }) => {
+    await loginAs(page, 'admin', 'admin');
+    await page.click('[title="Odhlásiť sa"]');
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 8000 });
+  });
+});
+
+test.describe('Session expiry', () => {
+  test('auth-expired event shows login form without page reload', async ({ page }) => {
+    await loginAs(page, 'admin', 'admin');
     await page.evaluate(() => {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('savedUser');
+      window.dispatchEvent(new CustomEvent('molaris-auth-expired'));
+    });
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 6000 });
+  });
+
+  test('clearing saved user and reloading shows login form', async ({ page }) => {
+    await loginAs(page, 'admin', 'admin');
+    // Auth tokens are httpOnly cookies (not cleared from JS), but the app shell
+    // gates rendering on the presence of 'molaris.user' in localStorage.
+    // Clearing it simulates the user never being recognised.
+    await page.evaluate(() => {
+      localStorage.removeItem('molaris.user');
     });
     await page.reload();
-    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 8000 });
+  });
+
+  test('navigating to app URL with no saved user shows login form', async ({ page }) => {
+    // Fresh page with no login — the app must not render the shell.
+    // (Cookies may still exist from a previous test; what matters is that the
+    // React app reads 'molaris.user' to hydrate state, not the cookie directly.)
+    await page.goto(BASE);
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 8000 });
   });
 });
