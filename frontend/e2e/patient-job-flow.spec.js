@@ -25,10 +25,15 @@ test.describe('Patient creation via UI', () => {
     await page.getByText('Pridať pacienta').click();
     await page.waitForTimeout(400);
 
-    // Each test run uses a unique timestamp suffix to avoid the per-lab
-    // unique constraint on birth_number.
+    // Unique, syntactically valid rodné číslo (YYMMDD/XXXX) — using today's
+    // date as prefix so the format passes backend validation, and a
+    // timestamp-derived 4-digit serial so each run produces a distinct value.
     const suffix = Date.now();
-    const birthNum = `${suffix}`.slice(-10).padStart(10, '9');
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const birthNum = `${yy}${mm}${dd}/${String(suffix).slice(-4).padStart(4, '0')}`;
 
     await page.fill('input[name="first_name"]', `TestMeno${suffix}`);
     await page.fill('input[name="last_name"]', `TestPriezvisko${suffix}`);

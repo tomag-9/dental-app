@@ -48,7 +48,8 @@ test.describe('Invoice lifecycle', () => {
     await page.waitForTimeout(500);
 
     // 3. Fill the invoice form — clinic select + job IDs text field
-    await page.locator('select[name="clinic_id"]').selectOption({ index: 0 });
+    // Select the specific clinic by its ID to avoid picking the placeholder (value="")
+    await page.locator('select[name="clinic_id"]').selectOption(String(setupResult.clinicId));
     await page.fill('input[name="job_ids"]', String(setupResult.jobId));
     await page.getByText('Vytvoriť faktúru').click();
 

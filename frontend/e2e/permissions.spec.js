@@ -64,8 +64,8 @@ test.describe('User role — restricted access', () => {
     // Not on the Permissions page — the role matrix should be absent
     await expect(page.getByText('Oprávnenia').first()).not.toBeVisible();
     // On the Dashboard — which always renders a time-of-day greeting:
-    // "Dobré ráno" / "Dobrý deň" / "Dobrý večer" / "Dobrý noc"
-    await expect(page.locator('body')).toContainText(/Dobr(ý|é)/, { timeout: 4000 });
+    // "Dobré ráno" / "Dobrý deň" / "Dobrý večer" / "Dobrú noc"
+    await expect(page.locator('body')).toContainText(/Dobr(ý|é|ú)/, { timeout: 4000 });
   });
 
   test('user does not see Faktúry in sidebar', async ({ page }) => {

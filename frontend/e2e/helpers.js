@@ -5,7 +5,7 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:5173';
 
 export async function loginAs(page, username, password) {
   await page.goto(BASE);
-  await page.fill('input[type="text"]', username);
+  await page.locator('input[type="text"]').first().fill(username);
   await page.fill('input[type="password"]', password);
   await page.click('button[type="submit"]');
   await page.waitForSelector('[title="Odhlásiť sa"]', { timeout: 12000 });
