@@ -1,3 +1,4 @@
+/// <reference path="../api/globals.d.ts" />
 export function createUseWorkspace({ loadWorkspace, tokenKey }) {
   return function useWorkspace() {
     const [state, setState] = React.useState(window.__MOLARIS_WORKSPACE || { loading: true, error: null });
