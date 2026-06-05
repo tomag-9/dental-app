@@ -17,13 +17,13 @@ export function normalizeJob(job) {
   const doctor = dd
     ? `${dd.title_before || ''} ${dd.first_name || ''} ${dd.last_name || ''}`.trim()
     : '';
-  const codes = /** @type {string[] | undefined} */ (/** @type {unknown} */ (job.procedure_codes));
+  const codes = Array.isArray(job.procedure_codes) ? job.procedure_codes : [];
   return {
     id: job.id,
     patient,
     clinic,
     doctor: doctor || 'Bez lekára',
-    type: job.description || (codes && codes.join(', ')) || 'Dentálna práca',
+    type: job.description || (codes.length ? codes.join(', ') : '') || 'Dentálna práca',
     due: job.due_date ? new Date(job.due_date).toLocaleDateString('sk-SK') : 'Bez termínu',
     status: job.status,
     raw: job,

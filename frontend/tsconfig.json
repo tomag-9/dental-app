@@ -12,5 +12,5 @@
     "allowImportingTsExtensions": true
   },
   "include": ["src/api/**/*.js", "src/api/**/*.d.ts"],
-  "exclude": ["node_modules", "src/hooks/useWorkspace.js"]
+  "exclude": ["node_modules"]
 }
