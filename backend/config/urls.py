@@ -73,13 +73,15 @@ urlpatterns = [
         name="swagger-ui",
     ),
     # ------------------------------------------------------------------
-    # v1 — canonical versioned routes
-    # ------------------------------------------------------------------
-    path("api/v1/", include(_versioned_patterns)),
-    # ------------------------------------------------------------------
     # DEPRECATED — unversioned aliases kept for backward compatibility.
-    # New clients should use /api/v1/... equivalents above.
+    # New clients should use /api/v1/... equivalents below.
     # ------------------------------------------------------------------
     path("api/", include(_versioned_patterns)),
     path("api/", include(root_router.urls)),
+    # ------------------------------------------------------------------
+    # v1 — canonical versioned routes (registered last so reverse() returns
+    # /api/v1/... paths; Django builds _reverse_dict in reverse order so
+    # the last-registered name wins the reverse lookup).
+    # ------------------------------------------------------------------
+    path("api/v1/", include(_versioned_patterns)),
 ]
