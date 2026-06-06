@@ -16,26 +16,21 @@ function Technicians({ onNavigate, onCreate }) {
   if (workspace.loading) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(LoadingState, { message: 'Načítavam technikov…' })
-        )
-      )
+      React.createElement(ScreenStatePanel, { state: 'loading', message: 'Načítavam technikov…' })
     );
   }
 
   if (workspace.error) {
+    const permissionDenied = isPermissionDeniedError(workspace.error);
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(ErrorState, {
-            title: 'Nepodarilo sa načítať technikov',
-            message: workspace.error,
-            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
-          })
-        )
-      )
+      React.createElement(ScreenStatePanel, {
+        state: permissionDenied ? 'permission' : 'error',
+        title: 'Nepodarilo sa načítať technikov',
+        description: 'Na zobrazenie technikov nemáte oprávnenie.',
+        error: workspace.error,
+        onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+      })
     );
   }
 

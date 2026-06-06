@@ -26,26 +26,21 @@ function Finance({ onNavigate }) {
   if (workspace.loading) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(LoadingState, { message: 'Načítavam finančné dáta…' })
-        )
-      )
+      React.createElement(ScreenStatePanel, { state: 'loading', message: 'Načítavam finančné dáta…' })
     );
   }
 
   if (workspace.error) {
+    const permissionDenied = isPermissionDeniedError(workspace.error);
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(ErrorState, {
-            title: 'Nepodarilo sa načítať finančné dáta',
-            message: workspace.error,
-            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
-          })
-        )
-      )
+      React.createElement(ScreenStatePanel, {
+        state: permissionDenied ? 'permission' : 'error',
+        title: 'Nepodarilo sa načítať finančné dáta',
+        description: 'Na zobrazenie finančného prehľadu nemáte oprávnenie.',
+        error: workspace.error,
+        onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+      })
     );
   }
 

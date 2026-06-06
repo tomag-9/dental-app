@@ -45,26 +45,21 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   if (workspace.loading && !remoteJobs) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(LoadingState, { message: 'Načítavam práce…' })
-        )
-      )
+      React.createElement(ScreenStatePanel, { state: 'loading', message: 'Načítavam práce…' })
     );
   }
 
   if (workspace.error && !remoteJobs) {
+    const permissionDenied = isPermissionDeniedError(workspace.error);
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader,
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(ErrorState, {
-            title: 'Nepodarilo sa načítať práce',
-            message: workspace.error,
-            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
-          })
-        )
-      )
+      React.createElement(ScreenStatePanel, {
+        state: permissionDenied ? 'permission' : 'error',
+        title: 'Nepodarilo sa načítať práce',
+        description: 'Na zobrazenie prác nemáte oprávnenie.',
+        error: workspace.error,
+        onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+      })
     );
   }
 

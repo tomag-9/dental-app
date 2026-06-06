@@ -41,37 +41,32 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
   if (workspace.loading && !workspacePatient) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader('Pacient', 'Načítavam detail pacienta.'),
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(LoadingState, { message: 'Načítavam pacienta…' })
-        )
-      )
+      React.createElement(ScreenStatePanel, { state: 'loading', message: 'Načítavam pacienta…' })
     );
   }
 
   if (workspace.error && !workspacePatient) {
+    const permissionDenied = isPermissionDeniedError(workspace.error);
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-      pageHeader('Pacient', 'Detail pacienta sa nepodarilo načítať.'),
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(ErrorState, {
-            title: 'Nepodarilo sa načítať pacienta',
-            message: workspace.error,
-            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
-          })
-        )
-      )
+      pageHeader('Pacient', permissionDenied ? 'Na tohto pacienta nemáte oprávnenie.' : 'Detail pacienta sa nepodarilo načítať.'),
+      React.createElement(ScreenStatePanel, {
+        state: permissionDenied ? 'permission' : 'error',
+        title: 'Nepodarilo sa načítať pacienta',
+        description: 'Na zobrazenie detailu pacienta nemáte oprávnenie.',
+        error: workspace.error,
+        onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+      })
     );
   }
 
   if (!workspacePatient) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       pageHeader('Pacient nenájdený', 'V API sa nenašla karta pacienta pre tento identifikátor.'),
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(EmptyState, { title: 'Pacient nenájdený', description: 'Skontrolujte výber pacienta alebo sa vráťte na zoznam.' })
-        )
-      )
+      React.createElement(ScreenStatePanel, {
+        state: 'empty',
+        title: 'Pacient nenájdený',
+        description: 'Skontrolujte výber pacienta alebo sa vráťte na zoznam.',
+      })
     );
   }
 
