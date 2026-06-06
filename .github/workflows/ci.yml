@@ -29,8 +29,17 @@ jobs:
     - uses: actions/checkout@v4
       with:
         clean: false
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build backend image
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
+      uses: docker/build-push-action@v6
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        load: true
+        tags: local/dental-backend-ci:latest
+        cache-from: type=gha,scope=dental-backend-ci
+        cache-to: type=gha,scope=dental-backend-ci,mode=max
     - name: Run ruff
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
@@ -56,10 +65,24 @@ jobs:
     - uses: actions/checkout@v4
       with:
         clean: false
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build backend image
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build backend
+      uses: docker/build-push-action@v6
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        load: true
+        tags: local/dental-backend-ci:latest
+        cache-from: type=gha,scope=dental-backend-ci
+        cache-to: type=gha,scope=dental-backend-ci,mode=max
     - name: Check for missing migrations
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --no-deps --rm backend python manage.py makemigrations --check --dry-run
+    - name: Check OpenAPI schema baseline
+      run: |
+        docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --no-deps --rm backend \
+          python manage.py generateschema > /tmp/openapi-current.yaml
+        diff -u doc/openapi-baseline.yaml /tmp/openapi-current.yaml
     - name: Run tests with coverage
       run: |
         docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm backend \
@@ -89,8 +112,18 @@ jobs:
     - uses: actions/checkout@v4
       with:
         clean: false
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     - name: Build frontend image
-      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml build frontend
+      uses: docker/build-push-action@v6
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        target: dev
+        load: true
+        tags: local/dental-frontend-ci:latest
+        cache-from: type=gha,scope=dental-frontend-ci
+        cache-to: type=gha,scope=dental-frontend-ci,mode=max
     - name: Run frontend lint
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build

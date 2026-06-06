@@ -24,6 +24,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Local command compatibility shims that intentionally override third-party commands.
+    "apps.core",
     # Third party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
@@ -31,7 +33,6 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "django_filters",
     # Local apps
-    "apps.core",
     "apps.crm",
     "apps.jobs",
     "apps.finance",

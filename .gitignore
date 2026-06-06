@@ -32,7 +32,9 @@ backend/venv/
 .env.*
 env/*.env
 !env/*.env.example
-/doc
+/doc/*
+!/doc/
+!/doc/openapi-baseline.yaml
 
 # Misc
 instance/
