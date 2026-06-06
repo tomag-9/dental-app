@@ -5,7 +5,8 @@ from decimal import Decimal
 from django.db import connection, transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
-from rest_framework import permissions, status, viewsets
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -330,6 +331,38 @@ class CsrfView(APIView):
         from django.middleware.csrf import get_token
 
         return Response({"csrfToken": get_token(request)})
+
+
+class HealthCheckResponseSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=("ok", "unhealthy"))
+    checks = serializers.DictField(child=serializers.ChoiceField(choices=("ok", "error")))
+
+
+class HealthCheckView(APIView):
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        responses={
+            200: HealthCheckResponseSerializer,
+            503: OpenApiResponse(
+                response=HealthCheckResponseSerializer,
+                description="Database connectivity check failed.",
+            ),
+        }
+    )
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        except Exception:
+            return Response(
+                {"status": "unhealthy", "checks": {"database": "error"}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({"status": "ok", "checks": {"database": "ok"}})
 
 
 class SystemHealthView(APIView):

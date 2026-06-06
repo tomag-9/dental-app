@@ -2707,6 +2707,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
+  /api/health/:
+    get:
+      operationId: health_retrieve
+      tags:
+      - health
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+          description: Database connectivity check failed.
   /api/inventory/warehouse/:
     get:
       operationId: inventory_warehouse_list
@@ -9491,6 +9511,32 @@ components:
         * `delivery` - Delivery
         * `deadline` - Deadline
         * `other` - Other
+    HealthCheckResponse:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthCheckResponseStatusEnum'
+        checks:
+          type: object
+          additionalProperties:
+            enum:
+            - ok
+            - error
+            type: string
+            description: |-
+              * `ok` - ok
+              * `error` - error
+      required:
+      - checks
+      - status
+    HealthCheckResponseStatusEnum:
+      enum:
+      - ok
+      - unhealthy
+      type: string
+      description: |-
+        * `ok` - ok
+        * `unhealthy` - unhealthy
     Invoice:
       type: object
       properties:
