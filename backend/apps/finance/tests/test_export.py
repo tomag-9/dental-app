@@ -52,7 +52,8 @@ class InvoiceCSVExportTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = resp.content.decode("utf-8")
-        self.assertIn("number", content)
+        self.assertIn("Číslo,Stav,Klinika", content)
+        self.assertIn("Zaplatená", content)
         self.assertIn("EXP-001", content)
         self.assertIn("EXP-002", content)
 
@@ -86,8 +87,8 @@ class InvoiceCSVExportTests(APITestCase):
         wb = openpyxl.load_workbook(BytesIO(resp.content))
         ws = wb.active
         header = [cell.value for cell in ws[1]]
-        self.assertIn("number", header)
-        numbers = [ws.cell(row=r, column=header.index("number") + 1).value for r in range(2, ws.max_row + 1)]
+        self.assertIn("Číslo", header)
+        numbers = [ws.cell(row=r, column=header.index("Číslo") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("EXP-001", numbers)
         self.assertIn("EXP-002", numbers)
 

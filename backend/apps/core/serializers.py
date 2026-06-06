@@ -173,7 +173,7 @@ class TeamInvitationSerializer(serializers.ModelSerializer):
             if self.instance:
                 pending = pending.exclude(pk=self.instance.pk)
             if pending.exists():
-                raise serializers.ValidationError({"email": "Pending invitation already exists for this email."})
+                raise serializers.ValidationError({"email": "Pre tento e-mail už existuje čakajúca pozvánka."})
         return attrs
 
 

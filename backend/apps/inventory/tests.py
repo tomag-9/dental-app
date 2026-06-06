@@ -611,9 +611,9 @@ class InventoryXlsxExportTests(APITestCase):
         wb = openpyxl.load_workbook(BytesIO(resp.content))
         ws = wb.active
         header = [cell.value for cell in ws[1]]
-        self.assertIn("name", header)
-        self.assertIn("sku", header)
-        names = [ws.cell(row=r, column=header.index("name") + 1).value for r in range(2, ws.max_row + 1)]
+        self.assertIn("Názov", header)
+        self.assertIn("SKU", header)
+        names = [ws.cell(row=r, column=header.index("Názov") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("Zirkón blok", names)
         self.assertIn("Separačný lak", names)
 

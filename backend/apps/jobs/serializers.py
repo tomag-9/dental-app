@@ -94,17 +94,17 @@ class JobItemSerializer(serializers.ModelSerializer):
         if value and normalize_tooth_scope(value):
             return value
         if value and not validate_tooth_range(value):
-            raise serializers.ValidationError("Use canonical FDI tooth notation, for example 26 or 45-47.")
+            raise serializers.ValidationError("Použite štandardné FDI označenie zuba, napríklad 26 alebo 45-47.")
         return value
 
     def validate_tooth_scope(self, value):
         if value and not normalize_tooth_scope(value):
-            raise serializers.ValidationError("Use A, U, L, Q1, Q2, Q3 or Q4 for tooth scope.")
+            raise serializers.ValidationError("Pre rozsah zubov použite A, U, L, Q1, Q2, Q3 alebo Q4.")
         return normalize_tooth_scope(value) or None
 
     def validate_bridge_span(self, value):
         if value and not validate_bridge_span(value):
-            raise serializers.ValidationError("Bridge span must be a same-arch FDI range covering at least two teeth.")
+            raise serializers.ValidationError("Rozsah mostíka musí byť FDI rozsah v jednom oblúku aspoň cez dva zuby.")
         return value
 
     def validate(self, data):
@@ -120,13 +120,13 @@ class JobItemSerializer(serializers.ModelSerializer):
             tooth = None
 
         if procedure_category == "bridge" and not bridge_span:
-            raise serializers.ValidationError({"bridge_span": "Bridge items require a bridge span."})
+            raise serializers.ValidationError({"bridge_span": "Položky mostíka vyžadujú zadaný rozsah mostíka."})
 
         if bridge_span and tooth:
             bridge_teeth = set(expand_fdi_range(bridge_span))
             item_teeth = set(expand_fdi_range(tooth))
             if item_teeth and not item_teeth.issubset(bridge_teeth):
-                raise serializers.ValidationError({"tooth": "Tooth must be within the bridge span."})
+                raise serializers.ValidationError({"tooth": "Zub musí byť v rozsahu mostíka."})
 
         return data
 

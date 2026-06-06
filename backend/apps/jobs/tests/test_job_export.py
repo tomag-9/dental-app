@@ -41,7 +41,8 @@ class JobExportCsvTests(APITestCase):
         content = (
             b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
         )
-        self.assertIn("id,status,patient", content)
+        self.assertIn("ID,Stav,Pacient", content)
+        self.assertIn("Dokončená", content)
 
     def test_export_contains_all_lab_jobs(self):
         self.client.force_authenticate(user=self.admin)
@@ -95,8 +96,8 @@ class JobExportCsvTests(APITestCase):
         wb = openpyxl.load_workbook(BytesIO(resp.content))
         ws = wb.active
         header = [cell.value for cell in ws[1]]
-        self.assertIn("id", header)
-        self.assertIn("status", header)
+        self.assertIn("ID", header)
+        self.assertIn("Stav", header)
         self.assertGreaterEqual(ws.max_row, 2)
 
     @override_settings(EXPORT_MAX_ROWS=1)

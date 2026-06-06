@@ -189,7 +189,7 @@ class GlobalSearchView(APIView):
             jobs_qs = Job.objects.select_related("patient", "clinic").filter(lab_id=lab_id)
             invoices_qs = Invoice.objects.select_related("clinic").filter(lab_id=lab_id)
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         results = _static_search_results(query, user)
 
@@ -491,7 +491,7 @@ class DashboardStatsView(APIView):
             jobs_qs = Job.objects.filter(lab_id=lab_id).select_related("patient").order_by("-created_at")
             invoices_qs = Invoice.objects.filter(lab_id=lab_id).select_related("clinic").order_by("-created_at")
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         active_statuses = ("new", "in_progress")
         done_statuses = (
@@ -672,7 +672,7 @@ class DashboardChartDataView(APIView):
             invoices_qs = Invoice.objects.filter(lab_id=lab_id)
             jobs_qs = Job.objects.filter(lab_id=lab_id)
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         today = timezone.localdate()
         days = int(request.query_params.get("days", 30))
@@ -846,7 +846,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
 
     def _assert_can_manage_invitations(self, user):
         if not is_admin_or_superadmin(user):
-            raise PermissionDenied("Only admin or superadmin can manage invitations")
+            raise PermissionDenied("Pozvánky môže spravovať iba administrátor alebo superadministrátor")
 
     def create(self, request, *args, **kwargs):
         self._assert_can_manage_invitations(request.user)
@@ -1038,7 +1038,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def _assert_can_manage_users(self, requester):
         if not is_admin_or_superadmin(requester):
-            raise PermissionDenied("Only admin or superadmin can manage users")
+            raise PermissionDenied("Používateľov môže spravovať iba administrátor alebo superadministrátor")
 
     def _assert_in_scope_or_superadmin(self, requester, target):
         if is_superadmin(requester):
@@ -1259,9 +1259,9 @@ class UserViewSet(viewsets.ModelViewSet):
         target_role = data.get("role")
         if target_role and target_role != user.role:
             if target_role == "superadmin" and not is_superadmin(user):
-                raise PermissionDenied("Only superadmin can assign superadmin role")
+                raise PermissionDenied("Rolu superadministrátora môže priradiť iba superadministrátor")
             if target_role == "admin" and user.role not in ("admin", "superadmin"):
-                raise PermissionDenied("Only admin/superadmin can assign admin role")
+                raise PermissionDenied("Rolu administrátora môže priradiť iba administrátor alebo superadministrátor")
             user.role = target_role
 
         if data.get("password"):
@@ -1449,14 +1449,14 @@ class LabApiKeyViewSet(viewsets.ViewSet):
 
     def _assert_admin(self, user):
         if not is_admin_or_superadmin(user):
-            raise PermissionDenied("Only admin or superadmin can manage API keys")
+            raise PermissionDenied("API kľúče môže spravovať iba administrátor alebo superadministrátor")
 
     def _get_lab(self, user):
         if is_superadmin(user):
             return None
         lab = getattr(user, "lab", None)
         if not lab:
-            raise PermissionDenied("No lab associated")
+            raise PermissionDenied("Používateľ nemá priradené laboratórium")
         return lab
 
     def list(self, request):

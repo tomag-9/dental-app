@@ -17,6 +17,7 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
+from apps.core.localization import format_sk_currency
 
 from .models import WarehouseItem
 from .serializers import WarehouseItemImportSerializer, WarehouseItemSerializer
@@ -77,7 +78,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         user = request.user
         if not is_superadmin(user) and not getattr(user, "lab_id", None):
             return Response(
-                {"detail": "No lab associated with user"},
+                {"detail": "Používateľ nemá priradené laboratórium"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -102,7 +103,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 "out_of_stock_count": qs.filter(quantity__lte=0).count(),
                 "categories": [
                     {
-                        "category": row["category"] or "Uncategorized",
+                        "category": row["category"] or "Nezaradené",
                         "count": row["count"],
                     }
                     for row in category_rows
@@ -113,15 +114,15 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
         header = [
-            "name",
-            "sku",
-            "quantity",
-            "unit",
-            "category",
-            "supplier",
-            "cost_price",
-            "location",
-            "notes",
+            "Názov",
+            "SKU",
+            "Množstvo",
+            "Jednotka",
+            "Kategória",
+            "Dodávateľ",
+            "Nákupná cena",
+            "Umiestnenie",
+            "Poznámky",
         ]
         rows = [
             [
@@ -131,7 +132,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 item.unit or "",
                 item.category or "",
                 item.supplier or "",
-                item.cost_price if item.cost_price is not None else "",
+                format_sk_currency(item.cost_price),
                 item.location or "",
                 item.notes or "",
             ]
@@ -188,7 +189,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         lab = self._resolve_import_lab(request)
         if lab is None:
             return Response(
-                {"detail": "No lab associated with user"},
+                {"detail": "Používateľ nemá priradené laboratórium"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -249,7 +250,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         lab = self._resolve_import_lab(request)
         if lab is None:
             return Response(
-                {"detail": "No lab associated with user"},
+                {"detail": "Používateľ nemá priradené laboratórium"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -322,14 +323,14 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             lab = user.lab
         else:
             return Response(
-                {"detail": "No lab associated with user"},
+                {"detail": "Používateľ nemá priradené laboratórium"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         csv_file = request.FILES.get("file")
         if not csv_file:
             return Response(
-                {"detail": "No file provided. Send a CSV file in the 'file' field."},
+                {"detail": "Chýba súbor. Pošlite CSV súbor v poli 'file'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -344,7 +345,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         reader = csv.DictReader(text.splitlines())
         if not reader.fieldnames:
             return Response(
-                {"detail": "CSV file is empty or missing a header row."},
+                {"detail": "CSV súbor je prázdny alebo mu chýba riadok hlavičky."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -357,7 +358,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         for idx, row in enumerate(reader):
             if idx >= _MAX_ROWS:
                 return Response(
-                    {"detail": f"CSV exceeds the {_MAX_ROWS}-row limit. Split into smaller files."},
+                    {"detail": f"CSV prekračuje limit {_MAX_ROWS} riadkov. Rozdeľte ho na menšie súbory."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

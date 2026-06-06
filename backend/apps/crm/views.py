@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.core.access import TenantScopedQuerysetMixin, is_admin_or_superadmin
 from apps.core.exports import limited_export_queryset
+from apps.core.localization import format_sk_date
 from apps.jobs.models import Job
 
 from .models import Clinic, Doctor, Patient
@@ -48,7 +49,9 @@ def _csv_response(header, rows, filename):
 
 def _assert_crm_write(user):
     if not is_admin_or_superadmin(user):
-        raise PermissionDenied("Only admin or superadmin can create, edit or delete CRM records.")
+        raise PermissionDenied(
+            "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+        )
 
 
 class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -82,7 +85,7 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
-        header = ["id", "name", "ico", "dic", "address", "bank_details", "created_at"]
+        header = ["ID", "Názov", "IČO", "DIČ", "Adresa", "Bankové údaje", "Vytvorené"]
         rows = [
             [
                 c.id,
@@ -91,7 +94,7 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 c.dic or "",
                 c.address or "",
                 c.bank_details or "",
-                c.created_at.date().isoformat() if c.created_at else "",
+                format_sk_date(c.created_at),
             ]
             for c in limited_export_queryset(self.get_queryset().order_by("name"), "clinics")
         ]
@@ -131,13 +134,13 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def export_csv(self, request):
         _assert_crm_write(request.user)
         header = [
-            "id",
-            "title_before",
-            "first_name",
-            "last_name",
-            "title_after",
-            "clinic_name",
-            "created_at",
+            "ID",
+            "Titul pred menom",
+            "Meno",
+            "Priezvisko",
+            "Titul za menom",
+            "Klinika",
+            "Vytvorené",
         ]
         rows = [
             [
@@ -147,7 +150,7 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 d.last_name or "",
                 d.title_after or "",
                 d.clinic.name if d.clinic else "",
-                d.created_at.date().isoformat() if d.created_at else "",
+                format_sk_date(d.created_at),
             ]
             for d in limited_export_queryset(
                 self.get_queryset().select_related("clinic").order_by("last_name", "first_name"),
@@ -260,14 +263,14 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def export_csv(self, request):
         _assert_crm_write(request.user)
         header = [
-            "id",
-            "first_name",
-            "last_name",
-            "birth_number",
-            "address",
-            "phone",
-            "email",
-            "created_at",
+            "ID",
+            "Meno",
+            "Priezvisko",
+            "Rodné číslo",
+            "Adresa",
+            "Telefón",
+            "E-mail",
+            "Vytvorené",
         ]
         rows = [
             [
@@ -278,7 +281,7 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 p.address or "",
                 p.phone or "",
                 p.email or "",
-                p.created_at.date().isoformat() if p.created_at else "",
+                format_sk_date(p.created_at),
             ]
             for p in limited_export_queryset(self.get_queryset().order_by("last_name", "first_name"), "patients")
         ]

@@ -1178,7 +1178,7 @@ class CrmCsvExportTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = resp.content.decode("utf-8")
-        self.assertIn("first_name", content)
+        self.assertIn("Meno", content)
         self.assertIn("Novakova", content)
 
     def test_user_cannot_export_patients_csv(self):
@@ -1192,7 +1192,7 @@ class CrmCsvExportTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = resp.content.decode("utf-8")
-        self.assertIn("name", content)
+        self.assertIn("Názov", content)
         self.assertIn("Export Clinic", content)
 
     def test_unauthenticated_export_denied(self):
@@ -1250,7 +1250,7 @@ class DoctorCsvExportTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = resp.content.decode("utf-8")
-        self.assertIn("last_name", content)
+        self.assertIn("Priezvisko", content)
         self.assertIn("Nováková", content)
         self.assertIn("Stomatológia", content)
 

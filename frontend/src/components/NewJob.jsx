@@ -802,7 +802,7 @@ function StepSchedule({ data, set }) {
     { value: 'low',    label: 'Nízka',  desc: 'Štandardná fronta',     color: '#8a9490', bg: '#f0ede5' },
     { value: 'normal', label: 'Normálna', desc: 'Štandardný termín',   color: '#0d7c6b', bg: '#d4f0eb' },
     { value: 'high',   label: 'Vysoká', desc: 'Urgentné — prioritne', color: '#d97706', bg: '#fef3c7' },
-    { value: 'urgent', label: 'Urgent', desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
+    { value: 'urgent', label: 'Urgentná', desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
   ];
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
@@ -840,7 +840,7 @@ function StepSchedule({ data, set }) {
 }
 
 function StepSummary({ data, fmt, total }) {
-  const priLabel = { low: 'Nízka', normal: 'Normálna', high: 'Vysoká', urgent: 'Urgent' };
+  const priLabel = { low: 'Nízka', normal: 'Normálna', high: 'Vysoká', urgent: 'Urgentná' };
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
     React.createElement('div', { style: { padding: '12px 14px', background: '#d4f0eb', border: '1px solid #b0ddd5', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 } },
       React.createElement(Icon, { name: 'checkCircle', size: 18, color: '#0d7c6b' }),

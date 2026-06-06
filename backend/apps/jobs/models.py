@@ -20,19 +20,19 @@ class Technician(models.Model):
 
 class Job(models.Model):
     STATUS_CHOICES = (
-        ("new", "New"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-        ("cancelled", "Cancelled"),
-        ("finished_factured", "Finished – Factured"),
-        ("finished_unfactured", "Finished – Unfactured"),
-        ("closed", "Closed"),
+        ("new", "Nová"),
+        ("in_progress", "V riešení"),
+        ("completed", "Dokončená"),
+        ("cancelled", "Zrušená"),
+        ("finished_factured", "Dokončená/fakturovaná"),
+        ("finished_unfactured", "Dokončená/nevyfakturovaná"),
+        ("closed", "Uzavretá"),
     )
     PRIORITY_CHOICES = (
-        ("low", "Low"),
-        ("normal", "Normal"),
-        ("high", "High"),
-        ("urgent", "Urgent"),
+        ("low", "Nízka"),
+        ("normal", "Bežná"),
+        ("high", "Vysoká"),
+        ("urgent", "Urgentná"),
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="jobs")
@@ -87,28 +87,28 @@ class Job(models.Model):
 
 class JobItem(models.Model):
     PROCEDURE_CATEGORY_CHOICES = (
-        ("crown", "Crown"),
-        ("bridge", "Bridge"),
-        ("denture", "Denture"),
-        ("implant", "Implant"),
-        ("orthodontic", "Orthodontic"),
-        ("repair", "Repair"),
-        ("other", "Other"),
+        ("crown", "Korunka"),
+        ("bridge", "Mostík"),
+        ("denture", "Protéza"),
+        ("implant", "Implantát"),
+        ("orthodontic", "Ortodoncia"),
+        ("repair", "Oprava"),
+        ("other", "Iné"),
     )
     TOOTH_STATE_CHOICES = (
-        ("planned", "Planned"),
-        ("missing", "Missing"),
-        ("implant", "Implant"),
-        ("temporary", "Temporary"),
+        ("planned", "Plánované"),
+        ("missing", "Chýba"),
+        ("implant", "Implantát"),
+        ("temporary", "Dočasné"),
     )
     TOOTH_SCOPE_CHOICES = (
-        ("A", "All teeth"),
-        ("U", "Upper jaw"),
-        ("L", "Lower jaw"),
-        ("Q1", "Quadrant 1"),
-        ("Q2", "Quadrant 2"),
-        ("Q3", "Quadrant 3"),
-        ("Q4", "Quadrant 4"),
+        ("A", "Všetky zuby"),
+        ("U", "Horná čeľusť"),
+        ("L", "Dolná čeľusť"),
+        ("Q1", "Kvadrant 1"),
+        ("Q2", "Kvadrant 2"),
+        ("Q3", "Kvadrant 3"),
+        ("Q4", "Kvadrant 4"),
     )
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
@@ -213,11 +213,11 @@ class JobAttachment(models.Model):
 
 class CalendarEvent(models.Model):
     EVENT_TYPE_CHOICES = (
-        ("meeting", "Meeting"),
-        ("pickup", "Pickup"),
-        ("delivery", "Delivery"),
-        ("deadline", "Deadline"),
-        ("other", "Other"),
+        ("meeting", "Stretnutie"),
+        ("pickup", "Vyzdvihnutie"),
+        ("delivery", "Doručenie"),
+        ("deadline", "Termín"),
+        ("other", "Iné"),
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="calendar_events")

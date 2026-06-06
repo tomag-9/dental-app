@@ -20,6 +20,12 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
+from apps.core.localization import (
+    JOB_STATUS_LABELS,
+    PRIORITY_LABELS,
+    format_sk_currency,
+    format_sk_date,
+)
 from apps.core.models import AuditLog
 from apps.crm.models import Clinic, Patient
 from apps.crm.serializers import PatientSerializer
@@ -346,10 +352,10 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         """
         user = request.user
         if not is_superadmin(user) and not getattr(user, "lab_id", None):
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
         if not is_admin_or_superadmin(user):
             return Response(
-                {"detail": "Only admin or superadmin can create patients and jobs."},
+                {"detail": "Pacientov a práce môže vytvárať iba administrátor alebo superadministrátor."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         lab = user.lab if not is_superadmin(user) else None
@@ -363,7 +369,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         clinic = clinic_qs.first()
         if not clinic:
             return Response(
-                {"detail": "Clinic not found or out of scope"},
+                {"detail": "Klinika neexistuje alebo nie je v rozsahu vášho laboratória"},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if lab is None:
@@ -372,7 +378,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         patient_data = request.data.get("patient")
         if not patient_data:
             return Response(
-                {"detail": "patient data is required"},
+                {"detail": "Údaje pacienta sú povinné"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -478,16 +484,16 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         qs = self.get_queryset().select_related("patient", "clinic", "doctor", "technician")
 
         header = [
-            "id",
-            "status",
-            "patient",
-            "clinic",
-            "doctor",
-            "technician",
-            "due_date",
-            "priority",
-            "price",
-            "created_at",
+            "ID",
+            "Stav",
+            "Pacient",
+            "Klinika",
+            "Lekár",
+            "Technik",
+            "Termín",
+            "Priorita",
+            "Cena",
+            "Vytvorené",
         ]
         rows = []
         for job in limited_export_queryset(qs, "jobs"):
@@ -498,15 +504,15 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             rows.append(
                 [
                     job.id,
-                    job.status,
+                    JOB_STATUS_LABELS.get(job.status, job.status),
                     patient,
                     clinic,
                     doctor,
                     technician,
-                    str(job.due_date) if job.due_date else "",
-                    job.priority or "",
-                    str(job.price) if job.price is not None else "",
-                    job.created_at.strftime("%Y-%m-%d"),
+                    format_sk_date(job.due_date),
+                    PRIORITY_LABELS.get(job.priority, job.priority or ""),
+                    format_sk_currency(job.price),
+                    format_sk_date(job.created_at),
                 ]
             )
 

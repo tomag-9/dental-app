@@ -131,7 +131,7 @@ function JobHeader({ rawJob, workspaceJob, editMode, editFields, technicians, sa
               { value: 'low', label: 'Nízka' },
               { value: 'normal', label: 'Normálna' },
               { value: 'high', label: 'Vysoká' },
-              { value: 'urgent', label: 'Urgent' },
+              { value: 'urgent', label: 'Urgentná' },
             ],
           })
         ),

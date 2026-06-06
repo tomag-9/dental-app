@@ -61,7 +61,7 @@ class TenantScopedQuerysetMixin:
 
 def assert_lab_write_allowed(user):
     if not is_admin_or_superadmin(user):
-        raise PermissionDenied("Only admin or superadmin can update lab settings")
+        raise PermissionDenied("Nastavenia laboratória môže upravovať iba administrátor alebo superadministrátor")
 
 
 class IsAdminOrSuperadminPermission(permissions.BasePermission):

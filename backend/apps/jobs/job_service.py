@@ -175,7 +175,7 @@ def delete_job(job):
     Raises ``ValidationError`` if the job is closed or has linked invoice items.
     """
     if job.status == "closed" or job.invoice_items.exists():
-        raise ValidationError("Closed or invoiced jobs cannot be deleted")
+        raise ValidationError("Uzavreté alebo vyfakturované práce nie je možné vymazať")
     job.delete()
 
 

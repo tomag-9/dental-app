@@ -30,6 +30,11 @@ from apps.core.access import (
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
+from apps.core.localization import (
+    INVOICE_STATUS_LABELS,
+    format_sk_currency,
+    format_sk_date,
+)
 
 from . import invoice_service
 from . import services as finance_services
@@ -92,15 +97,15 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export(self, request):
         qs = self.get_queryset().order_by("code")
-        header = ["code", "description", "price", "category", "valid_from", "valid_to"]
+        header = ["Kód", "Popis", "Cena", "Kategória", "Platné od", "Platné do"]
         rows = [
             [
                 item.code,
                 item.description,
-                str(item.price),
+                format_sk_currency(item.price),
                 item.category or "",
-                str(item.valid_from) if item.valid_from else "",
-                str(item.valid_to) if item.valid_to else "",
+                format_sk_date(item.valid_from),
+                format_sk_date(item.valid_to),
             ]
             for item in limited_export_queryset(qs, "price-list")
         ]
@@ -229,8 +234,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
         if not recipient:
+            detail = "Chýba e-mail príjemcu. Zadajte 'email' v požiadavke alebo nastavte clinic contact_info.email."
             return Response(
-                {"detail": "No recipient email. Provide 'email' in request body or set clinic contact_info.email."},
+                {"detail": detail},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -243,7 +249,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             invoice_service.send_invoice_email(request.user, invoice, pdf_bytes, recipient)
         except Exception as exc:
             return Response(
-                {"detail": f"Email delivery failed: {exc}"},
+                {"detail": f"Odoslanie e-mailu zlyhalo: {exc}"},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         return Response({"sent_to": recipient, "invoice": invoice.number})
@@ -348,8 +354,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 break
             pdf.drawString(L, ty, str(item.description or "")[:60])
             pdf.drawRightString(120 * mm, ty, str(item.quantity))
-            pdf.drawRightString(148 * mm, ty, f"{Decimal(item.unit_price):.2f} EUR")
-            pdf.drawRightString(R, ty, f"{Decimal(item.line_total):.2f} EUR")
+            pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
+            pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
             ty -= 5 * mm
 
         hline(ty)
@@ -367,25 +373,25 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         ty -= 6 * mm
         pdf.setFont("Helvetica", 9)
         pdf.drawRightString(160 * mm, ty, "Medzisúčet:")
-        pdf.drawRightString(R, ty, f"{subtotal:.2f} EUR")
+        pdf.drawRightString(R, ty, format_sk_currency(subtotal))
         if discount > 0:
             ty -= 5 * mm
             pdf.drawRightString(160 * mm, ty, f"Zľava ({discount:.0f}%):")
             pdf.drawRightString(
                 R,
                 ty,
-                f"-{amounts['discount_amount']:.2f} EUR",
+                f"-{format_sk_currency(amounts['discount_amount'])}",
             )
             ty -= 5 * mm
             pdf.drawRightString(160 * mm, ty, "Základ DPH:")
-            pdf.drawRightString(R, ty, f"{amounts['taxable_amount']:.2f} EUR")
+            pdf.drawRightString(R, ty, format_sk_currency(amounts["taxable_amount"]))
         ty -= 5 * mm
         pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
-        pdf.drawRightString(R, ty, f"{vat_amount:.2f} EUR")
+        pdf.drawRightString(R, ty, format_sk_currency(vat_amount))
         ty -= 7 * mm
         pdf.setFont("Helvetica-Bold", 11)
         pdf.drawRightString(160 * mm, ty, "CELKOM:")
-        pdf.drawRightString(R, ty, f"{total:.2f} EUR")
+        pdf.drawRightString(R, ty, format_sk_currency(total))
 
         if lab.payment_method:
             ty -= 8 * mm
@@ -429,7 +435,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             clinic = invoice.clinic
             recipient = (clinic.contact_info or {}).get("email") if clinic else None
             if not recipient:
-                failed.append({"invoice": invoice.number, "reason": "No recipient email"})
+                failed.append({"invoice": invoice.number, "reason": "Chýba e-mail príjemcu"})
                 continue
 
             buffer = BytesIO()
@@ -480,27 +486,27 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         qs = qs.select_related("clinic", "lab").order_by("-created_at")
 
         header = [
-            "number",
-            "status",
-            "clinic",
-            "lab",
-            "total_amount",
-            "due_date",
-            "issued_at",
-            "paid_at",
-            "created_at",
+            "Číslo",
+            "Stav",
+            "Klinika",
+            "Laboratórium",
+            "Suma celkom",
+            "Dátum splatnosti",
+            "Dátum vystavenia",
+            "Dátum úhrady",
+            "Vytvorené",
         ]
         rows = [
             [
                 inv.number,
-                inv.status,
+                INVOICE_STATUS_LABELS.get(inv.status, inv.status),
                 inv.clinic.name,
                 inv.lab.name,
-                str(inv.total_amount),
-                str(inv.due_date) if inv.due_date else "",
-                inv.issued_at.strftime("%Y-%m-%d") if inv.issued_at else "",
-                inv.paid_at.strftime("%Y-%m-%d") if inv.paid_at else "",
-                inv.created_at.strftime("%Y-%m-%d"),
+                format_sk_currency(inv.total_amount),
+                format_sk_date(inv.due_date),
+                format_sk_date(inv.issued_at),
+                format_sk_date(inv.paid_at),
+                format_sk_date(inv.created_at),
             ]
             for inv in limited_export_queryset(qs, "invoices")
         ]
@@ -575,7 +581,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         user = request.user
         if not getattr(user, "lab_id", None):
             return Response(
-                {"detail": "No lab associated with user"},
+                {"detail": "Používateľ nemá priradené laboratórium"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -617,7 +623,7 @@ class FinanceStatsView(APIView):
         elif lab_id:
             qs = Invoice.objects.filter(lab_id=lab_id)
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
         pending_invoices = qs.filter(status="issued").count()
@@ -728,7 +734,7 @@ class ProcedureCatalogView(APIView):
         elif getattr(user, "lab_id", None):
             qs = PriceList.objects.filter(lab_id=user.lab_id)
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         from .models import PROCEDURE_CATEGORY_CHOICES
 
@@ -761,7 +767,7 @@ class ProcedureCatalogView(APIView):
             result.append(
                 {
                     "category": None,
-                    "label": "Uncategorized",
+                    "label": "Nezaradené",
                     "items": uncategorized,
                 }
             )
@@ -781,7 +787,7 @@ class InvoiceAgingView(APIView):
         elif getattr(user, "lab_id", None):
             qs = Invoice.objects.filter(status="issued", lab_id=user.lab_id)
         else:
-            return Response({"detail": "No lab associated"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
 
         today = timezone.localdate()
         buckets = {
