@@ -9,6 +9,7 @@ from apps.core.views import (
     AuditLogViewSet,
     DashboardStatsView,
     GlobalSearchView,
+    HealthCheckView,
     LabViewSet,
     NotificationViewSet,
     PermissionsView,
@@ -59,6 +60,7 @@ urlpatterns = [
     # ------------------------------------------------------------------
     # Swagger / OpenAPI schema — not versioned
     # ------------------------------------------------------------------
+    path("api/health/", HealthCheckView.as_view(), name="health"),
     path(
         "api/schema/",
         SpectacularAPIView.as_view(permission_classes=[IsAdminOrSuperadminPermission]),

@@ -19,7 +19,7 @@ class Command(BaseCommand):
 
         # Create Normal User
         if not User.objects.filter(username="user").exists():
-            user = User.objects.create_user("user", "user@example.com", "user")
+            User.objects.create_user("user", "user@example.com", "user")
             self.stdout.write(
                 self.style.SUCCESS('Test user "user" created (password: user)')
             )

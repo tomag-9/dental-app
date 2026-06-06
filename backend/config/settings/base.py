@@ -6,6 +6,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from pythonjsonlogger import jsonlogger
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-me")
@@ -46,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.RequestLogMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.ContentSecurityPolicyMiddleware",
@@ -211,3 +214,62 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "0") == "1"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentallab.sk")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
+
+
+class DefaultingJsonFormatter(jsonlogger.JsonFormatter):
+    """Add request fields as null/empty values when non-request logs omit them."""
+
+    DEFAULT_FIELDS = {
+        "request_id": None,
+        "method": None,
+        "path": None,
+        "status_code": None,
+        "duration_ms": None,
+        "user_id": None,
+        "username": "",
+        "lab_id": None,
+        "remote_addr": "",
+    }
+
+    def add_fields(self, log_record, record, message_dict):
+        super().add_fields(log_record, record, message_dict)
+        for key, value in self.DEFAULT_FIELDS.items():
+            log_record.setdefault(key, value)
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "config.settings.base.DefaultingJsonFormatter",
+            "format": (
+                "%(asctime)s %(levelname)s %(name)s %(message)s "
+                "%(request_id)s %(method)s %(path)s %(status_code)s "
+                "%(duration_ms)s %(user_id)s %(username)s %(lab_id)s %(remote_addr)s"
+            ),
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+        }
+    },
+    "loggers": {
+        "apps.core.request": {
+            "handlers": ["console"],
+            "level": os.environ.get("REQUEST_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO"),
+    },
+}

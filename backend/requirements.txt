@@ -6,6 +6,7 @@ gunicorn
 uvicorn
 django-filter
 drf-spectacular
+python-json-logger
 reportlab
 weasyprint
 Markdown
