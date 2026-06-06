@@ -3,37 +3,33 @@
 function Patients({ onNavigate, onOpenPatient, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const pageHeader = (actionsDisabled) => React.createElement(PageHeader, {
+    title: 'Pacienti',
+    subtitle: 'Správa kariet pacientov.',
+    actions: [
+      React.createElement(Button, { key: 'imp', variant: 'outline', disabled: actionsDisabled }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
+      React.createElement(Button, { key: 'n', onClick: onCreate, disabled: actionsDisabled }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
+    ]
+  });
 
   if (workspace.loading) {
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-      React.createElement(PageHeader, {
-        title: 'Pacienti',
-        subtitle: 'Správa kariet pacientov.',
-        actions: [
-          React.createElement(Button, { key: 'imp', variant: 'outline', disabled: true }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
-          React.createElement(Button, { key: 'n', disabled: true }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
-        ]
-      }),
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(LoadingState, { message: 'Načítavam pacientov…' })
-        )
-      )
+      pageHeader(true),
+      React.createElement(ScreenStatePanel, { state: 'loading', message: 'Načítavam pacientov…' })
     );
   }
 
   if (workspace.error) {
+    const permissionDenied = isPermissionDeniedError(workspace.error);
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-      React.createElement(PageHeader, { title: 'Pacienti', subtitle: 'Správa kariet pacientov.' }),
-      React.createElement(Card, null,
-        React.createElement(CardContent, null,
-          React.createElement(ErrorState, {
-            title: 'Nepodarilo sa načítať pacientov',
-            message: workspace.error,
-            onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
-          })
-        )
-      )
+      pageHeader(true),
+      React.createElement(ScreenStatePanel, {
+        state: permissionDenied ? 'permission' : 'error',
+        title: 'Nepodarilo sa načítať pacientov',
+        description: 'Na zobrazenie pacientov nemáte oprávnenie.',
+        error: workspace.error,
+        onRetry: () => window.dispatchEvent(new Event('molaris-workspace-refresh')),
+      })
     );
   }
 
@@ -46,14 +42,7 @@ function Patients({ onNavigate, onOpenPatient, onCreate }) {
   const initials = p => `${(p.first || '?')[0]}${(p.last || '?')[0]}`;
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
-    React.createElement(PageHeader, {
-      title: 'Pacienti',
-      subtitle: 'Správa kariet pacientov.',
-      actions: [
-        React.createElement(Button, { key: 'imp', variant: 'outline' }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
-        React.createElement(Button, { key: 'n', onClick: onCreate }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
-      ]
-    }),
+    pageHeader(false),
 
     React.createElement(Card, null,
       React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },

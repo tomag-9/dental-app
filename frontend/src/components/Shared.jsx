@@ -178,6 +178,44 @@ function ErrorState({ title = 'Chyba', message = 'Niečo sa pokazilo.', onRetry 
   );
 }
 
+function InfoCell({ label, value }) {
+  return React.createElement('div', { style: { padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #ece7dc' } },
+    React.createElement('div', { style: { fontSize: 10.5, fontWeight: 600, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 } }, label),
+    React.createElement('div', { style: { fontSize: 13, color: '#1a2320', fontWeight: 500 } }, value)
+  );
+}
+
+function isPermissionDeniedError(error) {
+  const text = String(error || '').toLowerCase();
+  return text.includes('403') || text.includes('forbidden') || text.includes('permission') || text.includes('oprávnen');
+}
+
+function PermissionDeniedState({ message = 'Na zobrazenie tejto časti nemáte oprávnenie.' }) {
+  return React.createElement('div', {
+    role: 'alert',
+    style: { background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: 20, display: 'flex', gap: 12, alignItems: 'flex-start' }
+  },
+    React.createElement('span', { 'aria-hidden': 'true', style: { width: 24, height: 24, color: '#c2410c', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      React.createElement(Icon, { name: 'shield', size: 20 })
+    ),
+    React.createElement('div', { style: { flex: 1 } },
+      React.createElement('p', { style: { fontWeight: 600, fontSize: 13, color: '#1a2320', margin: '0 0 4px' } }, 'Prístup zamietnutý'),
+      React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0 } }, message)
+    )
+  );
+}
+
+function ScreenStatePanel({ state, message, title, description, error, onRetry }) {
+  const content =
+    state === 'loading' ? React.createElement(LoadingState, { message }) :
+    state === 'permission' ? React.createElement(PermissionDeniedState, { message: description || message }) :
+    state === 'error' ? React.createElement(ErrorState, { title, message: error || description || message, onRetry }) :
+    React.createElement(EmptyState, { title, description });
+  return React.createElement(Card, null,
+    React.createElement(CardContent, { style: { paddingTop: 20 } }, content)
+  );
+}
+
 // ─── Page header ───────────────────────────────────────────────
 function PageHeader({ title, subtitle, actions, breadcrumbs }) {
   return React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' } },
@@ -411,7 +449,7 @@ function fmtDate(value, opts) {
 Object.assign(window, {
   Button, Card, CardHeader, CardTitle, CardContent,
   Badge, FormField, ConfirmDialog,
-  EmptyState, LoadingState, ErrorState,
-  PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section,
+  EmptyState, LoadingState, ErrorState, PermissionDeniedState, ScreenStatePanel, isPermissionDeniedError,
+  PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section, InfoCell,
   fmtEur, fmtDate,
 });
