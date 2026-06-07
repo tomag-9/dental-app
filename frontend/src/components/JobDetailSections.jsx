@@ -5,10 +5,20 @@ const JOB_STATUS_LABELS = {
   in_progress: 'V priebehu',
   completed: 'Dokončená',
   cancelled: 'Zrušená',
-  finished_factured: 'Vyfakturovaná',
-  finished_unfactured: 'Nevyfakturovaná',
+  finished_factured: 'Dokončená / fakturovaná',
+  finished_unfactured: 'Dokončená / nevyfakturovaná',
   closed: 'Uzavretá',
 };
+
+const JOB_LIFECYCLE_STATES = [
+  { status: 'new', badge: 'new', description: 'Nová práca prijatá do laboratória, ešte nezačala výroba.' },
+  { status: 'in_progress', badge: 'progress', description: 'Technik alebo tím na práci aktívne pracuje.' },
+  { status: 'completed', badge: 'done', description: 'Výroba je dokončená, ale fakturačný stav ešte nemusí byť vyriešený.' },
+  { status: 'finished_unfactured', badge: 'done', description: 'Práca je hotová a čaká na zaradenie do faktúry.' },
+  { status: 'finished_factured', badge: 'factured', description: 'Práca je hotová a už je zahrnutá vo faktúre.' },
+  { status: 'closed', badge: 'factured', description: 'Práca je administratívne uzavretá a nemá sa ďalej meniť.' },
+  { status: 'cancelled', badge: 'cancelled', description: 'Práca bola zrušená a nevyrába sa ani nefakturuje.' },
+];
 
 function useJobHeaderData(rawJob, workspaceJob) {
   return React.useMemo(() => ({
@@ -63,14 +73,48 @@ function useJobAttachmentsData(rawJob) {
 }
 
 function useJobAuditLogData(rawJob) {
+  const eventLabels = {
+    status_changed: 'Zmena stavu',
+    assigned: 'Priradenie technika',
+    created: 'Vytvorenie práce',
+    updated: 'Úprava práce',
+    note_added: 'Poznámka',
+  };
   return React.useMemo(() => (rawJob.timeline || []).map((event) => ({
     date: event.created_at ? new Date(event.created_at).toLocaleString('sk-SK') : '—',
     actor: event.actor_name || 'Systém',
-    event: event.event,
+    event: eventLabels[event.event] || event.event || 'Udalosť',
     note: event.note,
     icon: event.event === 'status_changed' ? 'activity' : event.event === 'assigned' ? 'user' : 'check',
     color: event.event === 'status_changed' ? '#d97706' : '#0d7c6b',
   })), [rawJob]);
+}
+
+function JobLifecycleGuide({ rawJob }) {
+  return React.createElement(Card, null,
+    React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Životný cyklus práce')),
+    React.createElement(CardContent, { style: { display: 'grid', gap: 8 } },
+      ...JOB_LIFECYCLE_STATES.map((state) => {
+        const active = rawJob && rawJob.status === state.status;
+        return React.createElement('div', {
+          key: state.status,
+          style: {
+            display: 'grid',
+            gridTemplateColumns: '170px 1fr',
+            gap: 10,
+            alignItems: 'start',
+            padding: '9px 10px',
+            borderRadius: 8,
+            border: active ? '1px solid #0d7c6b' : '1px solid #ece7dc',
+            background: active ? '#f0fdfa' : '#fff',
+          }
+        },
+          React.createElement(Badge, { color: state.badge }, JOB_STATUS_LABELS[state.status]),
+          React.createElement('span', { style: { fontSize: 12, color: '#5a6b66', lineHeight: 1.45 } }, state.description)
+        );
+      })
+    )
+  );
 }
 
 function JobStatusActions({ rawJob, changingStatus, onMoveStatus }) {
@@ -92,7 +136,7 @@ function JobStatusActions({ rawJob, changingStatus, onMoveStatus }) {
       React.createElement('div', { style: { fontSize: 11.5, color: '#085c4e', opacity: 0.75, marginTop: 2 } }, `Termín odovzdania: ${status.due}`)
     ),
     React.createElement(Button, { variant: 'outline', size: 'sm', onClick: () => onMoveStatus(status.nextStatus), disabled: !status.nextStatus || changingStatus },
-      changingStatus ? 'Mením stav…' : 'Posunúť stav',
+      changingStatus ? 'Mením stav…' : status.nextStatus ? `Posunúť na ${JOB_STATUS_LABELS[status.nextStatus]}` : 'Uzavretý stav',
       React.createElement(Icon, { name: 'arrowRight', size: 13 })
     )
   );
@@ -264,7 +308,9 @@ function JobAuditLog({ rawJob }) {
 
 Object.assign(window, {
   JOB_STATUS_LABELS,
+  JOB_LIFECYCLE_STATES,
   JobHeader,
+  JobLifecycleGuide,
   JobStatusActions,
   JobItemsTable,
   JobAttachments,
