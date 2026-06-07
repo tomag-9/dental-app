@@ -73,7 +73,10 @@ export async function request(path, options = {}) {
 
 /** @param {string} path @param {string} filename */
 export async function downloadBlob(path, filename) {
-  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { Accept: '*/*' },
+  });
   if (!response.ok) {
     const data = await readJson(response);
     const error = /** @type {ApiError} */ (new Error(data && data.detail ? data.detail : 'Download failed'));

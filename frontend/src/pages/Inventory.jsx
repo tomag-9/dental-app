@@ -9,22 +9,7 @@ function Inventory({ onNavigate, onCreate }) {
   async function handleExport() {
     setExporting(true);
     try {
-      const access = localStorage.getItem('molaris.access');
-      const rawBase = window.__API_BASE_URL && !window.__API_BASE_URL.includes('%') ? window.__API_BASE_URL : 'http://localhost:8810/api';
-      const API_BASE = rawBase.replace(/\/$/, '').endsWith('/api') ? rawBase.replace(/\/$/, '') : `${rawBase.replace(/\/$/, '')}/api`;
-      const response = await fetch(`${API_BASE}/inventory/warehouse/export/`, {
-        headers: access ? { Authorization: `Bearer ${access}` } : {},
-      });
-      if (!response.ok) throw new Error('Export zlyhal');
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'inventory.csv';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      await window.MolarisAPI.downloadWarehouseExport();
     } catch (e) {
       alert('Export sa nepodaril: ' + e.message);
     } finally {

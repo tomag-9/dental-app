@@ -8,6 +8,16 @@ export async function fetchPatients() {
   return request('/crm/patients/');
 }
 
+/** @param {number | string} id */
+export async function fetchPatientDetail(id) {
+  return request(`/crm/patients/${id}/`);
+}
+
+/** @param {number | string} id */
+export async function fetchPatientToothMap(id) {
+  return request(`/crm/patients/${id}/cumulative_tooth_map/`);
+}
+
 /** @returns {Promise<Schemas['Clinic'][]>} */
 export async function fetchClinics() {
   return request('/crm/clinics/');

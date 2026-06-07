@@ -16,7 +16,9 @@ JWT_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:5280",
+    "http://localhost:5367",
     "http://localhost:8810",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5280",
+    "http://127.0.0.1:5367",
 ]

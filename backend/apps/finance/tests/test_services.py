@@ -141,6 +141,19 @@ class CreateInvoiceFromJobsTests(FinanceServiceSetupMixin, TestCase):
         with self.assertRaises(ValidationError):
             self._call(job_ids=[self.job.id, other_job.id])
 
+    def test_job_from_same_lab_different_clinic_raises_validation_error(self):
+        other_clinic = Clinic.objects.create(lab=self.lab, name="Other Same-Lab Clinic")
+        other_job = Job.objects.create(
+            lab=self.lab,
+            patient=self.patient,
+            clinic=other_clinic,
+            status="completed",
+            price="50.00",
+        )
+
+        with self.assertRaises(ValidationError):
+            self._call(job_ids=[other_job.id])
+
     def test_marks_jobs_finished_factured(self):
         self._call()
         self.job.refresh_from_db()

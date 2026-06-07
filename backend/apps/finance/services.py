@@ -57,6 +57,9 @@ def create_invoice_from_jobs(*, user, clinic_id, job_ids, document_type="invoice
     if any(job.lab_id != clinic.lab_id for job in jobs):
         raise ValidationError({"detail": "All jobs must belong to the same clinic lab"})
 
+    if any(job.clinic_id != clinic.id for job in jobs):
+        raise ValidationError({"detail": "All jobs must belong to the selected clinic"})
+
     return invoice_service.create_invoice(
         actor=user,
         clinic=clinic,

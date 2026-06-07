@@ -152,6 +152,18 @@ class JobBulkUpdateTests(APITestCase):
         self.job1.refresh_from_db()
         self.assertEqual(self.job1.priority, "high")
 
+    def test_bulk_priority_update_rejects_invalid_priority(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/jobs/jobs/bulk-update/",
+            {"job_ids": [self.job1.id], "priority": "impossibly_urgent"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.job1.refresh_from_db()
+        self.assertEqual(self.job1.priority, "normal")
+
     def test_bulk_priority_update_writes_audit_log(self):
         self.client.force_authenticate(user=self.user)
         resp = self.client.post(

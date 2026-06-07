@@ -12,18 +12,12 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
 
   React.useEffect(() => {
     if (!patientId) return;
-    const access = localStorage.getItem('molaris.access');
-    const rawBase = window.__API_BASE_URL && !window.__API_BASE_URL.includes('%') ? window.__API_BASE_URL : 'http://localhost:8810/api';
-    const API_BASE = rawBase.replace(/\/$/, '').endsWith('/api') ? rawBase.replace(/\/$/, '') : `${rawBase.replace(/\/$/, '')}/api`;
-    const headers = access ? { Authorization: `Bearer ${access}` } : {};
 
-    fetch(`${API_BASE}/crm/patients/${patientId}/`, { headers })
-      .then(r => r.ok ? r.json() : null)
+    window.MolarisAPI.fetchPatientDetail(patientId)
       .then(data => { if (data && data.revenue_stats) setRevenueStats(data.revenue_stats); })
       .catch(() => {});
 
-    fetch(`${API_BASE}/crm/patients/${patientId}/cumulative_tooth_map/`, { headers })
-      .then(r => r.ok ? r.json() : null)
+    window.MolarisAPI.fetchPatientToothMap(patientId)
       .then(data => { if (data) setToothMap(data); })
       .catch(() => {});
   }, [patientId]);

@@ -178,6 +178,11 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 {"detail": "Provide at least one of: status, priority."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if new_priority and new_priority not in dict(Job.PRIORITY_CHOICES):
+            return Response(
+                {"detail": f"Invalid priority: {new_priority}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         qs = self.get_queryset().filter(id__in=job_ids)
         updated = []
