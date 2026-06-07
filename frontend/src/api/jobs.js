@@ -1,6 +1,6 @@
 /// <reference path="./globals.d.ts" />
 /** @typedef {import('./types.ts').Schemas} Schemas */
-import { request, _refreshWorkspace } from './core.js';
+import { request, _refreshWorkspace, downloadBlob } from './core.js';
 import { normalizeJob, normalizeTechnician, normalizeCalendarEvent } from './normalize.js';
 
 /** @typedef {{ search?: string; status?: string; priority?: string }} JobFilters */
@@ -31,6 +31,12 @@ export async function updateJob(id, payload) {
   return job;
 }
 
+/** @param {number} id */
+export async function deleteJob(id) {
+  await request(`/jobs/jobs/${id}/`, { method: 'DELETE' });
+  _refreshWorkspace();
+}
+
 /** @param {number} id @param {string} status @param {string} [note] */
 export async function transitionJobStatus(id, status, note) {
   const job = await request(`/jobs/jobs/${id}/transition-status/`, {
@@ -44,6 +50,12 @@ export async function transitionJobStatus(id, status, note) {
 /** @returns {Promise<Schemas['Technician'][]>} */
 export async function fetchTechnicians() {
   return request('/jobs/technicians/');
+}
+
+/** @param {'csv'|'xlsx'} [format] */
+export async function downloadJobsExport(format = 'csv') {
+  const suffix = format === 'xlsx' ? '?export_format=xlsx' : '';
+  return downloadBlob(`/jobs/jobs/export/${suffix}`, format === 'xlsx' ? 'prace.xlsx' : 'prace.csv');
 }
 
 export { normalizeJob, normalizeTechnician, normalizeCalendarEvent };

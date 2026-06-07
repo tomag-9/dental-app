@@ -6,6 +6,8 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [jobToDelete, setJobToDelete] = React.useState(null);
   const [remoteJobs, setRemoteJobs] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [exporting, setExporting] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const [error, setError] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
 
@@ -39,6 +41,22 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     subtitle: 'Prehľad, správa a stav zákaziek.',
     actions: [
       React.createElement(Button, { key: 'n', onClick: onNewJob }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
+      React.createElement(Button, {
+        key: 'export',
+        variant: 'outline',
+        disabled: exporting,
+        onClick: async () => {
+          setExporting(true);
+          setError('');
+          try {
+            await window.MolarisAPI.downloadJobsExport('csv');
+          } catch (err) {
+            setError((err && err.message) || 'CSV export prác sa nepodarilo stiahnuť.');
+          } finally {
+            setExporting(false);
+          }
+        },
+      }, React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'CSV export'),
     ]
   });
 
@@ -65,12 +83,16 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
 
   const allJobs = remoteJobs || workspace.jobs || [];
   const statusMeta = {
-    new:        { label: 'Nové',       badge: 'new' },
-    in_progress:{ label: 'V priebehu', badge: 'progress' },
-    completed:  { label: 'Dokončené',  badge: 'done' },
-    cancelled:  { label: 'Zrušené',    badge: 'cancelled' },
+    new: { label: 'Nové', badge: 'new' },
+    in_progress: { label: 'V priebehu', badge: 'progress' },
+    completed: { label: 'Dokončené', badge: 'done' },
+    finished_unfactured: { label: 'Hotové / nevyfakturované', badge: 'done' },
+    finished_factured: { label: 'Hotové / fakturované', badge: 'factured' },
+    closed: { label: 'Uzavreté', badge: 'factured' },
+    cancelled: { label: 'Zrušené', badge: 'cancelled' },
   };
-  const counts = ['new','in_progress','completed','cancelled'].reduce((a, s) => { a[s] = allJobs.filter(j => j.status === s).length; return a; }, {});
+  const statusKeys = Object.keys(statusMeta);
+  const counts = statusKeys.reduce((a, s) => { a[s] = allJobs.filter(j => j.status === s).length; return a; }, {});
 
   const filtered = remoteJobs ? allJobs : allJobs.filter(j => {
     const q = search.toLowerCase();
@@ -84,10 +106,20 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     pageHeader,
 
     React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
-      React.createElement(StatCard, { label: 'Nové',        value: String(counts.new),        icon: 'inbox',     tone: 'amber' }),
-      React.createElement(StatCard, { label: 'V priebehu',  value: String(counts.in_progress),icon: 'activity',  tone: 'teal' }),
-      React.createElement(StatCard, { label: 'Dokončené',   value: String(counts.completed),  icon: 'checkCircle',tone: 'green' }),
-      React.createElement(StatCard, { label: 'Zrušené',     value: String(counts.cancelled),  icon: 'x',         tone: 'red' }),
+      React.createElement(StatCard, { label: 'Otvorené', value: String(counts.new + counts.in_progress), icon: 'inbox', tone: 'amber', sub: `${counts.new} nové` }),
+      React.createElement(StatCard, { label: 'Čaká faktúru', value: String(counts.finished_unfactured), icon: 'fileText', tone: 'teal' }),
+      React.createElement(StatCard, { label: 'Vyfakturované', value: String(counts.finished_factured), icon: 'checkCircle', tone: 'green' }),
+      React.createElement(StatCard, { label: 'Uzavreté / zrušené', value: String(counts.closed + counts.cancelled), icon: 'x', tone: 'red' }),
+    ),
+
+    React.createElement(JobLifecycleGuide, { rawJob: { status: tab === 'all' ? '' : tab } }),
+
+    React.createElement(Card, null,
+      React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Export prác')),
+      React.createElement(CardContent, { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+        React.createElement(InfoCell, { label: 'Formát CSV', value: 'ID, pacient, klinika, lekár, termín, stav, cena' }),
+        React.createElement(InfoCell, { label: 'Tok sťahovania', value: 'Tlačidlo CSV export používa serverový export prác' })
+      )
     ),
 
     React.createElement(Card, null,
@@ -99,6 +131,10 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
             { value: 'new',         label: `Nové (${counts.new})` },
             { value: 'in_progress', label: `V priebehu (${counts.in_progress})` },
             { value: 'completed',   label: `Dokončené (${counts.completed})` },
+            { value: 'finished_unfactured', label: `Čaká faktúru (${counts.finished_unfactured})` },
+            { value: 'finished_factured', label: `Fakturované (${counts.finished_factured})` },
+            { value: 'closed', label: `Uzavreté (${counts.closed})` },
+            { value: 'cancelled', label: `Zrušené (${counts.cancelled})` },
           ]
         }),
         React.createElement(SearchInput, { value: search, onChange: setSearch, placeholder: 'Pacient, lekár, ID…', width: 280 })
@@ -139,7 +175,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
                       }),
                       React.createElement(IconButton, { name: 'eye', title: 'Detail', onClick: () => onOpenJob && onOpenJob(r.id) }),
                       React.createElement(IconButton, { name: 'edit', title: 'Upraviť', onClick: () => onOpenJob && onOpenJob(r.id) }),
-                      React.createElement(IconButton, { name: 'trash', title: 'Zmazať', destructive: true, onClick: () => setJobToDelete(r.id) })
+                      React.createElement(IconButton, { name: 'trash', title: 'Zmazať', destructive: true, onClick: () => setJobToDelete(r) })
                     )
                 }
               ],
@@ -150,9 +186,23 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
 
     React.createElement(ConfirmDialog, {
       open: !!jobToDelete, title: 'Zmazať prácu',
-      message: 'Naozaj chcete zmazať túto prácu? Táto akcia sa nedá vrátiť späť.',
-      confirmText: 'Zmazať', cancelText: 'Zrušiť', destructive: true,
-      onConfirm: () => setJobToDelete(null), onCancel: () => setJobToDelete(null),
+      message: jobToDelete ? `Naozaj chcete zmazať prácu #${jobToDelete.id}? Táto akcia sa nedá vrátiť späť.` : '',
+      confirmText: deleting ? 'Mažem…' : 'Zmazať', cancelText: 'Zrušiť', destructive: true,
+      onConfirm: deleting ? undefined : async () => {
+        if (!jobToDelete) return;
+        setDeleting(true);
+        setError('');
+        try {
+          await window.MolarisAPI.deleteJob(jobToDelete.id);
+          setRemoteJobs(null);
+          setJobToDelete(null);
+        } catch (err) {
+          setError((err && err.message) || 'Prácu sa nepodarilo zmazať.');
+        } finally {
+          setDeleting(false);
+        }
+      },
+      onCancel: deleting ? undefined : () => setJobToDelete(null),
     })
   );
 }

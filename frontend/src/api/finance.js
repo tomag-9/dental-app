@@ -1,6 +1,6 @@
 /// <reference path="./globals.d.ts" />
 /** @typedef {import('./types.ts').Schemas} Schemas */
-import { request, API_BASE, _refreshWorkspace } from './core.js';
+import { request, _refreshWorkspace, downloadBlob } from './core.js';
 import { normalizeInvoice, normalizePriceItem } from './normalize.js';
 
 /** @returns {Promise<Schemas['Invoice'][]>} */
@@ -23,23 +23,25 @@ export async function updateInvoiceStatus(id, status) {
   return invoice;
 }
 
+/** @param {number} id */
+export async function deleteInvoice(id) {
+  await request(`/invoices/${id}/`, { method: 'DELETE' });
+  _refreshWorkspace();
+}
+
 /**
- * Download the invoice PDF via a raw fetch (blob response — cannot use request()).
+ * Download the invoice PDF via a blob response.
  * @param {number} id
  * @param {string} [filename]
  */
 export async function downloadInvoicePdf(id, filename) {
-  const response = await fetch(`${API_BASE}/invoices/${id}/pdf/`, { credentials: 'include' });
-  if (!response.ok) throw new Error('PDF download failed');
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename || `invoice-${id}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return downloadBlob(`/invoices/${id}/pdf/`, filename || `invoice-${id}.pdf`);
+}
+
+/** @param {'csv'|'xlsx'} [format] */
+export async function downloadInvoicesExport(format = 'csv') {
+  const suffix = format === 'xlsx' ? '?export_format=xlsx' : '';
+  return downloadBlob(`/invoices/export/${suffix}`, format === 'xlsx' ? 'faktury.xlsx' : 'faktury.csv');
 }
 
 export { normalizeInvoice, normalizePriceItem };

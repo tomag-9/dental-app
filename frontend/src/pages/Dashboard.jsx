@@ -3,6 +3,8 @@
 function Dashboard({ onNavigate, onOpenJob }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const apiStats = workspace.stats;
+  const savedUser = window.MolarisAPI.savedUser && window.MolarisAPI.savedUser();
+  const role = (savedUser && savedUser.role) || 'admin';
   
   // Format monthly stats with deltas
   const formatMonthlyDelta = (current, previous) => {
@@ -127,12 +129,87 @@ function Dashboard({ onNavigate, onOpenJob }) {
     if (hour >= 18 && hour < 22) return 'Dobrý večer';
     return 'Dobrú noc';
   };
-  const savedUser = window.MolarisAPI.savedUser && window.MolarisAPI.savedUser();
   const firstName = (savedUser && savedUser.name && savedUser.name.split(' ')[0]) || '';
   const greetingTitle = firstName ? `${getGreeting()}, ${firstName}` : getGreeting();
   const todaySubtitle = new Date().toLocaleDateString('sk-SK', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }) + ' · Prehľad vášho laboratória.';
+
+  const workspaceJobs = workspace.jobs || [];
+  const workspaceInvoices = workspace.invoices || [];
+  const today = new Date();
+  const openStatuses = ['new', 'in_progress'];
+  const technicianName = (savedUser && savedUser.name || '').toLowerCase();
+  const openTechnicianJobs = workspaceJobs.filter((job) => openStatuses.includes(job.status));
+  const matchedTechnicianJobs = openTechnicianJobs.filter((job) => {
+    const raw = job.raw || {};
+    const tech = raw.technician_details;
+    const assignedName = tech ? `${tech.first_name || ''} ${tech.last_name || ''}`.trim().toLowerCase() : '';
+    return technicianName && assignedName && assignedName.includes(technicianName);
+  });
+  const technicianJobs = matchedTechnicianJobs.length ? matchedTechnicianJobs : openTechnicianJobs;
+  const overdueInvoices = workspaceInvoices.filter((invoice) => {
+    const due = invoice.raw && invoice.raw.due_date ? new Date(invoice.raw.due_date) : null;
+    return invoice.status === 'issued' && due && due < today;
+  });
+  const labNames = new Set();
+  workspaceJobs.forEach((job) => {
+    const raw = job.raw || {};
+    if (raw.lab_name) labNames.add(raw.lab_name);
+    if (raw.lab_details && raw.lab_details.name) labNames.add(raw.lab_details.name);
+  });
+  workspaceInvoices.forEach((invoice) => {
+    const raw = invoice.raw || {};
+    if (raw.lab_name) labNames.add(raw.lab_name);
+    if (raw.lab_details && raw.lab_details.name) labNames.add(raw.lab_details.name);
+  });
+
+  const roleFocus = () => {
+    if (role === 'technician') {
+      return React.createElement(Card, null,
+        React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+          React.createElement(CardTitle, null, 'Moje otvorené práce'),
+          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => onNavigate('jobs') }, 'Práce', React.createElement(Icon, { name: 'arrowRight', size: 12 }))
+        ),
+        React.createElement(CardContent, { style: { paddingTop: 0 } },
+          technicianJobs.length === 0
+            ? React.createElement(EmptyState, { title: 'Žiadne otvorené práce', description: 'Nemáte priradené rozpracované zákazky.' })
+            : React.createElement('div', { style: { display: 'grid', gap: 8 } },
+                ...technicianJobs.slice(0, 5).map((job) => React.createElement('button', {
+                  key: job.id,
+                  onClick: () => onOpenJob && onOpenJob(job.id),
+                  style: { textAlign: 'left', border: '1px solid #ece7dc', background: '#fff', borderRadius: 8, padding: 10, cursor: 'pointer', fontFamily: 'Manrope,sans-serif' }
+                },
+                  React.createElement('div', { style: { fontSize: 13, fontWeight: 700, color: '#1a2320' } }, `#${job.id} · ${job.patient}`),
+                  React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490', marginTop: 2 } }, job.type, ' · termín ', job.due)
+                ))
+              )
+        )
+      );
+    }
+    if (role === 'superadmin') {
+      return React.createElement(Card, null,
+        React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Prehľad naprieč laboratóriami')),
+        React.createElement(CardContent, { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 } },
+          React.createElement(InfoCell, { label: 'Laboratóriá', value: String(labNames.size || 1) }),
+          React.createElement(InfoCell, { label: 'Práce', value: String(workspaceJobs.length) }),
+          React.createElement(InfoCell, { label: 'Faktúry', value: String(workspaceInvoices.length) }),
+          React.createElement(InfoCell, { label: 'Tržby', value: fmtEur(workspaceInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0)) })
+        )
+      );
+    }
+    return React.createElement(Card, null,
+      React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+        React.createElement(CardTitle, null, 'Finančný fokus administrátora'),
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => onNavigate('invoices') }, 'Faktúry', React.createElement(Icon, { name: 'arrowRight', size: 12 }))
+      ),
+      React.createElement(CardContent, { style: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 } },
+        React.createElement(InfoCell, { label: 'Tržby', value: fmtEur(workspaceInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0)) }),
+        React.createElement(InfoCell, { label: 'Po splatnosti', value: `${overdueInvoices.length} faktúr` }),
+        React.createElement(InfoCell, { label: 'Čaká na úhradu', value: fmtEur(workspaceInvoices.filter(i => i.status === 'issued').reduce((sum, i) => sum + i.amount, 0)) })
+      )
+    );
+  };
 
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
@@ -146,6 +223,8 @@ function Dashboard({ onNavigate, onOpenJob }) {
     React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
       ...stats.map(s => React.createElement(StatCard, { key: s.label, ...s }))
     ),
+
+    roleFocus(),
 
     React.createElement('div', { className: 'content-grid', style: { display: 'grid', gridTemplateColumns: '5fr 4fr 3fr', gap: 16, alignItems: 'flex-start' } },
       // Recent jobs

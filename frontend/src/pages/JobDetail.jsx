@@ -4,6 +4,7 @@ function JobDetail({ jobId, onBack }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const [actionError, setActionError] = React.useState('');
   const [changingStatus, setChangingStatus] = React.useState(false);
+  const [pendingStatus, setPendingStatus] = React.useState(null);
   const [editMode, setEditMode] = React.useState(false);
   const [savingEdit, setSavingEdit] = React.useState(false);
   const [editFields, setEditFields] = React.useState({ description: '', due_date: '', priority: 'normal', technician: '' });
@@ -75,6 +76,7 @@ function JobDetail({ jobId, onBack }) {
     setActionError('');
     try {
       await window.MolarisAPI.transitionJobStatus(rawJob.id, nextStatus, 'Stav bol zmenený z detailu práce.');
+      setPendingStatus(null);
     } catch (err) {
       setActionError((err && err.data && JSON.stringify(err.data)) || 'Stav sa nepodarilo zmeniť.');
     } finally {
@@ -122,7 +124,7 @@ function JobDetail({ jobId, onBack }) {
       ],
     }),
 
-    React.createElement(JobStatusActions, { rawJob, changingStatus, onMoveStatus: moveStatus }),
+    React.createElement(JobStatusActions, { rawJob, changingStatus, onMoveStatus: setPendingStatus }),
     actionError && React.createElement(ErrorState, { title: 'Akcia zlyhala', message: actionError }),
 
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'flex-start' } },
@@ -141,8 +143,22 @@ function JobDetail({ jobId, onBack }) {
         React.createElement(JobItemsTable, { rawJob }),
         React.createElement(JobAttachments, { rawJob })
       ),
-      React.createElement(JobAuditLog, { rawJob })
-    )
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
+        React.createElement(JobLifecycleGuide, { rawJob }),
+        React.createElement(JobAuditLog, { rawJob })
+      )
+    ),
+    React.createElement(ConfirmDialog, {
+      open: !!pendingStatus,
+      title: 'Zmeniť stav práce',
+      message: pendingStatus
+        ? `Potvrďte zmenu stavu práce #${rawJob.id} na „${JOB_STATUS_LABELS[pendingStatus] || pendingStatus}“.`
+        : '',
+      confirmText: changingStatus ? 'Mením stav…' : 'Zmeniť stav',
+      cancelText: 'Zrušiť',
+      onConfirm: changingStatus ? undefined : () => moveStatus(pendingStatus),
+      onCancel: changingStatus ? undefined : () => setPendingStatus(null),
+    })
   );
 }
 

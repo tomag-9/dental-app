@@ -5,14 +5,27 @@ function Invoices({ onNavigate, onCreate }) {
   const [tab, setTab] = React.useState('all');
   const [selected, setSelected] = React.useState(null);
   const [actionError, setActionError] = React.useState('');
+  const [exporting, setExporting] = React.useState(false);
   const workspace = window.MolarisAPI.useWorkspace();
+
+  const exportInvoices = async () => {
+    setExporting(true);
+    setActionError('');
+    try {
+      await window.MolarisAPI.downloadInvoicesExport('csv');
+    } catch (err) {
+      setActionError((err && err.message) || 'Export faktúr sa nepodarilo stiahnuť.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const pageHeader = React.createElement(PageHeader, {
     title: 'Faktúry',
     subtitle: 'Správa a prehľad faktúr vystavených klinikám.',
     actions: [
-      React.createElement(Button, { key: 'export', variant: 'outline' },
-        React.createElement(Icon, { name: 'download', size: 14 }), 'Exportovať'),
+      React.createElement(Button, { key: 'export', variant: 'outline', onClick: exportInvoices, disabled: exporting },
+        React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'CSV export'),
       React.createElement(Button, { key: 'new', onClick: onCreate },
         React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová faktúra'),
     ]
@@ -65,6 +78,17 @@ function Invoices({ onNavigate, onCreate }) {
       React.createElement(StatCard, { label: 'Čaká na platbu', value: fmt(totals.issued), icon: 'clock', tone: 'amber', sub: countLabel(invoices.filter(i => i.status === 'issued').length, 'vystavená', 'vystavené') }),
       React.createElement(StatCard, { label: 'Koncepty', value: fmt(totals.draft), icon: 'fileText', tone: 'teal', sub: countLabel(invoices.filter(i => i.status === 'draft').length, 'čaká odoslanie', 'čakajú odoslanie') }),
       React.createElement(StatCard, { label: 'Priemerná doba úhrady', value: '—', icon: 'activity', tone: 'purple' }),
+    ),
+
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 } },
+      React.createElement(InvoiceLifecycleGuide, { invoice: { status: tab === 'all' ? '' : tab } }),
+      React.createElement(Card, null,
+        React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Výstupy')),
+        React.createElement(CardContent, { style: { display: 'grid', gap: 10 } },
+          React.createElement(InfoCell, { label: 'PDF faktúry', value: 'Detail faktúry → PDF' }),
+          React.createElement(InfoCell, { label: 'CSV export', value: 'Číslo, klinika, dátumy, stav, suma' })
+        )
+      )
     ),
 
     React.createElement(Card, null,
@@ -123,9 +147,11 @@ function InvoiceDrawer({ invoice, onClose, onError }) {
     subtitle: `${invoice.clinic} · vystavené ${invoice.issued || '—'}`,
     footer: React.createElement(InvoiceActions, { invoice, onClose, onError })
   },
-    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
       React.createElement(InvoiceForm, { invoice }),
-      React.createElement(InvoiceLineItems, { invoice })
+      React.createElement(InvoiceLineItems, { invoice }),
+      React.createElement(InvoiceLifecycleGuide, { invoice }),
+      React.createElement(InvoiceAuditTrail, { invoice })
     )
   );
 }

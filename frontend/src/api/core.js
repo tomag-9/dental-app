@@ -71,6 +71,27 @@ export async function request(path, options = {}) {
   return data;
 }
 
+/** @param {string} path @param {string} filename */
+export async function downloadBlob(path, filename) {
+  const response = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  if (!response.ok) {
+    const data = await readJson(response);
+    const error = /** @type {ApiError} */ (new Error(data && data.detail ? data.detail : 'Download failed'));
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function _refreshWorkspace() {
   window.__MOLARIS_WORKSPACE = null;
   window.dispatchEvent(new CustomEvent('molaris-workspace-refresh'));
