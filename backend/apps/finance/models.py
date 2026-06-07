@@ -5,13 +5,13 @@ from apps.crm.models import Clinic
 from apps.jobs.models import Job
 
 PROCEDURE_CATEGORY_CHOICES = (
-    ("crown", "Crown"),
-    ("bridge", "Bridge"),
-    ("denture", "Denture"),
-    ("implant", "Implant"),
-    ("orthodontic", "Orthodontic"),
-    ("repair", "Repair"),
-    ("other", "Other"),
+    ("crown", "Korunka"),
+    ("bridge", "Mostík"),
+    ("denture", "Protéza"),
+    ("implant", "Implantát"),
+    ("orthodontic", "Ortodoncia"),
+    ("repair", "Oprava"),
+    ("other", "Iné"),
 )
 
 
@@ -44,15 +44,15 @@ class PriceList(models.Model):
 
 class Invoice(models.Model):
     STATUS_CHOICES = (
-        ("draft", "Draft"),
-        ("issued", "Issued"),
-        ("paid", "Paid"),
-        ("cancelled", "Cancelled"),
+        ("draft", "Koncept"),
+        ("issued", "Vystavená"),
+        ("paid", "Zaplatená"),
+        ("cancelled", "Zrušená"),
     )
 
     DOCUMENT_TYPE_CHOICES = (
-        ("invoice", "Invoice"),
-        ("proforma", "Proforma"),
+        ("invoice", "Faktúra"),
+        ("proforma", "Proforma faktúra"),
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="invoices")
@@ -118,13 +118,13 @@ class InvoiceSequence(models.Model):
 
 class Subscription(models.Model):
     STATUS_CHOICES = (
-        ("active", "Active"),
-        ("past_due", "Past Due"),
-        ("cancelled", "Cancelled"),
-        ("inactive", "Inactive"),
+        ("active", "Aktívne"),
+        ("past_due", "Po splatnosti"),
+        ("cancelled", "Zrušené"),
+        ("inactive", "Neaktívne"),
     )
     PLAN_CHOICES = (
-        ("free", "Free"),
+        ("free", "Bezplatný"),
         ("pro", "Pro"),
         ("enterprise", "Enterprise"),
     )

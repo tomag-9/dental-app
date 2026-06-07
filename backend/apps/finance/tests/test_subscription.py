@@ -64,7 +64,7 @@ class SubscriptionApiTests(APITestCase):
         response = self.client.get("/api/finance/subscriptions/my/")
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data["detail"], "No lab associated with user")
+        self.assertEqual(response.data["detail"], "Používateľ nemá priradené laboratórium")
 
     def test_non_superadmin_cannot_list_subscriptions(self):
         self.client.force_authenticate(user=self.admin_a)

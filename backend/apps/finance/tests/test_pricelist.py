@@ -399,7 +399,7 @@ class ProcedureCatalogTests(APITestCase):
         resp = self.client.get("/api/finance/procedure-catalog/")
         uncat_group = next((g for g in resp.data if g["category"] is None), None)
         self.assertIsNotNone(uncat_group)
-        self.assertEqual(uncat_group["label"], "Uncategorized")
+        self.assertEqual(uncat_group["label"], "Nezaradené")
         self.assertEqual(len(uncat_group["items"]), 1)
 
     def test_unauthenticated_returns_401(self):
@@ -440,7 +440,8 @@ class PriceListExportCsvTests(APITestCase):
         content = (
             b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
         )
-        self.assertIn("code,description,price", content)
+        self.assertIn("Kód,Popis,Cena", content)
+        self.assertIn('"280,00 EUR"', content)
 
     def test_export_contains_all_lab_items(self):
         self.client.force_authenticate(user=self.admin)
@@ -486,8 +487,8 @@ class PriceListExportCsvTests(APITestCase):
         wb = openpyxl.load_workbook(BytesIO(resp.content))
         ws = wb.active
         header = [cell.value for cell in ws[1]]
-        self.assertIn("code", header)
-        codes = [ws.cell(row=r, column=header.index("code") + 1).value for r in range(2, ws.max_row + 1)]
+        self.assertIn("Kód", header)
+        codes = [ws.cell(row=r, column=header.index("Kód") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("KOR-001", codes)
         self.assertIn("MOS-002", codes)
 

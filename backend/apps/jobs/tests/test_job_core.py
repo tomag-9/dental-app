@@ -559,7 +559,7 @@ class JobValidationApiTests(APITestCase):
         response = self.client.post(reverse("job-list"), payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("within the bridge span", str(response.data))
+        self.assertIn("v rozsahu mostíka", str(response.data))
 
     def test_transition_status_validates_flow_and_records_timeline(self):
         """Status changes must use the transition endpoint and write audit events."""

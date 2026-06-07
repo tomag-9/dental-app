@@ -45,10 +45,10 @@ class Lab(models.Model):
 
 class User(AbstractUser):
     ROLE_CHOICES = (
-        ("superadmin", "Super Admin"),
-        ("admin", "Lab Admin"),
-        ("user", "User"),
-        ("technician", "Technician"),  # Added technician role if needed for auth
+        ("superadmin", "Superadministrátor"),
+        ("admin", "Administrátor laboratória"),
+        ("user", "Používateľ"),
+        ("technician", "Technik"),
     )
 
     email = models.EmailField(unique=True, null=True)  # Making email unique
@@ -69,10 +69,10 @@ class User(AbstractUser):
 
 class TeamInvitation(models.Model):
     STATUS_CHOICES = (
-        ("pending", "Pending"),
-        ("accepted", "Accepted"),
-        ("cancelled", "Cancelled"),
-        ("expired", "Expired"),
+        ("pending", "Čaká"),
+        ("accepted", "Prijatá"),
+        ("cancelled", "Zrušená"),
+        ("expired", "Expirovaná"),
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="team_invitations")
@@ -113,12 +113,12 @@ class TeamInvitation(models.Model):
 
 class Notification(models.Model):
     TYPE_CHOICES = (
-        ("job", "Job"),
-        ("invoice", "Invoice"),
-        ("deadline", "Deadline"),
-        ("stock", "Stock"),
-        ("team", "Team"),
-        ("system", "System"),
+        ("job", "Práca"),
+        ("invoice", "Faktúra"),
+        ("deadline", "Termín"),
+        ("stock", "Sklad"),
+        ("team", "Tím"),
+        ("system", "Systém"),
     )
 
     lab = models.ForeignKey(
@@ -236,9 +236,9 @@ class LabRolePermission(models.Model):
     """Per-lab override of allowed actions for a given role."""
 
     ROLE_CHOICES = (
-        ("admin", "Admin"),
-        ("user", "User"),
-        ("technician", "Technician"),
+        ("admin", "Administrátor"),
+        ("user", "Používateľ"),
+        ("technician", "Technik"),
     )
 
     lab = models.ForeignKey(
