@@ -171,6 +171,13 @@ class UpdateInvoiceStatusTests(InvoiceServiceSetupMixin, TestCase):
         self.invoice.refresh_from_db()
         self.assertIsNotNone(self.invoice.paid_at)
 
+    def test_draft_transition_resets_linked_job_to_unfactured(self):
+        self.job.status = "finished_factured"
+        self.job.save(update_fields=["status"])
+        invoice_service.update_invoice_status(self.admin, self.invoice, "draft")
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.status, "finished_unfactured")
+
 
 class DeleteInvoiceTests(InvoiceServiceSetupMixin, TestCase):
     def setUp(self):

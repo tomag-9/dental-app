@@ -618,6 +618,23 @@ class InvoiceSkFormatTests(APITestCase):
         self.assertIsNone(resp.data["formatted_due_date"])
         self.assertIsNone(resp.data["formatted_issued_at"])
 
+    def test_invoice_serializer_exposes_invoice_audit_log(self):
+        AuditLog.objects.create(
+            actor=self.admin,
+            lab=self.lab,
+            action="invoice.status_changed",
+            entity_type="invoice",
+            entity_id=str(self.invoice.id),
+            description="Invoice status changed",
+            metadata={"from_status": "draft", "to_status": "issued"},
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{self.invoice.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["audit_log"][0]["label"], "Zmena stavu faktúry")
+        self.assertEqual(resp.data["audit_log"][0]["actor_name"], self.admin.username)
+        self.assertEqual(resp.data["audit_log"][0]["metadata"]["to_status"], "issued")
+
 
 class InvoiceRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     """

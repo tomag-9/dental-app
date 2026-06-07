@@ -82,11 +82,11 @@ class MarkJobsInvoicedTests(JobServicesSetupMixin, TestCase):
         j.refresh_from_db()
         self.assertEqual(j.status, "finished_unfactured")
 
-    def test_unknown_invoice_status_is_noop(self):
+    def test_draft_marks_unfactured(self):
         j = self._make_job()
         job_services.mark_jobs_invoiced([j.id], invoice_status="draft")
         j.refresh_from_db()
-        self.assertEqual(j.status, "completed")
+        self.assertEqual(j.status, "finished_unfactured")
 
     def test_empty_job_ids_is_noop(self):
         job_services.mark_jobs_invoiced([], invoice_status="paid")

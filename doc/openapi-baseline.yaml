@@ -9617,7 +9617,13 @@ components:
         related_jobs:
           type: string
           readOnly: true
+        audit_log:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceAuditLogEntry'
+          readOnly: true
       required:
+      - audit_log
       - clinic
       - clinic_name
       - created_at
@@ -9634,6 +9640,34 @@ components:
       - related_jobs
       - subtotal_amount
       - vat_amount
+    InvoiceAuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        label:
+          type: string
+        actor_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties: {}
+      required:
+      - action
+      - actor_name
+      - created_at
+      - id
+      - label
+      - message
+      - metadata
     InvoiceItem:
       type: object
       properties:
@@ -10681,6 +10715,11 @@ components:
           readOnly: true
         related_jobs:
           type: string
+          readOnly: true
+        audit_log:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceAuditLogEntry'
           readOnly: true
     PatchedJob:
       type: object

@@ -1,7 +1,10 @@
 from decimal import Decimal
 
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
+from apps.core.models import AuditLog
 
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, InvoiceItem, PriceList, Subscription
@@ -65,6 +68,16 @@ class InvoiceStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("draft", "issued", "paid", "cancelled"))
 
 
+class InvoiceAuditLogEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    action = serializers.CharField()
+    label = serializers.CharField()
+    actor_name = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    message = serializers.CharField(allow_blank=True, allow_null=True)
+    metadata = serializers.DictField()
+
+
 def _sk_date(d):
     """Format a date as DD.MM.YYYY (Slovak locale convention)."""
     if d is None:
@@ -83,6 +96,13 @@ def _sk_amount(amount):
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    AUDIT_LABELS = {
+        "invoice.created": "Faktúra vytvorená",
+        "invoice.status_changed": "Zmena stavu faktúry",
+        "invoice.deleted": "Faktúra zmazaná",
+        "invoice.email_sent": "Faktúra odoslaná e-mailom",
+    }
+
     items = InvoiceItemSerializer(many=True, read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
     patient_names = serializers.SerializerMethodField()
@@ -94,6 +114,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     formatted_total = serializers.SerializerMethodField()
     formatted_due_date = serializers.SerializerMethodField()
     formatted_issued_at = serializers.SerializerMethodField()
+    audit_log = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -122,6 +143,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "patient_names",
             "related_jobs",
+            "audit_log",
         )
 
     def get_patient_names(self, obj):
@@ -184,6 +206,26 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 }
             )
         return related
+
+    @extend_schema_field(InvoiceAuditLogEntrySerializer(many=True))
+    def get_audit_log(self, obj):
+        logs = (
+            AuditLog.objects.filter(entity_type="invoice", entity_id=str(obj.id), lab_id=obj.lab_id)
+            .select_related("actor")
+            .order_by("-created_at", "-id")[:20]
+        )
+        return [
+            {
+                "id": log.id,
+                "action": log.action,
+                "label": self.AUDIT_LABELS.get(log.action, log.action),
+                "actor_name": log.actor.username if log.actor else "Systém",
+                "created_at": log.created_at,
+                "message": log.description,
+                "metadata": log.metadata or {},
+            }
+            for log in logs
+        ]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
