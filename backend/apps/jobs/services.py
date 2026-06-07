@@ -13,6 +13,7 @@ from apps.jobs.models import Job
 # The signature uses keyword-only ``user`` to match the rest of the service layer.
 
 INVOICE_STATUS_TO_JOB_STATUS = {
+    "draft": "finished_unfactured",
     "paid": "closed",
     "issued": "finished_factured",
     "cancelled": "finished_unfactured",
@@ -37,6 +38,7 @@ def mark_jobs_invoiced(job_ids, *, invoice_status):
     Bulk-update the status of jobs in *job_ids* to reflect *invoice_status*.
 
     Mapping:
+        ``draft``     → ``finished_unfactured``
         ``issued``    → ``finished_factured``
         ``paid``      → ``closed``
         ``cancelled`` → ``finished_unfactured``

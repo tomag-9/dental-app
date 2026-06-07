@@ -171,6 +171,13 @@ class UpdateInvoiceStatusTests(InvoiceServiceSetupMixin, TestCase):
         self.invoice.refresh_from_db()
         self.assertIsNotNone(self.invoice.paid_at)
 
+    def test_draft_transition_resets_linked_job_to_unfactured(self):
+        self.job.status = "finished_factured"
+        self.job.save(update_fields=["status"])
+        invoice_service.update_invoice_status(self.admin, self.invoice, "draft")
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.status, "finished_unfactured")
+
 
 class DeleteInvoiceTests(InvoiceServiceSetupMixin, TestCase):
     def setUp(self):
@@ -224,13 +231,19 @@ class SendInvoiceEmailTests(InvoiceServiceSetupMixin, TestCase):
     def test_writes_audit_log_on_send(self):
         before = AuditLog.objects.count()
         with patch("django.core.mail.EmailMessage.send"):
-            invoice_service.send_invoice_email(self.admin, self.invoice, b"PDF", "test@example.com")
+            invoice_service.send_invoice_email(
+                self.admin, self.invoice, b"PDF", "test@example.com"
+            )
         self.assertEqual(AuditLog.objects.count(), before + 1)
         log = AuditLog.objects.latest("id")
         self.assertEqual(log.action, "invoice.email_sent")
         self.assertEqual(log.metadata["sent_to"], "test@example.com")
 
     def test_raises_on_email_failure(self):
-        with patch("django.core.mail.EmailMessage.send", side_effect=Exception("SMTP error")):
+        with patch(
+            "django.core.mail.EmailMessage.send", side_effect=Exception("SMTP error")
+        ):
             with self.assertRaises(Exception):
-                invoice_service.send_invoice_email(self.admin, self.invoice, b"PDF", "bad@example.com")
+                invoice_service.send_invoice_email(
+                    self.admin, self.invoice, b"PDF", "bad@example.com"
+                )

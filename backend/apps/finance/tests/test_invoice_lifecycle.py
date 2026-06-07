@@ -170,7 +170,9 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.lab_a.invoice_prefix = "MOL"
         self.lab_a.invoice_due_days = 21
         self.lab_a.vat_rate = "20.00"
-        self.lab_a.save(update_fields=["invoice_prefix", "invoice_due_days", "vat_rate"])
+        self.lab_a.save(
+            update_fields=["invoice_prefix", "invoice_due_days", "vat_rate"]
+        )
         self.client.force_authenticate(user=self.admin_a)
 
         response = self.client.post(
@@ -235,7 +237,9 @@ class InvoiceLifecycleApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        log = AuditLog.objects.filter(action="invoice.status_changed").latest("created_at")
+        log = AuditLog.objects.filter(action="invoice.status_changed").latest(
+            "created_at"
+        )
         self.assertEqual(log.entity_id, str(invoice.id))
         self.assertEqual(log.actor, self.admin_a)
         self.assertEqual(log.lab, self.lab_a)
@@ -431,7 +435,9 @@ class ConcurrentInvoiceSequenceTests(TransactionTestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Concurrent Seq Lab", invoice_prefix="CON")
         self.clinic = Clinic.objects.create(lab=self.lab, name="Clinic")
-        self.patient = Patient.objects.create(lab=self.lab, first_name="A", last_name="B")
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="A", last_name="B"
+        )
         self.job = Job.objects.create(
             lab=self.lab,
             patient=self.patient,
@@ -482,11 +488,19 @@ class ConcurrentInvoiceSequenceTests(TransactionTestCase):
 class ProformaInvoiceTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Proforma Lab", invoice_prefix="PRF")
-        self.user = User.objects.create_user(username="proforma_user", password="pw", role="admin", lab=self.lab)
+        self.user = User.objects.create_user(
+            username="proforma_user", password="pw", role="admin", lab=self.lab
+        )
         self.clinic = Clinic.objects.create(lab=self.lab, name="Proforma Clinic")
-        self.doctor = Doctor.objects.create(lab=self.lab, clinic=self.clinic, first_name="D", last_name="R")
-        self.patient = Patient.objects.create(lab=self.lab, first_name="P", last_name="Q", birth_number="900101/1234")
-        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
+        self.doctor = Doctor.objects.create(
+            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
+        )
+        self.patient = Patient.objects.create(
+            lab=self.lab, first_name="P", last_name="Q", birth_number="900101/1234"
+        )
+        self.tech = Technician.objects.create(
+            lab=self.lab, first_name="T", last_name="T"
+        )
 
     def _create_job(self):
         return Job.objects.create(
@@ -618,6 +632,23 @@ class InvoiceSkFormatTests(APITestCase):
         self.assertIsNone(resp.data["formatted_due_date"])
         self.assertIsNone(resp.data["formatted_issued_at"])
 
+    def test_invoice_serializer_exposes_invoice_audit_log(self):
+        AuditLog.objects.create(
+            actor=self.admin,
+            lab=self.lab,
+            action="invoice.status_changed",
+            entity_type="invoice",
+            entity_id=str(self.invoice.id),
+            description="Invoice status changed",
+            metadata={"from_status": "draft", "to_status": "issued"},
+        )
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get(f"/api/finance/invoices/{self.invoice.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["audit_log"][0]["label"], "Zmena stavu faktúry")
+        self.assertEqual(resp.data["audit_log"][0]["actor_name"], self.admin.username)
+        self.assertEqual(resp.data["audit_log"][0]["metadata"]["to_status"], "issued")
+
 
 class InvoiceRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     """
@@ -629,14 +660,18 @@ class InvoiceRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
 
     def setUp(self):
         self.setup_role_matrix(prefix="inv_matrix")
-        self.clinic = Clinic.objects.create(lab=self.lab_a, name="Invoice Matrix Clinic")
+        self.clinic = Clinic.objects.create(
+            lab=self.lab_a, name="Invoice Matrix Clinic"
+        )
         self.patient = Patient.objects.create(
             lab=self.lab_a,
             first_name="Invoice",
             last_name="Patient",
             birth_number="8001031234",
         )
-        self.tech = Technician.objects.create(lab=self.lab_a, first_name="Invoice", last_name="Tech")
+        self.tech = Technician.objects.create(
+            lab=self.lab_a, first_name="Invoice", last_name="Tech"
+        )
         self.job = Job.objects.create(
             lab=self.lab_a,
             patient=self.patient,
@@ -790,7 +825,9 @@ class InvoiceRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         for role, expected in expectations.items():
             with self.subTest(role=role):
                 resp = _delete_matrix(role)
-                self.assertEqual(resp.status_code, expected, f"DELETE invoice as {role}")
+                self.assertEqual(
+                    resp.status_code, expected, f"DELETE invoice as {role}"
+                )
 
     # ── Status change ────────────────────────────────────────────────────────
 

@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.core.models import AuditLog
+
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, InvoiceItem, PriceList, Subscription
 
@@ -15,14 +17,18 @@ class PriceListSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(self.instance, "lab", None)
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
         code = attrs.get("code", getattr(self.instance, "code", None))
         if lab and code:
             qs = PriceList.objects.filter(lab=lab, code=code)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise serializers.ValidationError({"code": "Price-list code already exists for this lab."})
+                raise serializers.ValidationError(
+                    {"code": "Price-list code already exists for this lab."}
+                )
         return attrs
 
 
@@ -83,6 +89,13 @@ def _sk_amount(amount):
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    AUDIT_LABELS = {
+        "invoice.created": "Faktúra vytvorená",
+        "invoice.status_changed": "Zmena stavu faktúry",
+        "invoice.deleted": "Faktúra zmazaná",
+        "invoice.email_sent": "Faktúra odoslaná e-mailom",
+    }
+
     items = InvoiceItemSerializer(many=True, read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
     patient_names = serializers.SerializerMethodField()
@@ -94,6 +107,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     formatted_total = serializers.SerializerMethodField()
     formatted_due_date = serializers.SerializerMethodField()
     formatted_issued_at = serializers.SerializerMethodField()
+    audit_log = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -122,6 +136,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "patient_names",
             "related_jobs",
+            "audit_log",
         )
 
     def get_patient_names(self, obj):
@@ -147,17 +162,27 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return f"{subtotal:.2f}"
 
     def get_vat_amount(self, obj):
-        amounts = calculate_invoice_amounts(self._subtotal(obj), obj.vat_rate, obj.discount_percent)
+        amounts = calculate_invoice_amounts(
+            self._subtotal(obj), obj.vat_rate, obj.discount_percent
+        )
         return f"{amounts['vat_amount']:.2f}"
 
     def _subtotal(self, obj):
         items = obj.items.all()
         if items:
-            return sum((Decimal(str(item.line_total or 0)) for item in items), Decimal())
-        return reverse_invoice_subtotal(obj.total_amount, obj.vat_rate, obj.discount_percent)
+            return sum(
+                (Decimal(str(item.line_total or 0)) for item in items), Decimal()
+            )
+        return reverse_invoice_subtotal(
+            obj.total_amount, obj.vat_rate, obj.discount_percent
+        )
 
     def get_is_overdue(self, obj):
-        return bool(obj.status == "issued" and obj.due_date and obj.due_date < timezone.localdate())
+        return bool(
+            obj.status == "issued"
+            and obj.due_date
+            and obj.due_date < timezone.localdate()
+        )
 
     def get_days_overdue(self, obj):
         if not self.get_is_overdue(obj):
@@ -173,7 +198,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 continue
             seen.add(job.id)
             patient = job.patient
-            patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else ""
+            patient_name = (
+                f"{patient.first_name} {patient.last_name}".strip() if patient else ""
+            )
             related.append(
                 {
                     "id": job.id,
@@ -184,6 +211,27 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 }
             )
         return related
+
+    def get_audit_log(self, obj):
+        logs = (
+            AuditLog.objects.filter(
+                entity_type="invoice", entity_id=str(obj.id), lab_id=obj.lab_id
+            )
+            .select_related("actor")
+            .order_by("-created_at", "-id")[:20]
+        )
+        return [
+            {
+                "id": log.id,
+                "action": log.action,
+                "label": self.AUDIT_LABELS.get(log.action, log.action),
+                "actor_name": log.actor.username if log.actor else "Systém",
+                "created_at": log.created_at,
+                "message": log.description,
+                "metadata": log.metadata or {},
+            }
+            for log in logs
+        ]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

@@ -140,14 +140,21 @@ function Dashboard({ onNavigate, onOpenJob }) {
   const today = new Date();
   const openStatuses = ['new', 'in_progress'];
   const technicianName = (savedUser && savedUser.name || '').toLowerCase();
+  const technicianUsername = (savedUser && savedUser.username || '').toLowerCase();
   const openTechnicianJobs = workspaceJobs.filter((job) => openStatuses.includes(job.status));
   const matchedTechnicianJobs = openTechnicianJobs.filter((job) => {
     const raw = job.raw || {};
     const tech = raw.technician_details;
     const assignedName = tech ? `${tech.first_name || ''} ${tech.last_name || ''}`.trim().toLowerCase() : '';
-    return technicianName && assignedName && assignedName.includes(technicianName);
+    const assignedUsername = tech && tech.user_details ? String(tech.user_details.username || '').toLowerCase() : '';
+    const assignedUserId = tech && tech.user_details ? tech.user_details.id : tech && tech.user;
+    return (
+      (technicianName && assignedName && assignedName.includes(technicianName))
+      || (technicianUsername && assignedUsername && assignedUsername === technicianUsername)
+      || (savedUser && savedUser.id && assignedUserId && Number(assignedUserId) === Number(savedUser.id))
+    );
   });
-  const technicianJobs = matchedTechnicianJobs.length ? matchedTechnicianJobs : openTechnicianJobs;
+  const technicianJobs = matchedTechnicianJobs;
   const overdueInvoices = workspaceInvoices.filter((invoice) => {
     const due = invoice.raw && invoice.raw.due_date ? new Date(invoice.raw.due_date) : null;
     return invoice.status === 'issued' && due && due < today;
