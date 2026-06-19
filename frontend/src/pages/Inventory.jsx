@@ -5,6 +5,7 @@ function Inventory({ onNavigate, onCreate }) {
   const [tab, setTab] = React.useState('all');
   const [exporting, setExporting] = React.useState(false);
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
 
   async function handleExport() {
     setExporting(true);
@@ -25,7 +26,12 @@ function Inventory({ onNavigate, onCreate }) {
         React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'Exportovať CSV'),
       React.createElement(Button, { key: 'import', variant: 'outline' },
         React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
-      React.createElement(Button, { key: 'add', onClick: onCreate },
+      React.createElement(Button, {
+        key: 'add',
+        onClick: canCreate ? onCreate : undefined,
+        disabled: !canCreate,
+        title: canCreate ? undefined : 'Skladovú položku môže vytvoriť iba administrátor laboratória.',
+      },
         React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať položku'),
     ]
   });

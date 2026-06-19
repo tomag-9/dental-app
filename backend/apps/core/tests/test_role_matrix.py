@@ -484,8 +484,12 @@ class CrossLabReadIsolationTests(RoleMatrixTestMixin, APITestCase):
         self.setup_role_matrix(prefix="read_iso")
         self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Read Iso Clinic A")
         self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Read Iso Clinic B")
-        self.tech_model_a = Technician.objects.create(lab=self.lab_a, first_name="Iso", last_name="Tech A")
-        self.tech_model_b = Technician.objects.create(lab=self.lab_b, first_name="Iso", last_name="Tech B")
+        self.tech_model_a = Technician.objects.create(
+            lab=self.lab_a, first_name="Iso", last_name="Tech A"
+        )
+        self.tech_model_b = Technician.objects.create(
+            lab=self.lab_b, first_name="Iso", last_name="Tech B"
+        )
         doctor_a = Doctor.objects.create(
             lab=self.lab_a,
             clinic=self.clinic_a,
@@ -562,7 +566,9 @@ class CrossLabReadIsolationTests(RoleMatrixTestMixin, APITestCase):
         self.client.force_authenticate(user=None)
 
     def test_jobs_list_cross_lab_isolation(self):
-        self._assert_cross_lab_isolation("/api/jobs/jobs/", self.job_a.id, self.job_b.id)
+        self._assert_cross_lab_isolation(
+            "/api/jobs/jobs/", self.job_a.id, self.job_b.id
+        )
 
     def test_technicians_list_cross_lab_isolation(self):
         self._assert_cross_lab_isolation(
@@ -627,22 +633,36 @@ class CrossDomainExportRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         }
 
     def test_clinic_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/crm/clinics/export/", self._read_allowed_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/clinics/export/", self._read_allowed_expectations()
+        )
 
     def test_doctor_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/crm/doctors/export/", self._admin_only_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/doctors/export/", self._admin_only_expectations()
+        )
 
     def test_patient_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/crm/patients/export/", self._admin_only_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/crm/patients/export/", self._admin_only_expectations()
+        )
 
     def test_jobs_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/jobs/jobs/export/", self._read_allowed_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/jobs/jobs/export/", self._read_allowed_expectations()
+        )
 
     def test_invoice_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/finance/invoices/export/", self._read_allowed_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/finance/invoices/export/", self._read_allowed_expectations()
+        )
 
     def test_pricelist_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/finance/price-list/export/", self._read_allowed_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/finance/price-list/export/", self._read_allowed_expectations()
+        )
 
     def test_inventory_export_role_matrix(self):
-        self.assert_endpoint_matrix("GET", "/api/inventory/warehouse/export/", self._read_allowed_expectations())
+        self.assert_endpoint_matrix(
+            "GET", "/api/inventory/warehouse/export/", self._read_allowed_expectations()
+        )

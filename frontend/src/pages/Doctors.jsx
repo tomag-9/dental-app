@@ -3,13 +3,19 @@
 function Doctors({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const doctors = workspace.doctors || [];
   const filtered = doctors.filter(d => !search || `${d.first} ${d.last} ${d.clinic} ${d.specialty}`.toLowerCase().includes(search.toLowerCase()));
   const initials = d => `${(d.first || '?')[0]}${(d.last || '?')[0]}`;
   const pageHeader = React.createElement(PageHeader, {
     title: 'Lekári',
     subtitle: 'Odosielajúci lekári a ich kontaktné údaje.',
-    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať lekára')]
+    actions: [React.createElement(Button, {
+      key: 'add',
+      onClick: canCreate ? onCreate : undefined,
+      disabled: workspace.loading || !canCreate,
+      title: canCreate ? undefined : 'Lekára môže vytvoriť iba administrátor laboratória.',
+    }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať lekára')]
   });
 
   if (workspace.loading) {

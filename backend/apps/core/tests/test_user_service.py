@@ -141,7 +141,9 @@ class UserServiceUpdateTests(TestCase):
         serializer.save.side_effect = fake_save
 
         audit_count_before = AuditLog.objects.count()
-        user_service.update_user(self.admin, self.target, serializer, {"first_name": "Changed"})
+        user_service.update_user(
+            self.admin, self.target, serializer, {"first_name": "Changed"}
+        )
 
         self.assertEqual(AuditLog.objects.count(), audit_count_before + 1)
         log = AuditLog.objects.latest("id")

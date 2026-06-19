@@ -36,7 +36,9 @@ def generate_invoice_number(lab):
 def sync_jobs_for_invoice_status(invoice, new_status):
     """Sync the statuses of jobs linked to *invoice* when invoice status changes."""
     job_ids = list(
-        InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False).values_list("job_id", flat=True).distinct()
+        InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False)
+        .values_list("job_id", flat=True)
+        .distinct()
     )
     if new_status == "cancelled":
         jobs_services.mark_jobs_invoice_cancelled(job_ids)
@@ -76,7 +78,9 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
         discount_percent = Decimal("0")
 
     now = timezone.now()
-    due_date = timezone.localdate() + timezone.timedelta(days=clinic.lab.invoice_due_days)
+    due_date = timezone.localdate() + timezone.timedelta(
+        days=clinic.lab.invoice_due_days
+    )
 
     invoice = Invoice.objects.create(
         clinic=clinic,
@@ -131,7 +135,9 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
             )
             subtotal += item.line_total
 
-    amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
+    amounts = calculate_invoice_amounts(
+        subtotal, invoice.vat_rate, invoice.discount_percent
+    )
     invoice.total_amount = amounts["total_amount"]
     invoice.save(update_fields=["total_amount"])
 
@@ -196,10 +202,14 @@ def send_invoice_email(actor, invoice, pdf_bytes, recipient):
     msg = EmailMessage(
         subject=subject,
         body=body,
-        from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
+        from_email=getattr(
+            django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
+        ),
         to=[recipient],
     )
     msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
     msg.send(fail_silently=False)
 
-    write_invoice_audit(actor, invoice, "invoice.email_sent", metadata={"sent_to": recipient})
+    write_invoice_audit(
+        actor, invoice, "invoice.email_sent", metadata={"sent_to": recipient}
+    )

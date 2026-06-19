@@ -10,6 +10,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [deleting, setDeleting] = React.useState(false);
   const [error, setError] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -40,7 +41,12 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     title: 'Práce',
     subtitle: 'Prehľad, správa a stav zákaziek.',
     actions: [
-      React.createElement(Button, { key: 'n', onClick: onNewJob }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
+      React.createElement(Button, {
+        key: 'n',
+        onClick: canCreate ? onNewJob : undefined,
+        disabled: !canCreate,
+        title: canCreate ? undefined : 'Novú prácu môže vytvoriť iba administrátor laboratória.',
+      }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
       React.createElement(Button, {
         key: 'export',
         variant: 'outline',

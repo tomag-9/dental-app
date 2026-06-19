@@ -25,7 +25,11 @@ function CreateEntityDrawer({ type, open, onClose }) {
       onClose(true);
     } catch (err) {
       setSaving(false);
-      setError((err && err.data && JSON.stringify(err.data)) || err.message || 'Záznam sa nepodarilo vytvoriť.');
+      if (err && err.status === 403) {
+        setError('Na vytvorenie záznamu nemáte oprávnenie. Použite účet administrátora laboratória.');
+      } else {
+        setError((err && err.data && JSON.stringify(err.data)) || err.message || 'Záznam sa nepodarilo vytvoriť.');
+      }
     }
   };
 

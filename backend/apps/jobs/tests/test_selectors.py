@@ -4,7 +4,11 @@ from django.utils import timezone
 from apps.core.models import Lab, User
 from apps.crm.models import Clinic, Patient
 from apps.jobs.models import CalendarEvent, Job, Technician
-from apps.jobs.selectors import calendar_events_for_user, jobs_for_user, technicians_for_user
+from apps.jobs.selectors import (
+    calendar_events_for_user,
+    jobs_for_user,
+    technicians_for_user,
+)
 
 
 class JobSelectorTests(TestCase):

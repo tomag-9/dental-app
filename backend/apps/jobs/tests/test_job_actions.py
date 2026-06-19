@@ -93,9 +93,15 @@ class JobBulkUpdateTests(APITestCase):
             first_name="Bulk",
             last_name="Patient",
         )
-        self.job1 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
-        self.job2 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="new")
-        self.job3 = Job.objects.create(lab=self.lab, clinic=self.clinic, patient=self.patient, status="completed")
+        self.job1 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new"
+        )
+        self.job2 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="new"
+        )
+        self.job3 = Job.objects.create(
+            lab=self.lab, clinic=self.clinic, patient=self.patient, status="completed"
+        )
 
     def test_bulk_status_update_valid_transition(self):
         self.client.force_authenticate(user=self.user)
@@ -173,7 +179,9 @@ class JobBulkUpdateTests(APITestCase):
         )
 
         self.assertEqual(resp.status_code, 200)
-        log = AuditLog.objects.filter(action="job.bulk_priority_changed").latest("created_at")
+        log = AuditLog.objects.filter(action="job.bulk_priority_changed").latest(
+            "created_at"
+        )
         self.assertEqual(log.entity_id, str(self.job1.id))
         self.assertEqual(log.actor, self.user)
         self.assertEqual(log.lab, self.lab)
@@ -219,7 +227,9 @@ class JobStatusNotificationTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
-        self.patient = Patient.objects.create(first_name="Jana", last_name="Nová", lab=self.lab)
+        self.patient = Patient.objects.create(
+            first_name="Jana", last_name="Nová", lab=self.lab
+        )
         self.clinic = Clinic.objects.create(name="Klinika Test", lab=self.lab)
         self.job = Job.objects.create(
             patient=self.patient,
@@ -238,7 +248,9 @@ class JobStatusNotificationTests(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, 200)
-        notif = Notification.objects.filter(lab=self.lab, type="job", recipient=self.admin).first()
+        notif = Notification.objects.filter(
+            lab=self.lab, type="job", recipient=self.admin
+        ).first()
         self.assertIsNotNone(notif)
         self.assertIn("V riešení", notif.title)
         self.assertEqual(notif.url, f"/jobs/{self.job.id}")
@@ -252,7 +264,9 @@ class JobStatusNotificationTests(APITestCase):
             {"status": "new"},
             format="json",
         )
-        self.assertEqual(Notification.objects.filter(lab=self.lab, type="job").count(), 0)
+        self.assertEqual(
+            Notification.objects.filter(lab=self.lab, type="job").count(), 0
+        )
 
 
 class JobDateRangeFilterTests(APITestCase):

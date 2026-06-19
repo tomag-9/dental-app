@@ -34,7 +34,9 @@ def _age_from_birth_number(birth_number):
 def _validate_birth_number(value):
     digits = value.replace("/", "").strip()
     if not re.fullmatch(r"\d{9,10}", digits):
-        raise serializers.ValidationError("Rodné číslo musí obsahovať 9 alebo 10 číslic (napr. 900101/1234).")
+        raise serializers.ValidationError(
+            "Rodné číslo musí obsahovať 9 alebo 10 číslic (napr. 900101/1234)."
+        )
     mm = int(digits[2:4])
     dd = int(digits[4:6])
     if mm > 50:
@@ -70,7 +72,9 @@ def _validate_dic(value):
         return
     if re.fullmatch(r"SK\d{10}", stripped):
         return
-    raise serializers.ValidationError("DIČ musí byť vo formáte 10 číslic alebo SK0000000000.")
+    raise serializers.ValidationError(
+        "DIČ musí byť vo formáte 10 číslic alebo SK0000000000."
+    )
 
 
 ACTIVE_JOB_STATUSES = ("new", "in_progress")
@@ -181,14 +185,18 @@ class ClinicSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(self.instance, "lab", None)
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
         ico = attrs.get("ico", getattr(self.instance, "ico", None))
         if lab and ico:
             qs = Clinic.objects.filter(lab=lab, ico=ico)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
-                raise serializers.ValidationError({"ico": "Clinic IČO already exists for this lab."})
+                raise serializers.ValidationError(
+                    {"ico": "Clinic IČO already exists for this lab."}
+                )
         return attrs
 
     def create(self, validated_data):
@@ -342,15 +350,23 @@ class PatientSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get("request")
-        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(self.instance, "lab", None)
-        birth_number = attrs.get("birth_number", getattr(self.instance, "birth_number", None))
+        lab = getattr(getattr(request, "user", None), "lab", None) or getattr(
+            self.instance, "lab", None
+        )
+        birth_number = attrs.get(
+            "birth_number", getattr(self.instance, "birth_number", None)
+        )
         if lab and birth_number:
             qs = Patient.objects.filter(lab=lab, birth_number=birth_number)
             if self.instance:
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise serializers.ValidationError(
-                    {"birth_number": ("Patient birth number already exists for this lab.")}
+                    {
+                        "birth_number": (
+                            "Patient birth number already exists for this lab."
+                        )
+                    }
                 )
         return attrs
 

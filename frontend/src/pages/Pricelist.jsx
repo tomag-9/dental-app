@@ -4,6 +4,7 @@ function Pricelist({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const items = workspace.priceList || [];
   const cats = { all: 'Všetky', koruny: 'Korunky', mostiky: 'Mostíky', vyplne: 'Výplne', protezy: 'Protézy', implant: 'Implantológia' };
   const filtered = items.filter(i => {
@@ -19,7 +20,12 @@ function Pricelist({ onNavigate, onCreate }) {
     breadcrumbs: [{ label: 'Financie', onClick: () => onNavigate('finance') }, { label: 'Cenník' }],
     actions: [
       React.createElement(Button, { key: 'imp', variant: 'outline', disabled: workspace.loading }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať CSV'),
-      React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať položku'),
+      React.createElement(Button, {
+        key: 'add',
+        onClick: canCreate ? onCreate : undefined,
+        disabled: workspace.loading || !canCreate,
+        title: canCreate ? undefined : 'Položku cenníka môže vytvoriť iba administrátor laboratória.',
+      }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať položku'),
     ]
   });
 

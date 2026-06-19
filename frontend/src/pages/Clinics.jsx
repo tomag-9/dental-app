@@ -3,13 +3,19 @@
 function Clinics({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const clinics = workspace.clinics || [];
   const filtered = clinics.filter(c => !search || [c.name, c.address, c.ico].some(v => v.toLowerCase().includes(search.toLowerCase())));
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
   const pageHeader = React.createElement(PageHeader, {
     title: 'Kliniky',
     subtitle: 'Klientske kliniky a ich zmluvné údaje.',
-    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať kliniku')]
+    actions: [React.createElement(Button, {
+      key: 'add',
+      onClick: canCreate ? onCreate : undefined,
+      disabled: workspace.loading || !canCreate,
+      title: canCreate ? undefined : 'Kliniku môže vytvoriť iba administrátor laboratória.',
+    }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať kliniku')]
   });
 
   if (workspace.loading) {

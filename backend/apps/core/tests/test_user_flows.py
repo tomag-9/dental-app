@@ -71,7 +71,9 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
         self.assertEqual(get_response.data["username"], "admin_a")
 
-        put_response = self.client.put("/api/core/users/me/", {"nickname": "new_nick"}, format="json")
+        put_response = self.client.put(
+            "/api/core/users/me/", {"nickname": "new_nick"}, format="json"
+        )
         self.assertEqual(put_response.status_code, status.HTTP_200_OK)
         self.assertEqual(put_response.data["nickname"], "new_nick")
 
@@ -184,7 +186,9 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(list_response.data), 3)
 
-        toggle_response = self.client.put(f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/")
+        toggle_response = self.client.put(
+            f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/"
+        )
         self.assertEqual(toggle_response.status_code, status.HTTP_200_OK)
         self.user_a.refresh_from_db()
         self.assertFalse(self.user_a.is_active)
@@ -228,7 +232,9 @@ class CoreUserFlowsApiTests(APITestCase):
         list_response = self.client.get("/api/core/users/superadmin/all/")
         self.assertEqual(list_response.status_code, status.HTTP_403_FORBIDDEN)
 
-        toggle_response = self.client.put(f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/")
+        toggle_response = self.client.put(
+            f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/"
+        )
         self.assertEqual(toggle_response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_non_admin_cannot_access_generic_user_management_list(self):
@@ -356,7 +362,9 @@ class CoreUserFlowsApiTests(APITestCase):
 
     def test_toggle_active_audit_log_records_actor_lab_and_state(self):
         self.client.force_authenticate(user=self.superadmin)
-        response = self.client.put(f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/")
+        response = self.client.put(
+            f"/api/core/users/superadmin/{self.user_a.id}/toggle-active/"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         log = AuditLog.objects.filter(action="user.toggle_active").latest("created_at")
@@ -367,7 +375,9 @@ class CoreUserFlowsApiTests(APITestCase):
 
     def test_impersonation_audit_log_records_actor_lab_and_target(self):
         self.client.force_authenticate(user=self.superadmin)
-        response = self.client.post(f"/api/core/users/superadmin/{self.user_a.id}/impersonate/")
+        response = self.client.post(
+            f"/api/core/users/superadmin/{self.user_a.id}/impersonate/"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         log = AuditLog.objects.filter(action="user.impersonated").latest("created_at")
@@ -562,7 +572,9 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual([item["id"] for item in response.data], [own.id])
 
     def test_superadmin_labs_all_includes_stats(self):
-        Subscription.objects.create(lab=self.lab_a, plan="free", status="active", seats=5)
+        Subscription.objects.create(
+            lab=self.lab_a, plan="free", status="active", seats=5
+        )
 
         self.client.force_authenticate(user=self.superadmin)
         response = self.client.get("/api/core/labs/superadmin/all/")
@@ -763,7 +775,9 @@ class CoreUserFlowsApiTests(APITestCase):
 
         self.client.force_authenticate(user=self.admin_a)
         count_response = self.client.get("/api/notifications/unread-count/")
-        mark_response = self.client.post(f"/api/notifications/{notification.id}/mark-read/")
+        mark_response = self.client.post(
+            f"/api/notifications/{notification.id}/mark-read/"
+        )
         next_count_response = self.client.get("/api/notifications/unread-count/")
 
         self.assertEqual(count_response.status_code, status.HTTP_200_OK)

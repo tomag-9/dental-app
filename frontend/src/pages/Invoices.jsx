@@ -7,6 +7,7 @@ function Invoices({ onNavigate, onCreate }) {
   const [actionError, setActionError] = React.useState('');
   const [exporting, setExporting] = React.useState(false);
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
 
   const exportInvoices = async () => {
     setExporting(true);
@@ -26,7 +27,12 @@ function Invoices({ onNavigate, onCreate }) {
     actions: [
       React.createElement(Button, { key: 'export', variant: 'outline', onClick: exportInvoices, disabled: exporting },
         React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'CSV export'),
-      React.createElement(Button, { key: 'new', onClick: onCreate },
+      React.createElement(Button, {
+        key: 'new',
+        onClick: canCreate ? onCreate : undefined,
+        disabled: !canCreate,
+        title: canCreate ? undefined : 'Faktúru môže vytvoriť iba administrátor laboratória.',
+      },
         React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová faktúra'),
     ]
   });

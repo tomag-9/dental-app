@@ -190,6 +190,15 @@ function isPermissionDeniedError(error) {
   return text.includes('403') || text.includes('forbidden') || text.includes('permission') || text.includes('oprávnen');
 }
 
+function getCurrentUser() {
+  return (window.MolarisAPI && window.MolarisAPI.savedUser && window.MolarisAPI.savedUser()) || null;
+}
+
+function canCreateRecords() {
+  const user = getCurrentUser();
+  return !!user && user.role === 'admin';
+}
+
 function PermissionDeniedState({ message = 'Na zobrazenie tejto časti nemáte oprávnenie.' }) {
   return React.createElement('div', {
     role: 'alert',
@@ -450,6 +459,7 @@ Object.assign(window, {
   Button, Card, CardHeader, CardTitle, CardContent,
   Badge, FormField, ConfirmDialog,
   EmptyState, LoadingState, ErrorState, PermissionDeniedState, ScreenStatePanel, isPermissionDeniedError,
+  getCurrentUser, canCreateRecords,
   PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section, InfoCell,
   fmtEur, fmtDate,
 });

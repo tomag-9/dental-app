@@ -1,4 +1,6 @@
-from drf_spectacular.management.commands.spectacular import Command as SpectacularCommand
+from drf_spectacular.management.commands.spectacular import (
+    Command as SpectacularCommand,
+)
 
 
 class Command(SpectacularCommand):

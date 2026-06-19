@@ -61,12 +61,16 @@ def create_user(actor, serializer):
     Raises ``PermissionDenied`` if the actor is not admin or superadmin.
     """
     if not is_admin_or_superadmin(actor):
-        raise PermissionDenied("Používateľov môže spravovať iba administrátor alebo superadministrátor")
+        raise PermissionDenied(
+            "Používateľov môže spravovať iba administrátor alebo superadministrátor"
+        )
 
     if not is_superadmin(actor):
         role = serializer.validated_data.get("role")
         if role == "superadmin":
-            raise PermissionDenied("Rolu superadministrátora môže priradiť iba superadministrátor")
+            raise PermissionDenied(
+                "Rolu superadministrátora môže priradiť iba superadministrátor"
+            )
         user = serializer.save(lab=actor.lab)
     else:
         user = serializer.save()
@@ -95,7 +99,9 @@ def update_user(actor, target, serializer, data):
     Raises ``PermissionDenied`` or ``ValidationError`` on constraint violations.
     """
     if not is_admin_or_superadmin(actor):
-        raise PermissionDenied("Používateľov môže spravovať iba administrátor alebo superadministrátor")
+        raise PermissionDenied(
+            "Používateľov môže spravovať iba administrátor alebo superadministrátor"
+        )
 
     _validate_update_contract(actor, target, data)
 
@@ -126,7 +132,9 @@ def delete_user(actor, instance):
     Raises ``PermissionDenied`` if the actor is not admin or superadmin.
     """
     if not is_admin_or_superadmin(actor):
-        raise PermissionDenied("Používateľov môže spravovať iba administrátor alebo superadministrátor")
+        raise PermissionDenied(
+            "Používateľov môže spravovať iba administrátor alebo superadministrátor"
+        )
 
     _write_audit(
         actor=actor,

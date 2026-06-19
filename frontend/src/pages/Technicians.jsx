@@ -3,6 +3,7 @@
 function Technicians({ onNavigate, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const techs = workspace.technicians || [];
   const filtered = techs.filter(t => !search || `${t.first} ${t.last} ${t.specialty} ${t.role}`.toLowerCase().includes(search.toLowerCase()));
   const initials = t => `${(t.first || '?')[0]}${(t.last || '?')[0]}`;
@@ -10,7 +11,12 @@ function Technicians({ onNavigate, onCreate }) {
   const pageHeader = React.createElement(PageHeader, {
     title: 'Technici',
     subtitle: 'Tím technických pracovníkov a ich vyťaženie.',
-    actions: [React.createElement(Button, { key: 'add', onClick: onCreate, disabled: workspace.loading }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať technika')]
+    actions: [React.createElement(Button, {
+      key: 'add',
+      onClick: canCreate ? onCreate : undefined,
+      disabled: workspace.loading || !canCreate,
+      title: canCreate ? undefined : 'Technika môže vytvoriť iba administrátor laboratória.',
+    }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať technika')]
   });
 
   if (workspace.loading) {

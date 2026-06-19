@@ -33,7 +33,9 @@ def next_invoice_number(lab):
 
 
 @transaction.atomic
-def create_invoice_from_jobs(*, user, clinic_id, job_ids, document_type="invoice", discount_percent=Decimal("0")):
+def create_invoice_from_jobs(
+    *, user, clinic_id, job_ids, document_type="invoice", discount_percent=Decimal("0")
+):
     """
     Validate access, look up clinic and jobs, and create an invoice.
 

@@ -38,29 +38,41 @@ class JobServicesSetupMixin:
 
 class TransitionJobStatusTests(JobServicesSetupMixin, TestCase):
     def test_transitions_valid_status_via_keyword_args(self):
-        job = job_services.transition_job_status(user=self.user, job=self.job, new_status="in_progress")
+        job = job_services.transition_job_status(
+            user=self.user, job=self.job, new_status="in_progress"
+        )
         self.assertEqual(job.status, "in_progress")
 
     def test_raises_for_invalid_transition(self):
         with self.assertRaises(ValidationError):
-            job_services.transition_job_status(user=self.user, job=self.job, new_status="completed")
+            job_services.transition_job_status(
+                user=self.user, job=self.job, new_status="completed"
+            )
 
     def test_noop_when_already_at_target(self):
-        job = job_services.transition_job_status(user=self.user, job=self.job, new_status="new")
+        job = job_services.transition_job_status(
+            user=self.user, job=self.job, new_status="new"
+        )
         self.assertEqual(job.status, "new")
 
     def test_note_is_forwarded(self):
         from apps.jobs.models import JobTimelineEvent
 
-        job_services.transition_job_status(user=self.user, job=self.job, new_status="in_progress", note="Custom note")
-        event = JobTimelineEvent.objects.filter(job=self.job, event="status_changed").first()
+        job_services.transition_job_status(
+            user=self.user, job=self.job, new_status="in_progress", note="Custom note"
+        )
+        event = JobTimelineEvent.objects.filter(
+            job=self.job, event="status_changed"
+        ).first()
         self.assertIsNotNone(event)
         self.assertEqual(event.note, "Custom note")
 
 
 class MarkJobsInvoicedTests(JobServicesSetupMixin, TestCase):
     def _make_job(self, status="completed"):
-        return Job.objects.create(lab=self.lab, patient=self.patient, clinic=self.clinic, status=status)
+        return Job.objects.create(
+            lab=self.lab, patient=self.patient, clinic=self.clinic, status=status
+        )
 
     def test_paid_closes_jobs(self):
         j1, j2 = self._make_job(), self._make_job()

@@ -134,11 +134,25 @@ def _static_search_results(query, user):
         ),
         ("page:settings", "page", "Prejsť na Nastavenia", "Profil a tím", "/settings"),
     ]
-    actions = [
-        ("action:new-job", "action", "Vytvoriť novú prácu", "Quick add", "/jobs/new"),
-        ("action:new-patient", "action", "Pridať pacienta", "CRM", "/patients"),
-        ("action:new-invoice", "action", "Vytvoriť faktúru", "Finance", "/invoices"),
-    ]
+    actions = []
+    if is_admin_or_superadmin(user):
+        actions = [
+            (
+                "action:new-job",
+                "action",
+                "Vytvoriť novú prácu",
+                "Quick add",
+                "/jobs/new",
+            ),
+            ("action:new-patient", "action", "Pridať pacienta", "CRM", "/patients"),
+            (
+                "action:new-invoice",
+                "action",
+                "Vytvoriť faktúru",
+                "Finance",
+                "/invoices",
+            ),
+        ]
     if is_superadmin(user):
         pages.append(
             (
@@ -186,10 +200,15 @@ class GlobalSearchView(APIView):
             invoices_qs = Invoice.objects.select_related("clinic").all()
         elif lab_id:
             patients_qs = Patient.objects.filter(lab_id=lab_id)
-            jobs_qs = Job.objects.select_related("patient", "clinic").filter(lab_id=lab_id)
+            jobs_qs = Job.objects.select_related("patient", "clinic").filter(
+                lab_id=lab_id
+            )
             invoices_qs = Invoice.objects.select_related("clinic").filter(lab_id=lab_id)
         else:
-            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Používateľ nemá priradené laboratórium"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         results = _static_search_results(query, user)
 
@@ -200,7 +219,9 @@ class GlobalSearchView(APIView):
                 | Q(birth_number__icontains=query)
                 | Q(email__icontains=query)
             )
-            for patient in patients_qs.filter(patient_filter).order_by("last_name", "first_name")[:limit]:
+            for patient in patients_qs.filter(patient_filter).order_by(
+                "last_name", "first_name"
+            )[:limit]:
                 name = f"{patient.first_name} {patient.last_name}".strip()
                 results.append(
                     {
@@ -224,7 +245,9 @@ class GlobalSearchView(APIView):
                 job_filter |= Q(id=int(query))
             for job in jobs_qs.filter(job_filter).order_by("-created_at")[:limit]:
                 patient_name = (
-                    f"{job.patient.first_name} {job.patient.last_name}".strip() if job.patient_id else "Neznámy pacient"
+                    f"{job.patient.first_name} {job.patient.last_name}".strip()
+                    if job.patient_id
+                    else "Neznámy pacient"
                 )
                 results.append(
                     {
@@ -237,8 +260,14 @@ class GlobalSearchView(APIView):
                     }
                 )
 
-            invoice_filter = Q(number__icontains=query) | Q(status__icontains=query) | Q(clinic__name__icontains=query)
-            for invoice in invoices_qs.filter(invoice_filter).order_by("-created_at")[:limit]:
+            invoice_filter = (
+                Q(number__icontains=query)
+                | Q(status__icontains=query)
+                | Q(clinic__name__icontains=query)
+            )
+            for invoice in invoices_qs.filter(invoice_filter).order_by("-created_at")[
+                :limit
+            ]:
                 clinic_name = invoice.clinic.name if invoice.clinic_id else ""
                 results.append(
                     {
@@ -271,8 +300,8 @@ def _role_permission_payload(user):
         ("superadmin", "Superadmin", "/superadmin", "shield", superadmin),
     ]
     actions = {
-        "create_job": True,
-        "create_patient": role != "technician",
+        "create_job": admin,
+        "create_patient": admin,
         "create_invoice": admin,
         "manage_inventory": admin,
         "manage_team": admin,
@@ -308,7 +337,9 @@ class LogoutView(APIView):
 
     def post(self, request):
         # Accept refresh token from cookie (new) or request body (backward compat).
-        refresh_raw = request.COOKIES.get(_REFRESH_COOKIE) or request.data.get("refresh_token")
+        refresh_raw = request.COOKIES.get(_REFRESH_COOKIE) or request.data.get(
+            "refresh_token"
+        )
         if refresh_raw:
             try:
                 token = RefreshToken(refresh_raw)
@@ -335,7 +366,9 @@ class CsrfView(APIView):
 
 class HealthCheckResponseSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("ok", "unhealthy"))
-    checks = serializers.DictField(child=serializers.ChoiceField(choices=("ok", "error")))
+    checks = serializers.DictField(
+        child=serializers.ChoiceField(choices=("ok", "error"))
+    )
 
 
 class HealthCheckView(APIView):
@@ -417,7 +450,9 @@ class SystemHealthView(APIView):
             )
         except Exception as exc:
             migration_status = "error"
-            checks.append({"service": "migrations", "status": "error", "detail": str(exc)})
+            checks.append(
+                {"service": "migrations", "status": "error", "detail": str(exc)}
+            )
 
         # Memory check (psutil optional)
         memory_info = None
@@ -464,7 +499,9 @@ class SystemHealthView(APIView):
                 "runtime": {
                     "django_version": django.__version__,
                     "python_version": sys.version.split(" ")[0],
-                    "pending_migrations": (pending_migrations if "pending_migrations" in dir() else None),
+                    "pending_migrations": (
+                        pending_migrations if "pending_migrations" in dir() else None
+                    ),
                     "memory": memory_info,
                 },
             }
@@ -485,13 +522,26 @@ class DashboardStatsView(APIView):
         if is_superadmin(user):
             patients_qs = Patient.objects.all()
             jobs_qs = Job.objects.select_related("patient").order_by("-created_at")
-            invoices_qs = Invoice.objects.select_related("clinic").order_by("-created_at")
+            invoices_qs = Invoice.objects.select_related("clinic").order_by(
+                "-created_at"
+            )
         elif lab_id:
             patients_qs = Patient.objects.filter(lab_id=lab_id)
-            jobs_qs = Job.objects.filter(lab_id=lab_id).select_related("patient").order_by("-created_at")
-            invoices_qs = Invoice.objects.filter(lab_id=lab_id).select_related("clinic").order_by("-created_at")
+            jobs_qs = (
+                Job.objects.filter(lab_id=lab_id)
+                .select_related("patient")
+                .order_by("-created_at")
+            )
+            invoices_qs = (
+                Invoice.objects.filter(lab_id=lab_id)
+                .select_related("clinic")
+                .order_by("-created_at")
+            )
         else:
-            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Používateľ nemá priradené laboratórium"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         active_statuses = ("new", "in_progress")
         done_statuses = (
@@ -504,13 +554,15 @@ class DashboardStatsView(APIView):
         total_patients = patients_qs.count()
         active_jobs = jobs_qs.filter(status__in=active_statuses).count()
         completed_jobs = jobs_qs.filter(status__in=done_statuses).count()
-        total_revenue = invoices_qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"] or Decimal(
-            "0.00"
-        )
+        total_revenue = invoices_qs.filter(status="paid").aggregate(
+            total=Sum("total_amount")
+        )["total"] or Decimal("0.00")
         today = timezone.localdate()
         period_start = today.replace(day=1)
         if period_start.month == 1:
-            previous_period_start = period_start.replace(year=period_start.year - 1, month=12)
+            previous_period_start = period_start.replace(
+                year=period_start.year - 1, month=12
+            )
         else:
             previous_period_start = period_start.replace(month=period_start.month - 1)
         previous_period_end = period_start - timedelta(days=1)
@@ -571,7 +623,9 @@ class DashboardStatsView(APIView):
                     "status": inv.status,
                     "total_amount": str(inv.total_amount),
                     "clinic_name": inv.clinic.name if inv.clinic else None,
-                    "created_at": (inv.created_at.isoformat() if inv.created_at else None),
+                    "created_at": (
+                        inv.created_at.isoformat() if inv.created_at else None
+                    ),
                     "issued_at": inv.issued_at.isoformat() if inv.issued_at else None,
                 }
             )
@@ -581,7 +635,11 @@ class DashboardStatsView(APIView):
             status__in=("completed", "cancelled", "finished_factured", "closed")
         )[:6]:
             patient = job.patient
-            patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else "Neznámy pacient"
+            patient_name = (
+                f"{patient.first_name} {patient.last_name}".strip()
+                if patient
+                else "Neznámy pacient"
+            )
             today_schedule_data.append(
                 {
                     "id": job.id,
@@ -672,7 +730,10 @@ class DashboardChartDataView(APIView):
             invoices_qs = Invoice.objects.filter(lab_id=lab_id)
             jobs_qs = Job.objects.filter(lab_id=lab_id)
         else:
-            return Response({"detail": "Používateľ nemá priradené laboratórium"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Používateľ nemá priradené laboratórium"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         today = timezone.localdate()
         days = int(request.query_params.get("days", 30))
@@ -711,9 +772,13 @@ class DashboardChartDataView(APIView):
         return Response(
             {
                 "days": days,
-                "daily_revenue": [{"date": d, "revenue": f"{v:.2f}"} for d, v in daily_revenue.items()],
+                "daily_revenue": [
+                    {"date": d, "revenue": f"{v:.2f}"} for d, v in daily_revenue.items()
+                ],
                 "daily_jobs": [{"date": d, "count": c} for d, c in daily_jobs.items()],
-                "status_distribution": [{"status": s, "count": c} for s, c in sorted(status_counts.items())],
+                "status_distribution": [
+                    {"status": s, "count": c} for s, c in sorted(status_counts.items())
+                ],
             }
         )
 
@@ -846,7 +911,9 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
 
     def _assert_can_manage_invitations(self, user):
         if not is_admin_or_superadmin(user):
-            raise PermissionDenied("Pozvánky môže spravovať iba administrátor alebo superadministrátor")
+            raise PermissionDenied(
+                "Pozvánky môže spravovať iba administrátor alebo superadministrátor"
+            )
 
     def create(self, request, *args, **kwargs):
         self._assert_can_manage_invitations(request.user)
@@ -899,7 +966,9 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
     def accept(self, request, pk=None):
         invitation = TeamInvitation.objects.select_related("lab").filter(pk=pk).first()
         if invitation is None:
-            return Response({"detail": "Invitation not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Invitation not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = TeamInvitationAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -925,7 +994,9 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
             password = data.get("password")
             if not password:
                 raise ValidationError({"password": "Password is required"})
-            username = _build_unique_username(data.get("username") or invitation.email.split("@")[0])
+            username = _build_unique_username(
+                data.get("username") or invitation.email.split("@")[0]
+            )
             user = User.objects.create_user(
                 username=username,
                 email=invitation.email,
@@ -961,7 +1032,9 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
         self._assert_can_manage_invitations(request.user)
         invitation = self.get_object()
         if invitation.status != "pending":
-            raise ValidationError({"detail": "Only pending invitations can be cancelled"})
+            raise ValidationError(
+                {"detail": "Only pending invitations can be cancelled"}
+            )
         invitation.status = "cancelled"
         invitation.save(update_fields=["status"])
         _write_audit_log(
@@ -1001,7 +1074,9 @@ class NotificationViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if is_superadmin(user):
             recipient = serializer.validated_data.get("recipient") or user
-            lab = serializer.validated_data.get("lab") or getattr(recipient, "lab", None)
+            lab = serializer.validated_data.get("lab") or getattr(
+                recipient, "lab", None
+            )
             serializer.save(recipient=recipient, lab=lab)
             return
 
@@ -1017,12 +1092,18 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], url_path="mark-all-read")
     def mark_all_read(self, request):
-        updated = self.get_queryset().filter(read_at__isnull=True).update(read_at=timezone.now())
+        updated = (
+            self.get_queryset()
+            .filter(read_at__isnull=True)
+            .update(read_at=timezone.now())
+        )
         return Response({"updated": updated})
 
     @action(detail=False, methods=["get"], url_path="unread-count")
     def unread_count(self, request):
-        return Response({"unread_count": self.get_queryset().filter(read_at__isnull=True).count()})
+        return Response(
+            {"unread_count": self.get_queryset().filter(read_at__isnull=True).count()}
+        )
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -1038,7 +1119,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def _assert_can_manage_users(self, requester):
         if not is_admin_or_superadmin(requester):
-            raise PermissionDenied("Používateľov môže spravovať iba administrátor alebo superadministrátor")
+            raise PermissionDenied(
+                "Používateľov môže spravovať iba administrátor alebo superadministrátor"
+            )
 
     def _assert_in_scope_or_superadmin(self, requester, target):
         if is_superadmin(requester):
@@ -1070,7 +1153,11 @@ class UserViewSet(viewsets.ModelViewSet):
         requested_role = data.get("role")
         if requested_role == "superadmin":
             raise PermissionDenied("Only superadmin can assign superadmin role")
-        if target.id == requester.id and requested_role and requested_role != target.role:
+        if (
+            target.id == requester.id
+            and requested_role
+            and requested_role != target.role
+        ):
             raise PermissionDenied("Cannot change your own role")
 
         if "lab" in data:
@@ -1081,7 +1168,10 @@ class UserViewSet(viewsets.ModelViewSet):
             if requested_lab_id != getattr(requester, "lab_id", None):
                 raise PermissionDenied("Cannot move users to another lab")
 
-        if "is_active" in data and requested_bool(data["is_active"]) != target.is_active:
+        if (
+            "is_active" in data
+            and requested_bool(data["is_active"]) != target.is_active
+        ):
             raise PermissionDenied("Only superadmin can change user active state")
 
     def _audit_snapshot(self, user):
@@ -1148,7 +1238,9 @@ class UserViewSet(viewsets.ModelViewSet):
         user_service.create_user(self.request.user, serializer)
 
     def perform_update(self, serializer):
-        user_service.update_user(self.request.user, serializer.instance, serializer, self.request.data)
+        user_service.update_user(
+            self.request.user, serializer.instance, serializer, self.request.data
+        )
 
     def perform_destroy(self, instance):
         user_service.delete_user(self.request.user, instance)
@@ -1184,7 +1276,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 email=data.get("lab_email") or data.get("email"),
             )
 
-            username_base = data.get("nickname") or (data.get("email") or "admin").split("@")[0]
+            username_base = (
+                data.get("nickname") or (data.get("email") or "admin").split("@")[0]
+            )
             username = _build_unique_username(username_base)
 
             user = User.objects.create_user(
@@ -1231,7 +1325,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
         if "nickname" in data and data["nickname"] != user.nickname:
             nickname = data["nickname"] or None
-            if nickname and User.objects.filter(nickname=nickname).exclude(id=user.id).exists():
+            if (
+                nickname
+                and User.objects.filter(nickname=nickname).exclude(id=user.id).exists()
+            ):
                 return Response(
                     {"detail": "Nickname already registered"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -1259,9 +1356,13 @@ class UserViewSet(viewsets.ModelViewSet):
         target_role = data.get("role")
         if target_role and target_role != user.role:
             if target_role == "superadmin" and not is_superadmin(user):
-                raise PermissionDenied("Rolu superadministrátora môže priradiť iba superadministrátor")
+                raise PermissionDenied(
+                    "Rolu superadministrátora môže priradiť iba superadministrátor"
+                )
             if target_role == "admin" and user.role not in ("admin", "superadmin"):
-                raise PermissionDenied("Rolu administrátora môže priradiť iba administrátor alebo superadministrátor")
+                raise PermissionDenied(
+                    "Rolu administrátora môže priradiť iba administrátor alebo superadministrátor"
+                )
             user.role = target_role
 
         if data.get("password"):
@@ -1338,7 +1439,9 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             target = User.objects.get(id=target_user_id)
         except User.DoesNotExist:
-            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         target.is_active = not target.is_active
         target.save(update_fields=["is_active"])
@@ -1365,7 +1468,9 @@ class UserViewSet(viewsets.ModelViewSet):
         try:
             target = User.objects.select_related("lab").get(id=target_user_id)
         except User.DoesNotExist:
-            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         refresh = RefreshToken.for_user(target)
         _write_audit_log(
@@ -1394,7 +1499,9 @@ class SessionLoginView(APIView):
     throttle_scope = "login"
 
     def post(self, request):
-        serializer = MolarisTokenObtainPairSerializer(data=request.data, context={"request": request})
+        serializer = MolarisTokenObtainPairSerializer(
+            data=request.data, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data)
 
@@ -1405,9 +1512,9 @@ class SessionViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request):
-        qs = UserSession.objects.filter(user=request.user, revoked=False, expires_at__gt=timezone.now()).order_by(
-            "-created_at"
-        )
+        qs = UserSession.objects.filter(
+            user=request.user, revoked=False, expires_at__gt=timezone.now()
+        ).order_by("-created_at")
         return Response(
             [
                 {
@@ -1425,14 +1532,18 @@ class SessionViewSet(viewsets.ViewSet):
     def destroy(self, request, pk=None):
         session = UserSession.objects.filter(pk=pk, user=request.user).first()
         if session is None:
-            return Response({"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Session not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         session.revoked = True
         session.save(update_fields=["revoked"])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=["delete"], url_path="revoke-all")
     def revoke_all(self, request):
-        updated = UserSession.objects.filter(user=request.user, revoked=False).update(revoked=True)
+        updated = UserSession.objects.filter(user=request.user, revoked=False).update(
+            revoked=True
+        )
         return Response({"revoked": updated})
 
 
@@ -1449,7 +1560,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
 
     def _assert_admin(self, user):
         if not is_admin_or_superadmin(user):
-            raise PermissionDenied("API kľúče môže spravovať iba administrátor alebo superadministrátor")
+            raise PermissionDenied(
+                "API kľúče môže spravovať iba administrátor alebo superadministrátor"
+            )
 
     def _get_lab(self, user):
         if is_superadmin(user):
@@ -1472,7 +1585,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
                     "name": k.name,
                     "prefix": k.prefix,
                     "is_active": k.is_active,
-                    "last_used_at": (k.last_used_at.isoformat() if k.last_used_at else None),
+                    "last_used_at": (
+                        k.last_used_at.isoformat() if k.last_used_at else None
+                    ),
                     "created_at": k.created_at.isoformat(),
                 }
                 for k in qs
@@ -1485,7 +1600,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
         self._assert_admin(request.user)
         name = (request.data.get("name") or "").strip()
         if not name:
-            return Response({"name": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"name": "Name is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         lab = self._get_lab(request.user)
         if lab is None:
@@ -1497,7 +1614,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
                 )
             lab = Lab.objects.filter(id=lab_id).first()
             if not lab:
-                return Response({"detail": "Lab not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"detail": "Lab not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
         raw_key = secrets.token_urlsafe(32)
         prefix = raw_key[:8]
@@ -1538,7 +1657,9 @@ class LabApiKeyViewSet(viewsets.ViewSet):
             qs = qs.filter(lab=lab)
         key = qs.first()
         if not key:
-            return Response({"detail": "API key not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "API key not found"}, status=status.HTTP_404_NOT_FOUND
+            )
         key.is_active = False
         key.save(update_fields=["is_active"])
         _write_audit_log(
@@ -1578,7 +1699,9 @@ class SuperadminMetricsView(APIView):
         ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         recent_activity = []
-        for log in AuditLog.objects.select_related("actor", "lab").order_by("-created_at")[:10]:
+        for log in AuditLog.objects.select_related("actor", "lab").order_by(
+            "-created_at"
+        )[:10]:
             recent_activity.append(
                 {
                     "id": log.id,
@@ -1590,8 +1713,12 @@ class SuperadminMetricsView(APIView):
                 }
             )
 
-        new_labs_this_month = Lab.objects.filter(created_at__date__gte=month_start).count()
-        new_users_this_month = User.objects.filter(date_joined__date__gte=month_start).count()
+        new_labs_this_month = Lab.objects.filter(
+            created_at__date__gte=month_start
+        ).count()
+        new_users_this_month = User.objects.filter(
+            date_joined__date__gte=month_start
+        ).count()
 
         return Response(
             {
@@ -1612,7 +1739,10 @@ class TwoFactorView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_throttles(self):
-        if self.request.method == "POST" and self.request.query_params.get("action", "setup") == "verify":
+        if (
+            self.request.method == "POST"
+            and self.request.query_params.get("action", "setup") == "verify"
+        ):
             self.throttle_scope = "two_factor_verify"
             return [ScopedRateThrottle()]
         return super().get_throttles()
@@ -1636,7 +1766,9 @@ class TwoFactorView(APIView):
         if action_name == "setup":
             if user.totp_enabled:
                 return Response(
-                    {"detail": "2FA is already active. Disable it first before re-enrolling."},
+                    {
+                        "detail": "2FA is already active. Disable it first before re-enrolling."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             secret = pyotp.random_base32()
@@ -1678,7 +1810,9 @@ class TwoFactorView(APIView):
                 lab=user.lab,
                 description=f"2FA enabled for {user.username}",
             )
-            return Response({"totp_enabled": True, "message": "2FA activated successfully."})
+            return Response(
+                {"totp_enabled": True, "message": "2FA activated successfully."}
+            )
 
         if action_name == "disable":
             code = request.data.get("code", "")
@@ -1712,7 +1846,9 @@ class TwoFactorView(APIView):
             return Response({"totp_enabled": False, "message": "2FA deactivated."})
 
         return Response(
-            {"detail": f"Unknown action '{action_name}'. Use setup, verify, or disable."},
+            {
+                "detail": f"Unknown action '{action_name}'. Use setup, verify, or disable."
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -1834,7 +1970,9 @@ class PermissionsMatrixView(APIView):
         return Response(
             {
                 "current_role": role,
-                "current_permissions": _ROLE_PERMISSIONS.get(role, {}).get("actions", []),
+                "current_permissions": _ROLE_PERMISSIONS.get(role, {}).get(
+                    "actions", []
+                ),
                 "matrix": _ROLE_PERMISSIONS,
             }
         )
@@ -1853,7 +1991,10 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
             requested_lab_id = int(lab_pk)
         except (TypeError, ValueError):
             return None
-        if is_admin_or_superadmin(user) and getattr(user, "lab_id", None) == requested_lab_id:
+        if (
+            is_admin_or_superadmin(user)
+            and getattr(user, "lab_id", None) == requested_lab_id
+        ):
             return user.lab
         return None
 
@@ -1862,7 +2003,10 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
         if not lab:
             raise PermissionDenied("Access denied or lab not found.")
         overrides = LabRolePermission.objects.filter(lab=lab)
-        data = [{"id": o.id, "role": o.role, "action": o.action, "allowed": o.allowed} for o in overrides]
+        data = [
+            {"id": o.id, "role": o.role, "action": o.action, "allowed": o.allowed}
+            for o in overrides
+        ]
         return Response(data)
 
     def create(self, request, lab_pk=None):

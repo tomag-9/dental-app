@@ -5,7 +5,9 @@ Cross-cutting service utilities shared across Django apps.
 from .models import AuditLog
 
 
-def write_audit_log(*, actor, lab, action, entity_type, entity_id, description=None, metadata=None):
+def write_audit_log(
+    *, actor, lab, action, entity_type, entity_id, description=None, metadata=None
+):
     """
     Create an AuditLog entry.
 

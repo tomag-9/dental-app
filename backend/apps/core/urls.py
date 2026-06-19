@@ -34,7 +34,9 @@ router.register(r"sessions", SessionViewSet, basename="session")
 router.register(r"api-keys", LabApiKeyViewSet, basename="api-key")
 
 lab_permissions_router = DefaultRouter()
-lab_permissions_router.register(r"", LabRolePermissionViewSet, basename="lab-role-permission")
+lab_permissions_router.register(
+    r"", LabRolePermissionViewSet, basename="lab-role-permission"
+)
 
 urlpatterns = [
     path("search/", GlobalSearchView.as_view(), name="global-search"),

@@ -34,6 +34,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
   const [notifApiLoaded, setNotifApiLoaded] = React.useState(false);
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [isNarrow, setIsNarrow] = React.useState(() => typeof window !== 'undefined' && window.innerWidth <= 720);
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
 
   React.useEffect(() => {
     const onResize = () => setIsNarrow(window.innerWidth <= 720);
@@ -87,6 +88,10 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
 
   const handleSearchAction = (item, onClose) => {
     if (item.type === 'action') {
+      if (!canCreate) {
+        onClose();
+        return;
+      }
       if (item.id === 'action:new-job') onNewJob && onNewJob();
       if (item.id === 'action:new-patient') onNewPatient && onNewPatient();
       if (item.id === 'action:new-invoice') onNewInvoice && onNewInvoice();
@@ -250,24 +255,31 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
       // Quick add
       React.createElement('div', { style: { position: 'relative' }, onClick: stop, onMouseDown: stopAll },
         React.createElement('button', {
-          onClick: () => { setAddOpen(!addOpen); setNotifOpen(false); },
+          onClick: () => {
+            if (!canCreate) return;
+            setAddOpen(!addOpen);
+            setNotifOpen(false);
+          },
+          disabled: !canCreate,
+          title: canCreate ? 'Rýchle pridanie' : 'Rýchle pridanie je dostupné iba administrátorovi laboratória.',
           'aria-haspopup': 'menu',
           'aria-expanded': addOpen,
           style: {
             display: 'inline-flex', alignItems: 'center', gap: 6, height: 34,
             padding: isNarrow ? '0 10px' : '0 12px', borderRadius: 8, border: 'none',
             background: '#0d7c6b', color: 'white', fontWeight: 600, fontSize: 12.5,
-            cursor: 'pointer', fontFamily: 'Manrope,sans-serif',
+            cursor: canCreate ? 'pointer' : 'not-allowed', fontFamily: 'Manrope,sans-serif',
+            opacity: canCreate ? 1 : 0.45,
             transition: 'background .12s'
           },
-          onMouseEnter: e => e.currentTarget.style.background = '#0fa589',
+          onMouseEnter: e => { if (canCreate) e.currentTarget.style.background = '#0fa589'; },
           onMouseLeave: e => e.currentTarget.style.background = '#0d7c6b'
         },
           React.createElement(Icon, { name: 'plus', size: 14 }),
           !isNarrow && 'Pridať',
           !isNarrow && React.createElement(Icon, { name: 'chevronDown', size: 12 })
         ),
-        addOpen && React.createElement(Popover, { role: 'menu', label: 'Rýchle pridanie' },
+        canCreate && addOpen && React.createElement(Popover, { role: 'menu', label: 'Rýchle pridanie' },
           React.createElement(PopoverItem, { icon: 'briefcase',  label: 'Nová práca',      sub: 'Vytvoriť dentálnu zákazku', onClick: () => { setAddOpen(false); onNewJob && onNewJob(); } }),
           React.createElement(PopoverItem, { icon: 'user',       label: 'Nový pacient',    sub: 'Pridať kartu pacienta',     onClick: () => { setAddOpen(false); onNewPatient && onNewPatient(); } }),
           React.createElement(PopoverItem, { icon: 'fileText',   label: 'Nová faktúra',    sub: 'Vystaviť faktúru klinike',  onClick: () => { setAddOpen(false); onNewInvoice && onNewInvoice(); } }),

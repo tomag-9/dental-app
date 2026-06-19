@@ -3,12 +3,18 @@
 function Patients({ onNavigate, onOpenPatient, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const pageHeader = (actionsDisabled) => React.createElement(PageHeader, {
     title: 'Pacienti',
     subtitle: 'Správa kariet pacientov.',
     actions: [
       React.createElement(Button, { key: 'imp', variant: 'outline', disabled: actionsDisabled }, React.createElement(Icon, { name: 'upload', size: 14 }), 'Importovať'),
-      React.createElement(Button, { key: 'n', onClick: onCreate, disabled: actionsDisabled }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
+      React.createElement(Button, {
+        key: 'n',
+        onClick: canCreate ? onCreate : undefined,
+        disabled: actionsDisabled || !canCreate,
+        title: canCreate ? undefined : 'Pacienta môže vytvoriť iba administrátor laboratória.',
+      }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Pridať pacienta'),
     ]
   });
 

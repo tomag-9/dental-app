@@ -16,7 +16,9 @@ class JobExportCsvTests(APITestCase):
             role="admin",
             lab=self.lab,
         )
-        self.patient = Patient.objects.create(first_name="Ján", last_name="Testovský", lab=self.lab)
+        self.patient = Patient.objects.create(
+            first_name="Ján", last_name="Testovský", lab=self.lab
+        )
         self.clinic = Clinic.objects.create(name="Klinika Export", lab=self.lab)
         Job.objects.create(
             patient=self.patient,
@@ -39,7 +41,9 @@ class JobExportCsvTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = (
-            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
         )
         self.assertIn("ID,Stav,Pacient", content)
         self.assertIn("Dokončená", content)
@@ -48,7 +52,9 @@ class JobExportCsvTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/jobs/jobs/export/")
         content = (
-            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
         )
         rows = [r for r in content.strip().split("\n") if r]
         self.assertEqual(len(rows), 3)  # header + 2 jobs
@@ -57,7 +63,9 @@ class JobExportCsvTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/jobs/jobs/export/?status=completed")
         content = (
-            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
         )
         rows = [r for r in content.strip().split("\n") if r]
         self.assertEqual(len(rows), 2)  # header + 1 completed job
@@ -74,7 +82,9 @@ class JobExportCsvTests(APITestCase):
         self.client.force_authenticate(user=other_user)
         resp = self.client.get("/api/jobs/jobs/export/")
         content = (
-            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
+            b"".join(resp.streaming_content).decode()
+            if hasattr(resp, "streaming_content")
+            else resp.content.decode()
         )
         rows = [r for r in content.strip().split("\n") if r]
         self.assertEqual(len(rows), 1)  # header only, no jobs from other lab

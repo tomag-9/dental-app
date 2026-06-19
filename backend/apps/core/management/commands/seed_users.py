@@ -94,7 +94,9 @@ class Command(BaseCommand):
             is_superuser=True,
             is_staff=True,
         )
-        self.stdout.write(self.style.SUCCESS('User "superadmin" ready (password: superadmin)'))
+        self.stdout.write(
+            self.style.SUCCESS('User "superadmin" ready (password: superadmin)')
+        )
 
         Subscription.objects.update_or_create(
             lab=lab,

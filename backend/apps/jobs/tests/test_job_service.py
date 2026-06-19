@@ -74,7 +74,9 @@ class CreateJobTests(JobServiceSetupMixin, TestCase):
     def test_creates_timeline_event_on_creation(self):
         mock, job = self._mock_serializer()
         job_service.create_job(self.admin, mock, self.lab)
-        self.assertTrue(JobTimelineEvent.objects.filter(job=job, event="created").exists())
+        self.assertTrue(
+            JobTimelineEvent.objects.filter(job=job, event="created").exists()
+        )
 
 
 class UpdateJobTests(JobServiceSetupMixin, TestCase):
@@ -106,12 +108,18 @@ class UpdateJobTests(JobServiceSetupMixin, TestCase):
         self.job.save()
         mock = self._mock_serializer_for(self.job, new_status="in_progress")
         job_service.update_job(self.admin, mock)
-        self.assertTrue(JobTimelineEvent.objects.filter(job=self.job, event="status_changed").exists())
+        self.assertTrue(
+            JobTimelineEvent.objects.filter(
+                job=self.job, event="status_changed"
+            ).exists()
+        )
 
     def test_records_updated_timeline_on_non_status_change(self):
         mock = self._mock_serializer_for(self.job, new_description="New desc")
         job_service.update_job(self.admin, mock)
-        self.assertTrue(JobTimelineEvent.objects.filter(job=self.job, event="updated").exists())
+        self.assertTrue(
+            JobTimelineEvent.objects.filter(job=self.job, event="updated").exists()
+        )
 
 
 class DeleteJobTests(JobServiceSetupMixin, TestCase):
@@ -175,7 +183,9 @@ class TransitionJobStatusTests(JobServiceSetupMixin, TestCase):
 
 class RecordJobTimelineTests(JobServiceSetupMixin, TestCase):
     def test_creates_timeline_event(self):
-        job_service.record_job_timeline(self.job, self.admin, "created", note="Test note")
+        job_service.record_job_timeline(
+            self.job, self.admin, "created", note="Test note"
+        )
         event = JobTimelineEvent.objects.get(job=self.job, event="created")
         self.assertEqual(event.note, "Test note")
         self.assertEqual(event.actor, self.admin)
@@ -193,5 +203,7 @@ class RecordJobTimelineTests(JobServiceSetupMixin, TestCase):
 
     def test_no_audit_log_for_non_status_event(self):
         before = AuditLog.objects.count()
-        job_service.record_job_timeline(self.job, self.admin, "updated", note="General update")
+        job_service.record_job_timeline(
+            self.job, self.admin, "updated", note="General update"
+        )
         self.assertEqual(AuditLog.objects.count(), before)

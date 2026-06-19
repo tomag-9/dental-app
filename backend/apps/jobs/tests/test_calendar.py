@@ -79,7 +79,9 @@ class CalendarApiTests(APITestCase):
             event_type="meeting",
             start=timezone.now(),
         )
-        detail_response = self.client.get(reverse("calendarevent-detail", args=[other_event.id]))
+        detail_response = self.client.get(
+            reverse("calendarevent-detail", args=[other_event.id])
+        )
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_calendar_event_rejects_related_job_from_other_lab(self):
@@ -149,7 +151,9 @@ class CalendarApiTests(APITestCase):
         self.assertIn(f"job:{job.id}", event_ids)
         self.assertIn(f"vacation:{vacation.id}", event_ids)
         self.assertIn(f"event:{event.id}", event_ids)
-        self.assertFalse(any("Other lab" in item["title"] for item in response.data["events"]))
+        self.assertFalse(
+            any("Other lab" in item["title"] for item in response.data["events"])
+        )
 
     def test_superadmin_calendar_sees_all_labs(self):
         today = timezone.localdate()

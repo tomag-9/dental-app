@@ -96,7 +96,9 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 c.bank_details or "",
                 format_sk_date(c.created_at),
             ]
-            for c in limited_export_queryset(self.get_queryset().order_by("name"), "clinics")
+            for c in limited_export_queryset(
+                self.get_queryset().order_by("name"), "clinics"
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Kliniky", "clinics.xlsx")
@@ -115,7 +117,9 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(clinic_id=clinic_id)
         search = self.request.query_params.get("search", "").strip()
         if search:
-            queryset = queryset.filter(Q(first_name__icontains=search) | Q(last_name__icontains=search))
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) | Q(last_name__icontains=search)
+            )
         return queryset
 
     def perform_create(self, serializer):
@@ -153,7 +157,9 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 format_sk_date(d.created_at),
             ]
             for d in limited_export_queryset(
-                self.get_queryset().select_related("clinic").order_by("last_name", "first_name"),
+                self.get_queryset()
+                .select_related("clinic")
+                .order_by("last_name", "first_name"),
                 "doctors",
             )
         ]
@@ -172,7 +178,9 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         search = self.request.query_params.get("search", "").strip()
         if search:
             qs = qs.filter(
-                Q(first_name__icontains=search) | Q(last_name__icontains=search) | Q(birth_number__icontains=search)
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(birth_number__icontains=search)
             )
         return qs
 
@@ -204,7 +212,11 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 "description": j.description,
                 "due_date": j.due_date,
                 "clinic_name": j.clinic.name if j.clinic else None,
-                "doctor_name": (f"{j.doctor.first_name} {j.doctor.last_name}".strip() if j.doctor else None),
+                "doctor_name": (
+                    f"{j.doctor.first_name} {j.doctor.last_name}".strip()
+                    if j.doctor
+                    else None
+                ),
             }
             for j in recent_jobs
         ]
@@ -212,7 +224,9 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         from apps.crm.models import Doctor
 
         doctor_ids = (
-            Job.objects.filter(patient=patient, doctor__isnull=False).values_list("doctor_id", flat=True).distinct()
+            Job.objects.filter(patient=patient, doctor__isnull=False)
+            .values_list("doctor_id", flat=True)
+            .distinct()
         )
         doctors = Doctor.objects.filter(id__in=doctor_ids).select_related("clinic")
         data["attending_doctors"] = [
@@ -227,10 +241,14 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         from apps.finance.models import Invoice, InvoiceItem
 
         job_ids = Job.objects.filter(patient=patient).values_list("id", flat=True)
-        invoice_ids = InvoiceItem.objects.filter(job_id__in=job_ids).values_list("invoice_id", flat=True).distinct()
-        revenue = Invoice.objects.filter(id__in=invoice_ids, status="paid").aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0.00")
+        invoice_ids = (
+            InvoiceItem.objects.filter(job_id__in=job_ids)
+            .values_list("invoice_id", flat=True)
+            .distinct()
+        )
+        revenue = Invoice.objects.filter(id__in=invoice_ids, status="paid").aggregate(
+            total=Sum("total_amount")
+        )["total"] or Decimal("0.00")
         jobs_count = Job.objects.filter(patient=patient).count()
         avg_job_value = float(revenue) / jobs_count if jobs_count > 0 else 0.0
 
@@ -283,7 +301,9 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 p.email or "",
                 format_sk_date(p.created_at),
             ]
-            for p in limited_export_queryset(self.get_queryset().order_by("last_name", "first_name"), "patients")
+            for p in limited_export_queryset(
+                self.get_queryset().order_by("last_name", "first_name"), "patients"
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Pacienti", "patients.xlsx")
