@@ -49,8 +49,10 @@ window.MolarisAPI = {
   transitionJobStatus: jobs.transitionJobStatus,
   updateInvoiceStatus: finance.updateInvoiceStatus,
   deleteInvoice: finance.deleteInvoice,
+  fetchInvoiceDetail: finance.fetchInvoiceDetail,
   downloadInvoicePdf: finance.downloadInvoicePdf,
   downloadInvoicesExport: finance.downloadInvoicesExport,
+  fetchCurrentLab: auth.fetchCurrentLab,
   loadWorkspace,
   useWorkspace,
 };

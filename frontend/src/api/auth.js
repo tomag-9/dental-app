@@ -81,6 +81,11 @@ export async function fetchMe() {
   return request('/core/users/me/');
 }
 
+export async function fetchCurrentLab() {
+  const labs = await request('/labs/');
+  return Array.isArray(labs) ? labs[0] : labs;
+}
+
 /** @param {Record<string, unknown>} [payload] */
 export async function updateMe(payload) {
   return request('/core/users/me/', { method: 'PUT', body: JSON.stringify(payload || {}) });

@@ -38,6 +38,11 @@ export async function downloadInvoicePdf(id, filename) {
   return downloadBlob(`/invoices/${id}/pdf/`, filename || `invoice-${id}.pdf`);
 }
 
+/** @param {number} id */
+export async function fetchInvoiceDetail(id) {
+  return request(`/invoices/${id}/`);
+}
+
 /** @param {'csv'|'xlsx'} [format] */
 export async function downloadInvoicesExport(format = 'csv') {
   const suffix = format === 'xlsx' ? '?export_format=xlsx' : '';

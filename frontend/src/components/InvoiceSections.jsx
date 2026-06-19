@@ -182,14 +182,9 @@ function InvoiceLineItems({ invoice }) {
 function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) {
   const actions = useInvoiceActionsData(invoice);
   const [confirmAction, setConfirmAction] = React.useState(null);
+  const [printOpen, setPrintOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const downloadPdf = async () => {
-    try {
-      if (actions.canDownload) await window.MolarisAPI.downloadInvoicePdf(invoice.id, actions.pdfName);
-    } catch {
-      if (onError) onError('PDF sa nepodarilo stiahnuť.');
-    }
-  };
+  const openPrint = () => { if (actions.canDownload) setPrintOpen(true); };
 
   const runConfirmedAction = async () => {
     if (!confirmAction) return;
@@ -243,7 +238,7 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
   if (compact) {
     const compactActions = [
       React.createElement(IconButton, { key: 'view', name: 'eye', title: 'Detail', onClick: () => onView && onView(invoice) }),
-      React.createElement(IconButton, { key: 'pdf', name: 'download', title: 'Stiahnuť PDF', onClick: downloadPdf }),
+      React.createElement(IconButton, { key: 'pdf', name: 'download', title: 'Náhľad / PDF', onClick: openPrint }),
     ];
     if (actions.canIssue) compactActions.push(React.createElement(IconButton, {
       key: 'issue',
@@ -274,15 +269,16 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
 
     return React.createElement(React.Fragment, null,
       React.createElement('div', { style: { display: 'flex', gap: 2, justifyContent: 'flex-end' }, onClick: event => event.stopPropagation() }, ...compactActions),
-      dialog
+      dialog,
+      printOpen && React.createElement(InvoicePrintOverlay, { invoiceId: invoice.id, invoiceNumber: invoice.number, onClose: () => setPrintOpen(false) })
     );
   }
 
   const footerActions = [
     React.createElement(Button, { key: 'c', variant: 'outline', onClick: onClose }, 'Zatvoriť'),
-    React.createElement(Button, { key: 'p', variant: 'outline', onClick: downloadPdf, disabled: !actions.canDownload },
+    React.createElement(Button, { key: 'p', variant: 'outline', onClick: openPrint, disabled: !actions.canDownload },
       React.createElement(Icon, { name: 'printer', size: 14 }),
-      'PDF'
+      'Náhľad PDF'
     ),
     actions.canIssue && React.createElement(Button, {
       key: 'issue',
@@ -310,7 +306,8 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
 
   return React.createElement(React.Fragment, null,
     React.createElement('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', width: '100%' } }, ...footerActions),
-    dialog
+    dialog,
+    printOpen && React.createElement(InvoicePrintOverlay, { invoiceId: invoice.id, invoiceNumber: invoice.number, onClose: () => setPrintOpen(false) })
   );
 }
 

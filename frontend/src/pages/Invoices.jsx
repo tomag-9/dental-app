@@ -86,17 +86,6 @@ function Invoices({ onNavigate, onCreate }) {
       React.createElement(StatCard, { label: 'Priemerná doba úhrady', value: '—', icon: 'activity', tone: 'purple' }),
     ),
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 } },
-      React.createElement(InvoiceLifecycleGuide, { invoice: { status: tab === 'all' ? '' : tab } }),
-      React.createElement(Card, null,
-        React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Výstupy')),
-        React.createElement(CardContent, { style: { display: 'grid', gap: 10 } },
-          React.createElement(InfoCell, { label: 'PDF faktúry', value: 'Detail faktúry → PDF' }),
-          React.createElement(InfoCell, { label: 'CSV export', value: 'Číslo, klinika, dátumy, stav, suma' })
-        )
-      )
-    ),
-
     React.createElement(Card, null,
       React.createElement(CardHeader, { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' } },
         React.createElement(Tabs, {
@@ -155,9 +144,7 @@ function InvoiceDrawer({ invoice, onClose, onError }) {
   },
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
       React.createElement(InvoiceForm, { invoice }),
-      React.createElement(InvoiceLineItems, { invoice }),
-      React.createElement(InvoiceLifecycleGuide, { invoice }),
-      React.createElement(InvoiceAuditTrail, { invoice })
+      React.createElement(InvoiceLineItems, { invoice })
     )
   );
 }
