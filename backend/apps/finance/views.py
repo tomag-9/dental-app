@@ -190,6 +190,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             job_ids=data["job_ids"],
             document_type=data.get("document_type", "invoice"),
             discount_percent=data.get("discount_percent", Decimal("0")),
+            description_mode=data.get("description_mode", "structured"),
+            custom_description=data.get("custom_description", ""),
+            show_patient_list=data.get("show_patient_list", True),
         )
         return Response(
             InvoiceSerializer(invoice, context={"request": request}).data,
@@ -359,23 +362,43 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         table_top = min(y, yc) - 8 * mm
         hline(table_top)
         th = table_top - 6 * mm
-        pdf.setFont("Helvetica-Bold", 9)
-        pdf.drawString(L, th, "Popis")
-        pdf.drawRightString(120 * mm, th, "Mn.")
-        pdf.drawRightString(148 * mm, th, "Jed. cena")
-        pdf.drawRightString(R, th, "Spolu")
-        hline(th - 2 * mm)
+        if invoice.description_mode == "custom":
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(L, th, "Popis")
+            pdf.drawRightString(R, th, "Spolu")
+            hline(th - 2 * mm)
 
-        ty = th - 8 * mm
-        pdf.setFont("Helvetica", 9)
-        for item in items[:30]:
-            if ty < 55 * mm:
-                break
-            pdf.drawString(L, ty, str(item.description or "")[:60])
-            pdf.drawRightString(120 * mm, ty, str(item.quantity))
-            pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
-            pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
-            ty -= 5 * mm
+            ty = th - 8 * mm
+            pdf.setFont("Helvetica", 9)
+            pdf.drawString(
+                L,
+                ty,
+                (invoice.custom_description or "Protetické práce")[:95],
+            )
+            pdf.drawRightString(
+                R,
+                ty,
+                format_sk_currency(sum((item.line_total for item in items), Decimal())),
+            )
+            ty -= 6 * mm
+        else:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(L, th, "Popis")
+            pdf.drawRightString(120 * mm, th, "Mn.")
+            pdf.drawRightString(148 * mm, th, "Jed. cena")
+            pdf.drawRightString(R, th, "Spolu")
+            hline(th - 2 * mm)
+
+            ty = th - 8 * mm
+            pdf.setFont("Helvetica", 9)
+            for item in items[:30]:
+                if ty < 55 * mm:
+                    break
+                pdf.drawString(L, ty, str(item.description or "")[:60])
+                pdf.drawRightString(120 * mm, ty, str(item.quantity))
+                pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
+                pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
+                ty -= 5 * mm
 
         hline(ty)
         vat_rate = Decimal(str(invoice.vat_rate or 0))
@@ -425,6 +448,41 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             ty -= 6 * mm
             pdf.setFont("Helvetica", 8)
             pdf.drawString(L, ty, lab.invoice_default_note[:120])
+
+        if invoice.description_mode == "custom" and invoice.show_patient_list:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(L, height - 25 * mm, f"Faktúra: {invoice.number}")
+            hline(height - 31 * mm)
+
+            py = height - 40 * mm
+            pdf.setFont("Helvetica-Bold", 8)
+            pdf.drawString(L, py, "Pacient")
+            pdf.drawString(58 * mm, py, "Práca")
+            pdf.drawRightString(148 * mm, py, "Množstvo")
+            pdf.drawRightString(R, py, "Spolu")
+            hline(py - 2 * mm)
+            py -= 7 * mm
+            pdf.setFont("Helvetica", 8)
+            for item in items:
+                if py < 20 * mm:
+                    pdf.showPage()
+                    py = height - 20 * mm
+                    pdf.setFont("Helvetica", 8)
+                job = item.job
+                patient = getattr(job, "patient", None) if job else None
+                patient_name = (
+                    f"{patient.first_name} {patient.last_name}".strip()
+                    if patient
+                    else "Bez pacienta"
+                )
+                pdf.drawString(L, py, patient_name[:28])
+                pdf.drawString(58 * mm, py, str(item.description or "")[:45])
+                pdf.drawRightString(148 * mm, py, str(item.quantity))
+                pdf.drawRightString(R, py, format_sk_currency(item.line_total))
+                py -= 5 * mm
 
         pdf.showPage()
         pdf.save()

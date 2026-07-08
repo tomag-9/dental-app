@@ -35,7 +35,18 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
 
   const vatRate = parseFloat(invoiceRaw.vat_rate || 0);
 
-  const items = (invoiceRaw.items || []).map((item, i) => ({
+  const rawItems = invoiceRaw.items || [];
+  const subtotal = rawItems.reduce((sum, item) => sum + (parseFloat(item.line_total || 0) || 0), 0);
+  const items = invoiceRaw.description_mode === 'custom'
+    ? [{
+        code: 'PRACE',
+        name: invoiceRaw.custom_description || 'Protetické práce',
+        qty: 1,
+        unit: 'ks',
+        unitPrice: subtotal,
+        vat: vatRate,
+      }]
+    : rawItems.map((item, i) => ({
     code: item.description
       ? item.description.replace(/\s+/g, '-').toUpperCase().slice(0, 10)
       : `IT-${String(i + 1).padStart(3, '0')}`,
@@ -63,7 +74,9 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
     dueAt: fmtSk(invoiceRaw.due_date),
     paymentMethod: 'Prevodom na účet',
     issuedBy: '',
-    notes: invoiceRaw.note || '',
+    notes: invoiceRaw.description_mode === 'custom' && invoiceRaw.show_patient_list
+      ? 'Podrobný rozpis prác a pacientov je v prílohe faktúry.'
+      : (invoiceRaw.note || ''),
     supplier,
     customer,
     items,

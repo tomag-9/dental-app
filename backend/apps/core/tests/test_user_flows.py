@@ -615,6 +615,7 @@ class CoreUserFlowsApiTests(APITestCase):
             {
                 "invoice_prefix": "MOL",
                 "invoice_due_days": 21,
+                "is_vat_payer": False,
                 "vat_rate": "20.00",
                 "payment_method": "cash",
                 "invoice_default_note": "Dakujeme za spolupracu.",
@@ -626,6 +627,7 @@ class CoreUserFlowsApiTests(APITestCase):
         self.lab_a.refresh_from_db()
         self.assertEqual(self.lab_a.invoice_prefix, "MOL")
         self.assertEqual(self.lab_a.invoice_due_days, 21)
+        self.assertFalse(self.lab_a.is_vat_payer)
         self.assertEqual(str(self.lab_a.vat_rate), "20.00")
         self.assertEqual(self.lab_a.payment_method, "cash")
         self.assertEqual(self.lab_a.invoice_default_note, "Dakujeme za spolupracu.")

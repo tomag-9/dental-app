@@ -229,6 +229,92 @@ class InvoiceVatRateSnapshotTests(APITestCase):
         # total = 100 + 20% VAT = 120
         self.assertEqual(resp.data["total_amount"], "120.00")
 
+    def test_non_vat_payer_invoice_uses_zero_vat_snapshot(self):
+        from apps.jobs.models import Job
+
+        self.lab.is_vat_payer = False
+        self.lab.save(update_fields=["is_vat_payer"])
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["vat_rate"], "0.00")
+        self.assertEqual(resp.data["vat_amount"], "0.00")
+        self.assertEqual(resp.data["total_amount"], "100.00")
+
+    def test_custom_description_invoice_options_are_saved(self):
+        from apps.jobs.models import Job
+
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "description_mode": "custom",
+                "custom_description": "Protetické práce",
+                "show_patient_list": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["description_mode"], "custom")
+        self.assertEqual(resp.data["custom_description"], "Protetické práce")
+        self.assertFalse(resp.data["show_patient_list"])
+
+    def test_custom_description_requires_text(self):
+        from apps.jobs.models import Job
+
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "description_mode": "custom",
+                "custom_description": " ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("custom_description", resp.data)
+
     def test_vat_rate_in_serializer_response(self):
         from apps.finance.models import Invoice
 

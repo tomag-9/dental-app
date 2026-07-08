@@ -65,7 +65,16 @@ def write_invoice_audit(actor, invoice, action, metadata=None, description=None)
 
 
 @transaction.atomic
-def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percent=None):
+def create_invoice(
+    actor,
+    clinic,
+    jobs,
+    document_type="invoice",
+    discount_percent=None,
+    description_mode="structured",
+    custom_description="",
+    show_patient_list=True,
+):
     """
     Create an invoice for *clinic* covering *jobs*.
 
@@ -76,6 +85,8 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
     """
     if discount_percent is None:
         discount_percent = Decimal("0")
+    description_mode = description_mode or "structured"
+    custom_description = (custom_description or "").strip()
 
     now = timezone.now()
     due_date = timezone.localdate() + timezone.timedelta(
@@ -88,8 +99,11 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
         number=generate_invoice_number(clinic.lab),
         status="issued",
         document_type=document_type,
-        vat_rate=clinic.lab.vat_rate,
+        vat_rate=clinic.lab.vat_rate if clinic.lab.is_vat_payer else Decimal("0"),
         discount_percent=discount_percent,
+        description_mode=description_mode,
+        custom_description=custom_description,
+        show_patient_list=show_patient_list,
         issued_at=now,
         due_date=due_date,
     )

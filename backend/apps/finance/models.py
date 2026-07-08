@@ -57,6 +57,11 @@ class Invoice(models.Model):
         ("proforma", "Proforma faktúra"),
     )
 
+    DESCRIPTION_MODE_CHOICES = (
+        ("structured", "Štruktúrovaný popis"),
+        ("custom", "Voľný popis"),
+    )
+
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="invoices")
     clinic = models.ForeignKey(
         Clinic, on_delete=models.CASCADE, related_name="invoices"
@@ -71,6 +76,13 @@ class Invoice(models.Model):
     vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    description_mode = models.CharField(
+        max_length=20,
+        choices=DESCRIPTION_MODE_CHOICES,
+        default="structured",
+    )
+    custom_description = models.TextField(blank=True, default="")
+    show_patient_list = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     issued_at = models.DateTimeField(null=True, blank=True)

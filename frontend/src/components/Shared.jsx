@@ -75,7 +75,12 @@ function FormField({ label, name, value, onChange, type = 'text', placeholder = 
   }, label, required && React.createElement('span', { style: { color: '#c0392b', marginLeft: 3 } }, '*'));
 
   let inputEl;
-  if (type === 'textarea') {
+  if (type === 'checkbox') {
+    inputEl = React.createElement('label', { style: { display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#1a2320', fontFamily: 'Manrope,sans-serif' } },
+      React.createElement('input', { type: 'checkbox', name, checked: !!value, onChange, disabled, style: { width: 16, height: 16, accentColor: '#0d7c6b' } }),
+      placeholder || 'Áno'
+    );
+  } else if (type === 'textarea') {
     inputEl = React.createElement('textarea', { name, value, onChange, placeholder, required, disabled, rows: rows || 3, style: { ...inputStyle, resize: 'vertical', minHeight: 80 } });
   } else if (type === 'select') {
     inputEl = React.createElement('select', { name, value, onChange, required, disabled, style: inputStyle },

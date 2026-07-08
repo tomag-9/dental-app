@@ -66,6 +66,27 @@ class InvoiceCreateSerializer(serializers.Serializer):
         min_value=0,
         max_value=100,
     )
+    description_mode = serializers.ChoiceField(
+        choices=("structured", "custom"),
+        default="structured",
+        required=False,
+    )
+    custom_description = serializers.CharField(
+        allow_blank=True,
+        required=False,
+        default="",
+        max_length=1000,
+    )
+    show_patient_list = serializers.BooleanField(default=True, required=False)
+
+    def validate(self, attrs):
+        if attrs.get("description_mode") == "custom" and not attrs.get(
+            "custom_description", ""
+        ).strip():
+            raise serializers.ValidationError(
+                {"custom_description": "Voľný popis je povinný."}
+            )
+        return attrs
 
 
 class InvoiceStatusUpdateSerializer(serializers.Serializer):
@@ -132,6 +153,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "document_type",
             "vat_rate",
             "discount_percent",
+            "description_mode",
+            "custom_description",
+            "show_patient_list",
             "total_amount",
             "subtotal_amount",
             "vat_amount",
