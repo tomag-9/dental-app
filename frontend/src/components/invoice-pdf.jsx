@@ -543,6 +543,55 @@ function FooterBlock({ invoice }) {
   );
 }
 
+function PatientListAppendix({ invoice }) {
+  const rows = invoice.patientRows || [];
+  if (!rows.length) return null;
+  return React.createElement(PaperFrame, null,
+    React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo: false }),
+    React.createElement(TitleRow, {
+      title: 'Príloha k faktúre',
+      subtitle: 'Rozpis pacientov a prác',
+      number: invoice.number,
+    }),
+    React.createElement('div', {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1.2fr 1.8fr 70px 110px',
+        padding: '10px 10px',
+        background: INK,
+        color: '#fff',
+        fontSize: 9,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontWeight: 700,
+        borderRadius: '6px 6px 0 0',
+      }
+    },
+      React.createElement('span', null, 'Pacient'),
+      React.createElement('span', null, 'Práca'),
+      React.createElement('span', { style: { textAlign: 'right' } }, 'Množ.'),
+      React.createElement('span', { style: { textAlign: 'right' } }, 'Spolu')
+    ),
+    ...rows.map((row, index) => React.createElement('div', {
+      key: index,
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '1.2fr 1.8fr 70px 110px',
+        padding: '10px 10px',
+        borderBottom: `1px solid ${RULE_SOFT}`,
+        background: index % 2 === 0 ? '#fff' : '#fbfaf6',
+        fontSize: 10.5,
+        alignItems: 'baseline',
+      }
+    },
+      React.createElement('span', { style: { color: INK, fontWeight: 600 } }, row.patient),
+      React.createElement('span', { style: { color: INK_SOFT } }, row.description),
+      React.createElement('span', { style: { textAlign: 'right', color: INK } }, row.qty),
+      React.createElement('span', { style: { textAlign: 'right', color: INK, fontWeight: 700 } }, fmtEurPlain(row.total))
+    ))
+  );
+}
+
 // ─── Main components ──────────────────────────────────────────────────
 
 function InvoicePDF({ invoice = DEFAULT_INVOICE, skonto = null, showSupplierLogo = true }) {
@@ -550,25 +599,28 @@ function InvoicePDF({ invoice = DEFAULT_INVOICE, skonto = null, showSupplierLogo
   const vat = invoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (it.vat / 100), 0);
   const total = subtotal + vat;
 
-  return React.createElement(PaperFrame, null,
-    React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo }),
-    React.createElement(TitleRow, {
-      title: 'Faktúra',
-      subtitle: invoice.type,
-      number: invoice.number,
-    }),
-    React.createElement('div', {
-      style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
-    },
-      React.createElement(PartyBlock, { label: 'Dodávateľ', party: invoice.supplier }),
-      React.createElement(PartyBlock, { label: 'Odberateľ', party: invoice.customer }),
+  return React.createElement(React.Fragment, null,
+    React.createElement(PaperFrame, null,
+      React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo }),
+      React.createElement(TitleRow, {
+        title: 'Faktúra',
+        subtitle: invoice.type,
+        number: invoice.number,
+      }),
+      React.createElement('div', {
+        style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+      },
+        React.createElement(PartyBlock, { label: 'Dodávateľ', party: invoice.supplier }),
+        React.createElement(PartyBlock, { label: 'Odberateľ', party: invoice.customer }),
+      ),
+      React.createElement(MetaGrid, { invoice }),
+      React.createElement(ItemsTable, { items: invoice.items }),
+      React.createElement(TotalsBlock, { items: invoice.items, skonto }),
+      React.createElement(SkontoCallout, { skonto, items: invoice.items }),
+      React.createElement(PaymentBlock, { supplier: invoice.supplier, invoice, total }),
+      React.createElement(FooterBlock, { invoice }),
     ),
-    React.createElement(MetaGrid, { invoice }),
-    React.createElement(ItemsTable, { items: invoice.items }),
-    React.createElement(TotalsBlock, { items: invoice.items, skonto }),
-    React.createElement(SkontoCallout, { skonto, items: invoice.items }),
-    React.createElement(PaymentBlock, { supplier: invoice.supplier, invoice, total }),
-    React.createElement(FooterBlock, { invoice }),
+    React.createElement(PatientListAppendix, { invoice })
   );
 }
 
@@ -584,39 +636,42 @@ function ProformaPDF({ invoice = DEFAULT_INVOICE, showSupplierLogo = true }) {
   const vat = proformaInvoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (it.vat / 100), 0);
   const total = subtotal + vat;
 
-  return React.createElement(PaperFrame, {
-    watermark: React.createElement(Watermark, { text: 'PREDFAKTÚRA' })
-  },
-    React.createElement(HeaderBand, { supplier: proformaInvoice.supplier, showSupplierLogo }),
-    React.createElement(TitleRow, {
-      title: 'Predfaktúra',
-      subtitle: proformaInvoice.type,
-      number: proformaInvoice.number,
-      accent: TEAL,
-    }),
-    React.createElement('div', {
-      style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+  return React.createElement(React.Fragment, null,
+    React.createElement(PaperFrame, {
+      watermark: React.createElement(Watermark, { text: 'PREDFAKTÚRA' })
     },
-      React.createElement(PartyBlock, { label: 'Dodávateľ', party: proformaInvoice.supplier }),
-      React.createElement(PartyBlock, { label: 'Odberateľ', party: proformaInvoice.customer }),
+      React.createElement(HeaderBand, { supplier: proformaInvoice.supplier, showSupplierLogo }),
+      React.createElement(TitleRow, {
+        title: 'Predfaktúra',
+        subtitle: proformaInvoice.type,
+        number: proformaInvoice.number,
+        accent: TEAL,
+      }),
+      React.createElement('div', {
+        style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+      },
+        React.createElement(PartyBlock, { label: 'Dodávateľ', party: proformaInvoice.supplier }),
+        React.createElement(PartyBlock, { label: 'Odberateľ', party: proformaInvoice.customer }),
+      ),
+      React.createElement(MetaGrid, { invoice: proformaInvoice }),
+      React.createElement(ItemsTable, { items: proformaInvoice.items }),
+      React.createElement(TotalsBlock, { items: proformaInvoice.items, skonto: null }),
+      React.createElement(PaymentBlock, { supplier: proformaInvoice.supplier, invoice: proformaInvoice, total }),
+      React.createElement('div', {
+        style: {
+          marginTop: 18, padding: '10px 14px',
+          background: TEAL_SUBTLE, border: `1px solid #b8e2d7`, borderRadius: 6,
+          fontSize: 10, color: TEAL_DARK, lineHeight: 1.5,
+        }
+      },
+        React.createElement('strong', {
+          style: { fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em' }
+        }, 'Upozornenie: '),
+        'Tento doklad nie je daňový doklad. Po prijatí platby Vám zašleme riadnu faktúru — daňový doklad v zákonnej lehote.'
+      ),
+      React.createElement(FooterBlock, { invoice: proformaInvoice }),
     ),
-    React.createElement(MetaGrid, { invoice: proformaInvoice }),
-    React.createElement(ItemsTable, { items: proformaInvoice.items }),
-    React.createElement(TotalsBlock, { items: proformaInvoice.items, skonto: null }),
-    React.createElement(PaymentBlock, { supplier: proformaInvoice.supplier, invoice: proformaInvoice, total }),
-    React.createElement('div', {
-      style: {
-        marginTop: 18, padding: '10px 14px',
-        background: TEAL_SUBTLE, border: `1px solid #b8e2d7`, borderRadius: 6,
-        fontSize: 10, color: TEAL_DARK, lineHeight: 1.5,
-      }
-    },
-      React.createElement('strong', {
-        style: { fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em' }
-      }, 'Upozornenie: '),
-      'Tento doklad nie je daňový doklad. Po prijatí platby Vám zašleme riadnu faktúru — daňový doklad v zákonnej lehote.'
-    ),
-    React.createElement(FooterBlock, { invoice: proformaInvoice }),
+    React.createElement(PatientListAppendix, { invoice: proformaInvoice })
   );
 }
 

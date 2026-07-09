@@ -449,7 +449,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pdf.setFont("Helvetica", 8)
             pdf.drawString(L, ty, lab.invoice_default_note[:120])
 
-        if invoice.description_mode == "custom" and invoice.show_patient_list:
+        if invoice.show_patient_list:
             pdf.showPage()
             pdf.setFont("Helvetica-Bold", 14)
             pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")

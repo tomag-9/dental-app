@@ -36,6 +36,7 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
   const vatRate = parseFloat(invoiceRaw.vat_rate || 0);
 
   const rawItems = invoiceRaw.items || [];
+  const jobsById = new Map((invoiceRaw.related_jobs || []).map((job) => [job.id, job]));
   const subtotal = rawItems.reduce((sum, item) => sum + (parseFloat(item.line_total || 0) || 0), 0);
   const items = invoiceRaw.description_mode === 'custom'
     ? [{
@@ -80,6 +81,17 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
     supplier,
     customer,
     items,
+    patientRows: invoiceRaw.show_patient_list
+      ? rawItems.map((item) => {
+          const job = jobsById.get(item.job);
+          return {
+            patient: (job && job.patient_name) || 'Bez pacienta',
+            description: item.description || (job && job.description) || 'Práca',
+            qty: parseFloat(item.quantity || 1),
+            total: parseFloat(item.line_total || 0),
+          };
+        })
+      : [],
   };
 }
 

@@ -14,6 +14,10 @@ from apps.jobs.models import Job, Technician
 
 
 class InvoiceLifecycleApiTests(APITestCase):
+    @staticmethod
+    def _pdf_page_count(content):
+        return content.count(b"/Type /Page") - content.count(b"/Type /Pages")
+
     def setUp(self):
         self.lab_a = Lab.objects.create(name="Lab A")
         self.lab_b = Lab.objects.create(name="Lab B")
@@ -284,6 +288,27 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertEqual(pdf_resp.status_code, status.HTTP_200_OK)
         self.assertIn("application/pdf", pdf_resp["Content-Type"])
         self.assertTrue(pdf_resp.content.startswith(b"%PDF"))
+        self.assertEqual(self._pdf_page_count(pdf_resp.content), 2)
+
+    def test_invoice_pdf_omits_patient_appendix_when_disabled(self):
+        self.client.force_authenticate(user=self.admin_a)
+        create_resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic_a.id,
+                "job_ids": [self.job_a1.id],
+                "description_mode": "custom",
+                "custom_description": "Protetické práce",
+                "show_patient_list": False,
+            },
+            format="json",
+        )
+        invoice_id = create_resp.data["id"]
+
+        pdf_resp = self.client.get(f"/api/finance/invoices/{invoice_id}/pdf/")
+
+        self.assertEqual(pdf_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._pdf_page_count(pdf_resp.content), 1)
 
     def test_non_superadmin_cannot_create_invoice_for_other_lab(self):
         self.client.force_authenticate(user=self.admin_a)
