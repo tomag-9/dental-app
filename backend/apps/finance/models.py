@@ -16,9 +16,7 @@ PROCEDURE_CATEGORY_CHOICES = (
 
 
 class PriceList(models.Model):
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="price_list_items"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="price_list_items")
     code = models.CharField(max_length=50, null=False)
     description = models.CharField(max_length=255, null=False)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
@@ -63,9 +61,7 @@ class Invoice(models.Model):
     )
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="invoices")
-    clinic = models.ForeignKey(
-        Clinic, on_delete=models.CASCADE, related_name="invoices"
-    )
+    clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE, related_name="invoices")
     number = models.CharField(max_length=50, unique=True, null=False)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
     document_type = models.CharField(
@@ -125,9 +121,7 @@ class InvoiceItem(models.Model):
 
 
 class InvoiceSequence(models.Model):
-    lab = models.OneToOneField(
-        Lab, on_delete=models.CASCADE, related_name="invoice_sequence"
-    )
+    lab = models.OneToOneField(Lab, on_delete=models.CASCADE, related_name="invoice_sequence")
     last_number = models.PositiveIntegerField(default=0)
 
     def __str__(self):
@@ -147,15 +141,11 @@ class Subscription(models.Model):
         ("enterprise", "Enterprise"),
     )
 
-    lab = models.OneToOneField(
-        Lab, on_delete=models.CASCADE, related_name="subscription"
-    )
+    lab = models.OneToOneField(Lab, on_delete=models.CASCADE, related_name="subscription")
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default="free")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="inactive")
     seats = models.IntegerField(default=5)
-    mrr = models.DecimalField(
-        max_digits=10, decimal_places=2, default=0, null=True, blank=True
-    )
+    mrr = models.DecimalField(max_digits=10, decimal_places=2, default=0, null=True, blank=True)
     billing_email = models.EmailField(blank=True, null=True)
     trial_ends_at = models.DateField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)

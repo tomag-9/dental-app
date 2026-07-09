@@ -366,9 +366,7 @@ class ProcedureCatalogTests(APITestCase):
             price="400.00",
             category="bridge",
         )
-        PriceList.objects.create(
-            lab=self.lab, code="X001", description="Misc", price="50.00", category=None
-        )
+        PriceList.objects.create(lab=self.lab, code="X001", description="Misc", price="50.00", category=None)
         PriceList.objects.create(
             lab=self.other_lab,
             code="C001",
@@ -392,9 +390,7 @@ class ProcedureCatalogTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/procedure-catalog/")
         all_ids = [i["id"] for g in resp.data for i in g["items"]]
-        other_ids = list(
-            PriceList.objects.filter(lab=self.other_lab).values_list("id", flat=True)
-        )
+        other_ids = list(PriceList.objects.filter(lab=self.other_lab).values_list("id", flat=True))
         for oid in other_ids:
             self.assertNotIn(oid, all_ids)
 
@@ -442,9 +438,7 @@ class PriceListExportCsvTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn("text/csv", resp["Content-Type"])
         content = (
-            b"".join(resp.streaming_content).decode()
-            if hasattr(resp, "streaming_content")
-            else resp.content.decode()
+            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
         )
         self.assertIn("Kód,Popis,Cena", content)
         self.assertIn('"280,00 EUR"', content)
@@ -453,9 +447,7 @@ class PriceListExportCsvTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/price-list/export/")
         content = (
-            b"".join(resp.streaming_content).decode()
-            if hasattr(resp, "streaming_content")
-            else resp.content.decode()
+            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
         )
         rows = [r for r in content.strip().split("\n") if r]
         self.assertEqual(len(rows), 3)  # header + 2 items
@@ -474,9 +466,7 @@ class PriceListExportCsvTests(APITestCase):
         self.client.force_authenticate(user=other_user)
         resp = self.client.get("/api/finance/price-list/export/")
         content = (
-            b"".join(resp.streaming_content).decode()
-            if hasattr(resp, "streaming_content")
-            else resp.content.decode()
+            b"".join(resp.streaming_content).decode() if hasattr(resp, "streaming_content") else resp.content.decode()
         )
         self.assertNotIn("KOR-001", content)
 
@@ -498,10 +488,7 @@ class PriceListExportCsvTests(APITestCase):
         ws = wb.active
         header = [cell.value for cell in ws[1]]
         self.assertIn("Kód", header)
-        codes = [
-            ws.cell(row=r, column=header.index("Kód") + 1).value
-            for r in range(2, ws.max_row + 1)
-        ]
+        codes = [ws.cell(row=r, column=header.index("Kód") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("KOR-001", codes)
         self.assertIn("MOS-002", codes)
 

@@ -33,11 +33,7 @@ def _check_low_stock_notification(item):
         return
     if item.quantity > threshold:
         return
-    title = (
-        f"Nulový stav skladu: {item.name}"
-        if item.quantity <= 0
-        else f"Nízky stav skladu: {item.name}"
-    )
+    title = f"Nulový stav skladu: {item.name}" if item.quantity <= 0 else f"Nízky stav skladu: {item.name}"
     message = f"Aktuálny stav: {item.quantity} {item.unit or 'ks'}, minimum: {threshold} {item.unit or 'ks'}."
     already_notified = Notification.objects.filter(
         lab_id=item.lab_id,
@@ -47,9 +43,7 @@ def _check_low_stock_notification(item):
     ).exists()
     if already_notified:
         return
-    for admin in User.objects.filter(
-        lab_id=item.lab_id, role__in=("admin", "superadmin"), is_active=True
-    ):
+    for admin in User.objects.filter(lab_id=item.lab_id, role__in=("admin", "superadmin"), is_active=True):
         Notification.objects.create(
             lab_id=item.lab_id,
             recipient=admin,
@@ -95,9 +89,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         )
         total_value = qs.aggregate(total=Sum(stock_value))["total"] or Decimal("0.00")
 
-        category_rows = (
-            qs.values("category").annotate(count=Count("id")).order_by("category")
-        )
+        category_rows = qs.values("category").annotate(count=Count("id")).order_by("category")
 
         return Response(
             {
@@ -144,9 +136,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 item.location or "",
                 item.notes or "",
             ]
-            for item in limited_export_queryset(
-                self.get_queryset().order_by("name"), "inventory"
-            )
+            for item in limited_export_queryset(self.get_queryset().order_by("name"), "inventory")
         ]
         if request.query_params.get("export_format") == "xlsx":
             wb = openpyxl.Workbook()
@@ -160,9 +150,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="inventory.xlsx"'
             return response
@@ -180,13 +168,9 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
         user = request.user
         if is_superadmin(user):
-            lab_id = request.query_params.get("lab") or request.query_params.get(
-                "lab_id"
-            )
+            lab_id = request.query_params.get("lab") or request.query_params.get("lab_id")
             if not lab_id:
-                raise ValidationError(
-                    {"lab": "Superadmin must supply ?lab=<id> query parameter."}
-                )
+                raise ValidationError({"lab": "Superadmin must supply ?lab=<id> query parameter."})
             try:
                 return Lab.objects.get(pk=lab_id)
             except (TypeError, ValueError, Lab.DoesNotExist):
@@ -374,17 +358,11 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         for idx, row in enumerate(reader):
             if idx >= _MAX_ROWS:
                 return Response(
-                    {
-                        "detail": f"CSV prekračuje limit {_MAX_ROWS} riadkov. Rozdeľte ho na menšie súbory."
-                    },
+                    {"detail": f"CSV prekračuje limit {_MAX_ROWS} riadkov. Rozdeľte ho na menšie súbory."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            item_data = {
-                field: value
-                for field in self._CSV_FIELDS
-                if (value := (row.get(field) or "").strip())
-            }
+            item_data = {field: value for field in self._CSV_FIELDS if (value := (row.get(field) or "").strip())}
             ser = WarehouseItemImportSerializer(data=item_data)
             if ser.is_valid():
                 valid_items.append(ser)

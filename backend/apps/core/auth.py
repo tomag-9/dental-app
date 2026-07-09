@@ -119,11 +119,7 @@ class MolarisTokenRefreshView(TokenRefreshView):
         # Prefer refresh token from cookie; fall back to request body for backward compat.
         cookie_refresh = request.COOKIES.get(_REFRESH_COOKIE)
         # Use .copy() when available (QueryDict) to preserve scalar values; fall back to dict().
-        data = (
-            request.data.copy()
-            if hasattr(request.data, "copy")
-            else dict(request.data or {})
-        )
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data or {})
         if cookie_refresh and not data.get("refresh"):
             data["refresh"] = cookie_refresh
 

@@ -12,9 +12,7 @@ class InvoiceCSVExportTests(APITestCase):
         self.lab = Lab.objects.create(name="Export Lab")
         self.other_lab = Lab.objects.create(name="Other Lab")
         self.clinic = Clinic.objects.create(lab=self.lab, name="Klinika A")
-        self.other_clinic = Clinic.objects.create(
-            lab=self.other_lab, name="Other Clinic"
-        )
+        self.other_clinic = Clinic.objects.create(lab=self.other_lab, name="Other Clinic")
         self.admin = User.objects.create_user(
             username="export_admin",
             email="export_admin@example.com",
@@ -90,10 +88,7 @@ class InvoiceCSVExportTests(APITestCase):
         ws = wb.active
         header = [cell.value for cell in ws[1]]
         self.assertIn("Číslo", header)
-        numbers = [
-            ws.cell(row=r, column=header.index("Číslo") + 1).value
-            for r in range(2, ws.max_row + 1)
-        ]
+        numbers = [ws.cell(row=r, column=header.index("Číslo") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("EXP-001", numbers)
         self.assertIn("EXP-002", numbers)
 
