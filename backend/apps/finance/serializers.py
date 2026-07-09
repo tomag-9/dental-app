@@ -80,9 +80,10 @@ class InvoiceCreateSerializer(serializers.Serializer):
     show_patient_list = serializers.BooleanField(default=True, required=False)
 
     def validate(self, attrs):
-        if attrs.get("description_mode") == "custom" and not attrs.get(
-            "custom_description", ""
-        ).strip():
+        if (
+            attrs.get("description_mode") == "custom"
+            and not attrs.get("custom_description", "").strip()
+        ):
             raise serializers.ValidationError(
                 {"custom_description": "Voľný popis je povinný."}
             )
