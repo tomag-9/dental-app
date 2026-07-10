@@ -99,12 +99,8 @@ class PatientCumulativeToothMapApiTests(APITestCase):
         )
 
         self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Clinic A")
-        self.doctor_a = Doctor.objects.create(
-            lab=self.lab_a, clinic=self.clinic_a, first_name="John", last_name="Doe"
-        )
-        self.tech_a = Technician.objects.create(
-            lab=self.lab_a, first_name="Tech", last_name="One"
-        )
+        self.doctor_a = Doctor.objects.create(lab=self.lab_a, clinic=self.clinic_a, first_name="John", last_name="Doe")
+        self.tech_a = Technician.objects.create(lab=self.lab_a, first_name="Tech", last_name="One")
         self.patient_a = Patient.objects.create(
             lab=self.lab_a,
             first_name="Alice",
@@ -113,12 +109,8 @@ class PatientCumulativeToothMapApiTests(APITestCase):
         )
 
         self.clinic_b = Clinic.objects.create(lab=self.lab_b, name="Clinic B")
-        self.doctor_b = Doctor.objects.create(
-            lab=self.lab_b, clinic=self.clinic_b, first_name="Jane", last_name="Doe"
-        )
-        self.tech_b = Technician.objects.create(
-            lab=self.lab_b, first_name="Tech", last_name="Two"
-        )
+        self.doctor_b = Doctor.objects.create(lab=self.lab_b, clinic=self.clinic_b, first_name="Jane", last_name="Doe")
+        self.tech_b = Technician.objects.create(lab=self.lab_b, first_name="Tech", last_name="Two")
         self.patient_b = Patient.objects.create(
             lab=self.lab_b,
             first_name="Bob",
@@ -155,9 +147,7 @@ class PatientCumulativeToothMapApiTests(APITestCase):
         response = self.client.get(self._endpoint(self.patient_a.id))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            response.data, {"11": "bridge", "12": "veneer", "13": "implant"}
-        )
+        self.assertEqual(response.data, {"11": "bridge", "12": "veneer", "13": "implant"})
 
     def test_cumulative_tooth_map_ignores_non_completed_jobs(self):
         Job.objects.create(
@@ -749,9 +739,7 @@ class SlovakBirthNumberValidatorTests(APITestCase):
 
     def test_api_rejects_invalid_birth_number(self):
         lab = Lab.objects.create(name="ValidatorLab")
-        user = User.objects.create_user(
-            username="vlabuser", password="pw", role="admin", lab=lab
-        )
+        user = User.objects.create_user(username="vlabuser", password="pw", role="admin", lab=lab)
         Clinic.objects.create(lab=lab, name="C")
         self.client.force_authenticate(user=user)
         resp = self.client.post(
@@ -793,9 +781,7 @@ class SlovakIcoValidatorTests(APITestCase):
 
     def test_api_rejects_invalid_ico(self):
         lab = Lab.objects.create(name="IcoLab")
-        user = User.objects.create_user(
-            username="icouser", password="pw", role="admin", lab=lab
-        )
+        user = User.objects.create_user(username="icouser", password="pw", role="admin", lab=lab)
         self.client.force_authenticate(user=user)
         resp = self.client.post(
             "/api/crm/clinics/",
@@ -834,9 +820,7 @@ class SlovakDicValidatorTests(APITestCase):
 
     def test_api_rejects_invalid_dic(self):
         lab = Lab.objects.create(name="DicLab")
-        user = User.objects.create_user(
-            username="dicuser", password="pw", role="admin", lab=lab
-        )
+        user = User.objects.create_user(username="dicuser", password="pw", role="admin", lab=lab)
         self.client.force_authenticate(user=user)
         resp = self.client.post(
             "/api/crm/clinics/",
@@ -853,15 +837,11 @@ class SlovakDicValidatorTests(APITestCase):
 class PatientAgeTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="AgeLab")
-        self.user = User.objects.create_user(
-            username="ageuser", password="pw", role="admin", lab=self.lab
-        )
+        self.user = User.objects.create_user(username="ageuser", password="pw", role="admin", lab=self.lab)
 
     def test_age_returned_in_patient_api(self):
         # birth_number 900101/1234 → year 1990, month 01, day 01
-        patient = Patient.objects.create(
-            lab=self.lab, first_name="A", last_name="B", birth_number="900101/1234"
-        )
+        patient = Patient.objects.create(lab=self.lab, first_name="A", last_name="B", birth_number="900101/1234")
         self.client.force_authenticate(user=self.user)
         resp = self.client.get(f"/api/crm/patients/{patient.id}/")
         self.assertEqual(resp.status_code, 200)
@@ -885,9 +865,7 @@ class PatientAgeTests(APITestCase):
         self.assertGreater(age, 30)
 
     def test_age_in_list_response(self):
-        Patient.objects.create(
-            lab=self.lab, first_name="X", last_name="Y", birth_number="900101/1234"
-        )
+        Patient.objects.create(lab=self.lab, first_name="X", last_name="Y", birth_number="900101/1234")
         self.client.force_authenticate(user=self.user)
         resp = self.client.get("/api/crm/patients/")
         self.assertEqual(resp.status_code, 200)
@@ -897,9 +875,7 @@ class PatientAgeTests(APITestCase):
 class CrmSearchFilterTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Search Lab")
-        self.user = User.objects.create_user(
-            username="search_user", password="pw", role="admin", lab=self.lab
-        )
+        self.user = User.objects.create_user(username="search_user", password="pw", role="admin", lab=self.lab)
         self.client.force_authenticate(user=self.user)
         Clinic.objects.create(lab=self.lab, name="Alfa Klinika", ico=None)
         Clinic.objects.create(lab=self.lab, name="Beta Centrum", ico=None)
@@ -979,9 +955,7 @@ class CrmSearchFilterTests(APITestCase):
             with self.subTest(url=url):
                 resp = self.client.get(url)
                 self.assertEqual(resp.status_code, 200)
-                self.assertEqual(
-                    len(resp.data), expected, f"unexpected count for {url}"
-                )
+                self.assertEqual(len(resp.data), expected, f"unexpected count for {url}")
                 for record in resp.data:
                     self.assertNotEqual(record.get("lab"), other_lab.id)
 
@@ -1004,21 +978,13 @@ class DoctorClinicFilterTests(APITestCase):
 
     def setUp(self):
         self.lab = Lab.objects.create(name="Filter Lab")
-        self.admin = User.objects.create_user(
-            username="filter_admin", password="pw", role="admin", lab=self.lab
-        )
+        self.admin = User.objects.create_user(username="filter_admin", password="pw", role="admin", lab=self.lab)
         self.client.force_authenticate(user=self.admin)
         self.clinic_a = Clinic.objects.create(lab=self.lab, name="Klinika A")
         self.clinic_b = Clinic.objects.create(lab=self.lab, name="Klinika B")
-        Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic_a, first_name="Jan", last_name="A"
-        )
-        Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic_a, first_name="Maria", last_name="A2"
-        )
-        Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic_b, first_name="Peter", last_name="B"
-        )
+        Doctor.objects.create(lab=self.lab, clinic=self.clinic_a, first_name="Jan", last_name="A")
+        Doctor.objects.create(lab=self.lab, clinic=self.clinic_a, first_name="Maria", last_name="A2")
+        Doctor.objects.create(lab=self.lab, clinic=self.clinic_b, first_name="Peter", last_name="B")
 
     def test_filter_doctors_by_clinic(self):
         resp = self.client.get(f"/api/crm/doctors/?clinic={self.clinic_a.id}")
@@ -1046,9 +1012,7 @@ class DoctorClinicFilterTests(APITestCase):
     def test_clinic_filter_scoped_to_lab(self):
         other_lab = Lab.objects.create(name="Other Filter Lab")
         other_clinic = Clinic.objects.create(lab=other_lab, name="Other Clinic")
-        Doctor.objects.create(
-            lab=other_lab, clinic=other_clinic, first_name="Ghost", last_name="Doc"
-        )
+        Doctor.objects.create(lab=other_lab, clinic=other_clinic, first_name="Ghost", last_name="Doc")
         # Filtering by other lab's clinic ID returns empty (tenant-scoped).
         resp = self.client.get(f"/api/crm/doctors/?clinic={other_clinic.id}")
         self.assertEqual(resp.status_code, 200)
@@ -1145,9 +1109,7 @@ class CrmAdminOnlyWriteTests(APITestCase):
 
     def test_user_cannot_update_clinic(self):
         self.client.force_authenticate(user=self.regular)
-        resp = self.client.patch(
-            f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"}
-        )
+        resp = self.client.patch(f"/api/crm/clinics/{self.clinic.id}/", {"name": "Hacked"})
         self.assertEqual(resp.status_code, 403)
 
     def test_user_cannot_delete_clinic(self):
@@ -1202,9 +1164,7 @@ class CrmCsvExportTests(APITestCase):
             role="user",
             lab=self.lab,
         )
-        self.clinic = Clinic.objects.create(
-            lab=self.lab, name="Export Clinic", ico="12345678"
-        )
+        self.clinic = Clinic.objects.create(lab=self.lab, name="Export Clinic", ico="12345678")
         self.patient = Patient.objects.create(
             lab=self.lab,
             first_name="Jana",
@@ -1459,9 +1419,7 @@ class CrmRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         for role, expected in expectations.items():
             with self.subTest(role=role):
                 resp = _delete_matrix(role)
-                self.assertEqual(
-                    resp.status_code, expected, f"DELETE patient as {role}"
-                )
+                self.assertEqual(resp.status_code, expected, f"DELETE patient as {role}")
 
     # ── Clinic endpoints ─────────────────────────────────────────────────────
 

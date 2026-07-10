@@ -15,6 +15,7 @@ function Settings({ onNavigate, user }) {
     bank_account: '',
     invoice_prefix: 'INV',
     invoice_due_days: 14,
+    is_vat_payer: true,
     vat_rate: 0,
     payment_method: 'bank_transfer',
     invoice_default_note: '',
@@ -81,6 +82,7 @@ function Settings({ onNavigate, user }) {
       bank_account: lab.bank_account || '',
       invoice_prefix: lab.invoice_prefix || 'INV',
       invoice_due_days: lab.invoice_due_days || 14,
+      is_vat_payer: lab.is_vat_payer !== false,
       vat_rate: Number(lab.vat_rate || 0),
       payment_method: lab.payment_method || 'bank_transfer',
       invoice_default_note: lab.invoice_default_note || '',
@@ -149,6 +151,7 @@ function Settings({ onNavigate, user }) {
       const payload = {
         invoice_prefix: labForm.invoice_prefix,
         invoice_due_days: Number(labForm.invoice_due_days || 0),
+        is_vat_payer: !!labForm.is_vat_payer,
         vat_rate: Number(labForm.vat_rate || 0),
         payment_method: labForm.payment_method,
         invoice_default_note: labForm.invoice_default_note || '',
@@ -470,7 +473,10 @@ function BillingPanel({ form, onChange, onSave, status }) {
         React.createElement(FormField, { label: 'Splatnosť (dní)', value: String(form.invoice_due_days || ''), onChange: (e) => onChange({ ...form, invoice_due_days: e.target.value }), type: 'number' })
       ),
       React.createElement(FormRow, null,
-        React.createElement(FormField, { label: 'Sadzba DPH (%)', value: String(form.vat_rate || ''), onChange: (e) => onChange({ ...form, vat_rate: e.target.value }), type: 'number' }),
+        React.createElement(FormField, { label: 'DPH', type: 'checkbox', value: !!form.is_vat_payer, onChange: (e) => onChange({ ...form, is_vat_payer: e.target.checked }), placeholder: 'Laboratórium je platca DPH' }),
+        React.createElement(FormField, { label: 'Sadzba DPH (%)', value: String(form.vat_rate || ''), onChange: (e) => onChange({ ...form, vat_rate: e.target.value }), type: 'number', disabled: !form.is_vat_payer, helpText: !form.is_vat_payer ? 'Pri nových faktúrach sa použije 0 % DPH.' : '' })
+      ),
+      React.createElement(FormRow, null,
         React.createElement(FormField, { label: 'Spôsob platby', type: 'select', value: form.payment_method, onChange: (e) => onChange({ ...form, payment_method: e.target.value }), options: [
           { value: 'bank_transfer', label: 'Bankový prevod' }, { value: 'cash', label: 'Hotovosť' }, { value: 'card', label: 'Platobná karta' }
         ] })

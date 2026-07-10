@@ -94,23 +94,17 @@ class JobItemSerializer(serializers.ModelSerializer):
         if value and normalize_tooth_scope(value):
             return value
         if value and not validate_tooth_range(value):
-            raise serializers.ValidationError(
-                "Použite štandardné FDI označenie zuba, napríklad 26 alebo 45-47."
-            )
+            raise serializers.ValidationError("Použite štandardné FDI označenie zuba, napríklad 26 alebo 45-47.")
         return value
 
     def validate_tooth_scope(self, value):
         if value and not normalize_tooth_scope(value):
-            raise serializers.ValidationError(
-                "Pre rozsah zubov použite A, U, L, Q1, Q2, Q3 alebo Q4."
-            )
+            raise serializers.ValidationError("Pre rozsah zubov použite A, U, L, Q1, Q2, Q3 alebo Q4.")
         return normalize_tooth_scope(value) or None
 
     def validate_bridge_span(self, value):
         if value and not validate_bridge_span(value):
-            raise serializers.ValidationError(
-                "Rozsah mostíka musí byť FDI rozsah v jednom oblúku aspoň cez dva zuby."
-            )
+            raise serializers.ValidationError("Rozsah mostíka musí byť FDI rozsah v jednom oblúku aspoň cez dva zuby.")
         return value
 
     def validate(self, data):
@@ -126,17 +120,13 @@ class JobItemSerializer(serializers.ModelSerializer):
             tooth = None
 
         if procedure_category == "bridge" and not bridge_span:
-            raise serializers.ValidationError(
-                {"bridge_span": "Položky mostíka vyžadujú zadaný rozsah mostíka."}
-            )
+            raise serializers.ValidationError({"bridge_span": "Položky mostíka vyžadujú zadaný rozsah mostíka."})
 
         if bridge_span and tooth:
             bridge_teeth = set(expand_fdi_range(bridge_span))
             item_teeth = set(expand_fdi_range(tooth))
             if item_teeth and not item_teeth.issubset(bridge_teeth):
-                raise serializers.ValidationError(
-                    {"tooth": "Zub musí byť v rozsahu mostíka."}
-                )
+                raise serializers.ValidationError({"tooth": "Zub musí byť v rozsahu mostíka."})
 
         return data
 
@@ -201,9 +191,7 @@ class JobSerializer(serializers.ModelSerializer):
         valid_codes = set(self._price_list_queryset().values_list("code", flat=True))
         invalid_codes = [code for code in value if code not in valid_codes]
         if invalid_codes:
-            raise serializers.ValidationError(
-                f"Invalid procedure codes: {invalid_codes}"
-            )
+            raise serializers.ValidationError(f"Invalid procedure codes: {invalid_codes}")
 
         return value
 
@@ -216,30 +204,18 @@ class JobSerializer(serializers.ModelSerializer):
 
         if procedure_codes and procedure_quantities:
             if len(procedure_codes) != len(set(procedure_quantities.keys())):
-                raise serializers.ValidationError(
-                    "Procedure codes and quantities must match"
-                )
-            missing_quantities = [
-                code for code in procedure_codes if code not in procedure_quantities
-            ]
+                raise serializers.ValidationError("Procedure codes and quantities must match")
+            missing_quantities = [code for code in procedure_codes if code not in procedure_quantities]
             if missing_quantities:
-                raise serializers.ValidationError(
-                    "Procedure codes and quantities must match"
-                )
+                raise serializers.ValidationError("Procedure codes and quantities must match")
 
         if items:
-            valid_codes = set(
-                self._price_list_queryset().values_list("code", flat=True)
-            )
+            valid_codes = set(self._price_list_queryset().values_list("code", flat=True))
             invalid_codes = [
-                item.get("price_list_code")
-                for item in items
-                if item.get("price_list_code") not in valid_codes
+                item.get("price_list_code") for item in items if item.get("price_list_code") not in valid_codes
             ]
             if invalid_codes:
-                raise serializers.ValidationError(
-                    {"items": f"Invalid procedure codes: {invalid_codes}"}
-                )
+                raise serializers.ValidationError({"items": f"Invalid procedure codes: {invalid_codes}"})
 
         # Get current user from context
         request = self.context.get("request")
@@ -254,27 +230,17 @@ class JobSerializer(serializers.ModelSerializer):
             user_lab_id = user.lab.id
 
             # Check all referenced entities
-            patient_id = data.get("patient_id") or (
-                data.get("patient").id if data.get("patient") else None
-            )
-            clinic_id = data.get("clinic_id") or (
-                data.get("clinic").id if data.get("clinic") else None
-            )
-            doctor_id = data.get("doctor_id") or (
-                data.get("doctor").id if data.get("doctor") else None
-            )
-            technician_id = data.get("technician_id") or (
-                data.get("technician").id if data.get("technician") else None
-            )
+            patient_id = data.get("patient_id") or (data.get("patient").id if data.get("patient") else None)
+            clinic_id = data.get("clinic_id") or (data.get("clinic").id if data.get("clinic") else None)
+            doctor_id = data.get("doctor_id") or (data.get("doctor").id if data.get("doctor") else None)
+            technician_id = data.get("technician_id") or (data.get("technician").id if data.get("technician") else None)
 
             # Fetch entities and validate they exist
             try:
                 patient = Patient.objects.get(id=patient_id) if patient_id else None
                 clinic = Clinic.objects.get(id=clinic_id) if clinic_id else None
                 doctor = Doctor.objects.get(id=doctor_id) if doctor_id else None
-                technician = (
-                    Technician.objects.get(id=technician_id) if technician_id else None
-                )
+                technician = Technician.objects.get(id=technician_id) if technician_id else None
             except (
                 Patient.DoesNotExist,
                 Clinic.DoesNotExist,
@@ -284,14 +250,10 @@ class JobSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Referenced entities not found")
 
             # Check all entities belong to user's lab
-            entities = [
-                e for e in [patient, clinic, doctor, technician] if e is not None
-            ]
+            entities = [e for e in [patient, clinic, doctor, technician] if e is not None]
             for entity in entities:
                 if hasattr(entity, "lab_id") and entity.lab_id != user_lab_id:
-                    raise serializers.ValidationError(
-                        "Entities must belong to the same lab"
-                    )
+                    raise serializers.ValidationError("Entities must belong to the same lab")
 
         return data
 
@@ -301,9 +263,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         price_items = {
             item.code: item
-            for item in self._price_list_queryset().filter(
-                code__in=[entry["price_list_code"] for entry in items]
-            )
+            for item in self._price_list_queryset().filter(code__in=[entry["price_list_code"] for entry in items])
         }
         JobItem.objects.filter(job=job).delete()
 
@@ -356,9 +316,7 @@ class JobSerializer(serializers.ModelSerializer):
 
 
 class JobStatusTransitionSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(
-        choices=[choice[0] for choice in Job.STATUS_CHOICES]
-    )
+    status = serializers.ChoiceField(choices=[choice[0] for choice in Job.STATUS_CHOICES])
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
 
@@ -419,9 +377,7 @@ class JobAttachmentSerializer(serializers.ModelSerializer):
     def validate_file_url(self, value):
         parsed = urlparse(value)
         if parsed.scheme != "https":
-            raise serializers.ValidationError(
-                "Attachment URLs must use HTTPS external storage."
-            )
+            raise serializers.ValidationError("Attachment URLs must use HTTPS external storage.")
         if not parsed.netloc:
             raise serializers.ValidationError("Attachment URL must include a host.")
         return value
@@ -441,9 +397,7 @@ class JobAttachmentSerializer(serializers.ModelSerializer):
             allowed_extensions = self._ALLOWED_FILE_TYPES[file_type]
             if extension not in allowed_extensions:
                 allowed = ", ".join(sorted(allowed_extensions))
-                raise serializers.ValidationError(
-                    {"file_name": f"File extension must match {file_type}: {allowed}."}
-                )
+                raise serializers.ValidationError({"file_name": f"File extension must match {file_type}: {allowed}."})
         data.pop("file_size", None)
         return data
 

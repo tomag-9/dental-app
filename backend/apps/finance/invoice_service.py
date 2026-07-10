@@ -36,9 +36,7 @@ def generate_invoice_number(lab):
 def sync_jobs_for_invoice_status(invoice, new_status):
     """Sync the statuses of jobs linked to *invoice* when invoice status changes."""
     job_ids = list(
-        InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False)
-        .values_list("job_id", flat=True)
-        .distinct()
+        InvoiceItem.objects.filter(invoice=invoice, job_id__isnull=False).values_list("job_id", flat=True).distinct()
     )
     if new_status == "cancelled":
         jobs_services.mark_jobs_invoice_cancelled(job_ids)
@@ -65,7 +63,16 @@ def write_invoice_audit(actor, invoice, action, metadata=None, description=None)
 
 
 @transaction.atomic
-def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percent=None):
+def create_invoice(
+    actor,
+    clinic,
+    jobs,
+    document_type="invoice",
+    discount_percent=None,
+    description_mode="structured",
+    custom_description="",
+    show_patient_list=True,
+):
     """
     Create an invoice for *clinic* covering *jobs*.
 
@@ -76,11 +83,11 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
     """
     if discount_percent is None:
         discount_percent = Decimal("0")
+    description_mode = description_mode or "structured"
+    custom_description = (custom_description or "").strip()
 
     now = timezone.now()
-    due_date = timezone.localdate() + timezone.timedelta(
-        days=clinic.lab.invoice_due_days
-    )
+    due_date = timezone.localdate() + timezone.timedelta(days=clinic.lab.invoice_due_days)
 
     invoice = Invoice.objects.create(
         clinic=clinic,
@@ -88,8 +95,11 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
         number=generate_invoice_number(clinic.lab),
         status="issued",
         document_type=document_type,
-        vat_rate=clinic.lab.vat_rate,
+        vat_rate=clinic.lab.vat_rate if clinic.lab.is_vat_payer else Decimal("0"),
         discount_percent=discount_percent,
+        description_mode=description_mode,
+        custom_description=custom_description,
+        show_patient_list=show_patient_list,
         issued_at=now,
         due_date=due_date,
     )
@@ -135,9 +145,7 @@ def create_invoice(actor, clinic, jobs, document_type="invoice", discount_percen
             )
             subtotal += item.line_total
 
-    amounts = calculate_invoice_amounts(
-        subtotal, invoice.vat_rate, invoice.discount_percent
-    )
+    amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
     invoice.total_amount = amounts["total_amount"]
     invoice.save(update_fields=["total_amount"])
 
@@ -202,14 +210,10 @@ def send_invoice_email(actor, invoice, pdf_bytes, recipient):
     msg = EmailMessage(
         subject=subject,
         body=body,
-        from_email=getattr(
-            django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
-        ),
+        from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
         to=[recipient],
     )
     msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
     msg.send(fail_silently=False)
 
-    write_invoice_audit(
-        actor, invoice, "invoice.email_sent", metadata={"sent_to": recipient}
-    )
+    write_invoice_audit(actor, invoice, "invoice.email_sent", metadata={"sent_to": recipient})

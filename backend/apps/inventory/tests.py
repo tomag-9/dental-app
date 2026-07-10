@@ -454,9 +454,7 @@ class InventoryCSVImportTests(APITestCase):
     def _csv_file(self, content):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        return SimpleUploadedFile(
-            "items.csv", content.encode("utf-8"), content_type="text/csv"
-        )
+        return SimpleUploadedFile("items.csv", content.encode("utf-8"), content_type="text/csv")
 
     def test_import_valid_csv(self):
         self.client.force_authenticate(user=self.admin)
@@ -485,9 +483,7 @@ class InventoryCSVImportTests(APITestCase):
 
     def test_import_no_file_returns_400(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post(
-            "/api/inventory/warehouse/import-csv/", {}, format="multipart"
-        )
+        resp = self.client.post("/api/inventory/warehouse/import-csv/", {}, format="multipart")
         self.assertEqual(resp.status_code, 400)
 
     def test_unauthenticated_denied(self):
@@ -522,9 +518,7 @@ class LowStockNotificationTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 201)
         item_id = resp.data["id"]
-        notif = Notification.objects.filter(
-            lab=self.lab, type="stock", recipient=self.admin
-        ).first()
+        notif = Notification.objects.filter(lab=self.lab, type="stock", recipient=self.admin).first()
         self.assertIsNotNone(notif)
         self.assertIn("Akrylát", notif.title)
         self.assertEqual(notif.url, f"/inventory/{item_id}")
@@ -538,9 +532,7 @@ class LowStockNotificationTests(APITestCase):
             {"name": "Composite", "quantity": 50, "min_threshold": 10},
             format="json",
         )
-        self.assertEqual(
-            Notification.objects.filter(lab=self.lab, type="stock").count(), 0
-        )
+        self.assertEqual(Notification.objects.filter(lab=self.lab, type="stock").count(), 0)
 
     def test_update_to_low_stock_creates_notification(self):
         from apps.core.models import Notification
@@ -558,9 +550,7 @@ class LowStockNotificationTests(APITestCase):
             format="json",
         )
         self.assertEqual(patch_resp.status_code, 200)
-        notif = Notification.objects.filter(
-            lab=self.lab, type="stock", recipient=self.admin
-        ).first()
+        notif = Notification.objects.filter(lab=self.lab, type="stock", recipient=self.admin).first()
         self.assertIsNotNone(notif)
 
     def test_dedup_does_not_create_second_notification_while_unread(self):
@@ -580,9 +570,7 @@ class LowStockNotificationTests(APITestCase):
             format="json",
         )
         self.assertEqual(
-            Notification.objects.filter(
-                lab=self.lab, type="stock", url=f"/inventory/{item_id}"
-            ).count(),
+            Notification.objects.filter(lab=self.lab, type="stock", url=f"/inventory/{item_id}").count(),
             1,
         )
 
@@ -625,10 +613,7 @@ class InventoryXlsxExportTests(APITestCase):
         header = [cell.value for cell in ws[1]]
         self.assertIn("Názov", header)
         self.assertIn("SKU", header)
-        names = [
-            ws.cell(row=r, column=header.index("Názov") + 1).value
-            for r in range(2, ws.max_row + 1)
-        ]
+        names = [ws.cell(row=r, column=header.index("Názov") + 1).value for r in range(2, ws.max_row + 1)]
         self.assertIn("Zirkón blok", names)
         self.assertIn("Separačný lak", names)
 
@@ -802,6 +787,4 @@ class InventoryRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
         for role, expected in expectations.items():
             with self.subTest(role=role):
                 resp = _delete_matrix(role)
-                self.assertEqual(
-                    resp.status_code, expected, f"DELETE warehouse as {role}"
-                )
+                self.assertEqual(resp.status_code, expected, f"DELETE warehouse as {role}")

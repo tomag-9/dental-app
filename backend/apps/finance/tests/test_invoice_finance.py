@@ -186,22 +186,12 @@ class FinanceStatsViewTests(APITestCase):
 
 class InvoiceVatRateSnapshotTests(APITestCase):
     def setUp(self):
-        self.lab = Lab.objects.create(
-            name="VAT Lab", invoice_prefix="VAT", vat_rate="20.00"
-        )
-        self.user = User.objects.create_user(
-            username="vat_user", password="pw", role="admin", lab=self.lab
-        )
+        self.lab = Lab.objects.create(name="VAT Lab", invoice_prefix="VAT", vat_rate="20.00")
+        self.user = User.objects.create_user(username="vat_user", password="pw", role="admin", lab=self.lab)
         self.clinic = Clinic.objects.create(lab=self.lab, name="VAT Clinic")
-        self.doctor = Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
-        )
-        self.patient = Patient.objects.create(
-            lab=self.lab, first_name="V", last_name="T", birth_number="900101/0007"
-        )
-        self.tech = Technician.objects.create(
-            lab=self.lab, first_name="T", last_name="T"
-        )
+        self.doctor = Doctor.objects.create(lab=self.lab, clinic=self.clinic, first_name="D", last_name="R")
+        self.patient = Patient.objects.create(lab=self.lab, first_name="V", last_name="T", birth_number="900101/0007")
+        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
 
     def test_vat_rate_snapshot_stored_at_creation(self):
         from apps.jobs.models import Job
@@ -228,6 +218,92 @@ class InvoiceVatRateSnapshotTests(APITestCase):
         self.assertEqual(resp.data["vat_rate"], "20.00")
         # total = 100 + 20% VAT = 120
         self.assertEqual(resp.data["total_amount"], "120.00")
+
+    def test_non_vat_payer_invoice_uses_zero_vat_snapshot(self):
+        from apps.jobs.models import Job
+
+        self.lab.is_vat_payer = False
+        self.lab.save(update_fields=["is_vat_payer"])
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["vat_rate"], "0.00")
+        self.assertEqual(resp.data["vat_amount"], "0.00")
+        self.assertEqual(resp.data["total_amount"], "100.00")
+
+    def test_custom_description_invoice_options_are_saved(self):
+        from apps.jobs.models import Job
+
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "description_mode": "custom",
+                "custom_description": "Protetické práce",
+                "show_patient_list": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["description_mode"], "custom")
+        self.assertEqual(resp.data["custom_description"], "Protetické práce")
+        self.assertFalse(resp.data["show_patient_list"])
+
+    def test_custom_description_requires_text(self):
+        from apps.jobs.models import Job
+
+        job = Job.objects.create(
+            lab=self.lab,
+            clinic=self.clinic,
+            doctor=self.doctor,
+            patient=self.patient,
+            technician=self.tech,
+            status="completed",
+            price="100.00",
+        )
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post(
+            "/api/finance/invoices/",
+            {
+                "clinic_id": self.clinic.id,
+                "job_ids": [job.id],
+                "description_mode": "custom",
+                "custom_description": " ",
+            },
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("custom_description", resp.data)
 
     def test_vat_rate_in_serializer_response(self):
         from apps.finance.models import Invoice
@@ -264,9 +340,7 @@ class InvoiceVatRateSnapshotTests(APITestCase):
         self.assertEqual(amounts["total_amount"], 120)
 
     def test_invoice_amounts_with_vat_and_discount(self):
-        amounts = calculate_invoice_amounts(
-            "100.00", vat_rate="20.00", discount_percent="10.00"
-        )
+        amounts = calculate_invoice_amounts("100.00", vat_rate="20.00", discount_percent="10.00")
 
         self.assertEqual(amounts["subtotal_amount"], 100)
         self.assertEqual(amounts["discount_amount"], 10)
@@ -304,27 +378,15 @@ class InvoiceVatRateSnapshotTests(APITestCase):
 class MultiProcedurePricingTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Pricing Lab", invoice_prefix="PRC")
-        self.user = User.objects.create_user(
-            username="pricing_user", password="pw", role="admin", lab=self.lab
-        )
+        self.user = User.objects.create_user(username="pricing_user", password="pw", role="admin", lab=self.lab)
         self.clinic = Clinic.objects.create(lab=self.lab, name="Pricing Clinic")
-        self.doctor = Doctor.objects.create(
-            lab=self.lab, clinic=self.clinic, first_name="D", last_name="R"
-        )
-        self.patient = Patient.objects.create(
-            lab=self.lab, first_name="P", last_name="Q", birth_number="900101/0007"
-        )
-        self.tech = Technician.objects.create(
-            lab=self.lab, first_name="T", last_name="T"
-        )
+        self.doctor = Doctor.objects.create(lab=self.lab, clinic=self.clinic, first_name="D", last_name="R")
+        self.patient = Patient.objects.create(lab=self.lab, first_name="P", last_name="Q", birth_number="900101/0007")
+        self.tech = Technician.objects.create(lab=self.lab, first_name="T", last_name="T")
         from apps.finance.models import PriceList
 
-        PriceList.objects.create(
-            lab=self.lab, code="C001", description="Crown", price="150.00"
-        )
-        PriceList.objects.create(
-            lab=self.lab, code="C002", description="Bridge", price="300.00"
-        )
+        PriceList.objects.create(lab=self.lab, code="C001", description="Crown", price="150.00")
+        PriceList.objects.create(lab=self.lab, code="C002", description="Bridge", price="300.00")
 
     def _make_job(self, procedure_codes, quantities=None):
         from apps.jobs.models import Job

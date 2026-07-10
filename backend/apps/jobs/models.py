@@ -56,18 +56,12 @@ class Job(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
-    priority = models.CharField(
-        max_length=20, choices=PRIORITY_CHOICES, default="normal"
-    )
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default="normal")
 
     procedure_codes = models.JSONField(blank=True, null=True)  # List of codes
     procedure_quantities = models.JSONField(blank=True, null=True)  # Dict {code: qty}
-    input_tooth_procedures = models.JSONField(
-        blank=True, null=True
-    )  # Job-specific tooth map data (input)
-    output_tooth_procedures = models.JSONField(
-        blank=True, null=True
-    )  # Resulting work (output)
+    input_tooth_procedures = models.JSONField(blank=True, null=True)  # Job-specific tooth map data (input)
+    output_tooth_procedures = models.JSONField(blank=True, null=True)  # Resulting work (output)
 
     description = models.TextField(blank=True, null=True)
     tooth_color = models.CharField(max_length=10, blank=True, null=True)  # A1-D4
@@ -186,9 +180,7 @@ class JobTimelineEvent(models.Model):
 
 
 class Vacation(models.Model):
-    lab = models.ForeignKey(
-        Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="vacations"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.SET_NULL, null=True, blank=True, related_name="vacations")
     start = models.DateTimeField(null=False)
     end = models.DateTimeField(null=False)
     description = models.CharField(max_length=255, blank=True, null=True)
@@ -228,13 +220,9 @@ class CalendarEvent(models.Model):
         ("other", "Iné"),
     )
 
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="calendar_events"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="calendar_events")
     title = models.CharField(max_length=255)
-    event_type = models.CharField(
-        max_length=30, choices=EVENT_TYPE_CHOICES, default="other"
-    )
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPE_CHOICES, default="other")
     start = models.DateTimeField(null=False)
     end = models.DateTimeField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)

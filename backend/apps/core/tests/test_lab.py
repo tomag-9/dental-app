@@ -140,9 +140,7 @@ class LabApiKeyTests(APITestCase):
 
     def test_admin_can_create_api_key(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post(
-            "/api/core/api-keys/", {"name": "My Integration"}, format="json"
-        )
+        resp = self.client.post("/api/core/api-keys/", {"name": "My Integration"}, format="json")
         self.assertEqual(resp.status_code, 201)
         self.assertIn("key", resp.data)
         self.assertIn("prefix", resp.data)
@@ -151,9 +149,7 @@ class LabApiKeyTests(APITestCase):
 
     def test_create_api_key_writes_audit_log(self):
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.post(
-            "/api/core/api-keys/", {"name": "Audit Integration"}, format="json"
-        )
+        resp = self.client.post("/api/core/api-keys/", {"name": "Audit Integration"}, format="json")
 
         self.assertEqual(resp.status_code, 201)
         log = AuditLog.objects.filter(action="api_key.created").latest("created_at")
@@ -165,9 +161,7 @@ class LabApiKeyTests(APITestCase):
 
     def test_regular_user_cannot_create_api_key(self):
         self.client.force_authenticate(user=self.user)
-        resp = self.client.post(
-            "/api/core/api-keys/", {"name": "Bad Key"}, format="json"
-        )
+        resp = self.client.post("/api/core/api-keys/", {"name": "Bad Key"}, format="json")
         self.assertEqual(resp.status_code, 403)
 
     def test_admin_can_list_api_keys(self):
@@ -290,9 +284,7 @@ class LabRolePermissionTests(APITestCase):
         )
 
         self.assertEqual(resp.status_code, 201)
-        log = AuditLog.objects.filter(action="permission_override.saved").latest(
-            "created_at"
-        )
+        log = AuditLog.objects.filter(action="permission_override.saved").latest("created_at")
         self.assertEqual(log.entity_id, str(resp.data["id"]))
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
@@ -319,9 +311,7 @@ class LabRolePermissionTests(APITestCase):
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.delete(
-            f"/api/core/labs/{self.lab.id}/permissions/{override.id}/"
-        )
+        resp = self.client.delete(f"/api/core/labs/{self.lab.id}/permissions/{override.id}/")
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(LabRolePermission.objects.filter(id=override.id).exists())
 
@@ -335,14 +325,10 @@ class LabRolePermissionTests(APITestCase):
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
-        resp = self.client.delete(
-            f"/api/core/labs/{self.lab.id}/permissions/{override.id}/"
-        )
+        resp = self.client.delete(f"/api/core/labs/{self.lab.id}/permissions/{override.id}/")
 
         self.assertEqual(resp.status_code, 204)
-        log = AuditLog.objects.filter(action="permission_override.deleted").latest(
-            "created_at"
-        )
+        log = AuditLog.objects.filter(action="permission_override.deleted").latest("created_at")
         self.assertEqual(log.entity_id, str(override.id))
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)

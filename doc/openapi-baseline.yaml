@@ -9414,6 +9414,14 @@ components:
       - lab
       - name
       - ytd_revenue
+    DescriptionModeEnum:
+      enum:
+      - structured
+      - custom
+      type: string
+      description: |-
+        * `structured` - Štruktúrovaný popis
+        * `custom` - Voľný popis
     Doctor:
       type: object
       properties:
@@ -9565,6 +9573,12 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        description_mode:
+          $ref: '#/components/schemas/DescriptionModeEnum'
+        custom_description:
+          type: string
+        show_patient_list:
+          type: boolean
         total_amount:
           type: string
           format: decimal
@@ -9955,9 +9969,12 @@ components:
           type: string
           maxLength: 255
         slug:
-          type: string
-          maxLength: 255
-          pattern: ^[-a-zA-Z0-9_]+$
+          oneOf:
+          - type: string
+            maxLength: 255
+            pattern: ^[-a-zA-Z0-9_]+$
+          - type: string
+            maxLength: 0
         address:
           type: string
           nullable: true
@@ -9994,15 +10011,21 @@ components:
           nullable: true
           maxLength: 50
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         website:
-          type: string
-          format: uri
           nullable: true
-          maxLength: 200
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
         logo_url:
           type: string
           nullable: true
@@ -10016,6 +10039,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        is_vat_payer:
+          type: boolean
         vat_rate:
           type: string
           format: decimal
@@ -10664,6 +10689,12 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        description_mode:
+          $ref: '#/components/schemas/DescriptionModeEnum'
+        custom_description:
+          type: string
+        show_patient_list:
+          type: boolean
         total_amount:
           type: string
           format: decimal
@@ -10823,9 +10854,12 @@ components:
           type: string
           maxLength: 255
         slug:
-          type: string
-          maxLength: 255
-          pattern: ^[-a-zA-Z0-9_]+$
+          oneOf:
+          - type: string
+            maxLength: 255
+            pattern: ^[-a-zA-Z0-9_]+$
+          - type: string
+            maxLength: 0
         address:
           type: string
           nullable: true
@@ -10862,15 +10896,21 @@ components:
           nullable: true
           maxLength: 50
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         website:
-          type: string
-          format: uri
           nullable: true
-          maxLength: 200
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
         logo_url:
           type: string
           nullable: true
@@ -10884,6 +10924,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        is_vat_payer:
+          type: boolean
         vat_rate:
           type: string
           format: decimal
@@ -10965,10 +11007,13 @@ components:
           nullable: true
           maxLength: 50
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         tooth_procedures:
           nullable: true
         created_at:
@@ -11044,10 +11089,13 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           nullable: true
         billing_email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         trial_ends_at:
           type: string
           format: date
@@ -11212,10 +11260,13 @@ components:
             this instead of deleting accounts.
         notification_preferences: {}
         avatar_url:
-          type: string
-          format: uri
           nullable: true
-          maxLength: 500
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 500
+          - type: string
+            maxLength: 0
         date_joined:
           type: string
           format: date-time
@@ -11326,10 +11377,13 @@ components:
           nullable: true
           maxLength: 50
         email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         tooth_procedures:
           nullable: true
         created_at:
@@ -11475,10 +11529,13 @@ components:
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           nullable: true
         billing_email:
-          type: string
-          format: email
           nullable: true
-          maxLength: 254
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
         trial_ends_at:
           type: string
           format: date
@@ -11742,10 +11799,13 @@ components:
             this instead of deleting accounts.
         notification_preferences: {}
         avatar_url:
-          type: string
-          format: uri
           nullable: true
-          maxLength: 500
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 500
+          - type: string
+            maxLength: 0
         date_joined:
           type: string
           format: date-time

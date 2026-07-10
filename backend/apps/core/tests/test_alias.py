@@ -351,9 +351,7 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
 
     def setUp(self):
         self.setup_role_matrix(prefix="alias_write")
-        self.clinic_a = Clinic.objects.create(
-            lab=self.lab_a, name="Alias Write Clinic A"
-        )
+        self.clinic_a = Clinic.objects.create(lab=self.lab_a, name="Alias Write Clinic A")
 
     def _new_invoice(self, suffix):
         return Invoice.objects.create(
@@ -368,9 +366,7 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
     def _assert_alias_create_matrix(self, url, payload_factory, success_status):
         """Assert the full 6-role permission matrix for a create (POST) alias route."""
         resp = self.client.post(url, payload_factory("anonymous"), format="json")
-        self.assertEqual(
-            resp.status_code, status.HTTP_401_UNAUTHORIZED, f"POST {url} anonymous"
-        )
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED, f"POST {url} anonymous")
 
         deny_roles = ["no_lab", "user", "technician"]
         allow_roles = [("admin", self.admin_a), ("superadmin", self.superadmin)]
@@ -379,18 +375,14 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             with self.subTest(role=role):
                 self.client.force_authenticate(user=self.role_users[role])
                 resp = self.client.post(url, payload_factory(role), format="json")
-                self.assertEqual(
-                    resp.status_code, status.HTTP_403_FORBIDDEN, f"POST {url} as {role}"
-                )
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, f"POST {url} as {role}")
                 self.client.force_authenticate(user=None)
 
         for role, user in allow_roles:
             with self.subTest(role=role):
                 self.client.force_authenticate(user=user)
                 resp = self.client.post(url, payload_factory(role), format="json")
-                self.assertEqual(
-                    resp.status_code, success_status, f"POST {url} as {role}"
-                )
+                self.assertEqual(resp.status_code, success_status, f"POST {url} as {role}")
                 self.client.force_authenticate(user=None)
 
     def _assert_alias_delete_matrix(self, url_factory):
@@ -527,9 +519,7 @@ class AliasWriteRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
                 "quantity": 1,
             }
 
-        self._assert_alias_create_matrix(
-            "/api/warehouse/", payload_factory, status.HTTP_201_CREATED
-        )
+        self._assert_alias_create_matrix("/api/warehouse/", payload_factory, status.HTTP_201_CREATED)
 
     def test_warehouse_alias_delete_role_matrix(self):
         """DELETE /api/warehouse/<id>/ must enforce the same role matrix via the root alias."""

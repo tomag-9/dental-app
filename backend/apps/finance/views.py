@@ -121,9 +121,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="pricelist.xlsx"'
             return response
@@ -190,6 +188,9 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             job_ids=data["job_ids"],
             document_type=data.get("document_type", "invoice"),
             discount_percent=data.get("discount_percent", Decimal("0")),
+            description_mode=data.get("description_mode", "structured"),
+            custom_description=data.get("custom_description", ""),
+            show_patient_list=data.get("show_patient_list", True),
         )
         return Response(
             InvoiceSerializer(invoice, context={"request": request}).data,
@@ -228,9 +229,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         pdf_bytes = buffer.getvalue()
         buffer.close()
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
-        response["Content-Disposition"] = (
-            f'inline; filename="faktura_{invoice.number}.pdf"'
-        )
+        response["Content-Disposition"] = f'inline; filename="faktura_{invoice.number}.pdf"'
         return response
 
     @action(detail=True, methods=["post"], url_path="send-email")
@@ -239,11 +238,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         invoice = self.get_object()
         clinic = invoice.clinic
 
-        recipient = (
-            request.data.get("email") or (clinic.contact_info or {}).get("email")
-            if clinic
-            else None
-        )
+        recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
         if not recipient:
             detail = "Chýba e-mail príjemcu. Zadajte 'email' v požiadavke alebo nastavte clinic contact_info.email."
             return Response(
@@ -257,9 +252,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         buffer.close()
 
         try:
-            invoice_service.send_invoice_email(
-                request.user, invoice, pdf_bytes, recipient
-            )
+            invoice_service.send_invoice_email(request.user, invoice, pdf_bytes, recipient)
         except Exception as exc:
             return Response(
                 {"detail": f"Odoslanie e-mailu zlyhalo: {exc}"},
@@ -288,26 +281,20 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             bic = lab.bank_bic or ""
             msg_text = f"Faktura {invoice.number}"
             payload = (
-                f"PAY*QR%0100*1*1%AM{amount:.2f}%CC EUR%IBAN{iban}"
-                + (f"%BIC{bic}" if bic else "")
-                + f"%MSG{msg_text}"
+                f"PAY*QR%0100*1*1%AM{amount:.2f}%CC EUR%IBAN{iban}" + (f"%BIC{bic}" if bic else "") + f"%MSG{msg_text}"
             )
         else:
             payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount or 0):.2f}|{invoice.status}"
         _, qr_drawing = self._build_qr_svg(payload, size=72)
         renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 
-        doc_label = (
-            "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
-        )
+        doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
         pdf.setFont("Helvetica-Bold", 18)
         pdf.drawString(L, height - 18 * mm, doc_label)
         pdf.setFont("Helvetica", 10)
         pdf.drawString(L, height - 25 * mm, f"Číslo: {invoice.number}")
         issued_at = invoice.issued_at or timezone.now()
-        pdf.drawString(
-            L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}"
-        )
+        pdf.drawString(L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}")
         if invoice.due_date:
             pdf.drawString(
                 L,
@@ -359,23 +346,43 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         table_top = min(y, yc) - 8 * mm
         hline(table_top)
         th = table_top - 6 * mm
-        pdf.setFont("Helvetica-Bold", 9)
-        pdf.drawString(L, th, "Popis")
-        pdf.drawRightString(120 * mm, th, "Mn.")
-        pdf.drawRightString(148 * mm, th, "Jed. cena")
-        pdf.drawRightString(R, th, "Spolu")
-        hline(th - 2 * mm)
+        if invoice.description_mode == "custom":
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(L, th, "Popis")
+            pdf.drawRightString(R, th, "Spolu")
+            hline(th - 2 * mm)
 
-        ty = th - 8 * mm
-        pdf.setFont("Helvetica", 9)
-        for item in items[:30]:
-            if ty < 55 * mm:
-                break
-            pdf.drawString(L, ty, str(item.description or "")[:60])
-            pdf.drawRightString(120 * mm, ty, str(item.quantity))
-            pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
-            pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
-            ty -= 5 * mm
+            ty = th - 8 * mm
+            pdf.setFont("Helvetica", 9)
+            pdf.drawString(
+                L,
+                ty,
+                (invoice.custom_description or "Protetické práce")[:95],
+            )
+            pdf.drawRightString(
+                R,
+                ty,
+                format_sk_currency(sum((item.line_total for item in items), Decimal())),
+            )
+            ty -= 6 * mm
+        else:
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(L, th, "Popis")
+            pdf.drawRightString(120 * mm, th, "Mn.")
+            pdf.drawRightString(148 * mm, th, "Jed. cena")
+            pdf.drawRightString(R, th, "Spolu")
+            hline(th - 2 * mm)
+
+            ty = th - 8 * mm
+            pdf.setFont("Helvetica", 9)
+            for item in items[:30]:
+                if ty < 55 * mm:
+                    break
+                pdf.drawString(L, ty, str(item.description or "")[:60])
+                pdf.drawRightString(120 * mm, ty, str(item.quantity))
+                pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
+                pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
+                ty -= 5 * mm
 
         hline(ty)
         vat_rate = Decimal(str(invoice.vat_rate or 0))
@@ -426,6 +433,37 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             pdf.setFont("Helvetica", 8)
             pdf.drawString(L, ty, lab.invoice_default_note[:120])
 
+        if invoice.show_patient_list:
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")
+            pdf.setFont("Helvetica", 10)
+            pdf.drawString(L, height - 25 * mm, f"Faktúra: {invoice.number}")
+            hline(height - 31 * mm)
+
+            py = height - 40 * mm
+            pdf.setFont("Helvetica-Bold", 8)
+            pdf.drawString(L, py, "Pacient")
+            pdf.drawString(58 * mm, py, "Práca")
+            pdf.drawRightString(148 * mm, py, "Množstvo")
+            pdf.drawRightString(R, py, "Spolu")
+            hline(py - 2 * mm)
+            py -= 7 * mm
+            pdf.setFont("Helvetica", 8)
+            for item in items:
+                if py < 20 * mm:
+                    pdf.showPage()
+                    py = height - 20 * mm
+                    pdf.setFont("Helvetica", 8)
+                job = item.job
+                patient = getattr(job, "patient", None) if job else None
+                patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else "Bez pacienta"
+                pdf.drawString(L, py, patient_name[:28])
+                pdf.drawString(58 * mm, py, str(item.description or "")[:45])
+                pdf.drawRightString(148 * mm, py, str(item.quantity))
+                pdf.drawRightString(R, py, format_sk_currency(item.line_total))
+                py -= 5 * mm
+
         pdf.showPage()
         pdf.save()
 
@@ -454,9 +492,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             clinic = invoice.clinic
             recipient = (clinic.contact_info or {}).get("email") if clinic else None
             if not recipient:
-                failed.append(
-                    {"invoice": invoice.number, "reason": "Chýba e-mail príjemcu"}
-                )
+                failed.append({"invoice": invoice.number, "reason": "Chýba e-mail príjemcu"})
                 continue
 
             buffer = BytesIO()
@@ -477,9 +513,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             msg = EmailMessage(
                 subject=subject,
                 body=body,
-                from_email=getattr(
-                    django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"
-                ),
+                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@dentalapp.sk"),
                 to=[recipient],
             )
             msg.attach(f"faktura_{invoice.number}.pdf", pdf_bytes, "application/pdf")
@@ -546,9 +580,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             buf.seek(0)
             response = HttpResponse(
                 buf.read(),
-                content_type=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+                content_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             )
             response["Content-Disposition"] = 'attachment; filename="invoices.xlsx"'
             return response
@@ -653,16 +685,12 @@ class FinanceStatsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0.00")
+        total_revenue = qs.filter(status="paid").aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
         pending_invoices = qs.filter(status="issued").count()
 
         today = timezone.localdate()
         overdue_qs = qs.filter(status="issued", due_date__lt=today)
-        overdue_amount = overdue_qs.aggregate(total=Sum("total_amount"))[
-            "total"
-        ] or Decimal("0.00")
+        overdue_amount = overdue_qs.aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
 
         this_start, this_end = _month_window(today)
         last_month = _months_ago(1)
@@ -706,9 +734,7 @@ class FinanceStatsView(APIView):
             start = invoice.issued_at or invoice.created_at
             if start and invoice.paid_at:
                 payment_days.append((invoice.paid_at.date() - start.date()).days)
-        average_payment_days = (
-            round(sum(payment_days) / len(payment_days), 1) if payment_days else 0.0
-        )
+        average_payment_days = round(sum(payment_days) / len(payment_days), 1) if payment_days else 0.0
 
         top_clinics = []
         top_clinic_rows = (

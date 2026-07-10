@@ -26,9 +26,7 @@ class RequestLogMiddleware:
         finally:
             duration_ms = round((time.monotonic() - started_at) * 1000, 2)
             user = self._request_user(request)
-            is_authenticated = bool(
-                user is not None and getattr(user, "is_authenticated", False)
-            )
+            is_authenticated = bool(user is not None and getattr(user, "is_authenticated", False))
             lab = getattr(user, "lab", None) if is_authenticated else None
             status_code = getattr(response, "status_code", 500)
 
@@ -44,11 +42,7 @@ class RequestLogMiddleware:
                     "status_code": status_code,
                     "duration_ms": duration_ms,
                     "user_id": getattr(user, "id", None) if is_authenticated else None,
-                    "username": (
-                        getattr(user, "get_username", lambda: "")()
-                        if is_authenticated
-                        else ""
-                    ),
+                    "username": (getattr(user, "get_username", lambda: "")() if is_authenticated else ""),
                     "lab_id": getattr(lab, "id", None),
                     "remote_addr": self._client_ip(request),
                 },

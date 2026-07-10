@@ -189,24 +189,18 @@ class UpdateInvoiceStatusTests(FinanceServiceSetupMixin, TestCase):
         )
 
     def test_changes_status(self):
-        finance_services.update_invoice_status(
-            user=self.admin, invoice=self.invoice, status="paid"
-        )
+        finance_services.update_invoice_status(user=self.admin, invoice=self.invoice, status="paid")
         self.invoice.refresh_from_db()
         self.assertEqual(self.invoice.status, "paid")
 
     def test_sets_paid_at_on_paid_transition(self):
-        finance_services.update_invoice_status(
-            user=self.admin, invoice=self.invoice, status="paid"
-        )
+        finance_services.update_invoice_status(user=self.admin, invoice=self.invoice, status="paid")
         self.invoice.refresh_from_db()
         self.assertIsNotNone(self.invoice.paid_at)
 
     def test_writes_audit_log_via_core_services(self):
         before = AuditLog.objects.count()
-        finance_services.update_invoice_status(
-            user=self.admin, invoice=self.invoice, status="paid"
-        )
+        finance_services.update_invoice_status(user=self.admin, invoice=self.invoice, status="paid")
         self.assertEqual(AuditLog.objects.count(), before + 1)
         log = AuditLog.objects.latest("id")
         self.assertEqual(log.action, "invoice.status_changed")
@@ -216,14 +210,10 @@ class UpdateInvoiceStatusTests(FinanceServiceSetupMixin, TestCase):
         self.assertEqual(log.actor, self.admin)
 
     def test_syncs_linked_jobs(self):
-        finance_services.update_invoice_status(
-            user=self.admin, invoice=self.invoice, status="paid"
-        )
+        finance_services.update_invoice_status(user=self.admin, invoice=self.invoice, status="paid")
         self.job.refresh_from_db()
         self.assertEqual(self.job.status, "closed")
 
     def test_returns_updated_invoice(self):
-        result = finance_services.update_invoice_status(
-            user=self.admin, invoice=self.invoice, status="cancelled"
-        )
+        result = finance_services.update_invoice_status(user=self.admin, invoice=self.invoice, status="cancelled")
         self.assertEqual(result.status, "cancelled")
