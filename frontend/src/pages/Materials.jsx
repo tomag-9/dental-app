@@ -24,6 +24,49 @@ function matNumber(value) {
   return Number.isInteger(number) ? String(number) : number.toLocaleString('sk-SK', { maximumFractionDigits: 3 });
 }
 function matDate(value) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString('sk-SK') : '—'; }
+function fefoLotsForCatalog(data, catalogId) {
+  const today = new Date().toISOString().slice(0, 10);
+  return data.lots
+    .filter(lot => Number(lot.catalog) === Number(catalogId)
+      && ['active', 'open'].includes(lot.status)
+      && Number(lot.qty_remaining) > 0
+      && (!lot.expiry || lot.expiry >= today))
+    .sort((left, right) => {
+      const leftExpiry = left.expiry || '9999-12-31';
+      const rightExpiry = right.expiry || '9999-12-31';
+      return leftExpiry.localeCompare(rightExpiry)
+        || String(left.received || '').localeCompare(String(right.received || ''))
+        || Number(left.id) - Number(right.id);
+    });
+}
+function manualFefoResult(data) {
+  return {
+    recipe: null,
+    lines: data.catalog.filter(item => item.allow_in_job).map(item => ({
+      catalog: item,
+      required_qty: '1.000',
+      available_qty: String(fefoLotsForCatalog(data, item.id).reduce((sum, lot) => sum + Number(lot.qty_remaining), 0)),
+      lots: fefoLotsForCatalog(data, item.id),
+    })),
+  };
+}
+function defaultFefoPicks(result) {
+  const defaults = {};
+  (result.lines || []).forEach(line => { if (line.lots?.[0]) defaults[line.catalog.id] = line.lots[0].id; });
+  return defaults;
+}
+function usageLinesFromPicks(lines, picked) {
+  return lines.flatMap(line => {
+    const lot = (line.lots || []).find(item => Number(item.id) === Number(picked[line.catalog.id]));
+    if (!lot) return [];
+    const required = Number(line.required_qty);
+    const explicitQty = Math.min(required, Number(lot.qty_remaining));
+    const selections = explicitQty > 0 ? [{ lot: lot.id, qty: explicitQty }] : [];
+    const remainder = required - explicitQty;
+    if (remainder > 0) selections.push({ catalog: line.catalog.id, qty: remainder });
+    return selections;
+  });
+}
 function expiryMeta(lot) {
   const key = lot.expiry_state || (!lot.expiry ? 'none' : ((new Date(lot.expiry) - new Date()) / 86400000 < 0 ? 'expired' : 'ok'));
   const days = lot.expiry ? Math.ceil((new Date(`${lot.expiry}T23:59:59`) - new Date()) / 86400000) : null;
@@ -353,29 +396,37 @@ function FefoDrawer({ open, data, onClose, mutate }) {
   const [result, setResult] = React.useState(null);
   const [picked, setPicked] = React.useState({});
   const [loading, setLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState('');
   React.useEffect(() => {
-    if (open) { setJob(''); setRecipe(''); setResult(null); setPicked({}); }
-  }, [open]);
+    if (open) {
+      const manual = manualFefoResult(data);
+      setJob(''); setRecipe(''); setResult(manual); setPicked(defaultFefoPicks(manual)); setLoadError('');
+    }
+  }, [open, data]);
   if (!open) return null;
   const loadFefo = async (recipeId, jobId = job) => {
-    setRecipe(recipeId); setResult(null); setPicked({});
-    if (!recipeId) return;
+    setRecipe(recipeId); setResult(null); setPicked({}); setLoadError('');
+    if (!recipeId) {
+      const manual = manualFefoResult(data);
+      setResult(manual); setPicked(defaultFefoPicks(manual)); return;
+    }
     setLoading(true);
     try {
       const response = await window.MolarisAPI.materials.fetchFefo(recipeId, jobId || undefined);
-      const defaults = {};
-      (response.lines || []).forEach(line => { if (line.lots?.[0]) defaults[line.catalog.id] = line.lots[0].id; });
-      setResult(response); setPicked(defaults);
+      setResult(response); setPicked(defaultFefoPicks(response));
+    } catch (error) {
+      setLoadError(apiMessage(error));
     } finally { setLoading(false); }
   };
   const lines = result?.lines || [];
   const selectedCount = lines.filter(line => picked[line.catalog.id]).length;
   const confirm = () => {
     const payload = {
-      job: Number(job), recipe: Number(recipe),
-      lines: lines.map(line => ({ catalog: line.catalog.id, lot: picked[line.catalog.id], qty: Number(line.required_qty) })).filter(line => line.lot),
+      job: Number(job),
+      ...(recipe ? { recipe: Number(recipe) } : {}),
+      lines: usageLinesFromPicks(lines, picked),
     };
-    mutate(() => window.MolarisAPI.materials.createUsage(payload), `Priradených ${payload.lines.length} materiálov · zapísané do MDR auditu`).then(ok => ok && onClose());
+    mutate(() => window.MolarisAPI.materials.createUsage(payload), `Priradených ${selectedCount} materiálov · zapísané do MDR auditu`).then(ok => ok && onClose());
   };
   const lineCards = lines.map(line => {
     const lotButtons = (line.lots || []).map((lot, index) => {
@@ -396,10 +447,11 @@ function FefoDrawer({ open, data, onClose, mutate }) {
   });
   return React.createElement(Drawer, {
     open, onClose, width: 620, title: 'Priradiť materiál na zákazku', subtitle: 'FEFO výber šarží — systém navrhne najskôr expirujúce',
-    footer: [React.createElement(Button, { key: 'cancel', variant: 'outline', onClick: onClose }, 'Zrušiť'), React.createElement(Button, { key: 'save', disabled: !job || !recipe || selectedCount === 0, onClick: confirm }, React.createElement(Icon, { name: 'check', size: 13 }), `Priradiť (${selectedCount})`)],
+    footer: [React.createElement(Button, { key: 'cancel', variant: 'outline', onClick: onClose }, 'Zrušiť'), React.createElement(Button, { key: 'save', disabled: !job || selectedCount === 0 || !!loadError, onClick: confirm }, React.createElement(Icon, { name: 'check', size: 13 }), `Priradiť (${selectedCount})`)],
   }, React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
     React.createElement(FormField, { label: 'Zákazka', type: 'select', value: job, onChange: event => { const value = event.target.value; setJob(value); if (recipe) loadFefo(recipe, value); }, options: data.jobs.map(item => ({ value: item.id, label: `Práca #${item.id} · ${item.patient || item.patientName || item.name || ''}` })) }),
-    React.createElement(FormField, { label: 'Predvyplniť z receptu', type: 'select', value: recipe, onChange: event => loadFefo(event.target.value), options: data.recipes.map(item => ({ value: item.id, label: item.name })) }),
+    React.createElement(FormField, { label: 'Predvyplniť z receptu (voliteľné)', type: 'select', placeholder: 'Bez receptu — všetky materiály', value: recipe, onChange: event => loadFefo(event.target.value), options: data.recipes.map(item => ({ value: item.id, label: item.name })) }),
+    loadError && React.createElement('div', { role: 'alert', style: { color: '#991b1b', background: '#fde8e6', border: '1px solid #f5c0bb', borderRadius: 8, padding: '9px 11px', fontSize: 12 } }, loadError),
     loading ? React.createElement(LoadingState, { message: 'Hľadám FEFO šarže…' }) : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } }, ...lineCards)));
 }
 
