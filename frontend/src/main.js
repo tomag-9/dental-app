@@ -4,7 +4,8 @@ import './style.css';
 
 window.React = React;
 window.ReactDOM = ReactDOM;
-window.__API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8810/api';
+window.__API_BASE_URL = import.meta.env.VITE_API_URL
+  || `${window.location.protocol}//${window.location.hostname}:8810/api`;
 
 const appModules = [
   () => import('./api/api-client.js'),
