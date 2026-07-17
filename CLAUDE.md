@@ -60,9 +60,10 @@ cd frontend && npm run lint && npm run build
 | `apps/jobs` | Jobs (work orders), Technicians, Vacations |
 | `apps/finance` | Invoices, PriceList, Subscriptions |
 | `apps/inventory` | Warehouse items |
+| `apps/materials` | MDR material catalog, LOT/FEFO traceability, recipes and job usage snapshots |
 
 Root-level API router (`config/urls.py`) exposes shortcuts: `/api/users/`, `/api/labs/`, `/api/invoices/`, `/api/warehouse/`, `/api/vacations/`.  
-App-scoped routers: `/api/crm/`, `/api/jobs/`, `/api/finance/`, `/api/inventory/`.
+App-scoped routers: `/api/crm/`, `/api/jobs/`, `/api/finance/`, `/api/inventory/`, `/api/materials/`.
 
 ## Key conventions
 
@@ -77,13 +78,27 @@ App-scoped routers: `/api/crm/`, `/api/jobs/`, `/api/finance/`, `/api/inventory/
 | #34 | Job status mismatch in finance views | **Fixed** — migration `0004_add_billing_job_statuses` added |
 | #35 | LabSettings save was a placeholder | **Fixed** — now calls `PATCH /api/labs/<id>/` |
 | #36 | Password change in ProfileSettings | **Fixed** — now calls `PUT /api/users/me/` |
-| #37 | Finance dashboard is a stub | Open — needs real stats endpoint |
-| #38 | Dashboard loads all data for 4 stats | Open — needs `/api/dashboard/stats/` |
-| #39 | Inventory CSV import is sequential | Open — needs bulk import endpoint |
+| #37 | Finance dashboard is a stub | **Fixed** — `/api/finance/stats/`, aging and procedure catalog are implemented |
+| #38 | Dashboard loads all data for 4 stats | **Fixed** — `/api/dashboard/stats/` and chart-data are implemented |
+| #39 | Inventory CSV import is sequential | **Fixed** — atomic JSON and CSV bulk import endpoints are implemented |
 | #40 | Mixed Slovak/English UI | Open — language decision needed |
 | #41 | Wrong repo URL in root package.json | **Fixed** |
 | #42 | Stale branches on GitHub | Open — delete manually |
 | #43 | Missing CLAUDE.md | **Fixed** (this file) |
+
+## MDR materials API
+
+The versioned API under `/api/v1/materials/` exposes tenant-scoped CRUD for
+manufacturers, catalog entries, lots and recipes, plus FEFO selection and
+immutable material-usage snapshots linked to jobs. Catalog entries can link to
+an inventory item through its `stock_code`/SKU. LOT balances are authoritative
+for traceable material availability; `WarehouseItem.quantity` remains the
+aggregate non-LOT inventory balance, avoiding two independently editable values
+being silently synchronized.
+
+Bulk catalog and lot imports accept either a JSON list or UTF-8 CSV in the
+multipart `file` field. Label and MDR declaration PDFs are available on lot and
+usage endpoints.
 
 ## Documentation
 
