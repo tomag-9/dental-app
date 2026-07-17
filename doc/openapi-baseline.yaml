@@ -4286,6 +4286,841 @@ paths:
               schema:
                 $ref: '#/components/schemas/Lab'
           description: ''
+  /api/materials/catalog/:
+    get:
+      operationId: materials_catalog_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialCatalogList'
+          description: ''
+    post:
+      operationId: materials_catalog_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+  /api/materials/catalog/{id}/:
+    get:
+      operationId: materials_catalog_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    put:
+      operationId: materials_catalog_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    patch:
+      operationId: materials_catalog_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    delete:
+      operationId: materials_catalog_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/materials/catalog/import/:
+    post:
+      operationId: materials_catalog_import_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+  /api/materials/fefo/:
+    get:
+      operationId: materials_fefo_retrieve
+      description: Return non-expired, usable lots for every recipe line in FEFO order.
+      parameters:
+      - in: query
+        name: job
+        schema:
+          type: integer
+      - in: query
+        name: recipe
+        schema:
+          type: integer
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/materials/lots/:
+    get:
+      operationId: materials_lots_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialLotList'
+          description: ''
+    post:
+      operationId: materials_lots_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/materials/lots/{id}/:
+    get:
+      operationId: materials_lots_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    put:
+      operationId: materials_lots_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    patch:
+      operationId: materials_lots_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    delete:
+      operationId: materials_lots_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/materials/lots/{id}/conformity-pdf/:
+    get:
+      operationId: materials_lots_conformity_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/materials/lots/{id}/label-pdf/:
+    get:
+      operationId: materials_lots_label_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/materials/lots/import/:
+    post:
+      operationId: materials_lots_import_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/materials/manufacturers/:
+    get:
+      operationId: materials_manufacturers_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedManufacturerList'
+          description: ''
+    post:
+      operationId: materials_manufacturers_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+  /api/materials/manufacturers/{id}/:
+    get:
+      operationId: materials_manufacturers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    put:
+      operationId: materials_manufacturers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    patch:
+      operationId: materials_manufacturers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    delete:
+      operationId: materials_manufacturers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/materials/recipes/:
+    get:
+      operationId: materials_recipes_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialRecipeList'
+          description: ''
+    post:
+      operationId: materials_recipes_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+  /api/materials/recipes/{id}/:
+    get:
+      operationId: materials_recipes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    put:
+      operationId: materials_recipes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    patch:
+      operationId: materials_recipes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    delete:
+      operationId: materials_recipes_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/materials/usage/:
+    get:
+      operationId: materials_usage_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialUsageList'
+          description: ''
+    post:
+      operationId: materials_usage_create
+      tags:
+      - materials
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/materials/usage/{id}/:
+    get:
+      operationId: materials_usage_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material usage.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/materials/usage/{id}/conformity-pdf/:
+    get:
+      operationId: materials_usage_conformity_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material usage.
+        required: true
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/materials/usage/job-conformity-pdf/:
+    get:
+      operationId: materials_usage_job_conformity_pdf_retrieve
+      tags:
+      - materials
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
   /api/notifications/:
     get:
       operationId: notifications_list
@@ -8759,6 +9594,841 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/materials/catalog/:
+    get:
+      operationId: v1_materials_catalog_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialCatalogList'
+          description: ''
+    post:
+      operationId: v1_materials_catalog_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+  /api/v1/materials/catalog/{id}/:
+    get:
+      operationId: v1_materials_catalog_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    put:
+      operationId: v1_materials_catalog_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    patch:
+      operationId: v1_materials_catalog_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialCatalog'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+    delete:
+      operationId: v1_materials_catalog_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material catalog.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/materials/catalog/import/:
+    post:
+      operationId: v1_materials_catalog_import_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialCatalog'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialCatalog'
+          description: ''
+  /api/v1/materials/fefo/:
+    get:
+      operationId: v1_materials_fefo_retrieve
+      description: Return non-expired, usable lots for every recipe line in FEFO order.
+      parameters:
+      - in: query
+        name: job
+        schema:
+          type: integer
+      - in: query
+        name: recipe
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/materials/lots/:
+    get:
+      operationId: v1_materials_lots_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialLotList'
+          description: ''
+    post:
+      operationId: v1_materials_lots_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/v1/materials/lots/{id}/:
+    get:
+      operationId: v1_materials_lots_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    put:
+      operationId: v1_materials_lots_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    patch:
+      operationId: v1_materials_lots_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialLot'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+    delete:
+      operationId: v1_materials_lots_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/materials/lots/{id}/conformity-pdf/:
+    get:
+      operationId: v1_materials_lots_conformity_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/v1/materials/lots/{id}/label-pdf/:
+    get:
+      operationId: v1_materials_lots_label_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material lot.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/v1/materials/lots/import/:
+    post:
+      operationId: v1_materials_lots_import_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialLot'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialLot'
+          description: ''
+  /api/v1/materials/manufacturers/:
+    get:
+      operationId: v1_materials_manufacturers_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedManufacturerList'
+          description: ''
+    post:
+      operationId: v1_materials_manufacturers_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+  /api/v1/materials/manufacturers/{id}/:
+    get:
+      operationId: v1_materials_manufacturers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    put:
+      operationId: v1_materials_manufacturers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Manufacturer'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    patch:
+      operationId: v1_materials_manufacturers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedManufacturer'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manufacturer'
+          description: ''
+    delete:
+      operationId: v1_materials_manufacturers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this manufacturer.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/materials/recipes/:
+    get:
+      operationId: v1_materials_recipes_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialRecipeList'
+          description: ''
+    post:
+      operationId: v1_materials_recipes_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+  /api/v1/materials/recipes/{id}/:
+    get:
+      operationId: v1_materials_recipes_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    put:
+      operationId: v1_materials_recipes_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialRecipe'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    patch:
+      operationId: v1_materials_recipes_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMaterialRecipe'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialRecipe'
+          description: ''
+    delete:
+      operationId: v1_materials_recipes_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material recipe.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/materials/usage/:
+    get:
+      operationId: v1_materials_usage_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialUsageList'
+          description: ''
+    post:
+      operationId: v1_materials_usage_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialUsage'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/v1/materials/usage/{id}/:
+    get:
+      operationId: v1_materials_usage_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material usage.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/v1/materials/usage/{id}/conformity-pdf/:
+    get:
+      operationId: v1_materials_usage_conformity_pdf_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this material usage.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
+  /api/v1/materials/usage/job-conformity-pdf/:
+    get:
+      operationId: v1_materials_usage_job_conformity_pdf_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialUsage'
+          description: ''
   /api/v1/permissions/:
     get:
       operationId: v1_permissions_retrieve
@@ -9698,8 +11368,9 @@ components:
           maxLength: 255
         quantity:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         unit_price:
           type: string
           format: decimal
@@ -9846,8 +11517,9 @@ components:
           maxLength: 20
         quantity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         unit_price:
           type: string
           format: decimal
@@ -10037,8 +11709,9 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -10065,6 +11738,345 @@ components:
       - id
       - name
       - updated_at
+    Manufacturer:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        prefix:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - lab
+      - name
+      - prefix
+      - updated_at
+    MaterialCatalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        stock_code:
+          type: string
+          nullable: true
+        stock_item:
+          type: integer
+          readOnly: true
+        manufacturer_name:
+          type: string
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 255
+        category:
+          type: string
+          maxLength: 100
+        unit:
+          type: string
+          maxLength: 20
+        mdr_class:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MdrClassEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        allow_in_job:
+          type: boolean
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+        manufacturer:
+          type: integer
+      required:
+      - code
+      - created_at
+      - id
+      - lab
+      - manufacturer
+      - manufacturer_name
+      - name
+      - stock_item
+      - updated_at
+    MaterialLot:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        expiry_state:
+          type: string
+          readOnly: true
+        catalog_details:
+          allOf:
+          - $ref: '#/components/schemas/MaterialCatalog'
+          readOnly: true
+        short_code:
+          type: string
+          maxLength: 50
+        lot:
+          type: string
+          maxLength: 100
+        received:
+          type: string
+          format: date
+        expiry:
+          type: string
+          format: date
+          nullable: true
+        opened:
+          type: string
+          format: date
+          nullable: true
+        qty_received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        qty_remaining:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        status:
+          $ref: '#/components/schemas/MaterialLotStatusEnum'
+        location:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+        catalog:
+          type: integer
+      required:
+      - catalog
+      - catalog_details
+      - created_at
+      - expiry_state
+      - id
+      - lab
+      - lot
+      - qty_received
+      - short_code
+      - updated_at
+    MaterialLotStatusEnum:
+      enum:
+      - active
+      - open
+      - depleted
+      - discarded
+      type: string
+      description: |-
+        * `active` - Aktívna
+        * `open` - Otvorená
+        * `depleted` - Spotrebovaná
+        * `discarded` - Vyradená
+    MaterialRecipe:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeLine'
+        name:
+          type: string
+          maxLength: 255
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        mdr:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - lab
+      - lines
+      - name
+      - updated_at
+    MaterialUsage:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialUsageLine'
+          readOnly: true
+        patient_label:
+          type: string
+          readOnly: true
+        technician:
+          type: string
+          readOnly: true
+        date:
+          type: string
+          format: date
+          readOnly: true
+        recipe:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+        job:
+          type: integer
+          readOnly: true
+        recipe_source:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - created_at
+      - date
+      - id
+      - job
+      - lab
+      - lines
+      - patient_label
+      - recipe
+      - recipe_source
+      - technician
+    MaterialUsageLine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        source_catalog_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        source_lot_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        name:
+          type: string
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+        manufacturer:
+          type: string
+          readOnly: true
+        mdr_class:
+          type: string
+          readOnly: true
+          nullable: true
+        lot:
+          type: string
+          readOnly: true
+        expiry:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        qty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+        usage:
+          type: integer
+          readOnly: true
+      required:
+      - code
+      - expiry
+      - id
+      - lot
+      - manufacturer
+      - mdr_class
+      - name
+      - qty
+      - source_catalog_id
+      - source_lot_id
+      - unit
+      - usage
+    MdrClassEnum:
+      enum:
+      - I
+      - IIa
+      - IIb
+      - III
+      type: string
+      description: |-
+        * `I` - Trieda I
+        * `IIa` - Trieda IIa
+        * `IIb` - Trieda IIb
+        * `III` - Trieda III
+    ModeEnum:
+      enum:
+      - repeat
+      - single
+      type: string
+      description: |-
+        * `repeat` - Opakované použitie
+        * `single` - Jednorazové použitie
     MolarisTokenObtainPair:
       type: object
       description: Issue JWT tokens and enforce TOTP for users with 2FA enabled.
@@ -10296,6 +12308,121 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Lab'
+    PaginatedManufacturerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Manufacturer'
+    PaginatedMaterialCatalogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialCatalog'
+    PaginatedMaterialLotList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialLot'
+    PaginatedMaterialRecipeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialRecipe'
+    PaginatedMaterialUsageList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialUsage'
     PaginatedNotificationList:
       type: object
       required:
@@ -10922,8 +13049,9 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -10944,6 +13072,170 @@ components:
         updated_at:
           type: string
           format: date-time
+          readOnly: true
+    PatchedManufacturer:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        prefix:
+          type: string
+          maxLength: 20
+        country:
+          type: string
+          maxLength: 100
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+    PatchedMaterialCatalog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        stock_code:
+          type: string
+          nullable: true
+        stock_item:
+          type: integer
+          readOnly: true
+        manufacturer_name:
+          type: string
+          readOnly: true
+        code:
+          type: string
+          maxLength: 50
+        name:
+          type: string
+          maxLength: 255
+        category:
+          type: string
+          maxLength: 100
+        unit:
+          type: string
+          maxLength: 20
+        mdr_class:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/MdrClassEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        allow_in_job:
+          type: boolean
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+        manufacturer:
+          type: integer
+    PatchedMaterialLot:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        expiry_state:
+          type: string
+          readOnly: true
+        catalog_details:
+          allOf:
+          - $ref: '#/components/schemas/MaterialCatalog'
+          readOnly: true
+        short_code:
+          type: string
+          maxLength: 50
+        lot:
+          type: string
+          maxLength: 100
+        received:
+          type: string
+          format: date
+        expiry:
+          type: string
+          format: date
+          nullable: true
+        opened:
+          type: string
+          format: date
+          nullable: true
+        qty_received:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        qty_remaining:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        status:
+          $ref: '#/components/schemas/MaterialLotStatusEnum'
+        location:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
+          readOnly: true
+        catalog:
+          type: integer
+    PatchedMaterialRecipe:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeLine'
+        name:
+          type: string
+          maxLength: 255
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        mdr:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        lab:
+          type: integer
           readOnly: true
     PatchedNotification:
       type: object
@@ -11081,8 +13373,9 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         mrr:
           type: string
           format: decimal
@@ -11497,6 +13790,41 @@ components:
         * `orthodontic` - Ortodoncia
         * `repair` - Oprava
         * `other` - Iné
+    ProductTypeEnum:
+      enum:
+      - single
+      - bridge
+      - arch
+      - other
+      type: string
+      description: |-
+        * `single` - Samostatná práca
+        * `bridge` - Mostík
+        * `arch` - Oblúk
+        * `other` - Iné
+    RecipeLine:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        catalog:
+          type: integer
+        catalog_details:
+          allOf:
+          - $ref: '#/components/schemas/MaterialCatalog'
+          readOnly: true
+        qty:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        note:
+          type: string
+      required:
+      - catalog
+      - catalog_details
+      - id
+      - qty
     RoleEnum:
       enum:
       - superadmin
@@ -11521,8 +13849,9 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         mrr:
           type: string
           format: decimal

@@ -24,11 +24,7 @@ def request_lab_id(serializer):
         return None
     if not is_superadmin(user):
         return getattr(user, "lab_id", None)
-    raw = (
-        request.data.get("lab")
-        or request.query_params.get("lab")
-        or request.query_params.get("lab_id")
-    )
+    raw = request.data.get("lab") or request.query_params.get("lab") or request.query_params.get("lab_id")
     try:
         return int(raw) if raw else None
     except (TypeError, ValueError):
@@ -43,13 +39,9 @@ class ManufacturerSerializer(serializers.ModelSerializer):
 
 
 class MaterialCatalogSerializer(serializers.ModelSerializer):
-    stock_code = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True
-    )
+    stock_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     stock_item = serializers.PrimaryKeyRelatedField(read_only=True)
-    manufacturer_name = serializers.CharField(
-        source="manufacturer.name", read_only=True
-    )
+    manufacturer_name = serializers.CharField(source="manufacturer.name", read_only=True)
 
     class Meta:
         model = MaterialCatalog
@@ -58,13 +50,9 @@ class MaterialCatalogSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         lab_id = request_lab_id(self) or getattr(self.instance, "lab_id", None)
-        manufacturer = attrs.get(
-            "manufacturer", getattr(self.instance, "manufacturer", None)
-        )
+        manufacturer = attrs.get("manufacturer", getattr(self.instance, "manufacturer", None))
         if manufacturer and lab_id and manufacturer.lab_id != lab_id:
-            raise serializers.ValidationError(
-                {"manufacturer": "Výrobca patrí do iného laboratória."}
-            )
+            raise serializers.ValidationError({"manufacturer": "Výrobca patrí do iného laboratória."})
         stock_code = attrs.pop("stock_code", serializers.empty)
         if stock_code is not serializers.empty:
             if not stock_code:
@@ -73,9 +61,7 @@ class MaterialCatalogSerializer(serializers.ModelSerializer):
                 matches = WarehouseItem.objects.filter(lab_id=lab_id, sku=stock_code)
                 if matches.count() != 1:
                     raise serializers.ValidationError(
-                        {
-                            "stock_code": "SKU musí jednoznačne identifikovať skladovú položku laboratória."
-                        }
+                        {"stock_code": "SKU musí jednoznačne identifikovať skladovú položku laboratória."}
                     )
                 attrs["stock_item"] = matches.first()
         return attrs
@@ -95,42 +81,23 @@ class MaterialLotSerializer(serializers.ModelSerializer):
         lab_id = request_lab_id(self) or getattr(self.instance, "lab_id", None)
         catalog = attrs.get("catalog", getattr(self.instance, "catalog", None))
         if catalog and lab_id and catalog.lab_id != lab_id:
-            raise serializers.ValidationError(
-                {"catalog": "Materiál patrí do iného laboratória."}
-            )
+            raise serializers.ValidationError({"catalog": "Materiál patrí do iného laboratória."})
         received = attrs.get("received", getattr(self.instance, "received", None))
         expiry = attrs.get("expiry", getattr(self.instance, "expiry", None))
         if expiry and received and expiry < received:
-            raise serializers.ValidationError(
-                {"expiry": "Expirácia nemôže byť pred dátumom príjmu."}
-            )
-        qty_received = attrs.get(
-            "qty_received", getattr(self.instance, "qty_received", None)
-        )
+            raise serializers.ValidationError({"expiry": "Expirácia nemôže byť pred dátumom príjmu."})
+        qty_received = attrs.get("qty_received", getattr(self.instance, "qty_received", None))
         has_remaining = "qty_remaining" in attrs
-        qty_remaining = attrs.get(
-            "qty_remaining", getattr(self.instance, "qty_remaining", qty_received)
-        )
+        qty_remaining = attrs.get("qty_remaining", getattr(self.instance, "qty_remaining", qty_received))
         if not has_remaining and self.instance is None:
             attrs["qty_remaining"] = qty_received
             qty_remaining = qty_received
-        if (
-            qty_received is not None
-            and qty_remaining is not None
-            and qty_remaining > qty_received
-        ):
-            raise serializers.ValidationError(
-                {"qty_remaining": "Zostatok nemôže prekročiť prijaté množstvo."}
-            )
+        if qty_received is not None and qty_remaining is not None and qty_remaining > qty_received:
+            raise serializers.ValidationError({"qty_remaining": "Zostatok nemôže prekročiť prijaté množstvo."})
         if qty_remaining == 0:
             attrs["status"] = MaterialLot.Status.DEPLETED
-        elif (
-            attrs.get("status", getattr(self.instance, "status", None))
-            == MaterialLot.Status.DEPLETED
-        ):
-            raise serializers.ValidationError(
-                {"status": "Spotrebovaná šarža musí mať nulový zostatok."}
-            )
+        elif attrs.get("status", getattr(self.instance, "status", None)) == MaterialLot.Status.DEPLETED:
+            raise serializers.ValidationError({"status": "Spotrebovaná šarža musí mať nulový zostatok."})
         return attrs
 
 
@@ -157,13 +124,9 @@ class MaterialRecipeSerializer(serializers.ModelSerializer):
         for line in lines:
             catalog = line["catalog"]
             if lab_id and catalog.lab_id != lab_id:
-                raise serializers.ValidationError(
-                    "Materiál receptu patrí do iného laboratória."
-                )
+                raise serializers.ValidationError("Materiál receptu patrí do iného laboratória.")
             if catalog.id in seen:
-                raise serializers.ValidationError(
-                    "Materiál môže byť v recepte iba raz."
-                )
+                raise serializers.ValidationError("Materiál môže byť v recepte iba raz.")
             seen.add(catalog.id)
         return lines
 
@@ -171,9 +134,7 @@ class MaterialRecipeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         lines = validated_data.pop("lines")
         recipe = MaterialRecipe.objects.create(**validated_data)
-        RecipeLine.objects.bulk_create(
-            [RecipeLine(recipe=recipe, **line) for line in lines]
-        )
+        RecipeLine.objects.bulk_create([RecipeLine(recipe=recipe, **line) for line in lines])
         return recipe
 
     @transaction.atomic
@@ -182,9 +143,7 @@ class MaterialRecipeSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
         if lines is not None:
             instance.lines.all().delete()
-            RecipeLine.objects.bulk_create(
-                [RecipeLine(recipe=instance, **line) for line in lines]
-            )
+            RecipeLine.objects.bulk_create([RecipeLine(recipe=instance, **line) for line in lines])
         return instance
 
 
@@ -228,15 +187,9 @@ class MaterialUsageSerializer(serializers.ModelSerializer):
 
 
 class UsageSelectionSerializer(serializers.Serializer):
-    catalog = serializers.PrimaryKeyRelatedField(
-        queryset=MaterialCatalog.objects.all(), required=False
-    )
-    lot = serializers.PrimaryKeyRelatedField(
-        queryset=MaterialLot.objects.all(), required=False
-    )
-    qty = serializers.DecimalField(
-        max_digits=12, decimal_places=3, min_value=Decimal("0.001")
-    )
+    catalog = serializers.PrimaryKeyRelatedField(queryset=MaterialCatalog.objects.all(), required=False)
+    lot = serializers.PrimaryKeyRelatedField(queryset=MaterialLot.objects.all(), required=False)
+    qty = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0.001"))
 
 
 class CreateMaterialUsageSerializer(serializers.Serializer):
@@ -247,20 +200,14 @@ class CreateMaterialUsageSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if not attrs.get("recipe") and not attrs.get("lines"):
-            raise serializers.ValidationError(
-                "Zadajte recept alebo aspoň jeden riadok spotreby."
-            )
+            raise serializers.ValidationError("Zadajte recept alebo aspoň jeden riadok spotreby.")
         for line in attrs.get("lines", []):
             lot = line.get("lot")
             catalog = line.get("catalog")
             if lot and catalog and lot.catalog_id != catalog.id:
-                raise serializers.ValidationError(
-                    {"lines": "Šarža nepatrí k zvolenému materiálu."}
-                )
+                raise serializers.ValidationError({"lines": "Šarža nepatrí k zvolenému materiálu."})
             if not lot and not catalog:
-                raise serializers.ValidationError(
-                    {"lines": "Riadok musí obsahovať materiál alebo šaržu."}
-                )
+                raise serializers.ValidationError({"lines": "Riadok musí obsahovať materiál alebo šaržu."})
         return attrs
 
 
@@ -268,9 +215,7 @@ class CatalogImportSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=50)
     name = serializers.CharField(max_length=255)
     manufacturer_prefix = serializers.CharField(max_length=20)
-    category = serializers.CharField(
-        max_length=100, required=False, allow_blank=True, default=""
-    )
+    category = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
     unit = serializers.CharField(max_length=20, default="pcs")
     mdr_class = serializers.ChoiceField(
         choices=MaterialCatalog.MDRClass.choices,
@@ -278,13 +223,9 @@ class CatalogImportSerializer(serializers.Serializer):
         allow_blank=True,
         required=False,
     )
-    mode = serializers.ChoiceField(
-        choices=MaterialCatalog.Mode.choices, default=MaterialCatalog.Mode.REPEAT
-    )
+    mode = serializers.ChoiceField(choices=MaterialCatalog.Mode.choices, default=MaterialCatalog.Mode.REPEAT)
     allow_in_job = serializers.BooleanField(default=True)
-    stock_code = serializers.CharField(
-        max_length=100, required=False, allow_blank=True, allow_null=True
-    )
+    stock_code = serializers.CharField(max_length=100, required=False, allow_blank=True, allow_null=True)
     note = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_mdr_class(self, value):
@@ -298,15 +239,7 @@ class LotImportSerializer(serializers.Serializer):
     received = serializers.DateField()
     expiry = serializers.DateField(required=False, allow_null=True)
     opened = serializers.DateField(required=False, allow_null=True)
-    qty_received = serializers.DecimalField(
-        max_digits=12, decimal_places=3, min_value=Decimal("0.001")
-    )
-    qty_remaining = serializers.DecimalField(
-        max_digits=12, decimal_places=3, min_value=Decimal("0"), required=False
-    )
-    status = serializers.ChoiceField(
-        choices=MaterialLot.Status.choices, default=MaterialLot.Status.ACTIVE
-    )
-    location = serializers.CharField(
-        max_length=100, required=False, allow_blank=True, default=""
-    )
+    qty_received = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0.001"))
+    qty_remaining = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0"), required=False)
+    status = serializers.ChoiceField(choices=MaterialLot.Status.choices, default=MaterialLot.Status.ACTIVE)
+    location = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")

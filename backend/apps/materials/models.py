@@ -9,9 +9,7 @@ from apps.jobs.models import Job
 
 
 class Manufacturer(models.Model):
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="material_manufacturers"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="material_manufacturers")
     name = models.CharField(max_length=255)
     prefix = models.CharField(max_length=20)
     country = models.CharField(max_length=100, blank=True, default="")
@@ -22,9 +20,7 @@ class Manufacturer(models.Model):
     class Meta:
         ordering = ["name", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["lab", "prefix"], name="materials_unique_manufacturer_prefix"
-            ),
+            models.UniqueConstraint(fields=["lab", "prefix"], name="materials_unique_manufacturer_prefix"),
         ]
 
     def __str__(self):
@@ -42,19 +38,13 @@ class MaterialCatalog(models.Model):
         REPEAT = "repeat", _("Opakované použitie")
         SINGLE = "single", _("Jednorazové použitie")
 
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="material_catalog"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="material_catalog")
     code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
-    manufacturer = models.ForeignKey(
-        Manufacturer, on_delete=models.PROTECT, related_name="materials"
-    )
+    manufacturer = models.ForeignKey(Manufacturer, on_delete=models.PROTECT, related_name="materials")
     category = models.CharField(max_length=100, blank=True, default="")
     unit = models.CharField(max_length=20, default="pcs")
-    mdr_class = models.CharField(
-        max_length=10, choices=MDRClass.choices, null=True, blank=True
-    )
+    mdr_class = models.CharField(max_length=10, choices=MDRClass.choices, null=True, blank=True)
     mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.REPEAT)
     allow_in_job = models.BooleanField(default=True)
     stock_item = models.ForeignKey(
@@ -71,9 +61,7 @@ class MaterialCatalog(models.Model):
     class Meta:
         ordering = ["code", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["lab", "code"], name="materials_unique_catalog_code"
-            ),
+            models.UniqueConstraint(fields=["lab", "code"], name="materials_unique_catalog_code"),
         ]
 
     @property
@@ -81,22 +69,10 @@ class MaterialCatalog(models.Model):
         return self.stock_item.sku if self.stock_item else None
 
     def clean(self):
-        if (
-            self.manufacturer_id
-            and self.lab_id
-            and self.manufacturer.lab_id != self.lab_id
-        ):
-            raise ValidationError(
-                {"manufacturer": _("Výrobca musí patriť do rovnakého laboratória.")}
-            )
+        if self.manufacturer_id and self.lab_id and self.manufacturer.lab_id != self.lab_id:
+            raise ValidationError({"manufacturer": _("Výrobca musí patriť do rovnakého laboratória.")})
         if self.stock_item_id and self.lab_id and self.stock_item.lab_id != self.lab_id:
-            raise ValidationError(
-                {
-                    "stock_item": _(
-                        "Skladová položka musí patriť do rovnakého laboratória."
-                    )
-                }
-            )
+            raise ValidationError({"stock_item": _("Skladová položka musí patriť do rovnakého laboratória.")})
 
     def __str__(self):
         return f"{self.code} – {self.name}"
@@ -110,9 +86,7 @@ class MaterialLot(models.Model):
         DISCARDED = "discarded", _("Vyradená")
 
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="material_lots")
-    catalog = models.ForeignKey(
-        MaterialCatalog, on_delete=models.PROTECT, related_name="lots"
-    )
+    catalog = models.ForeignKey(MaterialCatalog, on_delete=models.PROTECT, related_name="lots")
     short_code = models.CharField(max_length=50)
     lot = models.CharField(max_length=100)
     received = models.DateField(default=timezone.localdate)
@@ -120,9 +94,7 @@ class MaterialLot(models.Model):
     opened = models.DateField(null=True, blank=True)
     qty_received = models.DecimalField(max_digits=12, decimal_places=3)
     qty_remaining = models.DecimalField(max_digits=12, decimal_places=3)
-    status = models.CharField(
-        max_length=12, choices=Status.choices, default=Status.ACTIVE
-    )
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
     location = models.CharField(max_length=100, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -130,12 +102,8 @@ class MaterialLot(models.Model):
     class Meta:
         ordering = [models.F("expiry").asc(nulls_last=True), "received", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["lab", "short_code"], name="materials_unique_lot_short_code"
-            ),
-            models.UniqueConstraint(
-                fields=["catalog", "lot"], name="materials_unique_catalog_lot"
-            ),
+            models.UniqueConstraint(fields=["lab", "short_code"], name="materials_unique_lot_short_code"),
+            models.UniqueConstraint(fields=["catalog", "lot"], name="materials_unique_catalog_lot"),
             models.CheckConstraint(
                 condition=models.Q(qty_received__gt=0),
                 name="materials_lot_received_positive",
@@ -150,9 +118,7 @@ class MaterialLot(models.Model):
             ),
         ]
         indexes = [
-            models.Index(
-                fields=["lab", "status", "expiry"], name="materials_lot_fefo_idx"
-            ),
+            models.Index(fields=["lab", "status", "expiry"], name="materials_lot_fefo_idx"),
         ]
 
     @property
@@ -168,13 +134,9 @@ class MaterialLot(models.Model):
 
     def clean(self):
         if self.catalog_id and self.lab_id and self.catalog.lab_id != self.lab_id:
-            raise ValidationError(
-                {"catalog": _("Materiál musí patriť do rovnakého laboratória.")}
-            )
+            raise ValidationError({"catalog": _("Materiál musí patriť do rovnakého laboratória.")})
         if self.expiry and self.expiry < self.received:
-            raise ValidationError(
-                {"expiry": _("Expirácia nemôže byť pred dátumom príjmu.")}
-            )
+            raise ValidationError({"expiry": _("Expirácia nemôže byť pred dátumom príjmu.")})
 
     def __str__(self):
         return f"{self.catalog.code} / {self.lot}"
@@ -187,13 +149,9 @@ class MaterialRecipe(models.Model):
         ARCH = "arch", _("Oblúk")
         OTHER = "other", _("Iné")
 
-    lab = models.ForeignKey(
-        Lab, on_delete=models.CASCADE, related_name="material_recipes"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="material_recipes")
     name = models.CharField(max_length=255)
-    product_type = models.CharField(
-        max_length=10, choices=ProductType.choices, default=ProductType.OTHER
-    )
+    product_type = models.CharField(max_length=10, choices=ProductType.choices, default=ProductType.OTHER)
     mdr = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -201,9 +159,7 @@ class MaterialRecipe(models.Model):
     class Meta:
         ordering = ["name", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["lab", "name"], name="materials_unique_recipe_name"
-            ),
+            models.UniqueConstraint(fields=["lab", "name"], name="materials_unique_recipe_name"),
         ]
 
     def __str__(self):
@@ -211,48 +167,26 @@ class MaterialRecipe(models.Model):
 
 
 class RecipeLine(models.Model):
-    recipe = models.ForeignKey(
-        MaterialRecipe, on_delete=models.CASCADE, related_name="lines"
-    )
-    catalog = models.ForeignKey(
-        MaterialCatalog, on_delete=models.PROTECT, related_name="recipe_lines"
-    )
+    recipe = models.ForeignKey(MaterialRecipe, on_delete=models.CASCADE, related_name="lines")
+    catalog = models.ForeignKey(MaterialCatalog, on_delete=models.PROTECT, related_name="recipe_lines")
     qty = models.DecimalField(max_digits=12, decimal_places=3)
     note = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["recipe", "catalog"], name="materials_unique_recipe_catalog"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(qty__gt=0), name="materials_recipe_qty_positive"
-            ),
+            models.UniqueConstraint(fields=["recipe", "catalog"], name="materials_unique_recipe_catalog"),
+            models.CheckConstraint(condition=models.Q(qty__gt=0), name="materials_recipe_qty_positive"),
         ]
 
     def clean(self):
-        if (
-            self.recipe_id
-            and self.catalog_id
-            and self.recipe.lab_id != self.catalog.lab_id
-        ):
-            raise ValidationError(
-                {
-                    "catalog": _(
-                        "Materiál musí patriť do rovnakého laboratória ako recept."
-                    )
-                }
-            )
+        if self.recipe_id and self.catalog_id and self.recipe.lab_id != self.catalog.lab_id:
+            raise ValidationError({"catalog": _("Materiál musí patriť do rovnakého laboratória ako recept.")})
 
 
 class MaterialUsage(models.Model):
-    lab = models.ForeignKey(
-        Lab, on_delete=models.PROTECT, related_name="material_usages"
-    )
-    job = models.ForeignKey(
-        Job, on_delete=models.PROTECT, related_name="material_usages"
-    )
+    lab = models.ForeignKey(Lab, on_delete=models.PROTECT, related_name="material_usages")
+    job = models.ForeignKey(Job, on_delete=models.PROTECT, related_name="material_usages")
     patient_label = models.CharField(max_length=255)
     technician = models.CharField(max_length=255, blank=True, default="")
     date = models.DateField(default=timezone.localdate)
@@ -275,9 +209,7 @@ class MaterialUsage(models.Model):
 
 
 class MaterialUsageLine(models.Model):
-    usage = models.ForeignKey(
-        MaterialUsage, on_delete=models.PROTECT, related_name="lines"
-    )
+    usage = models.ForeignKey(MaterialUsage, on_delete=models.PROTECT, related_name="lines")
     source_catalog_id = models.PositiveBigIntegerField(null=True, blank=True)
     source_lot_id = models.PositiveBigIntegerField(null=True, blank=True)
     name = models.CharField(max_length=255)
@@ -292,9 +224,7 @@ class MaterialUsageLine(models.Model):
     class Meta:
         ordering = ["id"]
         constraints = [
-            models.CheckConstraint(
-                condition=models.Q(qty__gt=0), name="materials_usage_qty_positive"
-            ),
+            models.CheckConstraint(condition=models.Q(qty__gt=0), name="materials_usage_qty_positive"),
         ]
 
     def save(self, *args, **kwargs):

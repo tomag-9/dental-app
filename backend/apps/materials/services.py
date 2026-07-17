@@ -58,9 +58,7 @@ def _allocate(catalog, qty, explicit_lot=None):
             break
     if remaining:
         raise ValidationError(
-            {
-                "lines": f"Nedostatočné dostupné množstvo materiálu {catalog.code}; chýba {remaining} {catalog.unit}."
-            }
+            {"lines": f"Nedostatočné dostupné množstvo materiálu {catalog.code}; chýba {remaining} {catalog.unit}."}
         )
     return allocations
 
@@ -68,40 +66,28 @@ def _allocate(catalog, qty, explicit_lot=None):
 @transaction.atomic
 def create_usage(*, actor, lab, validated_data):
     try:
-        job = Job.objects.select_related("patient", "technician").get(
-            pk=validated_data["job"], lab=lab
-        )
+        job = Job.objects.select_related("patient", "technician").get(pk=validated_data["job"], lab=lab)
     except Job.DoesNotExist as exc:
-        raise ValidationError(
-            {"job": "Zákazka neexistuje v tomto laboratóriu."}
-        ) from exc
+        raise ValidationError({"job": "Zákazka neexistuje v tomto laboratóriu."}) from exc
 
     recipe = None
     recipe_id = validated_data.get("recipe")
     if recipe_id:
         try:
-            recipe = MaterialRecipe.objects.prefetch_related("lines__catalog").get(
-                pk=recipe_id, lab=lab
-            )
+            recipe = MaterialRecipe.objects.prefetch_related("lines__catalog").get(pk=recipe_id, lab=lab)
         except MaterialRecipe.DoesNotExist as exc:
-            raise ValidationError(
-                {"recipe": "Recept neexistuje v tomto laboratóriu."}
-            ) from exc
+            raise ValidationError({"recipe": "Recept neexistuje v tomto laboratóriu."}) from exc
 
     selections = validated_data.get("lines") or []
     if not selections and recipe:
-        selections = [
-            {"catalog": line.catalog, "qty": line.qty} for line in recipe.lines.all()
-        ]
+        selections = [{"catalog": line.catalog, "qty": line.qty} for line in recipe.lines.all()]
 
     grouped = defaultdict(lambda: {"qty": Decimal("0"), "lot": None})
     for selection in selections:
         lot = selection.get("lot")
         catalog = selection.get("catalog") or (lot.catalog if lot else None)
         if not catalog or catalog.lab_id != lab.id or not catalog.allow_in_job:
-            raise ValidationError(
-                {"lines": "Materiál nie je povolený pre zákazky tohto laboratória."}
-            )
+            raise ValidationError({"lines": "Materiál nie je povolený pre zákazky tohto laboratória."})
         if lot and lot.lab_id != lab.id:
             raise ValidationError({"lines": "Šarža patrí do iného laboratória."})
         key = (catalog.id, lot.id if lot else None)
@@ -128,9 +114,7 @@ def create_usage(*, actor, lab, validated_data):
     all_allocations = []
     # Explicit LOT choices have priority; automatic FEFO consumes what remains.
     for selection in sorted(grouped.values(), key=lambda item: item["lot"] is None):
-        allocations = _allocate(
-            selection["catalog"], selection["qty"], selection["lot"]
-        )
+        allocations = _allocate(selection["catalog"], selection["qty"], selection["lot"])
         for lot, qty in allocations:
             lot.qty_remaining -= qty
             if lot.qty_remaining == 0:

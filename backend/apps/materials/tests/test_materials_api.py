@@ -38,10 +38,15 @@ class MaterialsApiTestCase(APITestCase):
             role="admin",
             lab=self.other_lab,
         )
-        self.client.force_authenticate(self.user)
-        self.manufacturer = Manufacturer.objects.create(
-            lab=self.lab, name="Vita", prefix="VIT", country="DE"
+        self.regular_user = User.objects.create_user(
+            username="mdr-user",
+            email="mdr-user@example.test",
+            password="test",
+            role="user",
+            lab=self.lab,
         )
+        self.client.force_authenticate(self.user)
+        self.manufacturer = Manufacturer.objects.create(lab=self.lab, name="Vita", prefix="VIT", country="DE")
         self.catalog = MaterialCatalog.objects.create(
             lab=self.lab,
             code="VIT-0001",
@@ -54,9 +59,7 @@ class MaterialsApiTestCase(APITestCase):
         self.patient = Patient.objects.create(
             lab=self.lab, first_name="Eva", last_name="Test", birth_number="900101/1234"
         )
-        self.technician = Technician.objects.create(
-            lab=self.lab, first_name="Ján", last_name="Technik"
-        )
+        self.technician = Technician.objects.create(lab=self.lab, first_name="Ján", last_name="Technik")
         self.job = Job.objects.create(
             lab=self.lab,
             clinic=self.clinic,
@@ -82,9 +85,7 @@ class MaterialsApiTestCase(APITestCase):
         self.assertEqual(own_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(own_response.data), 1)
 
-        other_manufacturer = Manufacturer.objects.create(
-            lab=self.other_lab, name="Other", prefix="OTH"
-        )
+        other_manufacturer = Manufacturer.objects.create(lab=self.other_lab, name="Other", prefix="OTH")
         response = self.client.post(
             "/api/v1/materials/catalog/",
             {"code": "BAD-1", "name": "Bad", "manufacturer": other_manufacturer.id},
@@ -96,9 +97,7 @@ class MaterialsApiTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_stock_code_resolves_only_inside_lab(self):
-        stock = WarehouseItem.objects.create(
-            lab=self.lab, name="Ceramic stock", sku="CER-1", quantity=10
-        )
+        stock = WarehouseItem.objects.create(lab=self.lab, name="Ceramic stock", sku="CER-1", quantity=10)
         response = self.client.patch(
             f"/api/v1/materials/catalog/{self.catalog.id}/",
             {"stock_code": "CER-1"},
@@ -124,48 +123,30 @@ class MaterialsApiTestCase(APITestCase):
 
     def test_fefo_excludes_expired_discarded_and_depleted_lots(self):
         today = timezone.localdate()
-        late = self.lot(
-            code="S-10", lot="LATE", qty=4, expiry=today + timedelta(days=100)
-        )
-        early = self.lot(
-            code="S-11", lot="EARLY", qty=3, expiry=today + timedelta(days=10)
-        )
+        late = self.lot(code="S-10", lot="LATE", qty=4, expiry=today + timedelta(days=100))
+        early = self.lot(code="S-11", lot="EARLY", qty=3, expiry=today + timedelta(days=10))
         self.lot(code="S-12", lot="EXPIRED", qty=2, expiry=today - timedelta(days=1))
-        self.lot(
-            code="S-13", lot="DISCARDED", qty=2, status=MaterialLot.Status.DISCARDED
-        )
+        self.lot(code="S-13", lot="DISCARDED", qty=2, status=MaterialLot.Status.DISCARDED)
         depleted = self.lot(code="S-14", lot="DEPLETED", qty=2)
         depleted.qty_remaining = 0
         depleted.status = MaterialLot.Status.DEPLETED
         depleted.save()
-        recipe = MaterialRecipe.objects.create(
-            lab=self.lab, name="Crown", product_type="single"
-        )
+        recipe = MaterialRecipe.objects.create(lab=self.lab, name="Crown", product_type="single")
         RecipeLine.objects.create(recipe=recipe, catalog=self.catalog, qty=5)
 
-        response = self.client.get(
-            f"/api/v1/materials/fefo/?recipe={recipe.id}&job={self.job.id}"
-        )
+        response = self.client.get(f"/api/v1/materials/fefo/?recipe={recipe.id}&job={self.job.id}")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
             [item["id"] for item in response.data["lines"][0]["lots"]],
             [early.id, late.id],
         )
-        self.assertEqual(
-            Decimal(response.data["lines"][0]["available_qty"]), Decimal("7")
-        )
+        self.assertEqual(Decimal(response.data["lines"][0]["available_qty"]), Decimal("7"))
 
     def test_usage_auto_allocates_fefo_and_creates_immutable_snapshots(self):
         today = timezone.localdate()
-        early = self.lot(
-            code="S-20", lot="EARLY", qty=2, expiry=today + timedelta(days=10)
-        )
-        late = self.lot(
-            code="S-21", lot="LATE", qty=5, expiry=today + timedelta(days=30)
-        )
-        recipe = MaterialRecipe.objects.create(
-            lab=self.lab, name="Bridge", product_type="bridge"
-        )
+        early = self.lot(code="S-20", lot="EARLY", qty=2, expiry=today + timedelta(days=10))
+        late = self.lot(code="S-21", lot="LATE", qty=5, expiry=today + timedelta(days=30))
+        recipe = MaterialRecipe.objects.create(lab=self.lab, name="Bridge", product_type="bridge")
         RecipeLine.objects.create(recipe=recipe, catalog=self.catalog, qty=4)
 
         response = self.client.post(
@@ -184,11 +165,7 @@ class MaterialsApiTestCase(APITestCase):
         self.assertEqual(early.status, MaterialLot.Status.DEPLETED)
         self.assertEqual(late.qty_remaining, 3)
         self.assertEqual(late.status, MaterialLot.Status.OPEN)
-        self.assertTrue(
-            AuditLog.objects.filter(
-                action="material.usage_created", lab=self.lab
-            ).exists()
-        )
+        self.assertTrue(AuditLog.objects.filter(action="material.usage_created", lab=self.lab).exists())
 
         snapshot = MaterialUsageLine.objects.get(source_lot_id=early.id)
         self.catalog.name = "Renamed later"
@@ -216,6 +193,37 @@ class MaterialsApiTestCase(APITestCase):
         lot.refresh_from_db()
         self.assertEqual(lot.qty_remaining, 1)
         self.assertFalse(self.job.material_usages.exists())
+
+    def test_regular_user_cannot_create_usage_or_decrement_stock(self):
+        lot = self.lot(
+            code="S-30-USER",
+            lot="USER-DENIED",
+            qty=2,
+            expiry=timezone.localdate() + timedelta(days=30),
+        )
+        self.client.force_authenticate(self.regular_user)
+
+        response = self.client.post(
+            "/api/v1/materials/usage/",
+            {"job": self.job.id, "lines": [{"lot": lot.id, "qty": "1.000"}]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        lot.refresh_from_db()
+        self.assertEqual(lot.qty_remaining, 2)
+        self.assertFalse(self.job.material_usages.exists())
+
+    def test_invalid_query_ids_return_validation_errors(self):
+        for url in (
+            "/api/v1/materials/lots/?catalog=invalid",
+            "/api/v1/materials/usage/?job=invalid",
+            "/api/v1/materials/usage/job-conformity-pdf/?job=invalid",
+            "/api/v1/materials/fefo/?recipe=invalid",
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_explicit_and_auto_selection_cannot_double_allocate_same_lot(self):
         early = self.lot(
@@ -246,9 +254,7 @@ class MaterialsApiTestCase(APITestCase):
         late.refresh_from_db()
         self.assertEqual(early.qty_remaining, 0)
         self.assertEqual(late.qty_remaining, 2)
-        self.assertEqual(
-            sum(Decimal(line["qty"]) for line in response.data["lines"]), Decimal("8")
-        )
+        self.assertEqual(sum(Decimal(line["qty"]) for line in response.data["lines"]), Decimal("8"))
 
     def test_catalog_and_lot_bulk_import(self):
         response = self.client.post(
@@ -290,9 +296,7 @@ class MaterialsApiTestCase(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(
-            MaterialCatalog.objects.filter(lab=self.lab, code="DUP-1").exists()
-        )
+        self.assertFalse(MaterialCatalog.objects.filter(lab=self.lab, code="DUP-1").exists())
 
     def test_nested_recipe_crud_and_job_usage_filter(self):
         response = self.client.post(

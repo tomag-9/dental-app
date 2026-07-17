@@ -86,34 +86,18 @@ class MaterialCatalogViewSet(MaterialTenantViewSet):
             if not lab:
                 raise ValidationError("Používateľ nemá priradené laboratórium.")
             return lab
-        lab_id = (
-            self.request.data.get("lab")
-            if isinstance(self.request.data, dict)
-            else None
-        )
-        lab_id = (
-            lab_id
-            or self.request.query_params.get("lab")
-            or self.request.query_params.get("lab_id")
-        )
+        lab_id = self.request.data.get("lab") if isinstance(self.request.data, dict) else None
+        lab_id = lab_id or self.request.query_params.get("lab") or self.request.query_params.get("lab_id")
         try:
             return Lab.objects.get(pk=lab_id)
         except (Lab.DoesNotExist, TypeError, ValueError) as exc:
-            raise ValidationError(
-                {"lab": "Superadmin musí zadať platné laboratórium."}
-            ) from exc
+            raise ValidationError({"lab": "Superadmin musí zadať platné laboratórium."}) from exc
 
     def _rows_from_request(self):
         if "file" not in self.request.FILES:
-            data = (
-                self.request.data.get("items")
-                if isinstance(self.request.data, dict)
-                else self.request.data
-            )
+            data = self.request.data.get("items") if isinstance(self.request.data, dict) else self.request.data
             if not isinstance(data, list):
-                raise ValidationError(
-                    "Očakáva sa zoznam položiek alebo CSV súbor v poli 'file'."
-                )
+                raise ValidationError("Očakáva sa zoznam položiek alebo CSV súbor v poli 'file'.")
             return data
         try:
             text = self.request.FILES["file"].read().decode("utf-8-sig")
@@ -127,10 +111,7 @@ class MaterialCatalogViewSet(MaterialTenantViewSet):
             "qty_remaining",
         }
         return [
-            {
-                key: (None if key in nullable_csv_fields and value == "" else value)
-                for key, value in row.items()
-            }
+            {key: (None if key in nullable_csv_fields and value == "" else value) for key, value in row.items()}
             for row in csv.DictReader(StringIO(text))
         ]
 
@@ -139,11 +120,7 @@ class MaterialCatalogViewSet(MaterialTenantViewSet):
         lab = self._import_lab()
         rows = self._rows_from_request()
         serializers = [CatalogImportSerializer(data=row) for row in rows]
-        errors = {
-            index: serializer.errors
-            for index, serializer in enumerate(serializers)
-            if not serializer.is_valid()
-        }
+        errors = {index: serializer.errors for index, serializer in enumerate(serializers) if not serializer.is_valid()}
         if errors:
             return Response(
                 {"detail": "Import obsahuje neplatné riadky.", "errors": errors},
@@ -151,69 +128,34 @@ class MaterialCatalogViewSet(MaterialTenantViewSet):
             )
         codes = [serializer.validated_data["code"] for serializer in serializers]
         duplicate_codes = sorted({code for code in codes if codes.count(code) > 1})
-        existing_codes = sorted(
-            MaterialCatalog.objects.filter(lab=lab, code__in=codes).values_list(
-                "code", flat=True
-            )
-        )
+        existing_codes = sorted(MaterialCatalog.objects.filter(lab=lab, code__in=codes).values_list("code", flat=True))
         if duplicate_codes or existing_codes:
             raise ValidationError(
-                {
-                    "code": f"Duplicitné kódy: {', '.join(sorted(set(duplicate_codes + existing_codes)))}"
-                }
+                {"code": f"Duplicitné kódy: {', '.join(sorted(set(duplicate_codes + existing_codes)))}"}
             )
-        manufacturers = {
-            item.prefix: item for item in Manufacturer.objects.filter(lab=lab)
-        }
+        manufacturers = {item.prefix: item for item in Manufacturer.objects.filter(lab=lab)}
         missing = sorted(
-            {
-                serializer.validated_data["manufacturer_prefix"]
-                for serializer in serializers
-            }
-            - manufacturers.keys()
+            {serializer.validated_data["manufacturer_prefix"] for serializer in serializers} - manufacturers.keys()
         )
         if missing:
-            raise ValidationError(
-                {
-                    "manufacturer_prefix": f"Neznáme prefixy výrobcov: {', '.join(missing)}"
-                }
-            )
-        skus = {
-            serializer.validated_data.get("stock_code") for serializer in serializers
-        }
+            raise ValidationError({"manufacturer_prefix": f"Neznáme prefixy výrobcov: {', '.join(missing)}"})
+        skus = {serializer.validated_data.get("stock_code") for serializer in serializers}
         skus.discard(None)
         skus.discard("")
-        stock = {
-            item.sku: item
-            for item in WarehouseItem.objects.filter(lab=lab, sku__in=skus)
-        }
-        ambiguous_skus = sorted(
-            sku
-            for sku in skus
-            if WarehouseItem.objects.filter(lab=lab, sku=sku).count() != 1
-        )
+        stock = {item.sku: item for item in WarehouseItem.objects.filter(lab=lab, sku__in=skus)}
+        ambiguous_skus = sorted(sku for sku in skus if WarehouseItem.objects.filter(lab=lab, sku=sku).count() != 1)
         if ambiguous_skus:
-            raise ValidationError(
-                {
-                    "stock_code": f"Nejednoznačné skladové SKU: {', '.join(ambiguous_skus)}"
-                }
-            )
+            raise ValidationError({"stock_code": f"Nejednoznačné skladové SKU: {', '.join(ambiguous_skus)}"})
         missing_skus = sorted(skus - stock.keys())
         if missing_skus:
-            raise ValidationError(
-                {"stock_code": f"Neznáme skladové SKU: {', '.join(missing_skus)}"}
-            )
+            raise ValidationError({"stock_code": f"Neznáme skladové SKU: {', '.join(missing_skus)}"})
         with transaction.atomic():
             objects = [
                 MaterialCatalog(
                     lab=lab,
                     manufacturer=manufacturers[data["manufacturer_prefix"]],
                     stock_item=stock.get(data.get("stock_code")),
-                    **{
-                        key: value
-                        for key, value in data.items()
-                        if key not in ("manufacturer_prefix", "stock_code")
-                    },
+                    **{key: value for key, value in data.items() if key not in ("manufacturer_prefix", "stock_code")},
                 )
                 for data in (serializer.validated_data for serializer in serializers)
             ]
@@ -222,14 +164,12 @@ class MaterialCatalogViewSet(MaterialTenantViewSet):
 
 
 class MaterialLotViewSet(MaterialTenantViewSet):
-    queryset = MaterialLot.objects.select_related(
-        "catalog", "catalog__manufacturer", "catalog__stock_item"
-    )
+    queryset = MaterialLot.objects.select_related("catalog", "catalog__manufacturer", "catalog__stock_item")
     serializer_class = MaterialLotSerializer
 
     def get_queryset(self):
         queryset = self.get_tenant_scoped_queryset(self.queryset)
-        catalog_id = self.request.query_params.get("catalog")
+        catalog_id = _positive_int_query_param(self.request, "catalog")
         if catalog_id:
             queryset = queryset.filter(catalog_id=catalog_id)
         lot_status = self.request.query_params.get("status")
@@ -240,9 +180,7 @@ class MaterialLotViewSet(MaterialTenantViewSet):
         if expiry_state == "expired":
             queryset = queryset.filter(expiry__lt=today)
         elif expiry_state == "soon":
-            queryset = queryset.filter(
-                expiry__range=(today, today + timedelta(days=60))
-            )
+            queryset = queryset.filter(expiry__range=(today, today + timedelta(days=60)))
         elif expiry_state == "ok":
             queryset = queryset.filter(expiry__gt=today + timedelta(days=60))
         elif expiry_state == "none":
@@ -256,19 +194,13 @@ class MaterialLotViewSet(MaterialTenantViewSet):
         lab = helper._import_lab()
         rows = helper._rows_from_request()
         serializers = [LotImportSerializer(data=row) for row in rows]
-        errors = {
-            index: serializer.errors
-            for index, serializer in enumerate(serializers)
-            if not serializer.is_valid()
-        }
+        errors = {index: serializer.errors for index, serializer in enumerate(serializers) if not serializer.is_valid()}
         if errors:
             return Response(
                 {"detail": "Import obsahuje neplatné riadky.", "errors": errors},
                 status=400,
             )
-        short_codes = [
-            serializer.validated_data["short_code"] for serializer in serializers
-        ]
+        short_codes = [serializer.validated_data["short_code"] for serializer in serializers]
         lot_keys = [
             (
                 serializer.validated_data["catalog_code"],
@@ -276,19 +208,15 @@ class MaterialLotViewSet(MaterialTenantViewSet):
             )
             for serializer in serializers
         ]
-        duplicates = sorted(
-            {code for code in short_codes if short_codes.count(code) > 1}
-        )
+        duplicates = sorted({code for code in short_codes if short_codes.count(code) > 1})
         duplicates.extend(
             code
-            for code in MaterialLot.objects.filter(
-                lab=lab, short_code__in=short_codes
-            ).values_list("short_code", flat=True)
+            for code in MaterialLot.objects.filter(lab=lab, short_code__in=short_codes).values_list(
+                "short_code", flat=True
+            )
         )
         if len(set(lot_keys)) != len(lot_keys):
-            raise ValidationError(
-                {"lot": "Import obsahuje duplicitnú kombináciu materiálu a LOT."}
-            )
+            raise ValidationError({"lot": "Import obsahuje duplicitnú kombináciu materiálu a LOT."})
         existing_lot_keys = {
             (catalogs_code, lot_number)
             for catalogs_code, lot_number in MaterialLot.objects.filter(
@@ -298,36 +226,22 @@ class MaterialLotViewSet(MaterialTenantViewSet):
             ).values_list("catalog__code", "lot")
         }
         if existing_lot_keys.intersection(lot_keys):
-            raise ValidationError(
-                {"lot": "Materiál s týmto LOT už v laboratóriu existuje."}
-            )
+            raise ValidationError({"lot": "Materiál s týmto LOT už v laboratóriu existuje."})
         if duplicates:
-            raise ValidationError(
-                {
-                    "short_code": f"Duplicitné krátke kódy: {', '.join(sorted(set(duplicates)))}"
-                }
-            )
+            raise ValidationError({"short_code": f"Duplicitné krátke kódy: {', '.join(sorted(set(duplicates)))}"})
         catalogs = {item.code: item for item in MaterialCatalog.objects.filter(lab=lab)}
-        missing = sorted(
-            {s.validated_data["catalog_code"] for s in serializers} - catalogs.keys()
-        )
+        missing = sorted({s.validated_data["catalog_code"] for s in serializers} - catalogs.keys())
         if missing:
-            raise ValidationError(
-                {"catalog_code": f"Neznáme kódy materiálov: {', '.join(missing)}"}
-            )
+            raise ValidationError({"catalog_code": f"Neznáme kódy materiálov: {', '.join(missing)}"})
         objects = []
         for serializer in serializers:
             data = dict(serializer.validated_data)
             catalog = catalogs[data.pop("catalog_code")]
             data.setdefault("qty_remaining", data["qty_received"])
             if data["qty_remaining"] > data["qty_received"]:
-                raise ValidationError(
-                    {"qty_remaining": "Zostatok nemôže prekročiť prijaté množstvo."}
-                )
+                raise ValidationError({"qty_remaining": "Zostatok nemôže prekročiť prijaté množstvo."})
             if data.get("expiry") and data["expiry"] < data["received"]:
-                raise ValidationError(
-                    {"expiry": "Expirácia nemôže byť pred dátumom príjmu."}
-                )
+                raise ValidationError({"expiry": "Expirácia nemôže byť pred dátumom príjmu."})
             if data["qty_remaining"] == 0:
                 data["status"] = MaterialLot.Status.DEPLETED
             objects.append(MaterialLot(lab=lab, catalog=catalog, **data))
@@ -380,9 +294,7 @@ class MaterialLotViewSet(MaterialTenantViewSet):
 
 
 class MaterialRecipeViewSet(MaterialTenantViewSet):
-    queryset = MaterialRecipe.objects.prefetch_related(
-        "lines__catalog__manufacturer", "lines__catalog__stock_item"
-    )
+    queryset = MaterialRecipe.objects.prefetch_related("lines__catalog__manufacturer", "lines__catalog__stock_item")
     serializer_class = MaterialRecipeSerializer
 
     def get_queryset(self):
@@ -390,30 +302,25 @@ class MaterialRecipeViewSet(MaterialTenantViewSet):
 
 
 class MaterialUsageViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = MaterialUsage.objects.select_related(
-        "job", "lab", "recipe_source"
-    ).prefetch_related("lines")
+    queryset = MaterialUsage.objects.select_related("job", "lab", "recipe_source").prefetch_related("lines")
     serializer_class = MaterialUsageSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [
+        permissions.IsAuthenticated,
+        IsReadOnlyOrAdminOrSuperadminPermission,
+    ]
 
     def get_queryset(self):
         queryset = self.get_tenant_scoped_queryset(self.queryset)
-        job_id = self.request.query_params.get("job") or self.request.query_params.get(
-            "job_id"
-        )
+        job_id = _positive_int_query_param(self.request, "job", alias="job_id")
         if job_id:
             queryset = queryset.filter(job_id=job_id)
         return queryset
 
     def create(self, request, *args, **kwargs):
-        input_serializer = CreateMaterialUsageSerializer(
-            data=request.data, context={"request": request}
-        )
+        input_serializer = CreateMaterialUsageSerializer(data=request.data, context={"request": request})
         input_serializer.is_valid(raise_exception=True)
         lab = _request_lab(request)
-        usage = create_usage(
-            actor=request.user, lab=lab, validated_data=input_serializer.validated_data
-        )
+        usage = create_usage(actor=request.user, lab=lab, validated_data=input_serializer.validated_data)
         return Response(self.get_serializer(usage).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["get"], url_path="conformity-pdf")
@@ -423,12 +330,10 @@ class MaterialUsageViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelView
 
     @action(detail=False, methods=["get"], url_path="job-conformity-pdf")
     def job_conformity_pdf(self, request):
-        job_id = request.query_params.get("job") or request.query_params.get("job_id")
+        job_id = _positive_int_query_param(request, "job", alias="job_id", required=True)
         usages = list(self.get_queryset().filter(job_id=job_id))
         if not usages:
-            raise ValidationError(
-                {"job": "Zákazka nemá zaznamenanú spotrebu materiálu."}
-            )
+            raise ValidationError({"job": "Zákazka nemá zaznamenanú spotrebu materiálu."})
         response = _render_conformity_pdf(lab=usages[0].lab, usages=usages)
         response["X-Material-Usage-Count"] = str(len(usages))
         return response
@@ -447,18 +352,12 @@ class FefoView(APIView):
     )
     def get(self, request):
         lab = _request_lab(request, query=True)
-        recipe_id = request.query_params.get("recipe")
-        if not recipe_id:
-            raise ValidationError({"recipe": "Parameter recipe je povinný."})
+        recipe_id = _positive_int_query_param(request, "recipe", required=True)
         try:
-            recipe = MaterialRecipe.objects.prefetch_related("lines__catalog").get(
-                pk=recipe_id, lab=lab
-            )
+            recipe = MaterialRecipe.objects.prefetch_related("lines__catalog").get(pk=recipe_id, lab=lab)
         except MaterialRecipe.DoesNotExist as exc:
-            raise ValidationError(
-                {"recipe": "Recept neexistuje v tomto laboratóriu."}
-            ) from exc
-        job_id = request.query_params.get("job")
+            raise ValidationError({"recipe": "Recept neexistuje v tomto laboratóriu."}) from exc
+        job_id = _positive_int_query_param(request, "job")
         if job_id and not Job.objects.filter(pk=job_id, lab=lab).exists():
             raise ValidationError({"job": "Zákazka neexistuje v tomto laboratóriu."})
         result = []
@@ -466,16 +365,10 @@ class FefoView(APIView):
             lots = available_lots(line.catalog)
             result.append(
                 {
-                    "catalog": MaterialCatalogSerializer(
-                        line.catalog, context={"request": request}
-                    ).data,
+                    "catalog": MaterialCatalogSerializer(line.catalog, context={"request": request}).data,
                     "required_qty": str(line.qty),
-                    "available_qty": str(
-                        sum((lot.qty_remaining for lot in lots), start=0)
-                    ),
-                    "lots": MaterialLotSerializer(
-                        lots, many=True, context={"request": request}
-                    ).data,
+                    "available_qty": str(sum((lot.qty_remaining for lot in lots), start=0)),
+                    "lots": MaterialLotSerializer(lots, many=True, context={"request": request}).data,
                 }
             )
         return Response(
@@ -498,9 +391,24 @@ def _request_lab(request, *, query=False):
     try:
         return Lab.objects.get(pk=lab_id)
     except (Lab.DoesNotExist, TypeError, ValueError) as exc:
-        raise ValidationError(
-            {"lab": "Superadmin musí zadať platné laboratórium."}
-        ) from exc
+        raise ValidationError({"lab": "Superadmin musí zadať platné laboratórium."}) from exc
+
+
+def _positive_int_query_param(request, name, *, alias=None, required=False):
+    value = request.query_params.get(name)
+    if value in (None, "") and alias:
+        value = request.query_params.get(alias)
+    if value in (None, ""):
+        if required:
+            raise ValidationError({name: f"Parameter {name} je povinný."})
+        return None
+    try:
+        value = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({name: f"Parameter {name} musí byť celé číslo."}) from exc
+    if value < 1:
+        raise ValidationError({name: f"Parameter {name} musí byť kladné číslo."})
+    return value
 
 
 def _pdf_response(buffer, filename):
@@ -529,9 +437,7 @@ def _render_conformity_pdf(*, lab, usage=None, usages=None, lot=None):
         f"Identifier: {'Job ' + str(primary_usage.job_id) if primary_usage else 'LOT ' + lot.lot}",
     ]
     if primary_usage:
-        technicians = sorted(
-            {item.technician for item in usage_records if item.technician}
-        )
+        technicians = sorted({item.technician for item in usage_records if item.technician})
         recipes = sorted({item.recipe for item in usage_records if item.recipe})
         usage_dates = sorted({item.date.isoformat() for item in usage_records})
         lines.extend(
