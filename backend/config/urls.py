@@ -43,6 +43,7 @@ _versioned_patterns = [
     path("jobs/", include("apps.jobs.urls")),
     path("finance/", include("apps.finance.urls")),
     path("inventory/", include("apps.inventory.urls")),
+    path("materials/", include("apps.materials.urls")),
     path("dashboard/stats/", DashboardStatsView.as_view(), name="dashboard-stats"),
     path("search/", GlobalSearchView.as_view(), name="global-search"),
     path("permissions/", PermissionsView.as_view(), name="permissions"),
