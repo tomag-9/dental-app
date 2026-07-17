@@ -15,6 +15,13 @@ body {
   background: #f6f3ec;
 }
 
+@media print {
+  body * { visibility: hidden !important; }
+  .mat-print-area, .mat-print-area * { visibility: visible !important; }
+  .mat-print-area { position: absolute !important; inset: 0 auto auto 0; width: 100%; padding: 24px !important; box-shadow: none !important; }
+  @page { margin: 12mm; }
+}
+
 button,
 input,
 select,

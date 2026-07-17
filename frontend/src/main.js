@@ -27,6 +27,7 @@ const appModules = [
   () => import('./pages/Invoices.jsx'),
   () => import('./pages/Pricelist.jsx'),
   () => import('./pages/Inventory.jsx'),
+  () => import('./pages/Materials.jsx'),
   () => import('./pages/Calendar.jsx'),
   () => import('./pages/Clinics.jsx'),
   () => import('./pages/Doctors.jsx'),

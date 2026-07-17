@@ -30,7 +30,10 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
     { id: 'dashboard',   name: 'Nástenka',   icon: 'dashboard' },
     { id: 'jobs',        name: 'Práce',       icon: 'briefcase' },
     ...(!isTechnician ? [{ id: 'patients', name: 'Pacienti', icon: 'users' }] : []),
-    ...(isAdmin ? [{ id: 'inventory', name: 'Sklad', icon: 'package' }] : []),
+    ...(isAdmin ? [
+      { id: 'inventory', name: 'Sklad', icon: 'package' },
+      { id: 'materials', name: 'Materiály', icon: 'layers' },
+    ] : []),
     { id: 'calendar',    name: 'Kalendár',    icon: 'calendar' },
   ];
   const adminFinance = [

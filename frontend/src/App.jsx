@@ -73,6 +73,7 @@ function App() {
     case 'invoices':        pageEl = React.createElement(Invoices,      { onNavigate: navigate, onCreate: () => setCreateType('invoice') }); break;
     case 'pricelist':       pageEl = React.createElement(Pricelist,     { onNavigate: navigate, onCreate: () => setCreateType('price') }); break;
     case 'inventory':       pageEl = React.createElement(Inventory,     { onNavigate: navigate, onCreate: () => setCreateType('warehouse') }); break;
+    case 'materials':       pageEl = React.createElement(Materials,     { onNavigate: navigate }); break;
     case 'calendar':        pageEl = React.createElement(Calendar,      { onNavigate: navigate, onOpenJob: openJob }); break;
     case 'clinics':         pageEl = React.createElement(Clinics,       { onNavigate: navigate, onCreate: () => setCreateType('clinic') }); break;
     case 'doctors':         pageEl = React.createElement(Doctors,       { onNavigate: navigate, onCreate: () => setCreateType('doctor') }); break;
@@ -141,7 +142,7 @@ function normalizePageForRole(page, role) {
     return pageId.startsWith('sa_') || pageId === 'settings' ? pageId : 'sa_overview';
   }
   if (pageId.startsWith('sa_') || pageId === 'superadmin') return 'dashboard';
-  const adminOnly = new Set(['finance', 'invoices', 'pricelist', 'inventory', 'clinics', 'doctors', 'technicians', 'permissions', 'settings']);
+  const adminOnly = new Set(['finance', 'invoices', 'pricelist', 'inventory', 'materials', 'clinics', 'doctors', 'technicians', 'permissions', 'settings']);
   if (role !== 'admin' && adminOnly.has(pageId)) return 'dashboard';
   if (role === 'technician' && ['patients', 'patient_detail'].includes(pageId)) return 'dashboard';
   return pageId;

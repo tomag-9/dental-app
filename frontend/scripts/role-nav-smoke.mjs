@@ -107,7 +107,7 @@ async function testRegularUserPageGuards() {
   const normalize = await loadNormalizePageForRole();
 
   // Should NOT have access to admin-only pages
-  const blockedPages = ['finance', 'invoices', 'pricelist', 'inventory', 'clinics',
+  const blockedPages = ['finance', 'invoices', 'pricelist', 'inventory', 'materials', 'clinics',
                         'doctors', 'technicians', 'permissions', 'settings'];
   for (const page of blockedPages) {
     const result = normalize(page, 'user');
@@ -139,7 +139,7 @@ async function testTechnicianPageGuards() {
   assert(normalize('calendar', 'technician') === 'calendar', 'technician can access calendar');
 
   // Blocked admin-only pages
-  const blockedAdminPages = ['finance', 'invoices', 'pricelist', 'inventory',
+  const blockedAdminPages = ['finance', 'invoices', 'pricelist', 'inventory', 'materials',
                               'clinics', 'doctors', 'technicians', 'permissions', 'settings'];
   for (const page of blockedAdminPages) {
     const result = normalize(page, 'technician');
@@ -168,7 +168,7 @@ async function testSuperadminPageGuards() {
 
   // Superadmin is redirected away from tenant operational pages
   const tenantPages = ['dashboard', 'jobs', 'patients', 'finance', 'invoices',
-                       'pricelist', 'inventory', 'calendar', 'clinics', 'doctors',
+                       'pricelist', 'inventory', 'materials', 'calendar', 'clinics', 'doctors',
                        'technicians', 'permissions'];
   for (const page of tenantPages) {
     const result = normalize(page, 'superadmin');
@@ -185,7 +185,7 @@ async function testAdminPageGuards() {
 
   // Admin should access all tenant pages
   const allTenantPages = ['dashboard', 'jobs', 'patients', 'finance', 'invoices',
-                           'pricelist', 'inventory', 'calendar', 'clinics', 'doctors',
+                           'pricelist', 'inventory', 'materials', 'calendar', 'clinics', 'doctors',
                            'technicians', 'permissions', 'settings'];
   for (const page of allTenantPages) {
     const result = normalize(page, 'admin');
@@ -228,6 +228,7 @@ async function testSidebarVisibility() {
   assert(adminSidebar.includes('Konfigurácia'), 'admin sidebar: has Config section');
   assert(adminSidebar.includes('Oprávnenia'), 'admin sidebar: has Permissions link');
   assert(adminSidebar.includes('Nastavenia'), 'admin sidebar: has Settings link');
+  assert(adminSidebar.includes('Materiály'), 'admin sidebar: has Materials link');
 
   // Superadmin sidebar — platform pages only, no tenant operational links
   const saSidebar = await renderSidebar('superadmin');
