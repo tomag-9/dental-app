@@ -4,6 +4,9 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [jobToDelete, setJobToDelete] = React.useState(null);
+  const [filterOpen, setFilterOpen] = React.useState(false);
+  const [clinicFilter, setClinicFilter] = React.useState([]);
+  const filterRef = useClickOutside(() => setFilterOpen(false));
   const [remoteJobs, setRemoteJobs] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [exporting, setExporting] = React.useState(false);
@@ -11,6 +14,9 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   const [error, setError] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
+  // 'completed' groups 4 backend statuses; the server can only filter on one, so fetch
+  // unfiltered and let the client-side filter below apply the grouped match.
+  const COMPLETED_TAB_STATUSES = ['completed', 'finished_unfactured', 'finished_factured', 'closed'];
 
   React.useEffect(() => {
     let cancelled = false;
@@ -24,7 +30,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
       }
       setLoading(true);
       setError('');
-      window.MolarisAPI.fetchJobs({ search, status: tab })
+      window.MolarisAPI.fetchJobs({ search, status: tab === 'completed' ? 'all' : tab })
         .then((jobs) => { if (!cancelled) setRemoteJobs(jobs); })
         .catch((err) => {
           if (!cancelled) {
@@ -41,6 +47,26 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     title: 'Práce',
     subtitle: 'Prehľad, správa a stav zákaziek.',
     actions: [
+      React.createElement('div', { key: 'filters', ref: filterRef, style: { position: 'relative' } },
+        React.createElement(Button, { variant: 'outline', onClick: () => setFilterOpen(value => !value) },
+          React.createElement(Icon, { name: 'filter', size: 14 }), 'Filtre',
+          clinicFilter.length > 0 && React.createElement(Badge, { color: 'progress' }, clinicFilter.length)),
+        filterOpen && React.createElement('div', {
+          style: { position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 240, background: '#fff', border: '1px solid #e4ded4', borderRadius: 10, boxShadow: '0 14px 36px rgba(26,35,32,.14)', zIndex: 40, padding: 10 }
+        },
+          React.createElement('div', { style: { fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '.05em', padding: '2px 4px 8px' } }, 'Klinika'),
+          ...(window.__MOLARIS_WORKSPACE?.jobs || []).map(job => job.clinic).filter((clinic, index, all) => clinic && all.indexOf(clinic) === index).map(clinic =>
+            React.createElement('label', { key: clinic, style: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 4px', fontSize: 12.5, color: '#1a2320', cursor: 'pointer' } },
+              React.createElement('input', {
+                type: 'checkbox', checked: clinicFilter.includes(clinic),
+                onChange: () => setClinicFilter(current => current.includes(clinic) ? current.filter(value => value !== clinic) : [...current, clinic])
+              }), clinic)),
+          clinicFilter.length > 0 && React.createElement('button', {
+            onClick: () => setClinicFilter([]),
+            style: { marginTop: 6, width: '100%', padding: 6, border: 0, borderRadius: 6, background: '#f4f1ea', color: '#0d7c6b', fontFamily: 'Manrope,sans-serif', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }
+          }, 'Vymazať filtre')
+        )
+      ),
       React.createElement(Button, {
         key: 'n',
         onClick: canCreate ? onNewJob : undefined,
@@ -99,12 +125,18 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
   };
   const statusKeys = Object.keys(statusMeta);
   const counts = statusKeys.reduce((a, s) => { a[s] = allJobs.filter(j => j.status === s).length; return a; }, {});
+  const completedCount = counts.completed + counts.finished_unfactured + counts.finished_factured + counts.closed;
 
-  const filtered = remoteJobs ? allJobs : allJobs.filter(j => {
+  const filtered = allJobs.filter(j => {
     const q = search.toLowerCase();
     const m = !q || [j.patient, j.clinic, j.doctor, String(j.id), j.type].some(v => (v || '').toLowerCase().includes(q));
     if (!m) return false;
-    if (tab !== 'all' && j.status !== tab) return false;
+    if (tab === 'completed') {
+      if (!COMPLETED_TAB_STATUSES.includes(j.status)) return false;
+    } else if (tab !== 'all' && j.status !== tab) {
+      return false;
+    }
+    if (clinicFilter.length && !clinicFilter.includes(j.clinic)) return false;
     return true;
   });
 
@@ -112,20 +144,10 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
     pageHeader,
 
     React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },
-      React.createElement(StatCard, { label: 'Otvorené', value: String(counts.new + counts.in_progress), icon: 'inbox', tone: 'amber', sub: `${counts.new} nové` }),
-      React.createElement(StatCard, { label: 'Čaká faktúru', value: String(counts.finished_unfactured), icon: 'fileText', tone: 'teal' }),
-      React.createElement(StatCard, { label: 'Vyfakturované', value: String(counts.finished_factured), icon: 'checkCircle', tone: 'green' }),
-      React.createElement(StatCard, { label: 'Uzavreté / zrušené', value: String(counts.closed + counts.cancelled), icon: 'x', tone: 'red' }),
-    ),
-
-    React.createElement(JobLifecycleGuide, { rawJob: { status: tab === 'all' ? '' : tab } }),
-
-    React.createElement(Card, null,
-      React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Export prác')),
-      React.createElement(CardContent, { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
-        React.createElement(InfoCell, { label: 'Formát CSV', value: 'ID, pacient, klinika, lekár, termín, stav, cena' }),
-        React.createElement(InfoCell, { label: 'Tok sťahovania', value: 'Tlačidlo CSV export používa serverový export prác' })
-      )
+      React.createElement(StatCard, { label: 'Nové', value: String(counts.new), icon: 'inbox', tone: 'amber' }),
+      React.createElement(StatCard, { label: 'V priebehu', value: String(counts.in_progress), icon: 'activity', tone: 'teal' }),
+      React.createElement(StatCard, { label: 'Dokončené', value: String(completedCount), icon: 'checkCircle', tone: 'green' }),
+      React.createElement(StatCard, { label: 'Zrušené', value: String(counts.cancelled), icon: 'x', tone: 'red' }),
     ),
 
     React.createElement(Card, null,
@@ -136,11 +158,7 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
             { value: 'all',         label: `Všetky (${allJobs.length})` },
             { value: 'new',         label: `Nové (${counts.new})` },
             { value: 'in_progress', label: `V priebehu (${counts.in_progress})` },
-            { value: 'completed',   label: `Dokončené (${counts.completed})` },
-            { value: 'finished_unfactured', label: `Čaká faktúru (${counts.finished_unfactured})` },
-            { value: 'finished_factured', label: `Fakturované (${counts.finished_factured})` },
-            { value: 'closed', label: `Uzavreté (${counts.closed})` },
-            { value: 'cancelled', label: `Zrušené (${counts.cancelled})` },
+            { value: 'completed',   label: `Dokončené (${completedCount})` },
           ]
         }),
         React.createElement(SearchInput, { value: search, onChange: setSearch, placeholder: 'Pacient, lekár, ID…', width: 280 })
@@ -171,10 +189,10 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
                           detail: {
                             patient: {
                               name: r.patient,
-                              workId: '2025/' + String(r.id).padStart(3, '0'),
-                              age: 50 + (r.id % 30),
+                              workId: String(r.id),
                             },
                             fdi: 26,
+                            items: (r.raw && r.raw.items) || [],
                             readonly: true,
                           }
                         }))

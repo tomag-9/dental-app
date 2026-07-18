@@ -1,6 +1,9 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 
+const apiOrigin = new URL(process.env.E2E_BASE_URL || 'http://localhost:5367');
+apiOrigin.port = '8810';
+
 const manufacturers = [{ id: 1, name: 'Ivoclar Vivadent', prefix: 'IVO', country: 'Lichtenštajnsko', note: 'Keramika, lisovacie systémy' }];
 const catalog = [{ id: 1, code: 'IVO-0421', name: 'IPS e.max CAD blok C14', manufacturer: 1, manufacturer_name: 'Ivoclar Vivadent', category: 'keramika', unit: 'ks', mdr_class: 'IIa', mode: 'single', allow_in_job: true, stock_code: 'KER-001', note: '' }];
 const lot = { id: 101, catalog: 1, catalog_details: catalog[0], short_code: 'Š-2401', lot: 'LX2405', received: '2026-01-12', expiry: '2027-03-01', opened: null, qty_received: '2.000', qty_remaining: '2.000', status: 'active', location: 'Sklad A · Regál 1', expiry_state: 'ok' };
@@ -9,8 +12,7 @@ const recipes = [{ id: 1, name: 'Celokeramická korunka e.max', product_type: 's
 const fefo = { recipe: 1, job: 12, lines: [{ catalog: catalog[0], required_qty: '4.000', available_qty: '7.000', lots: [lot, lateLot] }] };
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('molaris.user', JSON.stringify({ id: 1, name: 'Ján Novák', role: 'admin', initials: 'JN' })));
-  await page.route('http://localhost:8810/api/**', async route => {
+  await page.route(`${apiOrigin.origin}/api/**`, async route => {
     const url = route.request().url();
     if (url.includes('/v1/materials/manufacturers/')) return route.fulfill({ json: manufacturers });
     if (url.includes('/v1/materials/catalog/')) return route.fulfill({ json: catalog });
@@ -21,6 +23,8 @@ test.beforeEach(async ({ page }) => {
     if (url.includes('/jobs/jobs/')) return route.fulfill({ json: [{ id: 12, patient: 'M. Kováčová', status: 'in_progress' }] });
     return route.fulfill({ json: [] });
   });
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('molaris.user', JSON.stringify({ id: 1, name: 'Ján Novák', role: 'admin', initials: 'JN' })));
 });
 
 test('materials matches the designed tabs, cards and MDR interactions', async ({ page }) => {

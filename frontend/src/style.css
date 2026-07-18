@@ -2,6 +2,25 @@
   box-sizing: border-box;
 }
 
+:root {
+  --color-primary: #0d7c6b;
+  --color-primary-light: #0fa589;
+  --color-primary-dark: #085c4e;
+  --color-primary-subtle: #d4f0eb;
+  --color-background: #f7f6f2;
+  --color-card: #ffffff;
+  --color-muted: #eeecea;
+  --color-foreground: #1a2320;
+  --color-muted-foreground: #8a9490;
+  --color-border: #e4ded4;
+  --color-sidebar-bg: #f0ede5;
+  --radius: 8px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 5%);
+  --focus-ring: 0 0 0 2px rgb(13 124 107 / 35%);
+  --font-body: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+  --font-heading: 'Plus Jakarta Sans', 'Manrope', sans-serif;
+}
+
 html,
 body,
 #root {
@@ -9,11 +28,38 @@ body,
   margin: 0;
 }
 
+html,
 body {
-  font-family: Manrope, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1a2320;
-  background: #f6f3ec;
+  padding: 0;
 }
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-foreground);
+  background: #f6f3ec;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  color: #085c4e;
+  background: #d4f0eb;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(13 124 107 / 25%); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(13 124 107 / 45%); }
 
 @media print {
   body * { visibility: hidden !important; }
@@ -34,8 +80,18 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #0d7c6b !important;
+  outline: 2px solid var(--color-primary) !important;
   outline-offset: 2px;
+}
+
+@keyframes popIn {
+  from { transform: translateY(-6px) scale(.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @media (max-width: 720px) {

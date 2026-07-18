@@ -59,7 +59,7 @@ function Login({ onLogin }) {
         React.createElement('p', { style: { fontSize: 13, color: '#8a9490', marginTop: 6, marginBottom: 0 } }, 'Prihláste sa do svojho účtu')
       ),
 
-      React.createElement('form', { onSubmit: handleSubmit, style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+      React.createElement('form', { onSubmit: handleSubmit, noValidate: true, style: { display: 'flex', flexDirection: 'column', gap: 14 } },
         error && React.createElement('div', { style: { background: '#fde8e6', border: '1px solid #f5c0bb', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#c0392b', textAlign: 'center' } }, error),
 
         React.createElement('div', null,

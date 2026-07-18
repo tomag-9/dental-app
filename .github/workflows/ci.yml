@@ -20,11 +20,14 @@ jobs:
   lint:
     runs-on: [self-hosted]
     name: Lint
+    env:
+      COMPOSE_PROJECT_NAME: dental-app-ci-${{ github.run_id }}-${{ github.run_attempt }}-lint
+      BACKEND_CI_IMAGE: local/dental-backend-ci:${{ github.run_id }}-${{ github.run_attempt }}-lint
     steps:
     - name: Prepare workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE"
-        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
       with:
@@ -37,7 +40,7 @@ jobs:
         context: ./backend
         file: ./backend/Dockerfile
         load: true
-        tags: local/dental-backend-ci:latest
+        tags: ${{ env.BACKEND_CI_IMAGE }}
         cache-from: type=gha,scope=dental-backend-ci
         cache-to: type=gha,scope=dental-backend-ci,mode=max
     - name: Run ruff
@@ -47,7 +50,9 @@ jobs:
           sh -c "ruff check apps && ruff format --check apps"
     - name: Cleanup
       if: always()
-      run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+      run: |
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
+        docker image rm "$BACKEND_CI_IMAGE" 2>/dev/null || true
 
   # ──────────────────────────────────────────────
   # Full test suite + coverage in a single run
@@ -56,11 +61,14 @@ jobs:
   backend-tests:
     runs-on: [self-hosted]
     name: Backend Tests
+    env:
+      COMPOSE_PROJECT_NAME: dental-app-ci-${{ github.run_id }}-${{ github.run_attempt }}-backend
+      BACKEND_CI_IMAGE: local/dental-backend-ci:${{ github.run_id }}-${{ github.run_attempt }}-backend
     steps:
     - name: Prepare workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE"
-        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
       with:
@@ -73,7 +81,7 @@ jobs:
         context: ./backend
         file: ./backend/Dockerfile
         load: true
-        tags: local/dental-backend-ci:latest
+        tags: ${{ env.BACKEND_CI_IMAGE }}
         cache-from: type=gha,scope=dental-backend-ci
         cache-to: type=gha,scope=dental-backend-ci,mode=max
     - name: Check for missing migrations
@@ -94,8 +102,9 @@ jobs:
         if [ -f env/dev.env.example ]; then
           docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v --remove-orphans
         else
-          docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+          docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         fi
+        docker image rm "$BACKEND_CI_IMAGE" 2>/dev/null || true
 
   # ──────────────────────────────────────────────
   # Frontend lint + build
@@ -103,11 +112,14 @@ jobs:
   frontend-check:
     runs-on: [self-hosted]
     name: Frontend Tests & Lint
+    env:
+      COMPOSE_PROJECT_NAME: dental-app-ci-${{ github.run_id }}-${{ github.run_attempt }}-frontend
+      FRONTEND_CI_IMAGE: local/dental-frontend-ci:${{ github.run_id }}-${{ github.run_attempt }}-frontend
     steps:
     - name: Prepare workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE"
-        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
       with:
@@ -121,7 +133,7 @@ jobs:
         file: ./frontend/Dockerfile
         target: dev
         load: true
-        tags: local/dental-frontend-ci:latest
+        tags: ${{ env.FRONTEND_CI_IMAGE }}
         cache-from: type=gha,scope=dental-frontend-ci
         cache-to: type=gha,scope=dental-frontend-ci,mode=max
     - name: Run frontend lint
@@ -134,8 +146,9 @@ jobs:
         if [ -f env/dev.env.example ]; then
           docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v --remove-orphans
         else
-          docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+          docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         fi
+        docker image rm "$FRONTEND_CI_IMAGE" 2>/dev/null || true
 
   # ──────────────────────────────────────────────
   # Docker image build — only on push to main/develop
@@ -146,6 +159,7 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     name: Build Docker Images
     env:
+      COMPOSE_PROJECT_NAME: dental-app-ci-${{ github.run_id }}-${{ github.run_attempt }}-images
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
@@ -153,7 +167,7 @@ jobs:
     - name: Prepare workspace
       run: |
         mkdir -p "$GITHUB_WORKSPACE"
-        docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
         docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
     - uses: actions/checkout@v4
       with:
@@ -198,4 +212,4 @@ jobs:
       if: env.DOCKER_USERNAME != '' && env.DOCKER_PASSWORD != '' && env.DOCKER_REGISTRY != ''
     - name: Cleanup
       if: always()
-      run: docker ps -aq --filter "label=com.docker.compose.project=dental-app" | xargs -r docker rm -f
+      run: docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f

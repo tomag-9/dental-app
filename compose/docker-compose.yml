@@ -6,6 +6,7 @@ services:
       context: ../backend
     command: >
       sh -c "python manage.py migrate --noinput &&
+             export THROTTLE_LOGIN_RATE=$${THROTTLE_LOGIN_RATE:-1000/min} &&
              python manage.py runserver 0.0.0.0:8810"
     volumes:
       - ../backend:/app
@@ -21,8 +22,8 @@ services:
       - SQL_PASSWORD=${SQL_PASSWORD:-hello_django}
       - SQL_HOST=${SQL_HOST:-db}
       - SQL_PORT=${SQL_PORT:-5432}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367}
-      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367,http://192.168.0.14:5367}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367,http://192.168.0.14:5367}
     depends_on:
       db:
         condition: service_healthy
@@ -52,7 +53,7 @@ services:
     ports:
       - "${FRONTEND_PORT:-5367}:5367"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8810/api}
+      - VITE_API_URL=${VITE_API_URL:-}
     depends_on:
       - backend
 

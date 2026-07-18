@@ -110,7 +110,7 @@ test.describe('Job creation and technician assignment', () => {
     // Navigate to Jobs and open the job detail
     await page.getByText('Práce').first().click();
     await page.waitForTimeout(1000);
-    const jobRow = page.locator(`text=${result.jobId}`).first();
+    const jobRow = page.locator('tr').filter({ hasText: `#${result.jobId}` });
     await expect(jobRow).toBeVisible({ timeout: 8000 });
     await jobRow.click();
     await page.waitForTimeout(800);

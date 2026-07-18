@@ -42,9 +42,9 @@ alembic.ini
 backend/alembic.ini
 backend/alembic/env.py
 
-rebuild-dev.sh
 check-all.sh
 sync-dev.sh
+frontend/test-results/
 
 # Added by code-review-graph
 .code-review-graph/

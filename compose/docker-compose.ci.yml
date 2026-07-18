@@ -2,7 +2,7 @@ name: dental-app
 
 services:
   backend:
-    image: local/dental-backend-ci:latest
+    image: ${BACKEND_CI_IMAGE:-local/dental-backend-ci:latest}
     build:
       context: ../backend
     environment:
@@ -34,7 +34,7 @@ services:
       retries: 10
 
   frontend:
-    image: local/dental-frontend-ci:latest
+    image: ${FRONTEND_CI_IMAGE:-local/dental-frontend-ci:latest}
     build:
       context: ../frontend
       dockerfile: Dockerfile
