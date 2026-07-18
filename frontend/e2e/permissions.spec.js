@@ -34,7 +34,7 @@ test.describe('Admin role — full access', () => {
 
   test('admin sees Faktúry (Invoices) in sidebar', async ({ page }) => {
     await loginAs(page, 'admin', 'admin');
-    await expect(page.getByText('Faktúry')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('navigation').getByRole('button', { name: 'Faktúry', exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test('admin sees Sklad (Inventory) in sidebar', async ({ page }) => {
@@ -70,7 +70,7 @@ test.describe('User role — restricted access', () => {
 
   test('user does not see Faktúry in sidebar', async ({ page }) => {
     await loginAs(page, 'user', 'user');
-    await expect(page.getByText('Faktúry')).not.toBeVisible({ timeout: 4000 });
+    await expect(page.getByRole('navigation').getByRole('button', { name: 'Faktúry', exact: true })).toHaveCount(0);
   });
 
   test('user does not see Sklad in sidebar', async ({ page }) => {

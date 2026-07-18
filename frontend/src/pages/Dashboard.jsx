@@ -1,11 +1,14 @@
 // Dashboard.jsx — Molaris Dashboard (refreshed)
 
-function Dashboard({ onNavigate, onOpenJob }) {
+function Dashboard({ onNavigate, onOpenJob, onNewJob }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const apiStats = workspace.stats;
   const savedUser = window.MolarisAPI.savedUser && window.MolarisAPI.savedUser();
   const role = (savedUser && savedUser.role) || 'admin';
-  
+  const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
+  const now = new Date();
+  const monthAbbrevSk = ['jan', 'feb', 'mar', 'apr', 'máj', 'jún', 'júl', 'aug', 'sep', 'okt', 'nov', 'dec'][now.getMonth()];
+
   // Format monthly stats with deltas
   const formatMonthlyDelta = (current, previous) => {
     const delta = current - previous;
@@ -15,31 +18,31 @@ function Dashboard({ onNavigate, onOpenJob }) {
   const stats = [
     { 
       label: 'Počet pacientov', 
-      value: String(apiStats ? apiStats.total_patients : 142), 
+      value: String(apiStats ? apiStats.total_patients || 0 : 0),
       icon: 'users', 
       tone: 'teal', 
-      sub: apiStats && apiStats.deltas ? formatMonthlyDelta(apiStats.monthly_totals.new_patients, apiStats.monthly_totals.new_patients - apiStats.deltas.new_patients) + ' tento mesiac' : '+8 tento mesiac' 
+      sub: apiStats && apiStats.deltas ? formatMonthlyDelta(apiStats.monthly_totals.new_patients, apiStats.monthly_totals.new_patients - apiStats.deltas.new_patients) + ' tento mesiac' : '0 tento mesiac'
     },
     { 
       label: 'Aktívne práce',   
-      value: String(apiStats ? apiStats.active_jobs : 23), 
+      value: String(apiStats ? apiStats.active_jobs || 0 : 0),
       icon: 'briefcase', 
       tone: 'amber', 
-      sub: apiStats && apiStats.today_schedule ? apiStats.today_schedule.length + ' v termíne dnes' : '5 v termíne dnes' 
+      sub: apiStats && apiStats.today_schedule ? apiStats.today_schedule.length + ' v termíne dnes' : '0 v termíne dnes'
     },
-    { 
-      label: 'Tržby',           
-      value: apiStats ? fmtEur(apiStats.total_revenue || 0) : '8 420,00 €',
-      icon: 'euro', 
+    {
+      label: `Tržby (${monthAbbrevSk})`,
+      value: fmtEur(apiStats ? apiStats.total_revenue || 0 : 0),
+      icon: 'euro',
       tone: 'green',
-      delta: apiStats && apiStats.deltas ? apiStats.deltas.revenue + ' €' : '+12 %' 
+      delta: apiStats && apiStats.deltas ? apiStats.deltas.revenue + ' €' : ''
     },
-    { 
-      label: 'Dokončené',       
-      value: String(apiStats ? apiStats.completed_jobs : 89), 
-      icon: 'checkCircle', 
-      tone: 'purple', 
-      sub: 'celkom' 
+    {
+      label: 'Dokončené',
+      value: String(apiStats ? apiStats.completed_jobs || 0 : 0),
+      icon: 'checkCircle',
+      tone: 'purple',
+      sub: 'celkom'
     },
   ];
 
@@ -55,12 +58,6 @@ function Dashboard({ onNavigate, onOpenJob }) {
   };
 
   // Recent jobs from backend stats
-  const recentJobsFallback = [
-    { id: 12, patient: 'Mária Kováčová', type: 'Mostík zirkón',     status: 'progress', statusLabel: 'V priebehu', due: '15. 5. 2025' },
-    { id: 11, patient: 'Peter Horváth',  type: 'Korunka',           status: 'new',      statusLabel: 'Nová',       due: '12. 5. 2025' },
-    { id: 10, patient: 'Jana Blahová',   type: 'Snímateľná prot.',  status: 'new',      statusLabel: 'Nová',       due: '8. 5. 2025'  },
-    { id: 9,  patient: 'Tomáš Varga',    type: 'Implantát',         status: 'done',     statusLabel: 'Dokončená',  due: '3. 5. 2025'  },
-  ];
   const visibleRecentJobs = (apiStats && apiStats.recent_jobs && apiStats.recent_jobs.length > 0)
     ? apiStats.recent_jobs.map(j => {
         const statusInfo = statusMap[j.status] || { label: j.status, key: j.status };
@@ -77,14 +74,9 @@ function Dashboard({ onNavigate, onOpenJob }) {
           due: dueDate,
         };
       })
-    : recentJobsFallback;
+    : [];
 
   // Recent invoices from backend stats
-  const invoiceFallback = [
-    { number: 'INV-2025-014', clinic: 'Klinika Bratislava', status: 'issued', statusLabel: 'Vystavená', amount: '1 240,00 €', date: '2. máj' },
-    { number: 'INV-2025-013', clinic: 'ZubMed Košice',      status: 'issued', statusLabel: 'Vystavená', amount: '890,00 €',   date: '30. apr' },
-    { number: 'INV-2025-012', clinic: 'Klinika Bratislava', status: 'paid',   statusLabel: 'Zaplatená', amount: '1 240,00 €', date: '28. apr' },
-  ];
   const invoiceStatusMap = {
     draft: 'Koncept',
     issued: 'Vystavená',
@@ -103,22 +95,16 @@ function Dashboard({ onNavigate, onOpenJob }) {
           date: createdDate,
         };
       })
-    : invoiceFallback;
+    : [];
 
   // Today's schedule from backend stats
-  const todayScheduleFallback = [
-    { time: '09:00', title: 'Frézovanie #12 — Kováčová',        type: 'job' },
-    { time: '11:00', title: 'Konzultácia — Klinika BA',          type: 'meeting' },
-    { time: '14:00', title: 'Modelovanie #11 — Horváth',         type: 'job' },
-    { time: '16:30', title: 'Odber dojmu — kuriér',              type: 'pickup' },
-  ];
   const visibleTodaySchedule = (apiStats && apiStats.today_schedule && apiStats.today_schedule.length > 0)
     ? apiStats.today_schedule.map(item => ({
         time: item.time || 'Dnes',
         title: item.title,
         type: item.type || 'job',
       }))
-    : todayScheduleFallback;
+    : [];
 
   const typeDot = { job: '#0d7c6b', meeting: '#2563eb', pickup: '#d97706' };
 
@@ -224,6 +210,12 @@ function Dashboard({ onNavigate, onOpenJob }) {
       subtitle: todaySubtitle,
       actions: [
         React.createElement(Button, { key: 'r', variant: 'outline' }, React.createElement(Icon, { name: 'refreshCw', size: 13 }), 'Obnoviť'),
+        React.createElement(Button, {
+          key: 'n',
+          onClick: canCreate ? onNewJob : undefined,
+          disabled: !canCreate,
+          title: canCreate ? undefined : 'Novú prácu môže vytvoriť iba administrátor laboratória.',
+        }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
       ]
     }),
 
@@ -242,7 +234,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
         ),
         React.createElement(CardContent, { style: { paddingTop: 0 } },
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-            ...visibleRecentJobs.map((j, i) => React.createElement('div', {
+            ...(visibleRecentJobs.length ? visibleRecentJobs.map((j, i) => React.createElement('div', {
               key: j.id,
               onClick: () => onOpenJob && onOpenJob(j.id),
               style: { display: 'flex', alignItems: 'center', gap: 12, padding: '11px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5', cursor: 'pointer', transition: 'background .1s', borderRadius: 6 },
@@ -256,7 +248,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
               ),
               React.createElement(Badge, { color: j.status }, j.statusLabel),
               React.createElement(Icon, { name: 'chevronRight', size: 14, color: '#b0bdb9' })
-            ))
+            )) : [React.createElement('p', { key: 'empty', style: { margin: '12px 4px', fontSize: 12.5, color: '#8a9490' } }, 'Žiadne práce.')])
           )
         )
       ),
@@ -269,7 +261,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
         ),
         React.createElement(CardContent, { style: { paddingTop: 0 } },
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-            ...visibleRecentInvoices.map((inv, i) => React.createElement('div', {
+            ...(visibleRecentInvoices.length ? visibleRecentInvoices.map((inv, i) => React.createElement('div', {
               key: inv.number,
               style: { display: 'flex', alignItems: 'center', gap: 10, padding: '11px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
             },
@@ -281,7 +273,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
                 React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320' } }, inv.amount),
                 React.createElement('div', { style: { marginTop: 4 } }, React.createElement(Badge, { color: inv.status }, inv.statusLabel))
               )
-            ))
+            )) : [React.createElement('p', { key: 'empty', style: { margin: '12px 4px', fontSize: 12.5, color: '#8a9490' } }, 'Žiadne faktúry.')])
           )
         )
       ),
@@ -294,7 +286,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
         ),
         React.createElement(CardContent, { style: { paddingTop: 0 } },
           React.createElement('div', { style: { display: 'flex', flexDirection: 'column' } },
-            ...visibleTodaySchedule.map((t, i) => React.createElement('div', {
+            ...(visibleTodaySchedule.length ? visibleTodaySchedule.map((t, i) => React.createElement('div', {
               key: i,
               style: { display: 'flex', gap: 10, padding: '10px 4px', borderTop: i === 0 ? 'none' : '1px solid #f0ede5' }
             },
@@ -303,7 +295,7 @@ function Dashboard({ onNavigate, onOpenJob }) {
               ),
               React.createElement('div', { style: { width: 6, height: 6, borderRadius: '50%', background: typeDot[t.type], marginTop: 7, flexShrink: 0 } }),
               React.createElement('div', { style: { flex: 1, fontSize: 12.5, color: '#1a2320', lineHeight: 1.4 } }, t.title)
-            ))
+            )) : [React.createElement('p', { key: 'empty', style: { margin: '12px 4px', fontSize: 12.5, color: '#8a9490' } }, 'Dnes nie sú naplánované žiadne udalosti.')])
           )
         )
       )
