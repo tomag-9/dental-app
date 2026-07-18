@@ -1,7 +1,7 @@
 // @ts-check
 import { expect } from '@playwright/test';
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:5173';
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:5367';
 
 export async function loginAs(page, username, password) {
   await page.goto(BASE);

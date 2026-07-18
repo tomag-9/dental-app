@@ -6,7 +6,7 @@ services:
       context: ../backend
     command: >
       sh -c "python manage.py migrate --noinput &&
-             export THROTTLE_LOGIN_RATE=$${THROTTLE_LOGIN_RATE:-100/min} &&
+             export THROTTLE_LOGIN_RATE=$${THROTTLE_LOGIN_RATE:-1000/min} &&
              python manage.py runserver 0.0.0.0:8810"
     volumes:
       - ../backend:/app

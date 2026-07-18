@@ -1,7 +1,7 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 
-const apiOrigin = new URL(process.env.E2E_BASE_URL || 'http://localhost:5173');
+const apiOrigin = new URL(process.env.E2E_BASE_URL || 'http://localhost:5367');
 apiOrigin.port = '8810';
 
 const manufacturers = [{ id: 1, name: 'Ivoclar Vivadent', prefix: 'IVO', country: 'Lichtenštajnsko', note: 'Keramika, lisovacie systémy' }];
