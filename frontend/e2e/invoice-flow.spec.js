@@ -1,6 +1,6 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
-import { loginAs, waitForWorkspace, waitForWorkspaceReload } from './helpers.js';
+import { loginAs, waitForWorkspace } from './helpers.js';
 
 /**
  * Smoke test: Invoice creation from jobs → status change to paid → job syncs to closed.
@@ -23,6 +23,7 @@ test.describe('Invoice lifecycle', () => {
 
     // 1. Create a job and transition it to 'completed'
     const setupResult = await page.evaluate(async (workspace) => {
+      const description = `Invoice smoke-test job ${Date.now()}`;
       const job = await window.MolarisAPI.createJob({
         patient: workspace.patients[0].id,
         clinic: workspace.clinics[0].id,
@@ -30,13 +31,13 @@ test.describe('Invoice lifecycle', () => {
         start_date: new Date().toISOString().slice(0, 10),
         due_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
         priority: 'normal',
-        description: 'Invoice smoke-test job',
+        description,
         items: [{ price_list_code: workspace.priceList[0].code, tooth: '36', quantity: 1 }],
       });
       // Status machine: new → in_progress → completed
       await window.MolarisAPI.transitionJobStatus(job.id, 'in_progress');
       await window.MolarisAPI.transitionJobStatus(job.id, 'completed');
-      return { jobId: job.id, clinicId: workspace.clinics[0].id };
+      return { jobId: job.id, clinicId: workspace.clinics[0].id, description };
     }, ws);
 
     expect(setupResult.jobId).toBeTruthy();
@@ -47,22 +48,29 @@ test.describe('Invoice lifecycle', () => {
     await page.getByText('Nová faktúra').click();
     await page.waitForTimeout(500);
 
-    // 3. Fill the invoice form — clinic select + job IDs text field
-    // Select the specific clinic by its ID to avoid picking the placeholder (value="")
+    // 3. Select the clinic and verify that the matching completed job is
+    //    selected in the current checklist-based invoice form.
     await page.locator('select[name="clinic_id"]').selectOption(String(setupResult.clinicId));
-    await page.fill('input[name="job_ids"]', String(setupResult.jobId));
-    await page.getByText('Vytvoriť faktúru').click();
+    const jobOption = page.locator('label').filter({ hasText: setupResult.description });
+    await expect(jobOption).toBeVisible();
+    const jobCheckbox = jobOption.locator('input[type="checkbox"]');
+    if (!(await jobCheckbox.isChecked())) await jobCheckbox.check();
+    await page.getByRole('button', { name: 'Vytvoriť faktúru', exact: true }).click();
 
     // 4. Wait for the workspace async reload triggered by createRecord()
     //    (createRecord sets __MOLARIS_WORKSPACE = null, then fires a reload event;
     //     a fixed timeout is not reliable — poll until invoices list is available)
-    const wsAfter = await waitForWorkspaceReload(page);
-    expect(wsAfter).toBeTruthy();
+    await page.waitForFunction((jobId) => (
+      window.__MOLARIS_WORKSPACE?.invoices?.some((invoice) => (
+        invoice.raw?.related_jobs?.some((job) => String(job.id) === String(jobId))
+      ))
+    ), setupResult.jobId, { timeout: 10_000 });
+    const wsAfter = await page.evaluate(() => window.__MOLARIS_WORKSPACE);
 
     // InvoiceSerializer exposes the linked jobs under the 'related_jobs' key
     const invoice = wsAfter.invoices && wsAfter.invoices.find((i) => {
       const relJobs = i.raw && i.raw.related_jobs;
-      return Array.isArray(relJobs) && relJobs.some((j) => j.id === setupResult.jobId);
+      return Array.isArray(relJobs) && relJobs.some((j) => String(j.id) === String(setupResult.jobId));
     });
     expect(invoice).toBeTruthy();
 
@@ -71,6 +79,14 @@ test.describe('Invoice lifecycle', () => {
       await window.MolarisAPI.updateInvoiceStatus(invoiceId, 'issued');
       await window.MolarisAPI.updateInvoiceStatus(invoiceId, 'paid');
     }, invoice.id);
+    await page.evaluate(() => window.dispatchEvent(new Event('molaris-workspace-refresh')));
+    await page.waitForFunction(({ jobId, statuses }) => {
+      const job = window.__MOLARIS_WORKSPACE?.jobs?.find((item) => String(item.id) === String(jobId));
+      return job && statuses.includes(job.raw?.status || job.status);
+    }, {
+      jobId: setupResult.jobId,
+      statuses: ['closed', 'finished_factured'],
+    }, { timeout: 10_000 });
 
     // 6. Navigate to Jobs and find the specific job row by ID, then check its status
     await page.getByText('Práce').first().click();
@@ -82,7 +98,7 @@ test.describe('Invoice lifecycle', () => {
     // Scope the status check to the row that contains the test job's ID so we
     // don't accidentally pass because another job on-screen carries a closed status.
     const jobRow = page.locator(`tr, [data-row], li`).filter({ hasText: jobIdStr }).first();
-    const closedStatuses = ['closed', 'finished_factured', 'Uzavretá', 'Fakturovaná'];
+    const closedStatuses = ['closed', 'finished_factured', 'Uzavreté', 'Hotové / fakturované'];
     const rowText = await jobRow.innerText();
     const hasClosedStatus = closedStatuses.some((s) => rowText.includes(s));
     expect(hasClosedStatus).toBe(true);
@@ -117,17 +133,27 @@ test.describe('Invoice lifecycle', () => {
 
     expect(invoiceId).toBeTruthy();
 
+    // Direct API mutations do not automatically refresh the React workspace.
+    await page.evaluate(() => window.dispatchEvent(new Event('molaris-workspace-refresh')));
+    await page.waitForFunction((id) => (
+      window.__MOLARIS_WORKSPACE?.invoices?.some((invoice) => String(invoice.id) === String(id))
+    ), invoiceId, { timeout: 10_000 });
+    const createdInvoice = await page.evaluate((id) => (
+      window.__MOLARIS_WORKSPACE.invoices.find((invoice) => String(invoice.id) === String(id))
+    ), invoiceId);
+    expect(createdInvoice).toBeTruthy();
+
     // Navigate to Invoices
     await page.getByText('Faktúry').first().click();
     await page.waitForTimeout(1000);
 
-    // Open the invoice detail via the eye icon button (aria-label or title = "Detail")
-    const eyeBtn = page.locator('[aria-label="Detail"], [title="Detail"]').first();
-    await eyeBtn.click();
+    // Open the exact invoice created by this test, not an older seeded row.
+    await page.locator('tr').filter({ hasText: createdInvoice.number }).click();
     await page.waitForTimeout(500);
 
-    // Drawer must show the "Zatvoriť" and "Odoslať klinike" action buttons
+    // The backend issues a newly-created invoice immediately, so its next
+    // primary action is marking it as paid.
     await expect(page.locator('body')).toContainText('Zatvoriť', { timeout: 5000 });
-    await expect(page.locator('body')).toContainText('Odoslať klinike', { timeout: 5000 });
+    await expect(page.getByRole('button', { name: 'Zaplatená', exact: true })).toBeVisible({ timeout: 5000 });
   });
 });

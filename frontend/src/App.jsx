@@ -64,7 +64,7 @@ function App() {
 
   let pageEl;
   switch (page) {
-    case 'dashboard':       pageEl = React.createElement(Dashboard,     { onNavigate: navigate, onOpenJob: openJob }); break;
+    case 'dashboard':       pageEl = React.createElement(Dashboard,     { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
     case 'jobs':            pageEl = React.createElement(Jobs,          { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
     case 'job_detail':      pageEl = React.createElement(JobDetail,     { jobId, onBack: () => navigate('jobs') }); break;
     case 'patients':        pageEl = React.createElement(Patients,      { onNavigate: navigate, onOpenPatient: openPatient, onCreate: () => setCreateType('patient') }); break;
@@ -126,7 +126,7 @@ function App() {
         style: { flex: 1, overflowY: 'auto', padding: '28px 32px 60px', minWidth: 0 }
       }, pageEl)
     ),
-    React.createElement(NewJob, { open: newJobOpen, onClose: () => setNewJobOpen(false) }),
+    React.createElement(NewJobDrawer, { open: newJobOpen, onClose: () => setNewJobOpen(false) }),
     React.createElement(CreateEntityDrawer, { type: createType, open: !!createType, onClose: () => setCreateType(null) }),
     React.createElement(ToothDetailModal)
   );

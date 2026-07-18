@@ -1,827 +1,316 @@
-// NewJob.jsx — Molaris New Job creation modal (multi-step form)
+// NewJobDrawer.jsx — Molaris "Nová práca" flow (restyled: centered modal + left step rail)
+// Requires: form-controls.jsx (Select, PatientCombobox, Field, parseRC, fmtRC), Shared.jsx, Icon.jsx
+// Exports NewJobDrawer({ open, onClose }) — name kept for app compatibility.
 
-function NewJob({ open, onClose }) {
+const NJ_STEPS = [
+  { label: 'Pacient', desc: 'Komu patrí práca', title: 'Pacient a klinika', help: 'Vyhľadajte pacienta alebo ho rýchlo vytvorte, a priraďte prácu ku klinike a lekárovi.' },
+  { label: 'Položky', desc: 'Výkony z cenníka',  title: 'Položky práce',     help: 'Pridajte výkony z cenníka. Cena sa dotiahne automaticky, možno ju upraviť pre túto prácu.' },
+  { label: 'Termín',  desc: 'Termín a priorita', title: 'Termín a priorita', help: 'Stanovte termín odovzdania a prioritu spracovania v laboratóriu.' },
+  { label: 'Súhrn',   desc: 'Kontrola a vytvorenie', title: 'Súhrn',          help: 'Skontrolujte údaje pred vytvorením práce.' },
+];
+const NJ_PROCEDURE_CATEGORIES = new Set(['crown', 'bridge', 'denture', 'implant', 'orthodontic', 'repair', 'other']);
+
+function njTodaySk() {
+  const d = new Date();
+  return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()}`;
+}
+
+function njDateToIso(dateStr) {
+  const date = njParseSkDate(dateStr);
+  if (!date) return null;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function njParseSkDate(dateStr) {
+  const m = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})$/.exec((dateStr || '').trim());
+  if (!m) return null;
+  const day = Number(m[1]);
+  const month = Number(m[2]);
+  const year = Number(m[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+}
+
+function njPatientFromApi(patient) {
+  const raw = patient && (patient.raw || patient);
+  return {
+    ...patient,
+    id: patient && patient.id,
+    first: (patient && patient.first) || (raw && raw.first_name) || '',
+    last: (patient && patient.last) || (raw && raw.last_name) || '',
+    birth: (patient && patient.birth) || (raw && (raw.national_id || raw.birth_number)) || '',
+    phone: (patient && patient.phone) || (raw && raw.phone) || '',
+    email: (patient && patient.email) || (raw && raw.email) || '',
+  };
+}
+
+function NewJobDrawer({ open, onClose, initialPatient }) {
   const [step, setStep] = React.useState(0);
+  const workspace = window.MolarisAPI.useWorkspace();
+  const apiPatients = (workspace.patients || []).map(njPatientFromApi);
+  const [patients, setPatients] = React.useState(apiPatients);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
-  const workspace = window.MolarisAPI.useWorkspace();
   const [data, setData] = React.useState({
-    patient: '',
-    clinic: '',
-    doctor: '',
-    technician: '',
-    received: new Date().toISOString().slice(0, 10),
-    due: '',
-    priority: 'normal',
-    note: '',
-    toothColor: '',
-    patientLabel: '',
-    patientAge: '',
-    items: []
+    patient: initialPatient ? njPatientFromApi(initialPatient) : null, clinic: null, doctor: null, technician: null,
+    received: njTodaySk(), due: '', priority: 'normal', note: '', toothColor: '', items: [],
   });
-
-  const steps = [
-    { label: 'Pacient',   icon: 'user' },
-    { label: 'Položky',   icon: 'briefcase' },
-    { label: 'Termín',    icon: 'calendar' },
-    { label: 'Súhrn',     icon: 'check' },
-  ];
 
   const set = (k, v) => setData(d => ({ ...d, [k]: v }));
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
-  const total = data.items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.price) || 0), 0);
-  const selectedPatient = (workspace.patients || []).find((patient) => String(patient.id) === String(data.patient));
-  const patientMeta = getNewJobPatientMeta(selectedPatient, data);
-
-  const reset = () => { setStep(0); setData(d => ({ ...d, patient: '', patientLabel: '', patientAge: '', clinic: '', doctor: '', technician: '', due: '', note: '', toothColor: '', items: [] })); };
-  const canSubmit = data.patient && data.clinic && data.items.length && data.items.every((it) => it.code && Number(it.qty) > 0);
-  const submit = async () => {
-    if (!canSubmit) { setError('Vyberte pacienta, kliniku a aspoň jednu položku z cenníka.'); return; }
-    setSaving(true); setError('');
+  const total = data.items.reduce((sum, item) => sum + (Number(item.qty) || 0) * (Number(item.price) || 0), 0);
+  const reset = () => {
+    setStep(0);
+    setError('');
+    setData({ patient: null, clinic: null, doctor: null, technician: null, received: njTodaySk(), due: '', priority: 'normal', note: '', toothColor: '', items: [] });
+  };
+  const close = () => { onClose(); reset(); };
+  React.useEffect(() => {
+    setPatients(apiPatients);
+  }, [workspace.patients]);
+  const clinicOptions = (workspace.clinics || []).map(c => ({ value: String(c.id), label: c.name, sub: c.address || '' }));
+  const doctorOptions = (workspace.doctors || []).map(d => ({
+    value: String(d.id),
+    label: `${d.title ? `${d.title} ` : ''}${d.first || ''} ${d.last || ''}`.trim(),
+    sub: d.clinic || '',
+    clinicId: d.raw && d.raw.clinic != null ? String(d.raw.clinic) : '',
+  }));
+  const technicianOptions = (workspace.technicians || []).map(t => ({ value: String(t.id), label: `${t.first || ''} ${t.last || ''}`.trim(), meta: t.workload != null ? `${t.workload} %` : '', sub: t.specialization || '' }));
+  const catalog = (workspace.priceList || []).map(item => ({ code: item.code, name: item.name, price: Number(item.price) || 0, cat: item.category || '' }));
+  const addPatient = (p) => { const np = { ...p, id: null, jobs: 0, isNew: true }; setPatients(l => [np, ...l]); return np; };
+  const filteredDoctors = data.clinic
+    ? doctorOptions.filter(option => option.clinicId === String(data.clinic.value) || (!option.clinicId && option.sub === data.clinic.label))
+    : [];
+  const canSubmit = Boolean(data.patient && data.clinic && data.items.length && data.items.every(item => item.code && Number(item.qty) > 0 && (!item.tooth || item.toothScope || /^\d{2}$/.test(item.tooth))));
+  const submitJob = async () => {
+    if (!canSubmit) {
+      setError('Vyberte pacienta, kliniku a aspoň jednu položku z cenníka.');
+      return;
+    }
+    const firstItem = data.items[0];
+    setSaving(true);
+    setError('');
     try {
+      let patientId = data.patient.id;
+      if (!patientId && data.patient.isNew) {
+        const createdPatient = await window.MolarisAPI.createRecord('/crm/patients/', {
+          first_name: data.patient.first,
+          last_name: data.patient.last,
+          birth_number: data.patient.birth,
+          phone: data.patient.phone || '',
+          email: data.patient.email || '',
+        });
+        patientId = createdPatient.id;
+      }
       await window.MolarisAPI.createJob({
-        patient: Number(data.patient),
-        clinic: Number(data.clinic),
-        doctor: data.doctor ? Number(data.doctor) : null,
-        technician: data.technician ? Number(data.technician) : null,
-        start_date: data.received || null,
-        due_date: data.due || null,
+        patient: Number(patientId),
+        clinic: Number(data.clinic.value),
+        doctor: data.doctor ? Number(data.doctor.value) : null,
+        technician: data.technician ? Number(data.technician.value) : null,
+        start_date: njDateToIso(data.received),
+        due_date: njDateToIso(data.due),
         priority: data.priority,
         tooth_color: data.toothColor || null,
-        description: data.note || data.items.map((it) => it.name).join(', '),
-        items: data.items.map((it) => ({
-          price_list_code: it.code,
-          tooth: it.tooth_scope ? null : (it.tooth || null),
-          tooth_scope: it.tooth_scope || null,
-          quantity: Number(it.qty) || 1,
-          procedure_category: it.cat || null,
+        description: data.note || data.items.map(item => item.name).filter(Boolean).join(', ') || (firstItem && firstItem.name) || 'Nová práca',
+        items: data.items.map(item => ({
+          price_list_code: item.code,
+          tooth: item.toothScope ? null : (/^\d{2}$/.test(String(item.tooth || '')) ? String(item.tooth) : null),
+          tooth_scope: item.toothScope || null,
+          quantity: Number(item.qty) || 1,
+          procedure_category: NJ_PROCEDURE_CATEGORIES.has(item.cat) ? item.cat : null,
         })),
       });
-      setSaving(false);
-      onClose();
-      reset();
+      window.showToast && window.showToast('Práca bola vytvorená', { tone: 'success' });
+      window.dispatchEvent(new Event('molaris-workspace-refresh'));
+      close();
     } catch (err) {
-      setSaving(false);
       setError((err && err.data && JSON.stringify(err.data)) || (err && err.message) || 'Prácu sa nepodarilo vytvoriť.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  React.useEffect(() => { if (open) { setStep(0); setError(''); } }, [open]);
-
+  React.useEffect(() => {
+    if (open) {
+      setStep(0);
+      setError('');
+      if (initialPatient) setData(d => ({ ...d, patient: njPatientFromApi(initialPatient) }));
+    }
+    const onKey = e => { if (e.key === 'Escape' && open) close(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, initialPatient]);
   if (!open) return null;
 
-  return React.createElement(LargeJobModal, {
-    onClose: () => { onClose(); reset(); },
-    title: 'Nová práca',
-    subtitle: `Krok ${step + 1} z ${steps.length} · ${steps[step].label}`,
-    meta: patientMeta,
-    footer: [
-      React.createElement(Button, { key: 'c', variant: 'outline', onClick: () => { onClose(); reset(); } }, 'Zrušiť'),
-      step > 0 && React.createElement(Button, { key: 'b', variant: 'outline', onClick: () => setStep(step - 1) },
-        React.createElement(Icon, { name: 'arrowLeft', size: 13 }), 'Späť'),
-      step < steps.length - 1
-        ? React.createElement(Button, { key: 'n', onClick: () => setStep(step + 1) }, 'Ďalej',
-            React.createElement(Icon, { name: 'arrowRight', size: 13 }))
-        : React.createElement(Button, { key: 's', onClick: submit, disabled: saving || !canSubmit },
-            React.createElement(Icon, { name: 'check', size: 14 }), saving ? 'Vytváram…' : 'Vytvoriť prácu')
-    ].filter(Boolean)
-  },
-    error && React.createElement(ErrorState, { title: 'Prácu sa nepodarilo vytvoriť', message: error }),
-    React.createElement(JobStepper, { steps, step }),
-    step === 0 && React.createElement(StepPatient, { data, set, setData, workspace }),
-    step === 1 && React.createElement(StepItems, { data, setData, fmt, total, workspace, patientMeta }),
-    step === 2 && React.createElement(StepSchedule, { data, set }),
-    step === 3 && React.createElement(StepSummary, { data, fmt, total, workspace })
-  );
-}
+  const canNext = step === 0
+    ? Boolean(data.patient && data.clinic && (data.doctor || filteredDoctors.length === 0))
+    : step === 1
+      ? Boolean(data.items.length && data.items.every(item => item.code && Number(item.qty) > 0 && (!item.tooth || item.toothScope || /^\d{2}$/.test(item.tooth))))
+      : step === 2
+        ? Boolean(njParseSkDate(data.received) && njParseSkDate(data.due) && njParseSkDate(data.due) >= njParseSkDate(data.received))
+        : true;
+  const s = NJ_STEPS[step];
+  const wide = step === 1;
 
-function getNewJobPatientMeta(patient, data) {
-  const raw = patient && (patient.raw || patient);
-  const first = patient && (patient.first || patient.first_name || raw?.first_name || raw?.first);
-  const last = patient && (patient.last || patient.last_name || raw?.last_name || raw?.last);
-  const name = [first, last].filter(Boolean).join(' ') || data.patientLabel || 'Pacient nevybraný';
-  const age = data.patientAge || patient?.age || patient?.age_years || raw?.age || raw?.age_years || '';
-  return { name, age: String(age || ''), workId: 'nová práca' };
-}
-
-const DENTAL_SCOPE_LABELS = {
-  A: 'Celý chrup',
-  U: 'Horná čeľusť',
-  L: 'Dolná čeľusť',
-  Q1: 'Kvadrant 1',
-  Q2: 'Kvadrant 2',
-  Q3: 'Kvadrant 3',
-  Q4: 'Kvadrant 4',
-};
-
-function normalizeDentalScope(value) {
-  const raw = String(value || '').trim().toUpperCase();
-  return DENTAL_SCOPE_LABELS[raw] ? raw : '';
-}
-
-function isFdiTarget(value) {
-  return /^\d{2}(-\d{2})?$/.test(String(value || '').trim());
-}
-
-function procedureTargetLabel(item) {
-  const scope = normalizeDentalScope(item && (item.tooth_scope || item.scope));
-  if (scope) return scope;
-  return String((item && item.tooth) || '');
-}
-
-function procedureTargetText(item, notation) {
-  const scope = normalizeDentalScope(item && (item.tooth_scope || item.scope));
-  if (scope) return `${scope} · ${DENTAL_SCOPE_LABELS[scope]}`;
-  const tooth = item && item.tooth;
-  if (!tooth) return '—';
-  return String(tooth).includes('-') ? tooth : fdiLabel(Number(tooth), notation);
-}
-
-function LargeJobModal({ title, subtitle, meta, children, footer, onClose }) {
   return React.createElement('div', {
-    style: { position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(24,20,16,.52)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 },
-    onMouseDown: onClose,
+    onClick: close,
+    style: { position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,35,32,.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }
   },
     React.createElement('div', {
-      style: { width: 'calc(100vw - 16px)', height: 'calc(100vh - 16px)', maxWidth: 1520, background: '#fbfaf6', borderRadius: 12, border: '1px solid #e4ded4', boxShadow: '0 24px 90px rgba(0,0,0,.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-      onMouseDown: (event) => event.stopPropagation(),
+      onClick: e => e.stopPropagation(),
+      style: {
+        width: wide ? 'min(1300px, 96vw)' : 720, maxWidth: '100%', height: wide ? '90vh' : 640, maxHeight: '92vh', background: '#fff',
+        borderRadius: 16, boxShadow: '0 30px 80px rgba(26,35,32,.28)', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', animation: 'popIn .18s ease-out',
+        transition: 'width .25s ease, height .25s ease',
+      }
     },
-      React.createElement('div', { style: { height: 64, padding: '0 22px', borderBottom: '1px solid #e4ded4', background: '#fff', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 } },
-        React.createElement('div', { style: { width: 36, height: 36, borderRadius: 9, background: '#d4f0eb', color: '#0d7c6b', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
-          React.createElement(Icon, { name: 'briefcase', size: 18 })
-        ),
+      // ── header ──
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderBottom: '1px solid #ece7dc', flexShrink: 0 } },
+        React.createElement('div', { style: { width: 36, height: 36, borderRadius: 10, background: '#d4f0eb', color: '#0d7c6b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
+          React.createElement(Icon, { name: 'briefcase', size: 18 })),
         React.createElement('div', { style: { flex: 1, minWidth: 0 } },
-          React.createElement('h2', { style: { margin: 0, fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 18, fontWeight: 800, color: '#1a2320', letterSpacing: 0 } }, title),
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', fontSize: 12, color: '#8a9490', marginTop: 2 } },
-            React.createElement('span', null, subtitle),
-            meta && React.createElement('span', { style: { color: '#c8c0b4' } }, '·'),
-            meta && React.createElement('strong', { style: { color: '#1a2320', fontWeight: 800 } }, meta.name),
-            meta && meta.age && React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 11 } }, `· ${meta.age} r.`),
-            meta && React.createElement('span', null, '· Práca'),
-            meta && React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', color: '#0d7c6b', fontWeight: 800 } }, meta.workId)
-          )
+          React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' } },
+            React.createElement('h2', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 17, fontWeight: 700, color: '#1a2320', margin: 0, letterSpacing: '-0.015em', whiteSpace: 'nowrap' } }, 'Nová práca'),
+            data.patient && React.createElement('span', { style: { fontSize: 12.5, color: '#5a6b66', display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0, overflow: 'hidden' } },
+              React.createElement('span', { style: { color: '#c8c0b4' } }, '·'),
+              React.createElement('span', { title: `${data.patient.last} ${data.patient.first}`, style: { fontWeight: 600, color: '#1a2320', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `${data.patient.last} ${data.patient.first}`),
+              (() => { const rc = parseRC(data.patient.birth); return rc && React.createElement('span', { style: { whiteSpace: 'nowrap' } }, `${rc.age} r.`); })()
+            )
+          ),
+          !data.patient && React.createElement('p', { style: { fontSize: 11.5, color: '#8a9490', margin: '2px 0 0' } }, 'Vytvorenie novej dentálnej zákazky')
         ),
-        React.createElement(IconButton, { name: 'x', title: 'Zatvoriť', onClick: onClose, size: 32 })
+        React.createElement(IconButton, { name: 'x', title: 'Zatvoriť (Esc)', onClick: close })
       ),
-      React.createElement('div', { style: { flex: 1, overflow: 'auto', padding: 22 } }, children),
-      React.createElement('div', { style: { padding: '14px 22px', borderTop: '1px solid #e4ded4', background: '#fff', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 } }, footer)
+      // ── horizontal step tabs ──
+      React.createElement(StepTabs, { steps: NJ_STEPS, step, setStep }),
+      // ── body: content ──
+      React.createElement('div', { style: { flex: 1, display: 'flex', minHeight: 0 } },
+        React.createElement('div', { style: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' } },
+          React.createElement('div', { style: { flex: 1, overflowY: 'auto', overflowX: wide ? 'auto' : 'visible', padding: wide ? '16px 22px' : '20px 26px' } },
+            React.createElement('div', { style: { maxWidth: wide ? 'none' : 600, margin: wide ? 0 : '0 auto' } },
+              !wide && React.createElement('div', { style: { marginBottom: 16 } },
+                React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 16, fontWeight: 700, color: '#1a2320', margin: 0, letterSpacing: '-0.015em' } }, s.title),
+                React.createElement('p', { style: { fontSize: 12.5, color: '#5a6b66', margin: '5px 0 0', lineHeight: 1.5, maxWidth: 460 } }, s.help)
+              ),
+              error && React.createElement('div', { style: { marginBottom: 14, padding: '10px 12px', borderRadius: 8, border: '1px solid #f5c0bb', background: '#fde8e6', color: '#c0392b', fontSize: 12.5 } }, error),
+              step === 0 && React.createElement(StepPatient, { data, set, patients, addPatient, clinicOptions, filteredDoctors, technicianOptions }),
+              step === 1 && React.createElement(NJItems, { catalog, items: data.items, onItemsChange: items => set('items', items) }),
+              step === 2 && React.createElement(StepSchedule, { data, set }),
+              step === 3 && React.createElement(StepSummary, { data, fmt, total, items: data.items })
+            )
+          )
+        )
+      ),
+      // ── footer ──
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px 20px', borderTop: '1px solid #ece7dc', background: '#fbfaf6', flexShrink: 0 } },
+        React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
+          React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490', fontWeight: 500 } }, 'Spolu bez DPH'),
+          React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 18, fontWeight: 700, color: '#1a2320', letterSpacing: '-0.01em' } }, fmt(total))
+        ),
+        React.createElement('div', { style: { display: 'flex', gap: 8 } },
+          step > 0 && React.createElement(Button, { variant: 'outline', onClick: () => setStep(step - 1) },
+            React.createElement(Icon, { name: 'arrowLeft', size: 13 }), 'Späť'),
+          step < NJ_STEPS.length - 1
+            ? React.createElement(Button, { onClick: () => canNext && setStep(step + 1), disabled: !canNext }, 'Ďalej', React.createElement(Icon, { name: 'arrowRight', size: 13 }))
+            : React.createElement(Button, { onClick: submitJob, disabled: saving || !canSubmit }, React.createElement(Icon, { name: 'check', size: 14 }), saving ? 'Vytváram…' : 'Vytvoriť prácu')
+        )
+      )
     )
   );
 }
 
-function JobStepper({ steps, step }) {
-  return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 18 } },
+function StepTabs({ steps, step, setStep }) {
+  return React.createElement('div', { style: { display: 'flex', alignItems: 'stretch', padding: '0 20px', background: '#fbfaf6', borderBottom: '1px solid #ece7dc', flexShrink: 0, gap: 0 } },
     ...steps.map((s, i) => {
-      const active = i === step;
-      const done = i < step;
-      return React.createElement('div', {
-        key: s.label,
-        style: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${active ? '#0d7c6b' : '#e4ded4'}`, background: active ? '#d4f0eb' : done ? '#f7fbf9' : '#fff' }
-      },
-        React.createElement('div', { style: { width: 28, height: 28, borderRadius: 14, background: done ? '#0d7c6b' : active ? '#fff' : '#f0ede5', color: done ? '#fff' : active ? '#0d7c6b' : '#8a9490', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 800, fontSize: 11 } },
-          done ? React.createElement(Icon, { name: 'check', size: 13 }) : i + 1
+      const active = i === step, done = i < step;
+      const last = i === steps.length - 1;
+      return React.createElement(React.Fragment, { key: i },
+        React.createElement('div', {
+          onClick: () => done && setStep(i),
+          style: { display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px 11px 0', cursor: done ? 'pointer' : 'default', flexShrink: 0 }
+        },
+          React.createElement('div', {
+            style: {
+              width: 24, height: 24, borderRadius: '50%',
+              background: done ? '#0d7c6b' : active ? '#fff' : '#f0ede5',
+              border: active ? '2px solid #0d7c6b' : done ? 'none' : '1px solid #e4ded4',
+              color: done ? '#fff' : active ? '#0d7c6b' : '#8a9490',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 11, fontWeight: 700, boxSizing: 'border-box',
+              transition: 'background .15s, border-color .15s',
+            }
+          }, done ? React.createElement(Icon, { name: 'check', size: 12 }) : (i + 1)),
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column', lineHeight: 1.2 } },
+            React.createElement('span', { style: { fontSize: 12.5, fontWeight: active ? 700 : 600, color: active ? '#0d7c6b' : done ? '#1a2320' : '#8a9490', whiteSpace: 'nowrap' } }, s.label)
+          )
         ),
-        React.createElement('div', null,
-          React.createElement('div', { style: { fontSize: 12.5, fontWeight: 800, color: active ? '#0d7c6b' : '#1a2320' } }, s.label),
-          React.createElement('div', { style: { fontSize: 10.5, color: '#8a9490', marginTop: 1 } }, i === 0 ? 'Subjekty' : i === 1 ? 'Zubný kríž' : i === 2 ? 'Termíny' : 'Kontrola')
-        )
+        !last && React.createElement('div', { style: { alignSelf: 'center', width: 28, height: 1, background: done ? '#0d7c6b' : '#e4ded4', flexShrink: 0, margin: '0 2px' } })
       );
     })
   );
 }
 
-function StepPatient({ data, set, setData, workspace }) {
-  const patients = workspace.patients || [];
-  const clinics = workspace.clinics || [];
-  const doctors = workspace.doctors || [];
-  const technicians = workspace.technicians || [];
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
-    React.createElement(FormField, {
-      label: 'Pacient', required: true, value: data.patient, onChange: e => {
-        const patient = patients.find((p) => String(p.id) === String(e.target.value));
-        const fallbackLabel = e.target.selectedOptions && e.target.selectedOptions[0]
-          ? e.target.selectedOptions[0].textContent.replace(/^\+\s*/, '')
-          : '';
-        const meta = getNewJobPatientMeta(patient, { patient: e.target.value, patientLabel: fallbackLabel });
-        setData((current) => ({ ...current, patient: e.target.value, patientLabel: meta.name, patientAge: meta.age || '' }));
-      },
-      type: 'select',
-      options: patients.length
-        ? patients.map((p) => ({ value: String(p.id), label: `${p.first} ${p.last}` }))
-        : [{ value: '', label: 'Žiadni pacienti' }]
-    }),
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
-      React.createElement(FormField, {
-        label: 'Klinika', required: true, value: data.clinic, onChange: e => set('clinic', e.target.value),
-        type: 'select',
-        options: clinics.length
-          ? clinics.map((c) => ({ value: String(c.id), label: c.name }))
-          : [{ value: '', label: 'Žiadne kliniky' }]
-      }),
-      React.createElement(FormField, {
-        label: 'Odosielajúci lekár', required: true, value: data.doctor, onChange: e => set('doctor', e.target.value),
-        type: 'select',
-        options: doctors.length
-          ? doctors.map((d) => ({ value: String(d.id), label: `${d.title ? d.title + ' ' : ''}${d.first} ${d.last}` }))
-          : [{ value: '', label: 'Žiadni lekári' }]
+// ── group label ──
+function GroupLabel({ children }) {
+  return React.createElement('div', { style: { fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 } }, children);
+}
+
+function StepPatient({ data, set, patients, addPatient, clinicOptions, filteredDoctors, technicianOptions }) {
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
+    React.createElement('div', null,
+      React.createElement(PatientCombobox, {
+        patients, value: data.patient, required: true,
+        onChange: p => set('patient', p), onCreate: p => addPatient(p),
       })
     ),
-    React.createElement(FormField, {
-      label: 'Pridelený technik',
-      value: data.technician, onChange: e => set('technician', e.target.value),
-      type: 'select',
-      helpText: 'Voliteľné — môžete prideliť neskôr.',
-      options: [{ value: '', label: 'Nepridelený' }].concat(technicians.map((t) => ({ value: String(t.id), label: `${t.first} ${t.last} — vyťaženie ${t.workload} %` })))
-    })
-  );
-}
-
-function StepItems({ data, setData, fmt, total, workspace, patientMeta }) {
-  const [notation, setNotation] = React.useState('fdi');
-  const [selectedTooth, setSelectedTooth] = React.useState(String(data.items[0]?.tooth || 26));
-  const [quick, setQuick] = React.useState('');
-  const catalog = (workspace.priceList || [])
-    .map((item) => {
-      const known = (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]) || {};
-      return {
-        code: item.code || known.code || item.name,
-        name: item.name || known.name || item.code,
-        price: Number(item.price ?? known.price ?? 0),
-        cat: item.cat || known.cat || 'tech',
-      };
-    });
-  const catalogByCode = Object.fromEntries(catalog.map((item) => [item.code, item]));
-  const findCatalogItem = (code) => {
-    const normalized = String(code || '').trim().toUpperCase();
-    if (!normalized) return null;
-    return catalogByCode[normalized] || catalog.find((item) => item.code.startsWith(normalized) || item.name.toLowerCase().includes(normalized.toLowerCase())) || null;
-  };
-  const itemsByTooth = data.items.reduce((acc, item) => {
-    const tooth = String(item.tooth || '');
-    if (!tooth || normalizeDentalScope(item.tooth_scope)) return acc;
-    (acc[tooth] = acc[tooth] || []).push(item);
-    return acc;
-  }, {});
-  const selectedItems = itemsByTooth[String(selectedTooth)] || [];
-  const addItem = (code = '', tooth = selectedTooth, qty = 1, toothScope = '') => {
-    const normalizedCode = String(code || '').trim().toUpperCase();
-    const picked = catalogByCode[normalizedCode] || catalog[0] || { code: normalizedCode, name: normalizedCode, price: 0, cat: 'tech' };
-    const scope = normalizeDentalScope(toothScope || tooth);
-    setData(d => ({
-      ...d,
-      items: [...d.items, {
-        code: normalizedCode || picked.code || '',
-        name: normalizedCode ? picked.name : '',
-        tooth: scope ? '' : String(tooth || ''),
-        tooth_scope: scope,
-        qty,
-        price: normalizedCode ? picked.price : 0,
-        cat: picked.cat || 'tech',
-      }]
-    }));
-  };
-  const removeItem = (i) => setData(d => ({ ...d, items: d.items.filter((_, idx) => idx !== i) }));
-  const updateItem = (i, k, v) => setData(d => ({ ...d, items: d.items.map((it, idx) => idx === i ? { ...it, [k]: v } : it) }));
-  const runQuickAdd = () => {
-    const parts = quick.trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return;
-    const firstTarget = parts[0];
-    const scope = normalizeDentalScope(firstTarget);
-    const maybeTooth = scope || isFdiTarget(firstTarget) ? parts.shift() : selectedTooth;
-    const code = (parts.shift() || catalog[0]?.code || '').toUpperCase();
-    const found = findCatalogItem(code);
-    if (!found) return;
-    const qty = Number(parts.shift() || 1) || 1;
-    addItem(found.code, scope ? '' : maybeTooth, qty, scope);
-    if (!scope) setSelectedTooth(String(maybeTooth));
-    setQuick('');
-  };
-  const openToothDetail = () => window.dispatchEvent(new CustomEvent('open-tooth-detail', {
-    detail: {
-      fdi: Number(selectedTooth),
-      initialSelected: Number(selectedTooth),
-      notation,
-      readonly: true,
-      patient: patientMeta,
-      items: data.items,
-    }
-  }));
-
-  return React.createElement('div', { style: { background: '#fbfaf6', border: '1px solid #e4ded4', borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 620 } },
-    React.createElement('div', { style: { padding: '10px 14px', background: '#fff', borderBottom: '1px solid #ece7dc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 } },
-        React.createElement('div', { style: { display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 12.5, color: '#1a2320' } },
-          React.createElement('span', { style: { fontWeight: 800 } }, 'Aktívny zub'),
-          React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', color: '#0d7c6b', fontWeight: 800 } }, fdiLabel(Number(selectedTooth), notation)),
-          React.createElement('span', { style: { color: '#8a9490' } }, `· ${selectedItems.length} položiek`)
-        )
-      ),
-      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
-        React.createElement('div', { style: { position: 'relative' } },
-          React.createElement('input', {
-            value: quick,
-            onChange: (event) => setQuick(event.target.value),
-            onKeyDown: (event) => { if (event.key === 'Enter') runQuickAdd(); },
-            placeholder: 'Rýchle zadanie: 26 KOD 1 alebo U KOD 1',
-            style: { width: 260, padding: '6px 10px 6px 28px', border: '1px solid #0d7c6b', borderRadius: 6, fontSize: 12, fontFamily: 'ui-monospace,monospace', outline: 'none', background: '#fff', color: '#1a2320' }
-          }),
-          React.createElement('span', { style: { position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#0d7c6b' } }, '↵')
-        ),
-        window.NotationToggle && React.createElement(NotationToggle, { value: notation, onChange: setNotation })
-      )
-    ),
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(500px, 560px) minmax(640px, 1fr)', gap: 14, padding: 14, flex: 1, minHeight: 0, overflow: 'auto' } },
-      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 } },
-        React.createElement(JobCompactToothGrid, { selectedTooth, setSelectedTooth, notation, itemsByTooth, onOpenDetail: openToothDetail }),
-        React.createElement(JobDescriptionCard, { data, setData })
-      ),
-      React.createElement(JobItemsTable, { data, catalog, updateItem, removeItem, addItem, fmt, total, selectedTooth, setSelectedTooth })
-    )
-  );
-}
-
-function SegmentedControl({ value, onChange, options }) {
-  return React.createElement('div', { style: { display: 'inline-flex', padding: 2, borderRadius: 8, background: '#f0ede5', border: '1px solid #e4ded4' } },
-    ...options.map((option) => {
-      const active = value === option.value;
-      return React.createElement('button', {
-        key: option.value,
-        onClick: () => onChange(option.value),
-        style: {
-          border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer',
-          background: active ? '#fff' : 'transparent',
-          color: active ? '#0d7c6b' : '#5a6b66',
-          boxShadow: active ? '0 1px 3px rgba(0,0,0,.08)' : 'none',
-          fontSize: 11.5, fontWeight: 800, fontFamily: 'Manrope,sans-serif'
-        }
-      }, option.label);
-    })
-  );
-}
-
-function JobAnatomicalChart({ selectedTooth, setSelectedTooth, notation, itemsByTooth }) {
-  const renderRow = (teeth, upper) => React.createElement('div', {
-    style: { display: 'grid', gridTemplateColumns: 'repeat(16, minmax(34px, 1fr))', gap: 7, alignItems: upper ? 'end' : 'start' }
-  },
-    ...teeth.map((fdi) => React.createElement(JobToothButton, {
-      key: fdi,
-      fdi,
-      notation,
-      selected: String(fdi) === String(selectedTooth),
-      items: itemsByTooth[String(fdi)] || [],
-      onSelect: () => setSelectedTooth(String(fdi)),
-    }))
-  );
-  return React.createElement('div', { style: { padding: 18, borderRadius: 10, background: '#fff', border: '1px solid #ece7dc', overflowX: 'auto' } },
-    React.createElement('div', { style: { minWidth: 660 } },
-      renderRow(window.FDI_UPPER || [], true),
-      React.createElement('div', { style: { height: 44, margin: '10px 0', borderTop: '2px solid #e4ded4', borderBottom: '2px solid #e4ded4', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', color: '#8a9490', fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' } },
-        React.createElement('span', { style: { textAlign: 'left' } }, 'Pravá strana pacienta'),
-        React.createElement('span', { style: { color: '#0d7c6b' } }, 'Stredová línia'),
-        React.createElement('span', { style: { textAlign: 'right' } }, 'Ľavá strana pacienta')
-      ),
-      renderRow(window.FDI_LOWER || [], false)
-    ),
-  );
-}
-
-function JobToothButton({ fdi, notation, selected, items, onSelect }) {
-  const hasImplant = items.some((item) => String(item.code || '').startsWith('IMP'));
-  const missing = items.some((item) => item.code === 'EXT-001');
-  return React.createElement('button', {
-    onClick: onSelect,
-    style: {
-      minWidth: 0, border: selected ? '2px solid #0d7c6b' : '1px solid transparent',
-      borderRadius: 8, background: selected ? '#eefbf8' : '#fff', padding: '5px 2px 6px',
-      cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-      boxShadow: selected ? '0 8px 20px rgba(13,124,107,.12)' : 'none'
-    }
-  },
-    window.ToothShape
-      ? React.createElement(ToothShape, { fdi, selected, implant: hasImplant, missing, size: 34 })
-      : React.createElement('div', { style: { width: 28, height: 44, borderRadius: 14, border: '1px solid #9aa5a0' } }),
-    React.createElement('span', { style: { fontSize: 10.5, color: selected ? '#0d7c6b' : '#5a6b66', fontWeight: 800 } }, fdiLabel(fdi, notation)),
-    items.length > 0 && React.createElement('span', { style: { minWidth: 18, height: 18, borderRadius: 9, background: '#0d7c6b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } }, items.length)
-  );
-}
-
-function JobCompactToothGrid({ selectedTooth, setSelectedTooth, notation, itemsByTooth, onOpenDetail }) {
-  return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, padding: 14, overflowX: 'auto' } },
-    React.createElement('div', { style: { minWidth: 500 } },
-      React.createElement('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 10 } },
-        React.createElement('div', null,
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-            React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 800, color: '#1a2320' } }, 'Zubný kríž'),
-            React.createElement('button', {
-              onClick: onOpenDetail,
-              title: 'Otvoriť detail zubného kríža',
-              style: { width: 28, height: 28, padding: 0, background: '#fbfaf6', border: '1px solid #e4ded4', borderRadius: 6, color: '#0d7c6b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }
-            }, React.createElement(Icon, { name: 'search', size: 14 }))
-          ),
-          React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } }, 'Kompaktné zobrazenie všetkých 32 zubov')
-        ),
-        React.createElement('div', { style: { display: 'flex', gap: 6, fontSize: 9.5, color: '#5a6b66', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 240 } },
-          ...['crown', 'bridge', 'implant', 'filling', 'tech'].map((catKey) => {
-            const cat = (window.PROC_CATS && window.PROC_CATS[catKey]) || { accent: '#8a9490', label: catKey };
-            return React.createElement('span', { key: catKey, style: { display: 'inline-flex', alignItems: 'center', gap: 3 } },
-              React.createElement('span', { style: { width: 7, height: 7, borderRadius: '50%', background: cat.accent } }),
-              cat.label.slice(0, 4)
-            );
-          })
-        )
-      ),
-      React.createElement('div', { style: quadrantLabelStyle },
-        React.createElement('div', { style: { textAlign: 'right' } }, 'Hore · pravá'),
-        React.createElement('div', null),
-        React.createElement('div', null, 'Hore · ľavá')
-      ),
-      React.createElement(JobTileRow, { teeth: window.FDI_UPPER || [], notation, selectedTooth, setSelectedTooth, itemsByTooth }),
-      React.createElement('div', { style: { height: 1, background: 'repeating-linear-gradient(to right, #c8c0b4 0 4px, transparent 4px 8px)', margin: '8px 2px' } }),
-      React.createElement(JobTileRow, { teeth: window.FDI_LOWER || [], notation, selectedTooth, setSelectedTooth, itemsByTooth }),
-      React.createElement('div', { style: { ...quadrantLabelStyle, padding: '4px 2px 0' } },
-        React.createElement('div', { style: { textAlign: 'right' } }, 'Dolu · pravá'),
-        React.createElement('div', null),
-        React.createElement('div', null, 'Dolu · ľavá')
-      )
-    )
-  );
-}
-
-function JobTileRow({ teeth, notation, selectedTooth, setSelectedTooth, itemsByTooth }) {
-  return React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr) 14px repeat(8, 1fr)', gap: 4, alignItems: 'stretch' } },
-    ...teeth.slice(0, 8).map((fdi) => React.createElement(JobTile, { key: fdi, fdi, notation, selectedTooth, setSelectedTooth, items: itemsByTooth[String(fdi)] || [] })),
-    React.createElement('div', { key: 'mid', style: { width: '100%' } }),
-    ...teeth.slice(8).map((fdi) => React.createElement(JobTile, { key: fdi, fdi, notation, selectedTooth, setSelectedTooth, items: itemsByTooth[String(fdi)] || [] }))
-  );
-}
-
-function JobTile({ fdi, notation, selectedTooth, setSelectedTooth, items }) {
-  const selected = String(fdi) === String(selectedTooth);
-  const distinctCats = [];
-  for (const item of items) {
-    const cat = item.cat || (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]?.cat) || 'tech';
-    if (!distinctCats.includes(cat)) distinctCats.push(cat);
-  }
-  return React.createElement('button', {
-    onClick: () => setSelectedTooth(String(fdi)),
-    style: {
-      width: '100%', minWidth: 0, height: 72, padding: 0, background: selected ? '#fff' : '#fefdf9',
-      border: `${selected ? 2 : 1}px solid ${selected ? '#0d7c6b' : '#ece7dc'}`,
-      borderRadius: 6, cursor: 'pointer', position: 'relative',
-      display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between',
-      overflow: 'hidden', fontFamily: 'Manrope,sans-serif',
-      boxShadow: selected ? '0 0 0 3px rgba(13,124,107,.12)' : 'none'
-    }
-  },
-    React.createElement('div', { style: { padding: '4px 4px 0', fontFamily: 'ui-monospace,monospace', fontSize: 12, fontWeight: 800, color: selected ? '#0d7c6b' : '#1a2320', textAlign: 'center', lineHeight: 1.1 } }, fdiLabel(fdi, notation)),
-    React.createElement('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2, padding: '1px 2px' } },
-      distinctCats.length === 0 && React.createElement('div', { style: { width: 4, height: 4, borderRadius: '50%', background: '#e4ded4' } }),
-      ...distinctCats.slice(0, 2).map((cat) => {
-        const colors = (window.PROC_CATS && window.PROC_CATS[cat]) || { accent: '#8a9490' };
-        const itemForCat = items.find((item) => (item.cat || (window.PROC_BY_CODE && window.PROC_BY_CODE[item.code]?.cat) || 'tech') === cat);
-        return React.createElement('div', { key: cat, style: { width: 16, height: 16, borderRadius: 4, background: colors.accent, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } },
-          window.ProcGlyph && itemForCat ? React.createElement(ProcGlyph, { code: itemForCat.code, size: 10 }) : null
-        );
-      }),
-      distinctCats.length > 2 && React.createElement('span', { style: { fontSize: 9, fontWeight: 800, color: '#5a6b66', lineHeight: 1 } }, `+${distinctCats.length - 2}`)
-    )
-  );
-}
-
-function JobDescriptionCard({ data, setData }) {
-  const colorOptions = ['A1', 'A2', 'A3', 'A3.5', 'A4', 'B1', 'B2', 'B3', 'C1', 'C2', 'D2', 'D3', 'BL1', 'BL2', 'BL3'];
-  return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 190 } },
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 } },
-      React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 800, color: '#1a2320' } }, 'Popis práce'),
-      React.createElement('div', { style: { fontSize: 10.5, color: '#8a9490' } }, 'Voľný text pre technika')
-    ),
+    React.createElement('div', { style: { height: 1, background: '#ece7dc' } }),
     React.createElement('div', null,
-      React.createElement('label', { style: { display: 'block', fontSize: 11, fontWeight: 800, color: '#5a6b66', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' } }, 'Farba'),
-      React.createElement('input', {
-        value: data.toothColor || '',
-        list: 'molaris-tooth-colors',
-        onChange: (event) => setData((current) => ({ ...current, toothColor: event.target.value })),
-        placeholder: 'Vyberte alebo napíšte vlastnú farbu',
-        style: { width: '100%', boxSizing: 'border-box', padding: '8px 10px', border: '1px solid #e4ded4', borderRadius: 8, fontFamily: 'Manrope,sans-serif', fontSize: 12.5, background: '#fbfaf6', outline: 'none', color: '#1a2320' }
-      }),
-      React.createElement('datalist', { id: 'molaris-tooth-colors' },
-        ...colorOptions.map((color) => React.createElement('option', { key: color, value: color }))
+      React.createElement(GroupLabel, null, 'Priradenie'),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
+          React.createElement(Select, { label: 'Klinika', required: true, value: data.clinic && data.clinic.value, onChange: o => { set('clinic', o); set('doctor', null); }, options: clinicOptions, placeholder: clinicOptions.length ? 'Vybrať kliniku…' : 'Žiadne kliniky' }),
+          React.createElement(Select, { label: 'Odosielajúci lekár', required: filteredDoctors.length > 0, disabled: !data.clinic || filteredDoctors.length === 0, value: data.doctor && data.doctor.value, onChange: o => set('doctor', o), options: filteredDoctors, placeholder: !data.clinic ? 'Najprv vyberte kliniku' : filteredDoctors.length ? 'Vybrať lekára…' : 'Klinika nemá lekára — pokračujte bez lekára' })
+        ),
+        React.createElement(Select, { label: 'Pridelený technik', value: data.technician && data.technician.value, onChange: o => set('technician', o), options: technicianOptions, placeholder: 'Nepridelený — prideliť neskôr', help: 'Voliteľné. Percento vyjadruje aktuálne vyťaženie technika.' })
       )
-    ),
-    React.createElement('textarea', {
-      value: data.note,
-      onChange: (event) => setData((current) => ({ ...current, note: event.target.value })),
-      placeholder: 'Špecifické požiadavky, farba, materiál, alergie, poznámky k skúške alebo odovzdaniu...',
-      style: { flex: 1, minHeight: 110, padding: '10px 12px', border: '1px solid #e4ded4', borderRadius: 8, fontFamily: 'Manrope,sans-serif', fontSize: 12.5, lineHeight: 1.5, background: '#fbfaf6', outline: 'none', resize: 'vertical', color: '#1a2320' }
-    }),
-    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, color: '#8a9490' } },
-      React.createElement('span', null, 'Popis sa použije aj ako poznámka pri vytvorení práce.'),
-      React.createElement('span', null, `${String(data.note || '').length} / 1000`)
     )
   );
 }
-
-function JobItemsTable({ data, catalog, updateItem, removeItem, addItem, fmt, total, selectedTooth, setSelectedTooth }) {
-  const [draft, setDraft] = React.useState({ tooth: String(selectedTooth || ''), code: '', qty: 1 });
-  React.useEffect(() => setDraft((current) => ({ ...current, tooth: String(selectedTooth || '') })), [selectedTooth]);
-  const catalogByCode = Object.fromEntries(catalog.map((item) => [item.code, item]));
-  const pickCatalog = (code) => {
-    const normalized = String(code || '').trim().toUpperCase();
-    if (!normalized) return null;
-    return catalogByCode[normalized] || catalog.find((item) => item.code.startsWith(normalized) || item.name.toLowerCase().includes(normalized.toLowerCase()));
-  };
-  const applyCode = (rowIndex, code) => {
-    const normalized = String(code || '').trim().toUpperCase();
-    const found = catalogByCode[normalized];
-    updateItem(rowIndex, 'code', normalized);
-    if (found) {
-      updateItem(rowIndex, 'name', found.name);
-      updateItem(rowIndex, 'price', found.price);
-    }
-  };
-  const selectCodeForRow = (rowIndex, item) => {
-    updateItem(rowIndex, 'code', item.code);
-    updateItem(rowIndex, 'name', item.name);
-    updateItem(rowIndex, 'price', item.price);
-  };
-  const addDraft = () => {
-    const found = pickCatalog(draft.code);
-    if (!found) return;
-    addDraftItem(found);
-  };
-  const addDraftItem = (found) => {
-    const scope = normalizeDentalScope(draft.tooth);
-    addItem(found.code, scope ? '' : (draft.tooth || selectedTooth), Number(draft.qty) || 1, scope);
-    if (!scope) setSelectedTooth(String(draft.tooth || selectedTooth));
-    setDraft({ tooth: String(draft.tooth || selectedTooth), code: '', qty: 1 });
-  };
-  const updateTarget = (rowIndex, value) => {
-    const scope = normalizeDentalScope(value);
-    if (scope) {
-      updateItem(rowIndex, 'tooth_scope', scope);
-      updateItem(rowIndex, 'tooth', '');
-      return;
-    }
-    updateItem(rowIndex, 'tooth_scope', '');
-    updateItem(rowIndex, 'tooth', value);
-  };
-  return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 520 } },
-    React.createElement('div', { style: { padding: '10px 14px', background: '#fbfaf6', borderBottom: '1px solid #ece7dc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 } },
-      React.createElement('div', null,
-        React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 800, color: '#1a2320' } }, 'Tabuľka úkonov'),
-        React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } }, 'Kód napíšte do riadku a vyberte z návrhov.')
-      ),
-      React.createElement('button', { onClick: () => setDraft({ tooth: String(selectedTooth || ''), code: '', qty: 1 }), style: tableBtnStyle('outline') }, '+ F3 Nový')
-    ),
-      React.createElement('div', { style: tableHeaderStyle },
-      React.createElement('span', null),
-      React.createElement('span', null, 'Zub/oblasť'),
-      React.createElement('span', null, 'Kód'),
-      React.createElement('span', null, 'Popis'),
-      React.createElement('span', { style: { textAlign: 'center' } }, 'Ks'),
-      React.createElement('span', { style: { textAlign: 'right' } }, 'Cena'),
-      React.createElement('span', null)
-    ),
-    React.createElement('div', { style: { flex: 1, overflowY: 'auto', minHeight: 260 } },
-      ...data.items.map((it, i) => {
-        const known = catalogByCode[it.code] || {};
-        const cat = (window.PROC_CATS && window.PROC_CATS[it.cat || known.cat || 'tech']) || { accent: '#8a9490', bg: '#f0ede5', fg: '#5a6b66' };
-        const target = procedureTargetLabel(it);
-        const selected = String(it.tooth || '') === String(selectedTooth) && !it.tooth_scope;
-        return React.createElement('div', {
-          key: i,
-          onClick: () => it.tooth && !it.tooth_scope && setSelectedTooth(String(it.tooth)),
-          style: { ...tableRowStyle, background: selected ? '#fbf9f1' : '#fff', cursor: 'pointer' }
-        },
-          React.createElement('div', { style: { width: 14, height: 24, borderRadius: 2, background: cat.accent } }),
-          React.createElement('input', { value: target, onChange: e => updateTarget(i, e.target.value), title: 'FDI zub alebo A/U/L/Q1-Q4', style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
-          React.createElement(ProcedureCodeDropdown, {
-            catalog,
-            value: it.code || '',
-            onInput: (value) => applyCode(i, value),
-            onPick: (item) => selectCodeForRow(i, item),
-          }),
-          React.createElement(ProcedureCodeDropdown, {
-            catalog,
-            value: it.name || known.name || '',
-            onInput: (value) => applyCode(i, value),
-            onPick: (item) => selectCodeForRow(i, item),
-            trigger: React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, cursor: 'pointer', height: 26 } },
-              React.createElement('div', { style: { width: 18, height: 18, borderRadius: 4, background: cat.bg, color: cat.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
-                window.ProcGlyph && it.code ? React.createElement(ProcGlyph, { code: it.code, size: 10 }) : null
-              ),
-              React.createElement('span', { style: { color: '#1a2320', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 } }, it.name || known.name || 'Vyberte kód')
-            )
-          }),
-          React.createElement('input', { type: 'number', min: 1, value: it.qty, onChange: e => updateItem(i, 'qty', e.target.value), style: { ...cellInputStyle, textAlign: 'center' } }),
-          React.createElement('input', { type: 'number', step: '0.01', value: it.price, onChange: e => updateItem(i, 'price', e.target.value), style: { ...cellInputStyle, textAlign: 'right' } }),
-          React.createElement(IconButton, { name: 'trash', destructive: true, onClick: (event) => { event.stopPropagation(); removeItem(i); }, size: 26 })
-        );
-      }),
-      React.createElement('div', { style: { ...tableRowStyle, borderTop: '2px dashed #e4ded4', background: '#fbfaf6', color: '#b0bdb9' } },
-        React.createElement('div', null),
-        React.createElement('input', { value: draft.tooth, onChange: e => setDraft({ ...draft, tooth: e.target.value.toUpperCase() }), placeholder: '26/U/Q1', title: 'FDI zub alebo A/U/L/Q1-Q4', style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800 } }),
-        React.createElement(ProcedureCodeDropdown, {
-          catalog,
-          value: draft.code,
-          onInput: (value) => {
-            const normalized = value.toUpperCase();
-            const exact = catalogByCode[normalized];
-            if (exact) {
-              addDraftItem(exact);
-              return;
-            }
-            setDraft({ ...draft, code: normalized });
-          },
-          onPick: (item) => addDraftItem(item),
-          onEnter: addDraft,
-          placeholder: 'Kód...',
-        }),
-        React.createElement(ProcedureCodeDropdown, {
-          catalog,
-          value: draft.code,
-          onInput: (value) => {
-            const normalized = value.toUpperCase();
-            const exact = catalogByCode[normalized];
-            if (exact) {
-              addDraftItem(exact);
-              return;
-            }
-            setDraft({ ...draft, code: normalized });
-          },
-          onPick: (item) => addDraftItem(item),
-          trigger: React.createElement('div', { style: { ...cellInputStyle, display: 'flex', alignItems: 'center', minHeight: 26, cursor: 'pointer', color: pickCatalog(draft.code) ? '#1a2320' : '#8a9490' } }, pickCatalog(draft.code)?.name || 'Vyberte kód z väčšieho zoznamu')
-        }),
-        React.createElement('input', { type: 'number', min: 1, value: draft.qty, onChange: e => setDraft({ ...draft, qty: e.target.value }), onKeyDown: e => { if (e.key === 'Enter') addDraft(); }, style: { ...cellInputStyle, textAlign: 'center' } }),
-        React.createElement('input', { value: pickCatalog(draft.code)?.price || '', readOnly: true, placeholder: '0,00', style: { ...cellInputStyle, textAlign: 'right' } }),
-        React.createElement(IconButton, { name: 'plus', title: 'Pridať riadok', onClick: addDraft, size: 26 })
-      )
-    ),
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: tableColumns, padding: '10px 12px', background: '#fbfaf6', borderTop: '1px solid #ece7dc', alignItems: 'center', gap: 8 } },
-      React.createElement('span', null), React.createElement('span', null), React.createElement('span', null),
-      React.createElement('span', { style: { fontSize: 11, color: '#8a9490', fontWeight: 700 } }, `${data.items.length} položiek`),
-      React.createElement('span', { style: { textAlign: 'right', fontSize: 11, color: '#8a9490', fontWeight: 700 } }, 'Spolu:'),
-      React.createElement('span', { style: { textAlign: 'right', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 14, fontWeight: 800, color: '#1a2320' } }, fmt(total)),
-      React.createElement('span', null)
-    )
-  );
-}
-
-function ProcedureCodeDropdown({ catalog, value, onInput, onPick, onEnter, placeholder = 'Kód...', trigger }) {
-  const [open, setOpen] = React.useState(false);
-  const query = String(value || '').trim().toUpperCase();
-  const effectiveQuery = trigger ? '' : query;
-  const options = (effectiveQuery
-    ? catalog.filter((item) => item.code.toUpperCase().includes(effectiveQuery) || item.name.toLowerCase().includes(effectiveQuery.toLowerCase()))
-    : catalog
-  ).slice(0, 12);
-  return React.createElement('div', { style: { position: 'relative', width: '100%' } },
-    trigger
-      ? React.cloneElement(trigger, {
-          onMouseDown: (event) => { event.preventDefault(); setOpen(true); },
-          onClick: () => setOpen(true),
-        })
-      : React.createElement('input', {
-      value,
-      onFocus: () => setOpen(true),
-      onChange: (event) => { onInput(event.target.value.toUpperCase()); setOpen(true); },
-      onBlur: () => window.setTimeout(() => setOpen(false), 120),
-      onKeyDown: (event) => {
-        if (event.key === 'Enter') {
-          const exact = catalog.find((item) => item.code.toUpperCase() === query) || options[0];
-          if (exact) onPick(exact);
-          if (onEnter) onEnter();
-          setOpen(false);
-        }
-      },
-      placeholder,
-      style: { ...cellInputStyle, fontFamily: 'ui-monospace,monospace', fontWeight: 800, color: '#0d7c6b', paddingRight: 22 }
-    }),
-    !trigger && React.createElement(Icon, { name: 'chevronDown', size: 12, color: '#8a9490', style: { position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' } }),
-    open && React.createElement('div', {
-      style: {
-        position: 'absolute', zIndex: 50, top: 'calc(100% + 4px)', left: 0, right: 0,
-        minWidth: 360, maxHeight: 340, overflowY: 'auto', background: '#fff', border: '1px solid #d8d1c5',
-        borderRadius: 7, boxShadow: '0 12px 28px rgba(26,35,32,.16)', padding: 4
-      }
-    },
-      options.length === 0
-        ? React.createElement('div', { style: { padding: '8px 9px', fontSize: 11.5, color: '#8a9490' } }, 'Žiadny kód')
-        : options.map((item) => {
-            const cat = (window.PROC_CATS && window.PROC_CATS[item.cat]) || window.PROC_CATS?.tech || { bg: '#f0ede5', fg: '#5a6b66' };
-            return React.createElement('button', {
-              key: item.code,
-              type: 'button',
-              onMouseDown: (event) => { event.preventDefault(); onPick(item); setOpen(false); },
-              style: {
-                width: '100%', border: 'none', background: item.code === value ? '#eefbf8' : '#fff',
-                borderRadius: 6, padding: '10px 10px', display: 'grid', gridTemplateColumns: '92px minmax(180px,1fr)',
-                gap: 8, alignItems: 'center', cursor: 'pointer', textAlign: 'left', fontFamily: 'Manrope,sans-serif'
-              }
-            },
-              React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 12.5, fontWeight: 800, color: '#0d7c6b' } }, item.code),
-              React.createElement('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12.5, fontWeight: 700, color: '#1a2320' } }, item.name)
-            );
-          })
-    )
-  );
-}
-
-const quadrantLabelStyle = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 14px 1fr',
-  fontSize: 9.5,
-  fontWeight: 800,
-  color: '#8a9490',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  padding: '0 2px 4px'
-};
-
-const tableColumns = '28px 76px 128px minmax(190px,1fr) 50px 92px 28px';
-
-const tableHeaderStyle = {
-  display: 'grid',
-  gridTemplateColumns: tableColumns,
-  padding: '7px 12px',
-  background: '#f4f1ea',
-  fontSize: 9.5,
-  fontWeight: 800,
-  color: '#5a6b66',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  gap: 8,
-  borderBottom: '1px solid #ece7dc'
-};
-
-const tableRowStyle = {
-  display: 'grid',
-  gridTemplateColumns: tableColumns,
-  padding: '7px 12px',
-  borderTop: '1px solid #f0ede5',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 12
-};
-
-const cellInputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: '3px 6px',
-  border: '1px solid #ece7dc',
-  borderRadius: 4,
-  background: '#fff',
-  fontSize: 11.5,
-  fontFamily: 'Manrope,sans-serif',
-  outline: 'none',
-  color: '#1a2320'
-};
-
-function tableBtnStyle(variant) {
-  const base = { padding: '5px 10px', borderRadius: 5, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'Manrope,sans-serif', border: 'none' };
-  if (variant === 'outline') return { ...base, background: '#fff', color: '#1a2320', border: '1px solid #e4ded4' };
-  return { ...base, background: '#0d7c6b', color: '#fff' };
-}
-
-const panelStyle = {
-  background: '#fff',
-  border: '1px solid #e4ded4',
-  borderRadius: 10,
-  padding: 14,
-  boxShadow: '0 1px 2px rgba(26,35,32,.04)'
-};
-
-const rowInputStyle = {
-  width: '100%', boxSizing: 'border-box', padding: '5px 8px',
-  border: '1px solid #e4ded4', borderRadius: 5, background: '#fff',
-  fontSize: 12, fontFamily: 'Manrope,sans-serif', outline: 'none', color: '#1a2320'
-};
 
 function StepSchedule({ data, set }) {
   const priorities = [
-    { value: 'low',    label: 'Nízka',  desc: 'Štandardná fronta',     color: '#8a9490', bg: '#f0ede5' },
-    { value: 'normal', label: 'Normálna', desc: 'Štandardný termín',   color: '#0d7c6b', bg: '#d4f0eb' },
-    { value: 'high',   label: 'Vysoká', desc: 'Urgentné — prioritne', color: '#d97706', bg: '#fef3c7' },
-    { value: 'urgent', label: 'Urgentná', desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
+    { value: 'low',    label: 'Nízka',    desc: 'Štandardná fronta',    color: '#8a9490', bg: '#f0ede5' },
+    { value: 'normal', label: 'Normálna', desc: 'Štandardný termín',    color: '#0d7c6b', bg: '#d4f0eb' },
+    { value: 'high',   label: 'Vysoká',   desc: 'Urgentné — prioritne', color: '#d97706', bg: '#fef3c7' },
+    { value: 'urgent', label: 'Urgent',   desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
   ];
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+  const receivedDate = njParseSkDate(data.received);
+  const dueDate = njParseSkDate(data.due);
+  const receivedError = data.received && !receivedDate ? 'Použite formát D. M. RRRR.' : '';
+  const dueError = data.due && !dueDate
+    ? 'Použite formát D. M. RRRR.'
+    : receivedDate && dueDate && dueDate < receivedDate ? 'Termín nemôže byť pred dátumom prijatia.' : '';
+  const dateStyle = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #e4ded4', borderRadius: 7, background: '#fff', color: '#1a2320', fontFamily: 'Manrope,sans-serif', fontSize: 13, outline: 'none' };
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 } },
-      React.createElement(FormField, { label: 'Dátum prijatia', type: 'date', value: data.received, onChange: e => set('received', e.target.value) }),
-      React.createElement(FormField, { label: 'Požadovaný termín odovzdania', type: 'date', required: true, value: data.due, onChange: e => set('due', e.target.value) })
+      React.createElement(Field, { label: 'Dátum prijatia', required: true, error: receivedError },
+        React.createElement('input', { value: data.received, onChange: e => set('received', e.target.value), style: dateStyle })),
+      React.createElement(Field, { label: 'Požadovaný termín odovzdania', required: true, error: dueError },
+        React.createElement('input', { value: data.due, onChange: e => set('due', e.target.value), placeholder: 'D. M. RRRR', style: dateStyle }))
     ),
     React.createElement('div', null,
-      React.createElement('label', { style: { display: 'block', fontSize: 12, fontWeight: 500, color: '#1a2320', marginBottom: 8 } }, 'Priorita'),
+      React.createElement(GroupLabel, null, 'Priorita'),
       React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 } },
         ...priorities.map(p => {
           const active = data.priority === p.value;
           return React.createElement('button', {
             key: p.value, onClick: () => set('priority', p.value),
             style: {
-              padding: '10px 12px', borderRadius: 8,
+              padding: '11px 12px', borderRadius: 9,
               border: active ? `2px solid ${p.color}` : '1px solid #e4ded4',
               background: active ? p.bg : '#fff', cursor: 'pointer',
-              fontFamily: 'Manrope,sans-serif', textAlign: 'left',
-              transition: 'border-color .12s, background .12s'
+              fontFamily: 'Manrope,sans-serif', textAlign: 'left', transition: 'border-color .12s, background .12s'
             }
           },
             React.createElement('div', { style: { fontSize: 12.5, fontWeight: 700, color: active ? p.color : '#1a2320' } }, p.label),
@@ -830,50 +319,79 @@ function StepSchedule({ data, set }) {
         })
       )
     ),
-    React.createElement(FormField, {
-      label: 'Poznámka pre technika',
-      type: 'textarea', rows: 4,
-      value: data.note, onChange: e => set('note', e.target.value),
-      placeholder: 'Špecifické požiadavky, alergie pacienta, farba, materiál…'
-    })
-  );
-}
-
-function StepSummary({ data, fmt, total }) {
-  const priLabel = { low: 'Nízka', normal: 'Normálna', high: 'Vysoká', urgent: 'Urgentná' };
-  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
-    React.createElement('div', { style: { padding: '12px 14px', background: '#d4f0eb', border: '1px solid #b0ddd5', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 } },
-      React.createElement(Icon, { name: 'checkCircle', size: 18, color: '#0d7c6b' }),
-      React.createElement('span', { style: { fontSize: 12.5, color: '#085c4e', fontWeight: 500 } },
-        'Skontrolujte zhrnutie. Po vytvorení bude práca v stave ', React.createElement('strong', null, 'Nová'), '.'
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 } },
+      React.createElement(Field, { label: 'Farba' },
+        React.createElement('input', {
+          value: data.toothColor || '', list: 'nj-tooth-colors',
+          onChange: e => set('toothColor', e.target.value),
+          placeholder: 'Vyberte alebo napíšte…',
+          style: dateStyle
+        }),
+        React.createElement('datalist', { id: 'nj-tooth-colors' },
+          ...['A1', 'A2', 'A3', 'A3.5', 'A4', 'B1', 'B2', 'B3', 'C1', 'C2', 'D2', 'D3', 'BL1', 'BL2', 'BL3'].map(color =>
+            React.createElement('option', { key: color, value: color })))
+      ),
+      React.createElement(Field, { label: 'Poznámka pre technika' },
+        React.createElement('textarea', {
+          value: data.note, onChange: e => set('note', e.target.value), rows: 4,
+          placeholder: 'Špecifické požiadavky, alergie pacienta, materiál…',
+          style: { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #e4ded4', borderRadius: 7, background: '#fff', color: '#1a2320', fontFamily: 'Manrope,sans-serif', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 84 }
+        })
       )
-    ),
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
-      React.createElement(SummaryRow, { label: 'Pacient',    value: data.patient || '—' }),
-      React.createElement(SummaryRow, { label: 'Klinika',    value: data.clinic || '—' }),
-      React.createElement(SummaryRow, { label: 'Lekár',      value: data.doctor || '—' }),
-      React.createElement(SummaryRow, { label: 'Technik',    value: data.technician || 'Nepridelený' }),
-      React.createElement(SummaryRow, { label: 'Prijaté',    value: data.received }),
-      React.createElement(SummaryRow, { label: 'Termín',     value: data.due || '—' }),
-      React.createElement(SummaryRow, { label: 'Priorita',   value: priLabel[data.priority] }),
-      React.createElement(SummaryRow, { label: 'Položky',    value: `${data.items.length}` })
-    ),
-    React.createElement('div', { style: { padding: '10px 14px', background: '#fbfaf6', border: '1px solid #ece7dc', borderRadius: 8, display: 'flex', justifyContent: 'space-between', fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, color: '#1a2320' } },
-      React.createElement('span', null, 'Celkom (bez DPH)'),
-      React.createElement('span', { style: { fontSize: 16 } }, fmt(total))
-    ),
-    data.note && React.createElement('div', null,
-      React.createElement('div', { style: { fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 } }, 'Poznámka'),
-      React.createElement('div', { style: { padding: 12, background: '#fef9c3', borderLeft: '3px solid #d97706', borderRadius: 6, fontSize: 12.5, color: '#713f12', lineHeight: 1.5 } }, data.note)
     )
   );
 }
 
-function SummaryRow({ label, value }) {
-  return React.createElement('div', { style: { padding: '8px 12px', background: '#fff', border: '1px solid #ece7dc', borderRadius: 7 } },
-    React.createElement('div', { style: { fontSize: 10.5, fontWeight: 600, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 } }, label),
-    React.createElement('div', { style: { fontSize: 12.5, color: '#1a2320', fontWeight: 500 } }, value)
+function StepSummary({ data, fmt, total, items }) {
+  const priMap = { low: { l: 'Nízka', c: '#8a9490', bg: '#f0ede5' }, normal: { l: 'Normálna', c: '#0d7c6b', bg: '#d4f0eb' }, high: { l: 'Vysoká', c: '#d97706', bg: '#fef3c7' }, urgent: { l: 'Urgent', c: '#c0392b', bg: '#fee2e2' } };
+  const pri = priMap[data.priority];
+  const p = data.patient;
+  const rc = p ? parseRC(p.birth) : null;
+  return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },
+    p && React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 12, padding: '13px 15px', background: '#eef7f4', border: '1px solid #b0ddd5', borderRadius: 10 } },
+      React.createElement('div', { style: { width: 40, height: 40, borderRadius: '50%', background: '#0d7c6b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 14, fontWeight: 700, flexShrink: 0 } }, `${p.first[0]}${p.last[0]}`),
+      React.createElement('div', { style: { minWidth: 0 } },
+        React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 15, fontWeight: 700, color: '#1a2320' } }, `${p.first} ${p.last}`),
+        React.createElement('div', { style: { fontSize: 11.5, color: '#5a6b66', marginTop: 2 } },
+          React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace' } }, fmtRC(p.birth)), rc ? ` · ${rc.dobShort} · ${rc.sex}, ${rc.age} r.` : '')
+      )
+    ),
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 } },
+      React.createElement(NJSummaryRow, { label: 'Klinika',  value: data.clinic ? data.clinic.label : '—' }),
+      React.createElement(NJSummaryRow, { label: 'Lekár',    value: data.doctor ? data.doctor.label : '—' }),
+      React.createElement(NJSummaryRow, { label: 'Technik',  value: data.technician ? data.technician.label : 'Nepridelený' }),
+      React.createElement(NJSummaryRow, { label: 'Priorita', value: pri.l, chip: pri }),
+      React.createElement(NJSummaryRow, { label: 'Prijaté',  value: data.received }),
+      React.createElement(NJSummaryRow, { label: 'Termín',   value: data.due || '—' }),
+      React.createElement(NJSummaryRow, { label: 'Farba',    value: data.toothColor || '—' })
+    ),
+    React.createElement('div', { style: { border: '1px solid #ece7dc', borderRadius: 10, overflow: 'hidden' } },
+      ...items.map((it, i) => React.createElement('div', {
+        key: i, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderTop: i ? '1px solid #f0ede5' : 'none', background: '#fff', fontSize: 12.5 }
+      },
+        React.createElement('span', { style: { color: '#1a2320' } }, it.name,
+          it.toothScope && React.createElement('span', { style: { color: '#8a9490', marginLeft: 6 } }, `· ${NJ_SCOPE_LABELS[it.toothScope] || it.toothScope}`),
+          !it.toothScope && it.tooth && React.createElement('span', { style: { color: '#8a9490', marginLeft: 6 } }, `· zub ${it.tooth}`),
+          React.createElement('span', { style: { color: '#8a9490', marginLeft: 6 } }, `· ${it.qty}×`)),
+        React.createElement('span', { style: { fontWeight: 600, color: '#1a2320' } }, fmt((Number(it.qty) || 0) * (Number(it.price) || 0)))
+      )),
+      React.createElement('div', { style: { padding: '12px 14px', background: '#fbfaf6', borderTop: '1px solid #ece7dc', display: 'flex', justifyContent: 'space-between', fontFamily: 'Plus Jakarta Sans,sans-serif', fontWeight: 700, color: '#1a2320' } },
+        React.createElement('span', null, 'Celkom bez DPH'),
+        React.createElement('span', { style: { fontSize: 16 } }, fmt(total)))
+    ),
+    data.note && React.createElement('div', null,
+      React.createElement(GroupLabel, null, 'Poznámka'),
+      React.createElement('div', { style: { padding: 12, background: '#fef9c3', borderLeft: '3px solid #d97706', borderRadius: 6, fontSize: 12.5, color: '#713f12', lineHeight: 1.5 } }, data.note))
   );
 }
 
-Object.assign(window, { NewJob });
+function NJSummaryRow({ label, value, chip }) {
+  return React.createElement('div', { style: { padding: '8px 12px', background: '#fff', border: '1px solid #ece7dc', borderRadius: 8 } },
+    React.createElement('div', { style: { fontSize: 10, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 } }, label),
+    chip
+      ? React.createElement('span', { style: { display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: 11.5, fontWeight: 700, background: chip.bg, color: chip.c } }, value)
+      : React.createElement('div', { style: { fontSize: 12.5, color: '#1a2320', fontWeight: 500 } }, value)
+  );
+}
+
+Object.assign(window, { NewJobDrawer });
