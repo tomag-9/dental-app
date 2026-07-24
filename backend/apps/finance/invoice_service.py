@@ -5,6 +5,7 @@ Extracted from InvoiceViewSet so the logic can be tested independently
 and reused without going through the HTTP layer.
 """
 
+from copy import deepcopy
 from decimal import Decimal
 
 from django.conf import settings as django_settings
@@ -21,6 +22,137 @@ from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+
+
+def _serialize_invoice_breakdown(rows):
+    """Convert breakdown values to stable JSON-compatible invoice snapshot data."""
+    return [
+        {
+            **row,
+            "total": f"{Decimal(str(row['total'])):.2f}",
+            "procedures": [
+                {
+                    **procedure,
+                    "unit_price": f"{Decimal(str(procedure['unit_price'])):.2f}",
+                    "line_total": f"{Decimal(str(procedure['line_total'])):.2f}",
+                }
+                for procedure in row["procedures"]
+            ],
+            "recipes": [
+                {
+                    **recipe,
+                    "date": recipe["date"].isoformat()
+                    if hasattr(recipe["date"], "isoformat")
+                    else recipe["date"],
+                    "materials": [
+                        {
+                            **material,
+                            "quantity": str(material["quantity"]),
+                        }
+                        for material in recipe["materials"]
+                    ],
+                }
+                for recipe in row["recipes"]
+            ],
+        }
+        for row in rows
+    ]
+
+
+def build_invoice_breakdown(invoice, *, force_dynamic=False):
+    """Return the patient/job/procedure/recipe detail used by invoice appendices."""
+    if not force_dynamic and invoice.breakdown_snapshot:
+        return deepcopy(invoice.breakdown_snapshot)
+
+    grouped = {}
+    items = sorted(
+        invoice.items.all(),
+        key=lambda item: (item.job_id is None, item.job_id or 0, item.id),
+    )
+
+    for item in items:
+        job = item.job
+        key = f"job:{job.id}" if job else f"item:{item.id}"
+        if key not in grouped:
+            patient = getattr(job, "patient", None) if job else None
+            patient_name = (
+                f"{patient.first_name} {patient.last_name}".strip()
+                if patient
+                else "Bez pacienta"
+            )
+            grouped[key] = {
+                "job_id": job.id if job else None,
+                "patient_id": patient.id if patient else None,
+                "patient_name": patient_name,
+                "job_description": (job.description or "") if job else "",
+                "procedures": [],
+                "recipes": [],
+                "total": Decimal("0.00"),
+            }
+
+        row = grouped[key]
+        line_total = Decimal(str(item.line_total or 0))
+        row["procedures"].append(
+            {
+                "description": item.description or row["job_description"] or "Dentálna práca",
+                "quantity": item.quantity,
+                "unit_price": Decimal(str(item.unit_price or 0)),
+                "line_total": line_total,
+            }
+        )
+        row["total"] += line_total
+
+    jobs_by_id = {
+        item.job_id: item.job
+        for item in items
+        if item.job_id and item.job is not None
+    }
+    for row in grouped.values():
+        job = jobs_by_id.get(row["job_id"])
+        if not job:
+            continue
+        usages = sorted(
+            job.material_usages.all(),
+            key=lambda usage: (usage.date, usage.id),
+        )
+        row["recipes"] = [
+            {
+                "name": usage.recipe
+                or (usage.recipe_source.name if usage.recipe_source else "")
+                or "Individuálny materiálový záznam",
+                "date": usage.date,
+                "materials": [
+                    {
+                        "name": line.name,
+                        "code": line.code,
+                        "manufacturer": line.manufacturer,
+                        "lot": line.lot,
+                        "quantity": line.qty,
+                        "unit": line.unit,
+                    }
+                    for line in usage.lines.all()
+                ],
+            }
+            for usage in usages
+        ]
+
+    return list(grouped.values())
+
+
+def build_invoice_patient_summaries(invoice, breakdown=None):
+    """Aggregate invoice totals by patient for the patient-based invoice mode."""
+    summaries = {}
+    rows = breakdown if breakdown is not None else build_invoice_breakdown(invoice)
+    for row in rows:
+        key = row["patient_id"] or row["patient_name"]
+        if key not in summaries:
+            summaries[key] = {
+                "patient_id": row["patient_id"],
+                "patient_name": row["patient_name"],
+                "total": Decimal("0.00"),
+            }
+        summaries[key]["total"] += Decimal(str(row["total"]))
+    return list(summaries.values())
 
 
 def generate_invoice_number(lab):
@@ -147,7 +279,10 @@ def create_invoice(
 
     amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
     invoice.total_amount = amounts["total_amount"]
-    invoice.save(update_fields=["total_amount"])
+    invoice.breakdown_snapshot = _serialize_invoice_breakdown(
+        build_invoice_breakdown(invoice, force_dynamic=True)
+    )
+    invoice.save(update_fields=["total_amount", "breakdown_snapshot"])
 
     sync_jobs_for_invoice_status(invoice, "issued")
 

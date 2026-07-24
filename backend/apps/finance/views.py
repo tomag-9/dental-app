@@ -1,5 +1,6 @@
 import calendar
 import csv
+import logging
 from datetime import date
 from decimal import Decimal
 from io import BytesIO, StringIO
@@ -17,10 +18,12 @@ from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.lib.utils import simpleSplit
 from reportlab.pdfgen import canvas
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -43,11 +46,23 @@ from .models import Invoice, PriceList, Subscription
 from .selectors import invoices_for_user, price_list_for_user
 from .serializers import (
     InvoiceCreateSerializer,
+    InvoiceEmailSerializer,
+    InvoiceListSerializer,
     InvoiceSerializer,
     InvoiceStatusUpdateSerializer,
     PriceListSerializer,
     SubscriptionSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+class InvoicePageNumberPagination(PageNumberPagination):
+    """Keep invoice collection responses bounded; detail data has its own endpoint."""
+
+    page_size = 100
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 def _write_invoice_audit(request, invoice, action, metadata=None, description=None):
@@ -138,10 +153,16 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
+    pagination_class = InvoicePageNumberPagination
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
     ]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return InvoiceListSerializer
+        return InvoiceSerializer
 
     def _build_qr_svg(self, payload, size=128):
         widget = qr.QrCodeWidget(payload)
@@ -159,6 +180,11 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = invoices_for_user(self.request.user)
         qs = qs.select_related("clinic", "lab").prefetch_related("items__job__patient")
+        if self.action in {"retrieve", "pdf", "send_email", "update_status"}:
+            qs = qs.prefetch_related(
+                "items__job__material_usages__recipe_source",
+                "items__job__material_usages__lines",
+            )
 
         params = self.request.query_params
         if status_filter := params.get("status"):
@@ -175,7 +201,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if date_to := parse_date(params.get("date_to", "")):
             qs = qs.filter(due_date__lte=date_to)
 
-        return qs
+        return qs.order_by("-created_at", "-id")
 
     def create(self, request, *args, **kwargs):
         payload = InvoiceCreateSerializer(data=request.data)
@@ -237,8 +263,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         """Email the invoice PDF to the clinic contact or a provided address."""
         invoice = self.get_object()
         clinic = invoice.clinic
+        payload = InvoiceEmailSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
 
-        recipient = request.data.get("email") or (clinic.contact_info or {}).get("email") if clinic else None
+        clinic_contact = (clinic.contact_info or {}) if clinic else {}
+        clinic_email = clinic_contact.get("email") if isinstance(clinic_contact, dict) else None
+        recipient = payload.validated_data.get("email") or clinic_email
         if not recipient:
             detail = "Chýba e-mail príjemcu. Zadajte 'email' v požiadavke alebo nastavte clinic contact_info.email."
             return Response(
@@ -253,16 +283,19 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
         try:
             invoice_service.send_invoice_email(request.user, invoice, pdf_bytes, recipient)
-        except Exception as exc:
+        except Exception:
+            logger.exception("Invoice email delivery failed", extra={"invoice_id": invoice.id})
             return Response(
-                {"detail": f"Odoslanie e-mailu zlyhalo: {exc}"},
+                {"detail": "Odoslanie e-mailu zlyhalo. Skontrolujte nastavenie odosielania a skúste to znova."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         return Response({"sent_to": recipient, "invoice": invoice.number})
 
     def _render_invoice_pdf(self, invoice, buffer):
         """Render the invoice PDF into buffer (shared by pdf action and send_email)."""
-        items = invoice.items.select_related("job__patient").all()
+        items = list(invoice.items.select_related("job__patient").all())
+        breakdown = invoice_service.build_invoice_breakdown(invoice)
+        patient_summaries = invoice_service.build_invoice_patient_summaries(invoice, breakdown)
         lab = invoice.lab
         clinic = invoice.clinic
 
@@ -274,6 +307,23 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         def hline(y, x1=None, x2=None):
             pdf.setLineWidth(0.3)
             pdf.line(x1 or L, y, x2 or R, y)
+
+        def wrapped_lines(value, font_name, font_size, max_width):
+            return simpleSplit(str(value or ""), font_name, font_size, max_width) or [""]
+
+        def invoice_continuation_page():
+            pdf.showPage()
+            pdf.setFont("Helvetica-Bold", 14)
+            pdf.drawString(L, height - 18 * mm, doc_label)
+            pdf.setFont("Helvetica", 9)
+            pdf.drawString(L, height - 24 * mm, f"Číslo: {invoice.number} — pokračovanie")
+            hline(height - 30 * mm)
+            page_y = height - 38 * mm
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawString(L, page_y, "Pacient")
+            pdf.drawRightString(R, page_y, "Spolu")
+            hline(page_y - 2 * mm)
+            return page_y - 8 * mm
 
         if lab.enable_qr_payment and lab.bank_account:
             iban = (lab.bank_account or "").replace(" ", "")
@@ -354,35 +404,44 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
             ty = th - 8 * mm
             pdf.setFont("Helvetica", 9)
-            pdf.drawString(
-                L,
-                ty,
-                (invoice.custom_description or "Protetické práce")[:95],
+            description_lines = wrapped_lines(
+                invoice.custom_description or "Protetické práce",
+                "Helvetica",
+                9,
+                145 * mm,
             )
-            pdf.drawRightString(
-                R,
-                ty,
-                format_sk_currency(sum((item.line_total for item in items), Decimal())),
-            )
-            ty -= 6 * mm
+            for line_index, line in enumerate(description_lines):
+                pdf.drawString(L, ty, line)
+                if line_index == 0:
+                    pdf.drawRightString(
+                        R,
+                        ty,
+                        format_sk_currency(sum((item.line_total for item in items), Decimal())),
+                    )
+                ty -= 4.5 * mm
+            ty -= 1.5 * mm
         else:
             pdf.setFont("Helvetica-Bold", 9)
-            pdf.drawString(L, th, "Popis")
-            pdf.drawRightString(120 * mm, th, "Mn.")
-            pdf.drawRightString(148 * mm, th, "Jed. cena")
+            pdf.drawString(L, th, "Pacient")
             pdf.drawRightString(R, th, "Spolu")
             hline(th - 2 * mm)
 
             ty = th - 8 * mm
-            pdf.setFont("Helvetica", 9)
-            for item in items[:30]:
-                if ty < 55 * mm:
-                    break
-                pdf.drawString(L, ty, str(item.description or "")[:60])
-                pdf.drawRightString(120 * mm, ty, str(item.quantity))
-                pdf.drawRightString(148 * mm, ty, format_sk_currency(item.unit_price))
-                pdf.drawRightString(R, ty, format_sk_currency(item.line_total))
-                ty -= 5 * mm
+            for summary in patient_summaries:
+                name_lines = wrapped_lines(
+                    summary["patient_name"],
+                    "Helvetica",
+                    9,
+                    145 * mm,
+                )
+                row_height = max(5, len(name_lines) * 4.5) * mm
+                if ty - row_height < 55 * mm:
+                    ty = invoice_continuation_page()
+                pdf.setFont("Helvetica", 9)
+                for line_index, line in enumerate(name_lines):
+                    pdf.drawString(L, ty - line_index * 4.5 * mm, line)
+                pdf.drawRightString(R, ty, format_sk_currency(summary["total"]))
+                ty -= row_height
 
         hline(ty)
         vat_rate = Decimal(str(invoice.vat_rate or 0))
@@ -395,6 +454,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             subtotal = reverse_invoice_subtotal(total, vat_rate, discount)
         amounts = calculate_invoice_amounts(subtotal, vat_rate, discount)
         vat_amount = amounts["vat_amount"]
+
+        if ty < 52 * mm:
+            ty = invoice_continuation_page()
+            hline(ty)
 
         ty -= 6 * mm
         pdf.setFont("Helvetica", 9)
@@ -431,38 +494,111 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if lab.invoice_default_note:
             ty -= 6 * mm
             pdf.setFont("Helvetica", 8)
-            pdf.drawString(L, ty, lab.invoice_default_note[:120])
+            for note_line in wrapped_lines(
+                lab.invoice_default_note,
+                "Helvetica",
+                8,
+                R - L,
+            ):
+                pdf.drawString(L, ty, note_line)
+                ty -= 4 * mm
 
         if invoice.show_patient_list:
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 14)
-            pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")
-            pdf.setFont("Helvetica", 10)
-            pdf.drawString(L, height - 25 * mm, f"Faktúra: {invoice.number}")
-            hline(height - 31 * mm)
+            def appendix_page():
+                pdf.showPage()
+                pdf.setFont("Helvetica-Bold", 14)
+                pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")
+                pdf.setFont("Helvetica", 10)
+                pdf.drawString(L, height - 25 * mm, f"Faktúra: {invoice.number}")
+                hline(height - 31 * mm)
+                page_y = height - 40 * mm
+                pdf.setFont("Helvetica-Bold", 8)
+                pdf.drawString(L, page_y, "Pacient")
+                pdf.drawString(58 * mm, page_y, "Úkon / recept")
+                pdf.drawRightString(148 * mm, page_y, "Množstvo")
+                pdf.drawRightString(R, page_y, "Spolu")
+                hline(page_y - 2 * mm)
+                return page_y - 7 * mm
 
-            py = height - 40 * mm
-            pdf.setFont("Helvetica-Bold", 8)
-            pdf.drawString(L, py, "Pacient")
-            pdf.drawString(58 * mm, py, "Práca")
-            pdf.drawRightString(148 * mm, py, "Množstvo")
-            pdf.drawRightString(R, py, "Spolu")
-            hline(py - 2 * mm)
-            py -= 7 * mm
-            pdf.setFont("Helvetica", 8)
-            for item in items:
-                if py < 20 * mm:
-                    pdf.showPage()
-                    py = height - 20 * mm
+            py = appendix_page()
+            for row in breakdown:
+                first_procedure = True
+                for procedure in row["procedures"]:
+                    patient_lines = wrapped_lines(
+                        row["patient_name"] if first_procedure else "",
+                        "Helvetica",
+                        8,
+                        38 * mm,
+                    )
+                    procedure_lines = wrapped_lines(
+                        procedure["description"],
+                        "Helvetica",
+                        8,
+                        82 * mm,
+                    )
+                    line_count = max(len(patient_lines), len(procedure_lines))
+                    row_height = max(5, line_count * 4) * mm
+                    if py - row_height < 20 * mm:
+                        py = appendix_page()
                     pdf.setFont("Helvetica", 8)
-                job = item.job
-                patient = getattr(job, "patient", None) if job else None
-                patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else "Bez pacienta"
-                pdf.drawString(L, py, patient_name[:28])
-                pdf.drawString(58 * mm, py, str(item.description or "")[:45])
-                pdf.drawRightString(148 * mm, py, str(item.quantity))
-                pdf.drawRightString(R, py, format_sk_currency(item.line_total))
-                py -= 5 * mm
+                    for line_index, line in enumerate(patient_lines):
+                        pdf.drawString(L, py - line_index * 4 * mm, line)
+                    for line_index, line in enumerate(procedure_lines):
+                        pdf.drawString(58 * mm, py - line_index * 4 * mm, line)
+                    pdf.drawRightString(148 * mm, py, str(procedure["quantity"]))
+                    pdf.drawRightString(R, py, format_sk_currency(procedure["line_total"]))
+                    py -= row_height
+                    first_procedure = False
+
+                for recipe in row["recipes"]:
+                    recipe_date = recipe["date"]
+                    if hasattr(recipe_date, "strftime"):
+                        recipe_date = recipe_date.strftime("%d.%m.%Y")
+                    recipe_lines = wrapped_lines(
+                        f"Recept: {recipe['name']}" + (f" ({recipe_date})" if recipe_date else ""),
+                        "Helvetica-Bold",
+                        7.5,
+                        120 * mm,
+                    )
+                    recipe_height = len(recipe_lines) * 4 * mm
+                    if py - recipe_height < 20 * mm:
+                        py = appendix_page()
+                    pdf.setFont("Helvetica-Bold", 7.5)
+                    for line in recipe_lines:
+                        pdf.drawString(62 * mm, py, line)
+                        py -= 4 * mm
+                    pdf.setFont("Helvetica", 7)
+                    for material in recipe["materials"]:
+                        material_text = " · ".join(
+                            filter(
+                                None,
+                                [
+                                    material["name"],
+                                    material["code"],
+                                    f"LOT {material['lot']}" if material["lot"] else "",
+                                    material["manufacturer"],
+                                ],
+                            )
+                        )
+                        material_lines = wrapped_lines(
+                            material_text,
+                            "Helvetica",
+                            7,
+                            72 * mm,
+                        )
+                        material_height = max(4, len(material_lines) * 3.5) * mm
+                        if py - material_height < 18 * mm:
+                            py = appendix_page()
+                            pdf.setFont("Helvetica", 7)
+                        for line_index, line in enumerate(material_lines):
+                            pdf.drawString(66 * mm, py - line_index * 3.5 * mm, line)
+                        pdf.drawRightString(
+                            148 * mm,
+                            py,
+                            f"{material['quantity']} {material['unit']}",
+                        )
+                        py -= material_height
+                py -= 2 * mm
 
         pdf.showPage()
         pdf.save()

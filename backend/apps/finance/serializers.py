@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.core.models import AuditLog
 
+from . import invoice_service
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, InvoiceItem, PriceList, Subscription
 
@@ -85,6 +86,10 @@ class InvoiceStatusUpdateSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("draft", "issued", "paid", "cancelled"))
 
 
+class InvoiceEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=False, allow_blank=False)
+
+
 class InvoiceAuditLogEntrySerializer(serializers.Serializer):
     id = serializers.IntegerField()
     action = serializers.CharField()
@@ -93,6 +98,44 @@ class InvoiceAuditLogEntrySerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     message = serializers.CharField(allow_blank=True, allow_null=True)
     metadata = serializers.DictField()
+
+
+class InvoiceMaterialLineSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    code = serializers.CharField()
+    manufacturer = serializers.CharField()
+    lot = serializers.CharField()
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=3)
+    unit = serializers.CharField()
+
+
+class InvoiceRecipeSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    date = serializers.CharField(allow_blank=True, allow_null=True)
+    materials = InvoiceMaterialLineSerializer(many=True)
+
+
+class InvoiceProcedureSerializer(serializers.Serializer):
+    description = serializers.CharField()
+    quantity = serializers.IntegerField()
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    line_total = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class InvoiceAppendixRowSerializer(serializers.Serializer):
+    job_id = serializers.IntegerField(allow_null=True)
+    patient_id = serializers.IntegerField(allow_null=True)
+    patient_name = serializers.CharField()
+    job_description = serializers.CharField(allow_blank=True)
+    procedures = InvoiceProcedureSerializer(many=True)
+    recipes = InvoiceRecipeSerializer(many=True)
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class InvoicePatientSummarySerializer(serializers.Serializer):
+    patient_id = serializers.IntegerField(allow_null=True)
+    patient_name = serializers.CharField()
+    total = serializers.DecimalField(max_digits=12, decimal_places=2)
 
 
 def _sk_date(d):
@@ -122,12 +165,17 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     items = InvoiceItemSerializer(many=True, read_only=True)
     clinic_name = serializers.CharField(source="clinic.name", read_only=True)
+    clinic_email = serializers.SerializerMethodField()
     patient_names = serializers.SerializerMethodField()
     subtotal_amount = serializers.SerializerMethodField()
+    discount_amount = serializers.SerializerMethodField()
+    taxable_amount = serializers.SerializerMethodField()
     vat_amount = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
     days_overdue = serializers.SerializerMethodField()
     related_jobs = serializers.SerializerMethodField()
+    patient_summaries = serializers.SerializerMethodField()
+    appendix_rows = serializers.SerializerMethodField()
     formatted_total = serializers.SerializerMethodField()
     formatted_due_date = serializers.SerializerMethodField()
     formatted_issued_at = serializers.SerializerMethodField()
@@ -141,6 +189,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "lab",
             "clinic",
             "clinic_name",
+            "clinic_email",
             "status",
             "document_type",
             "vat_rate",
@@ -150,6 +199,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "show_patient_list",
             "total_amount",
             "subtotal_amount",
+            "discount_amount",
+            "taxable_amount",
             "vat_amount",
             "formatted_total",
             "formatted_due_date",
@@ -162,17 +213,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "due_date",
             "items",
             "patient_names",
+            "patient_summaries",
+            "appendix_rows",
             "related_jobs",
             "audit_log",
         )
 
     def get_patient_names(self, obj):
-        patient_names = set()
-        for item in obj.items.select_related("job__patient").all():
-            patient = getattr(getattr(item, "job", None), "patient", None)
-            if patient:
-                patient_names.add(f"{patient.first_name} {patient.last_name}")
-        return sorted(patient_names)
+        return sorted(
+            {
+                row["patient_name"]
+                for row in self._breakdown(obj)
+                if row.get("patient_name") and row["patient_name"] != "Bez pacienta"
+            }
+        )
+
+    def get_clinic_email(self, obj):
+        contact_info = obj.clinic.contact_info or {}
+        return contact_info.get("email", "") if isinstance(contact_info, dict) else ""
 
     def get_formatted_total(self, obj):
         return _sk_amount(obj.total_amount)
@@ -192,6 +250,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
         amounts = calculate_invoice_amounts(self._subtotal(obj), obj.vat_rate, obj.discount_percent)
         return f"{amounts['vat_amount']:.2f}"
 
+    def get_discount_amount(self, obj):
+        amounts = calculate_invoice_amounts(self._subtotal(obj), obj.vat_rate, obj.discount_percent)
+        return f"{amounts['discount_amount']:.2f}"
+
+    def get_taxable_amount(self, obj):
+        amounts = calculate_invoice_amounts(self._subtotal(obj), obj.vat_rate, obj.discount_percent)
+        return f"{amounts['taxable_amount']:.2f}"
+
     def _subtotal(self, obj):
         items = obj.items.all()
         if items:
@@ -209,7 +275,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_related_jobs(self, obj):
         related = []
         seen = set()
-        for item in obj.items.select_related("job__patient").order_by("job_id"):
+        for item in sorted(obj.items.all(), key=lambda value: (value.job_id or 0, value.id)):
             job = item.job
             if not job or job.id in seen:
                 continue
@@ -226,6 +292,20 @@ class InvoiceSerializer(serializers.ModelSerializer):
                 }
             )
         return related
+
+    def _breakdown(self, obj):
+        if not hasattr(obj, "_invoice_breakdown_cache"):
+            obj._invoice_breakdown_cache = invoice_service.build_invoice_breakdown(obj)
+        return obj._invoice_breakdown_cache
+
+    @extend_schema_field(InvoicePatientSummarySerializer(many=True))
+    def get_patient_summaries(self, obj):
+        summaries = invoice_service.build_invoice_patient_summaries(obj, self._breakdown(obj))
+        return InvoicePatientSummarySerializer(summaries, many=True).data
+
+    @extend_schema_field(InvoiceAppendixRowSerializer(many=True))
+    def get_appendix_rows(self, obj):
+        return InvoiceAppendixRowSerializer(self._breakdown(obj), many=True).data
 
     @extend_schema_field(InvoiceAuditLogEntrySerializer(many=True))
     def get_audit_log(self, obj):
@@ -246,6 +326,17 @@ class InvoiceSerializer(serializers.ModelSerializer):
             }
             for log in logs
         ]
+
+
+class InvoiceListSerializer(InvoiceSerializer):
+    """Lightweight invoice representation for collection/workspace responses."""
+
+    class Meta(InvoiceSerializer.Meta):
+        fields = tuple(
+            field
+            for field in InvoiceSerializer.Meta.fields
+            if field not in {"patient_names", "patient_summaries", "appendix_rows", "audit_log"}
+        )
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

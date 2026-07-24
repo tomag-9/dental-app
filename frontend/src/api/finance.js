@@ -5,7 +5,8 @@ import { normalizeInvoice, normalizePriceItem } from './normalize.js';
 
 /** @returns {Promise<Schemas['Invoice'][]>} */
 export async function fetchInvoices() {
-  return request('/invoices/');
+  const payload = await request('/invoices/');
+  return Array.isArray(payload) ? payload : (payload.results || []);
 }
 
 /** @returns {Promise<Schemas['PriceList'][]>} */
@@ -41,6 +42,16 @@ export async function downloadInvoicePdf(id, filename) {
 /** @param {number} id */
 export async function fetchInvoiceDetail(id) {
   return request(`/invoices/${id}/`);
+}
+
+/** @param {number} id @param {string} [email] */
+export async function sendInvoiceEmail(id, email) {
+  const result = await request(`/invoices/${id}/send-email/`, {
+    method: 'POST',
+    body: JSON.stringify(email ? { email } : {}),
+  });
+  _refreshWorkspace();
+  return result;
 }
 
 /** @param {'csv'|'xlsx'} [format] */

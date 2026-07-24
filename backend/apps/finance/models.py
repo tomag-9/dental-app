@@ -79,6 +79,7 @@ class Invoice(models.Model):
     )
     custom_description = models.TextField(blank=True, default="")
     show_patient_list = models.BooleanField(default=True)
+    breakdown_snapshot = models.JSONField(blank=True, default=list)
 
     created_at = models.DateTimeField(auto_now_add=True)
     issued_at = models.DateTimeField(null=True, blank=True)

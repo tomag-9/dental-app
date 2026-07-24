@@ -286,22 +286,22 @@ class InvoiceListFilterTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/invoices/?status=paid")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]["number"], "F-0002")
+        self.assertEqual(resp.data["count"], 1)
+        self.assertEqual(resp.data["results"][0]["number"], "F-0002")
 
     def test_document_type_filter(self):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/invoices/?document_type=proforma")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]["number"], "F-0003")
+        self.assertEqual(resp.data["count"], 1)
+        self.assertEqual(resp.data["results"][0]["number"], "F-0003")
 
     def test_clinic_id_filter(self):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get(f"/api/finance/invoices/?clinic_id={self.clinic_b.id}")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]["number"], "F-0002")
+        self.assertEqual(resp.data["count"], 1)
+        self.assertEqual(resp.data["results"][0]["number"], "F-0002")
 
     def test_date_range_filter(self):
         from datetime import date
@@ -310,7 +310,7 @@ class InvoiceListFilterTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get(f"/api/finance/invoices/?date_from={today.isoformat()}")
         self.assertEqual(resp.status_code, 200)
-        numbers = [inv["number"] for inv in resp.data]
+        numbers = [inv["number"] for inv in resp.data["results"]]
         self.assertIn("F-0001", numbers)
         self.assertIn("F-0003", numbers)
         self.assertNotIn("F-0002", numbers)
@@ -319,3 +319,6 @@ class InvoiceListFilterTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/finance/invoices/?clinic_id=notanumber")
         self.assertEqual(resp.status_code, 200)
+        self.assertIn("results", resp.data)
+        self.assertLessEqual(len(resp.data["results"]), 100)
+        self.assertNotIn("appendix_rows", resp.data["results"][0])

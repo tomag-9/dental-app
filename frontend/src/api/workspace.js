@@ -21,7 +21,8 @@ export async function loadWorkspace() {
   const clinics = clinicsRaw.map((clinic) => normalizeClinic(clinic, jobs));
   const normalizedDoctors = doctors.map((doctor) => normalizeDoctor(doctor, jobs));
   const normalizedTechnicians = technicians.map((technician) => normalizeTechnician(technician, jobs));
-  const normalizedInvoices = invoices.map(normalizeInvoice);
+  const invoiceRows = Array.isArray(invoices) ? invoices : (invoices.results || []);
+  const normalizedInvoices = invoiceRows.map(normalizeInvoice);
   const normalizedPriceList = priceList.map(normalizePriceItem);
   const normalizedWarehouse = warehouse.map(normalizeWarehouseItem);
   const calendarEvents = jobs.slice(0, 24).map(normalizeCalendarEvent);

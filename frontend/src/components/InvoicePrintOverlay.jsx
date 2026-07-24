@@ -36,8 +36,14 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
   const vatRate = parseFloat(invoiceRaw.vat_rate || 0);
 
   const rawItems = invoiceRaw.items || [];
-  const jobsById = new Map((invoiceRaw.related_jobs || []).map((job) => [job.id, job]));
   const subtotal = rawItems.reduce((sum, item) => sum + (parseFloat(item.line_total || 0) || 0), 0);
+  const discountPercent = parseFloat(invoiceRaw.discount_percent || 0) || 0;
+  const discountAmount = parseFloat(invoiceRaw.discount_amount);
+  const exactDiscountAmount = Number.isFinite(discountAmount)
+    ? discountAmount
+    : subtotal * (discountPercent / 100);
+  const vatAmount = parseFloat(invoiceRaw.vat_amount || 0) || 0;
+  const totalAmount = parseFloat(invoiceRaw.total_amount || 0) || 0;
   const items = invoiceRaw.description_mode === 'custom'
     ? [{
         code: 'PRACE',
@@ -47,16 +53,14 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
         unitPrice: subtotal,
         vat: vatRate,
       }]
-    : rawItems.map((item, i) => ({
-    code: item.description
-      ? item.description.replace(/\s+/g, '-').toUpperCase().slice(0, 10)
-      : `IT-${String(i + 1).padStart(3, '0')}`,
-    name: item.description || `Položka #${i + 1}`,
-    qty: parseFloat(item.quantity || 1),
-    unit: 'ks',
-    unitPrice: parseFloat(item.unit_price || 0),
-    vat: vatRate,
-  }));
+    : (invoiceRaw.patient_summaries || []).map((summary, i) => ({
+        code: `PAC-${String(i + 1).padStart(3, '0')}`,
+        name: summary.patient_name || `Pacient #${summary.patient_id}`,
+        qty: 1,
+        unit: 'pac.',
+        unitPrice: parseFloat(summary.total || 0),
+        vat: vatRate,
+      }));
 
   const fmtSk = (isoDate) => {
     if (!isoDate) return '—';
@@ -75,6 +79,14 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
     dueAt: fmtSk(invoiceRaw.due_date),
     paymentMethod: 'Prevodom na účet',
     issuedBy: '',
+    subtotalAmount: subtotal,
+    discountPercent,
+    discountAmount: exactDiscountAmount,
+    taxableAmount: parseFloat(invoiceRaw.taxable_amount),
+    vatRate,
+    vatAmount,
+    totalAmount,
+    isVatPayer: vatRate > 0 || !!(lab && lab.is_vat_payer),
     notes: invoiceRaw.description_mode === 'custom' && invoiceRaw.show_patient_list
       ? 'Podrobný rozpis prác a pacientov je v prílohe faktúry.'
       : (invoiceRaw.note || ''),
@@ -82,14 +94,15 @@ function mapApiInvoiceToInvoicePDF(invoiceRaw, lab, clinic) {
     customer,
     items,
     patientRows: invoiceRaw.show_patient_list
-      ? rawItems.map((item) => {
-          const job = jobsById.get(item.job);
-          return {
-            patient: (job && job.patient_name) || 'Bez pacienta',
-            description: item.description || (job && job.description) || 'Práca',
-            qty: parseFloat(item.quantity || 1),
-            total: parseFloat(item.line_total || 0),
-          };
+      ? (invoiceRaw.appendix_rows || []).flatMap((row) => {
+          const procedures = row.procedures || [];
+          return procedures.map((procedure, index) => ({
+            patient: row.patient_name || 'Bez pacienta',
+            description: procedure.description || row.job_description || 'Práca',
+            qty: parseFloat(procedure.quantity || 1),
+            total: parseFloat(procedure.line_total || 0),
+            recipes: index === procedures.length - 1 ? (row.recipes || []) : [],
+          }));
         })
       : [],
   };
@@ -221,7 +234,18 @@ function InvoicePrintOverlay({ invoiceId, invoiceNumber, onClose }) {
           box-shadow: none !important;
           border-radius: 0 !important;
         }
+        .molaris-paper-page {
+          break-after: page !important;
+          page-break-after: always !important;
+        }
+        .molaris-paper-page:last-child {
+          break-after: auto !important;
+          page-break-after: auto !important;
+        }
         @page { margin: 0; size: A4 portrait; }
+      }
+      @media screen {
+        .molaris-paper-page:not(:last-child) { margin-bottom: 16px; }
       }
     `)
   );
