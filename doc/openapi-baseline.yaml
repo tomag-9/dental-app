@@ -2032,7 +2032,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedInvoiceList'
+                $ref: '#/components/schemas/PaginatedInvoiceListList'
           description: ''
     post:
       operationId: finance_invoices_create
@@ -3023,7 +3023,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedInvoiceList'
+                $ref: '#/components/schemas/PaginatedInvoiceListList'
           description: ''
     post:
       operationId: invoices_create
@@ -7828,7 +7828,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedInvoiceList'
+                $ref: '#/components/schemas/PaginatedInvoiceListList'
           description: ''
     post:
       operationId: v1_finance_invoices_create
@@ -11231,8 +11231,11 @@ components:
         clinic_name:
           type: string
           readOnly: true
+        clinic_email:
+          type: string
+          readOnly: true
         status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
+          $ref: '#/components/schemas/Status12cEnum'
         document_type:
           $ref: '#/components/schemas/DocumentTypeEnum'
         vat_rate:
@@ -11254,6 +11257,12 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         subtotal_amount:
+          type: string
+          readOnly: true
+        discount_amount:
+          type: string
+          readOnly: true
+        taxable_amount:
           type: string
           readOnly: true
         vat_amount:
@@ -11298,6 +11307,16 @@ components:
         patient_names:
           type: string
           readOnly: true
+        patient_summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoicePatientSummary'
+          readOnly: true
+        appendix_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceAppendixRow'
+          readOnly: true
         related_jobs:
           type: string
           readOnly: true
@@ -11307,11 +11326,14 @@ components:
             $ref: '#/components/schemas/InvoiceAuditLogEntry'
           readOnly: true
       required:
+      - appendix_rows
       - audit_log
       - clinic
+      - clinic_email
       - clinic_name
       - created_at
       - days_overdue
+      - discount_amount
       - formatted_due_date
       - formatted_issued_at
       - formatted_total
@@ -11321,9 +11343,44 @@ components:
       - lab
       - number
       - patient_names
+      - patient_summaries
       - related_jobs
       - subtotal_amount
+      - taxable_amount
       - vat_amount
+    InvoiceAppendixRow:
+      type: object
+      properties:
+        job_id:
+          type: integer
+          nullable: true
+        patient_id:
+          type: integer
+          nullable: true
+        patient_name:
+          type: string
+        job_description:
+          type: string
+        procedures:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceProcedure'
+        recipes:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceRecipe'
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - job_description
+      - job_id
+      - patient_id
+      - patient_name
+      - procedures
+      - recipes
+      - total
     InvoiceAuditLogEntry:
       type: object
       properties:
@@ -11382,18 +11439,194 @@ components:
       - description
       - id
       - invoice
-    InvoiceStatusEnum:
-      enum:
-      - draft
-      - issued
-      - paid
-      - cancelled
-      type: string
-      description: |-
-        * `draft` - Koncept
-        * `issued` - Vystavená
-        * `paid` - Zaplatená
-        * `cancelled` - Zrušená
+    InvoiceList:
+      type: object
+      description: Lightweight invoice representation for collection/workspace responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        number:
+          type: string
+          maxLength: 50
+        lab:
+          type: integer
+        clinic:
+          type: integer
+        clinic_name:
+          type: string
+          readOnly: true
+        clinic_email:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status12cEnum'
+        document_type:
+          $ref: '#/components/schemas/DocumentTypeEnum'
+        vat_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        discount_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        description_mode:
+          $ref: '#/components/schemas/DescriptionModeEnum'
+        custom_description:
+          type: string
+        show_patient_list:
+          type: boolean
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        subtotal_amount:
+          type: string
+          readOnly: true
+        discount_amount:
+          type: string
+          readOnly: true
+        taxable_amount:
+          type: string
+          readOnly: true
+        vat_amount:
+          type: string
+          readOnly: true
+        formatted_total:
+          type: string
+          readOnly: true
+        formatted_due_date:
+          type: string
+          readOnly: true
+        formatted_issued_at:
+          type: string
+          readOnly: true
+        is_overdue:
+          type: string
+          readOnly: true
+        days_overdue:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+          readOnly: true
+        related_jobs:
+          type: string
+          readOnly: true
+      required:
+      - clinic
+      - clinic_email
+      - clinic_name
+      - created_at
+      - days_overdue
+      - discount_amount
+      - formatted_due_date
+      - formatted_issued_at
+      - formatted_total
+      - id
+      - is_overdue
+      - items
+      - lab
+      - number
+      - related_jobs
+      - subtotal_amount
+      - taxable_amount
+      - vat_amount
+    InvoiceMaterialLine:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        manufacturer:
+          type: string
+        lot:
+          type: string
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,9}(?:\.\d{0,3})?$
+        unit:
+          type: string
+      required:
+      - code
+      - lot
+      - manufacturer
+      - name
+      - quantity
+      - unit
+    InvoicePatientSummary:
+      type: object
+      properties:
+        patient_id:
+          type: integer
+          nullable: true
+        patient_name:
+          type: string
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+      required:
+      - patient_id
+      - patient_name
+      - total
+    InvoiceProcedure:
+      type: object
+      properties:
+        description:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        line_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - description
+      - line_total
+      - quantity
+      - unit_price
+    InvoiceRecipe:
+      type: object
+      properties:
+        name:
+          type: string
+        date:
+          type: string
+          nullable: true
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceMaterialLine'
+      required:
+      - date
+      - materials
+      - name
     Job:
       type: object
       properties:
@@ -12236,7 +12469,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Doctor'
-    PaginatedInvoiceList:
+    PaginatedInvoiceListList:
       type: object
       required:
       - count
@@ -12258,7 +12491,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/Invoice'
+            $ref: '#/components/schemas/InvoiceList'
     PaginatedJobList:
       type: object
       required:
@@ -12801,8 +13034,11 @@ components:
         clinic_name:
           type: string
           readOnly: true
+        clinic_email:
+          type: string
+          readOnly: true
         status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
+          $ref: '#/components/schemas/Status12cEnum'
         document_type:
           $ref: '#/components/schemas/DocumentTypeEnum'
         vat_rate:
@@ -12824,6 +13060,12 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         subtotal_amount:
+          type: string
+          readOnly: true
+        discount_amount:
+          type: string
+          readOnly: true
+        taxable_amount:
           type: string
           readOnly: true
         vat_amount:
@@ -12867,6 +13109,16 @@ components:
           readOnly: true
         patient_names:
           type: string
+          readOnly: true
+        patient_summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoicePatientSummary'
+          readOnly: true
+        appendix_rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceAppendixRow'
           readOnly: true
         related_jobs:
           type: string
@@ -13832,6 +14084,18 @@ components:
         * `admin` - Administrátor laboratória
         * `user` - Používateľ
         * `technician` - Technik
+    Status12cEnum:
+      enum:
+      - draft
+      - issued
+      - paid
+      - cancelled
+      type: string
+      description: |-
+        * `draft` - Koncept
+        * `issued` - Vystavená
+        * `paid` - Zaplatená
+        * `cancelled` - Zrušená
     Subscription:
       type: object
       properties:

@@ -504,6 +504,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 ty -= 4 * mm
 
         if invoice.show_patient_list:
+
             def appendix_page():
                 pdf.showPage()
                 pdf.setFont("Helvetica-Bold", 14)

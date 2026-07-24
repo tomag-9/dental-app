@@ -41,9 +41,7 @@ def _serialize_invoice_breakdown(rows):
             "recipes": [
                 {
                     **recipe,
-                    "date": recipe["date"].isoformat()
-                    if hasattr(recipe["date"], "isoformat")
-                    else recipe["date"],
+                    "date": recipe["date"].isoformat() if hasattr(recipe["date"], "isoformat") else recipe["date"],
                     "materials": [
                         {
                             **material,
@@ -75,11 +73,7 @@ def build_invoice_breakdown(invoice, *, force_dynamic=False):
         key = f"job:{job.id}" if job else f"item:{item.id}"
         if key not in grouped:
             patient = getattr(job, "patient", None) if job else None
-            patient_name = (
-                f"{patient.first_name} {patient.last_name}".strip()
-                if patient
-                else "Bez pacienta"
-            )
+            patient_name = f"{patient.first_name} {patient.last_name}".strip() if patient else "Bez pacienta"
             grouped[key] = {
                 "job_id": job.id if job else None,
                 "patient_id": patient.id if patient else None,
@@ -102,11 +96,7 @@ def build_invoice_breakdown(invoice, *, force_dynamic=False):
         )
         row["total"] += line_total
 
-    jobs_by_id = {
-        item.job_id: item.job
-        for item in items
-        if item.job_id and item.job is not None
-    }
+    jobs_by_id = {item.job_id: item.job for item in items if item.job_id and item.job is not None}
     for row in grouped.values():
         job = jobs_by_id.get(row["job_id"])
         if not job:
@@ -279,9 +269,7 @@ def create_invoice(
 
     amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
     invoice.total_amount = amounts["total_amount"]
-    invoice.breakdown_snapshot = _serialize_invoice_breakdown(
-        build_invoice_breakdown(invoice, force_dynamic=True)
-    )
+    invoice.breakdown_snapshot = _serialize_invoice_breakdown(build_invoice_breakdown(invoice, force_dynamic=True))
     invoice.save(update_fields=["total_amount", "breakdown_snapshot"])
 
     sync_jobs_for_invoice_status(invoice, "issued")
