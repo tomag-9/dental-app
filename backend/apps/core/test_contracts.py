@@ -455,9 +455,10 @@ class InvoiceContractTests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreater(len(response.data), 0)
+        self.assertGreater(response.data["count"], 0)
+        self.assertGreater(len(response.data["results"]), 0)
 
-        invoice_data = response.data[0]
+        invoice_data = response.data["results"][0]
 
         # Enriched fields must be present
         self.assertIn("clinic_name", invoice_data)

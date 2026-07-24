@@ -11529,6 +11529,9 @@ components:
           items:
             $ref: '#/components/schemas/InvoiceItem'
           readOnly: true
+        patient_names:
+          type: string
+          readOnly: true
         related_jobs:
           type: string
           readOnly: true
@@ -11547,6 +11550,7 @@ components:
       - items
       - lab
       - number
+      - patient_names
       - related_jobs
       - subtotal_amount
       - taxable_amount

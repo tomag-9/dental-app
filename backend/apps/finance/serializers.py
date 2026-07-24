@@ -335,7 +335,16 @@ class InvoiceListSerializer(InvoiceSerializer):
         fields = tuple(
             field
             for field in InvoiceSerializer.Meta.fields
-            if field not in {"patient_names", "patient_summaries", "appendix_rows", "audit_log"}
+            if field not in {"patient_summaries", "appendix_rows", "audit_log"}
+        )
+
+    def get_patient_names(self, obj):
+        return sorted(
+            {
+                f"{item.job.patient.first_name} {item.job.patient.last_name}"
+                for item in obj.items.all()
+                if item.job and item.job.patient
+            }
         )
 
 
