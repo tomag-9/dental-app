@@ -67,6 +67,7 @@ const DEFAULT_INVOICE = {
   ],
   notes: 'Práce boli zhotovené podľa zaslaných odtlačkov a sprievodnej karty č. 2025/142. Pri reklamácii prosíme priložiť pôvodnú prácu a popis závady.',
   issuedBy: 'Martin Kováč',
+  isVatPayer: true,
 };
 
 // Fake but plausible PAY-by-square QR — deterministic from seed.
@@ -116,6 +117,7 @@ function FakeQR({ size = 110, seed = 1, color = '#1a2320' }) {
 
 function PaperFrame({ children, watermark }) {
   return React.createElement('div', {
+    className: 'molaris-paper-page',
     style: {
       width: PAPER_W,
       height: PAPER_H,
@@ -362,28 +364,39 @@ function ItemsTable({ items }) {
         React.createElement('div', { style: { color: INK, fontWeight: 600 } }, it.name),
         React.createElement('div', { style: { color: INK_MUTED, fontSize: 9, marginTop: 1, letterSpacing: '0.04em' } }, 'Kód: ' + it.code)
       ),
-      React.createElement('span', { style: { textAlign: 'right', color: INK } }, it.qty),
-      React.createElement('span', { style: { textAlign: 'center', color: INK_SOFT } }, it.unit),
-      React.createElement('span', { style: { textAlign: 'right', color: INK } }, fmtEurPlain(it.unitPrice)),
-      React.createElement('span', { style: { textAlign: 'right', color: INK_SOFT } }, it.vat + ' %'),
+      React.createElement('span', { style: { textAlign: 'right', color: INK } }, it.continuation ? '—' : it.qty),
+      React.createElement('span', { style: { textAlign: 'center', color: INK_SOFT } }, it.continuation ? '—' : it.unit),
+      React.createElement('span', { style: { textAlign: 'right', color: INK } }, it.continuation ? '—' : fmtEurPlain(it.unitPrice)),
+      React.createElement('span', { style: { textAlign: 'right', color: INK_SOFT } }, it.continuation ? '—' : it.vat + ' %'),
       React.createElement('span', {
         style: { textAlign: 'right', color: INK, fontWeight: 700, fontFamily: "'Plus Jakarta Sans', sans-serif" }
-      }, fmtEurPlain(it.qty * it.unitPrice)),
+      }, it.continuation ? '—' : fmtEurPlain(it.qty * it.unitPrice)),
     )),
   );
 }
 
-function TotalsBlock({ items, skonto }) {
-  const subtotal = items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
-  const vat = items.reduce((s, it) => s + it.qty * it.unitPrice * (it.vat / 100), 0);
-  const total = subtotal + vat;
-  const skontoAmount = skonto && skonto.enabled ? total * (skonto.percent / 100) : 0;
-  const discounted = total - skontoAmount;
+function TotalsBlock({ invoice }) {
+  const calculatedSubtotal = invoice.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
+  const subtotal = invoice.subtotalAmount == null ? calculatedSubtotal : invoice.subtotalAmount;
+  const discountPercent = invoice.discountPercent || 0;
+  const discountAmount = invoice.discountAmount == null
+    ? subtotal * (discountPercent / 100)
+    : invoice.discountAmount;
+  const taxable = Number.isFinite(invoice.taxableAmount)
+    ? invoice.taxableAmount
+    : subtotal - discountAmount;
+  const vatRate = invoice.vatRate == null
+    ? ((invoice.items[0] && invoice.items[0].vat) || 0)
+    : invoice.vatRate;
+  const calculatedVat = taxable * (vatRate / 100);
+  const vat = invoice.vatAmount == null ? calculatedVat : invoice.vatAmount;
+  const total = invoice.totalAmount == null ? taxable + vat : invoice.totalAmount;
 
   return React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
     React.createElement('div', { style: { width: 320, fontVariantNumeric: 'tabular-nums' } },
       React.createElement(TotalRow, { label: 'Medzisúčet (bez DPH)', value: fmtEur(subtotal) }),
-      React.createElement(TotalRow, { label: 'DPH 20 %',              value: fmtEur(vat) }),
+      discountPercent > 0 && React.createElement(TotalRow, { label: `Zľava ${discountPercent} %`, value: `−${fmtEur(discountAmount)}` }),
+      React.createElement(TotalRow, { label: `DPH ${vatRate} %`, value: fmtEur(vat) }),
       React.createElement('div', { style: { height: 1, background: RULE, margin: '6px 0' } }),
       React.createElement('div', {
         style: {
@@ -529,7 +542,9 @@ function FooterBlock({ invoice }) {
       ),
       React.createElement('div', {
         style: { fontSize: 9, color: INK_MUTED, marginTop: 14, lineHeight: 1.5 }
-      }, 'Dodávateľ je platiteľom DPH. Doklad je vystavený v zmysle zákona č. 222/2004 Z. z. o DPH.')
+      }, invoice.isVatPayer
+        ? 'Dodávateľ je platiteľom DPH. Doklad je vystavený v zmysle zákona č. 222/2004 Z. z. o DPH.'
+        : 'Dodávateľ nie je platiteľom DPH.')
     ),
     React.createElement('div', { style: { textAlign: 'right' } },
       React.createElement('div', {
@@ -543,83 +558,242 @@ function FooterBlock({ invoice }) {
   );
 }
 
-function PatientListAppendix({ invoice }) {
-  const rows = invoice.patientRows || [];
-  if (!rows.length) return null;
-  return React.createElement(PaperFrame, null,
-    React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo: false }),
-    React.createElement(TitleRow, {
-      title: 'Príloha k faktúre',
-      subtitle: 'Rozpis pacientov a prác',
-      number: invoice.number,
-    }),
-    React.createElement('div', {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: '1.2fr 1.8fr 70px 110px',
-        padding: '10px 10px',
-        background: INK,
-        color: '#fff',
-        fontSize: 9,
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
-        fontWeight: 700,
-        borderRadius: '6px 6px 0 0',
+function chunkByWeight(entries, maxWeight) {
+  const chunks = [];
+  let current = [];
+  let weight = 0;
+  entries.forEach((entry) => {
+    const entryWeight = Math.max(1, entry.weight || 1);
+    if (current.length && weight + entryWeight > maxWeight) {
+      chunks.push(current);
+      current = [];
+      weight = 0;
+    }
+    current.push(entry);
+    weight += entryWeight;
+  });
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+function appendixEntries(rows) {
+  const entries = [];
+  rows.forEach((row, rowIndex) => {
+    entries.push({
+      type: 'procedure',
+      key: `procedure-${rowIndex}`,
+      row,
+      weight: 1 + Math.ceil(`${row.patient} ${row.description}`.length / 90),
+    });
+    (row.recipes || []).forEach((recipe, recipeIndex) => {
+      entries.push({
+        type: 'recipe',
+        key: `recipe-${rowIndex}-${recipeIndex}`,
+        patient: row.patient,
+        recipe,
+        weight: 1 + Math.ceil(`${row.patient} ${recipe.name}`.length / 100),
+      });
+      const materials = recipe.materials || [];
+      if (!materials.length) {
+        entries.push({
+          type: 'material-empty',
+          key: `material-empty-${rowIndex}-${recipeIndex}`,
+          weight: 1,
+        });
       }
-    },
-      React.createElement('span', null, 'Pacient'),
-      React.createElement('span', null, 'Práca'),
-      React.createElement('span', { style: { textAlign: 'right' } }, 'Množ.'),
-      React.createElement('span', { style: { textAlign: 'right' } }, 'Spolu')
-    ),
-    ...rows.map((row, index) => React.createElement('div', {
-      key: index,
+      materials.forEach((material, materialIndex) => {
+        const text = [
+          material.name,
+          material.lot ? `LOT ${material.lot}` : '',
+          material.manufacturer || '',
+        ].filter(Boolean).join(' · ');
+        entries.push({
+          type: 'material',
+          key: `material-${rowIndex}-${recipeIndex}-${materialIndex}`,
+          material,
+          text,
+          weight: 1 + Math.ceil(text.length / 95),
+        });
+      });
+    });
+  });
+  return entries;
+}
+
+function AppendixTableHeader() {
+  return React.createElement('div', {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1.2fr 1.8fr 70px 110px',
+      padding: '10px 10px',
+      background: INK,
+      color: '#fff',
+      fontSize: 9,
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      fontWeight: 700,
+      borderRadius: '6px 6px 0 0',
+    }
+  },
+    React.createElement('span', null, 'Pacient'),
+    React.createElement('span', null, 'Práca / recept / materiál'),
+    React.createElement('span', { style: { textAlign: 'right' } }, 'Množ.'),
+    React.createElement('span', { style: { textAlign: 'right' } }, 'Spolu')
+  );
+}
+
+function AppendixEntry({ entry, index }) {
+  if (entry.type === 'procedure') {
+    const row = entry.row;
+    return React.createElement('div', {
       style: {
         display: 'grid',
         gridTemplateColumns: '1.2fr 1.8fr 70px 110px',
-        padding: '10px 10px',
+        padding: '9px 10px',
+        fontSize: 10,
+        alignItems: 'baseline',
         borderBottom: `1px solid ${RULE_SOFT}`,
         background: index % 2 === 0 ? '#fff' : '#fbfaf6',
-        fontSize: 10.5,
-        alignItems: 'baseline',
       }
     },
       React.createElement('span', { style: { color: INK, fontWeight: 600 } }, row.patient),
-      React.createElement('span', { style: { color: INK_SOFT } }, row.description),
+      React.createElement('span', { style: { color: INK_SOFT, overflowWrap: 'anywhere' } }, row.description),
       React.createElement('span', { style: { textAlign: 'right', color: INK } }, row.qty),
       React.createElement('span', { style: { textAlign: 'right', color: INK, fontWeight: 700 } }, fmtEurPlain(row.total))
+    );
+  }
+
+  if (entry.type === 'recipe') {
+    const recipe = entry.recipe;
+    const parsedDate = recipe.date ? new Date(recipe.date) : null;
+    const dateLabel = parsedDate && !Number.isNaN(parsedDate.getTime())
+      ? ` · ${parsedDate.toLocaleDateString('sk-SK')}`
+      : (recipe.date ? ` · ${recipe.date}` : '');
+    return React.createElement('div', {
+      style: {
+        margin: '5px 10px 2px',
+        padding: '7px 9px',
+        borderLeft: `3px solid ${TEAL}`,
+        background: '#f3f8f6',
+        color: INK,
+        fontSize: 9.5,
+        fontWeight: 700,
+        overflowWrap: 'anywhere',
+      }
+    }, entry.patient, ' · Recept: ', recipe.name, dateLabel);
+  }
+
+  if (entry.type === 'material-empty') {
+    return React.createElement('div', {
+      style: { margin: '0 22px 5px', color: INK_MUTED, fontSize: 8.5 }
+    }, 'Bez materiálových riadkov');
+  }
+
+  const material = entry.material;
+  return React.createElement('div', {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 110px',
+      gap: 12,
+      margin: '0 22px',
+      padding: '5px 0',
+      borderBottom: `1px solid ${RULE_SOFT}`,
+      color: INK_SOFT,
+      fontSize: 8.5,
+    }
+  },
+    React.createElement('span', { style: { overflowWrap: 'anywhere' } }, entry.text),
+    React.createElement('span', { style: { textAlign: 'right', color: INK } }, `${material.quantity} ${material.unit}`)
+  );
+}
+
+function PatientListAppendix({ invoice }) {
+  const rows = invoice.patientRows || [];
+  if (!rows.length) return null;
+  const pages = chunkByWeight(appendixEntries(rows), 17);
+  return React.createElement(React.Fragment, null,
+    ...pages.map((entries, pageIndex) => React.createElement(PaperFrame, { key: `appendix-${pageIndex}` },
+      React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo: false }),
+      React.createElement(TitleRow, {
+        title: 'Príloha k faktúre',
+        subtitle: `Rozpis pacientov, prác a receptov · strana ${pageIndex + 1}/${pages.length}`,
+        number: invoice.number,
+      }),
+      React.createElement(AppendixTableHeader),
+      ...entries.map((entry, index) => React.createElement(AppendixEntry, {
+        key: entry.key,
+        entry,
+        index,
+      }))
     ))
   );
 }
 
 // ─── Main components ──────────────────────────────────────────────────
 
-function InvoicePDF({ invoice = DEFAULT_INVOICE, skonto = null, showSupplierLogo = true }) {
-  const subtotal = invoice.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
-  const vat = invoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (it.vat / 100), 0);
-  const total = subtotal + vat;
+function chunkItems(items, size = 5) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks.length ? chunks : [[]];
+}
 
+function splitItemDescriptions(items, maxLength = 280) {
+  return items.flatMap((item) => {
+    const text = String(item.name || '');
+    if (text.length <= maxLength) return [item];
+    const words = text.split(/\s+/);
+    const parts = [];
+    let part = '';
+    words.forEach((word) => {
+      if (part && `${part} ${word}`.length > maxLength) {
+        parts.push(part);
+        part = word;
+      } else {
+        part = part ? `${part} ${word}` : word;
+      }
+    });
+    if (part) parts.push(part);
+    return parts.map((name, index) => ({
+      ...item,
+      name,
+      code: index === 0 ? item.code : `${item.code}-POK`,
+      continuation: index > 0,
+    }));
+  });
+}
+
+function InvoicePDF({ invoice = DEFAULT_INVOICE, skonto = null, showSupplierLogo = true }) {
+  const total = invoice.totalAmount == null
+    ? invoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (1 + it.vat / 100), 0)
+    : invoice.totalAmount;
+
+  const pages = chunkItems(splitItemDescriptions(invoice.items));
   return React.createElement(React.Fragment, null,
-    React.createElement(PaperFrame, null,
-      React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo }),
-      React.createElement(TitleRow, {
-        title: 'Faktúra',
-        subtitle: invoice.type,
-        number: invoice.number,
-      }),
-      React.createElement('div', {
-        style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
-      },
-        React.createElement(PartyBlock, { label: 'Dodávateľ', party: invoice.supplier }),
-        React.createElement(PartyBlock, { label: 'Odberateľ', party: invoice.customer }),
-      ),
-      React.createElement(MetaGrid, { invoice }),
-      React.createElement(ItemsTable, { items: invoice.items }),
-      React.createElement(TotalsBlock, { items: invoice.items, skonto }),
-      React.createElement(SkontoCallout, { skonto, items: invoice.items }),
-      React.createElement(PaymentBlock, { supplier: invoice.supplier, invoice, total }),
-      React.createElement(FooterBlock, { invoice }),
-    ),
+    ...pages.map((items, pageIndex) => {
+      const lastPage = pageIndex === pages.length - 1;
+      return React.createElement(PaperFrame, { key: `invoice-${pageIndex}` },
+        React.createElement(HeaderBand, { supplier: invoice.supplier, showSupplierLogo }),
+        React.createElement(TitleRow, {
+          title: 'Faktúra',
+          subtitle: pages.length > 1 ? `${invoice.type} · strana ${pageIndex + 1}/${pages.length}` : invoice.type,
+          number: invoice.number,
+        }),
+        React.createElement('div', {
+          style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+        },
+          React.createElement(PartyBlock, { label: 'Dodávateľ', party: invoice.supplier }),
+          React.createElement(PartyBlock, { label: 'Odberateľ', party: invoice.customer }),
+        ),
+        React.createElement(MetaGrid, { invoice }),
+        React.createElement(ItemsTable, { items }),
+        lastPage && React.createElement(TotalsBlock, { invoice }),
+        lastPage && React.createElement(SkontoCallout, { skonto, items: invoice.items }),
+        lastPage && React.createElement(PaymentBlock, { supplier: invoice.supplier, invoice, total }),
+        lastPage && React.createElement(FooterBlock, { invoice })
+      );
+    }),
     React.createElement(PatientListAppendix, { invoice })
   );
 }
@@ -632,45 +806,50 @@ function ProformaPDF({ invoice = DEFAULT_INVOICE, showSupplierLogo = true }) {
     variableSymbol: '9' + invoice.variableSymbol.slice(1),
     type: 'Predfaktúra — výzva na úhradu (nie je daňový doklad)',
   };
-  const subtotal = proformaInvoice.items.reduce((s, it) => s + it.qty * it.unitPrice, 0);
-  const vat = proformaInvoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (it.vat / 100), 0);
-  const total = subtotal + vat;
+  const total = proformaInvoice.totalAmount == null
+    ? proformaInvoice.items.reduce((s, it) => s + it.qty * it.unitPrice * (1 + it.vat / 100), 0)
+    : proformaInvoice.totalAmount;
 
+  const pages = chunkItems(splitItemDescriptions(proformaInvoice.items));
   return React.createElement(React.Fragment, null,
-    React.createElement(PaperFrame, {
-      watermark: React.createElement(Watermark, { text: 'PREDFAKTÚRA' })
-    },
-      React.createElement(HeaderBand, { supplier: proformaInvoice.supplier, showSupplierLogo }),
-      React.createElement(TitleRow, {
-        title: 'Predfaktúra',
-        subtitle: proformaInvoice.type,
-        number: proformaInvoice.number,
-        accent: TEAL,
-      }),
-      React.createElement('div', {
-        style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+    ...pages.map((items, pageIndex) => {
+      const lastPage = pageIndex === pages.length - 1;
+      return React.createElement(PaperFrame, {
+        key: `proforma-${pageIndex}`,
+        watermark: React.createElement(Watermark, { text: 'PREDFAKTÚRA' })
       },
-        React.createElement(PartyBlock, { label: 'Dodávateľ', party: proformaInvoice.supplier }),
-        React.createElement(PartyBlock, { label: 'Odberateľ', party: proformaInvoice.customer }),
-      ),
-      React.createElement(MetaGrid, { invoice: proformaInvoice }),
-      React.createElement(ItemsTable, { items: proformaInvoice.items }),
-      React.createElement(TotalsBlock, { items: proformaInvoice.items, skonto: null }),
-      React.createElement(PaymentBlock, { supplier: proformaInvoice.supplier, invoice: proformaInvoice, total }),
-      React.createElement('div', {
-        style: {
-          marginTop: 18, padding: '10px 14px',
-          background: TEAL_SUBTLE, border: `1px solid #b8e2d7`, borderRadius: 6,
-          fontSize: 10, color: TEAL_DARK, lineHeight: 1.5,
-        }
-      },
-        React.createElement('strong', {
-          style: { fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em' }
-        }, 'Upozornenie: '),
-        'Tento doklad nie je daňový doklad. Po prijatí platby Vám zašleme riadnu faktúru — daňový doklad v zákonnej lehote.'
-      ),
-      React.createElement(FooterBlock, { invoice: proformaInvoice }),
-    ),
+        React.createElement(HeaderBand, { supplier: proformaInvoice.supplier, showSupplierLogo }),
+        React.createElement(TitleRow, {
+          title: 'Predfaktúra',
+          subtitle: pages.length > 1 ? `${proformaInvoice.type} · strana ${pageIndex + 1}/${pages.length}` : proformaInvoice.type,
+          number: proformaInvoice.number,
+          accent: TEAL,
+        }),
+        React.createElement('div', {
+          style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 22 }
+        },
+          React.createElement(PartyBlock, { label: 'Dodávateľ', party: proformaInvoice.supplier }),
+          React.createElement(PartyBlock, { label: 'Odberateľ', party: proformaInvoice.customer }),
+        ),
+        React.createElement(MetaGrid, { invoice: proformaInvoice }),
+        React.createElement(ItemsTable, { items }),
+        lastPage && React.createElement(TotalsBlock, { invoice: proformaInvoice }),
+        lastPage && React.createElement(PaymentBlock, { supplier: proformaInvoice.supplier, invoice: proformaInvoice, total }),
+        lastPage && React.createElement('div', {
+          style: {
+            marginTop: 18, padding: '10px 14px',
+            background: TEAL_SUBTLE, border: `1px solid #b8e2d7`, borderRadius: 6,
+            fontSize: 10, color: TEAL_DARK, lineHeight: 1.5,
+          }
+        },
+          React.createElement('strong', {
+            style: { fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em' }
+          }, 'Upozornenie: '),
+          'Tento doklad nie je daňový doklad. Po prijatí platby Vám zašleme riadnu faktúru — daňový doklad v zákonnej lehote.'
+        ),
+        lastPage && React.createElement(FooterBlock, { invoice: proformaInvoice })
+      );
+    }),
     React.createElement(PatientListAppendix, { invoice: proformaInvoice })
   );
 }

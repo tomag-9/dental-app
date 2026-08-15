@@ -52,6 +52,7 @@ window.MolarisAPI = {
   updateInvoiceStatus: finance.updateInvoiceStatus,
   deleteInvoice: finance.deleteInvoice,
   fetchInvoiceDetail: finance.fetchInvoiceDetail,
+  sendInvoiceEmail: finance.sendInvoiceEmail,
   downloadInvoicePdf: finance.downloadInvoicePdf,
   downloadInvoicesExport: finance.downloadInvoicesExport,
   fetchCurrentLab: auth.fetchCurrentLab,

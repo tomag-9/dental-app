@@ -20,10 +20,21 @@ function useInvoiceFormData(invoice) {
 function useInvoiceLineItemsData(invoice) {
   return React.useMemo(() => {
     const lineItems = (invoice.lineItems && invoice.lineItems.length) ? invoice.lineItems : [];
-    const subtotal = lineItems.reduce((sum, line) => sum + (line.total || 0), 0);
-    const vatRate = (invoice.raw && invoice.raw.vat_rate != null) ? invoice.raw.vat_rate / 100 : 0.20;
-    const vat = subtotal * vatRate;
-    return { lineItems, subtotal, vatRate, vat, total: subtotal + vat };
+    const calculatedSubtotal = lineItems.reduce((sum, line) => sum + (line.total || 0), 0);
+    const raw = invoice.raw || {};
+    const subtotal = raw.subtotal_amount != null ? Number(raw.subtotal_amount) : calculatedSubtotal;
+    const discountPercent = Number(raw.discount_percent || 0);
+    const discount = raw.discount_amount != null
+      ? Number(raw.discount_amount)
+      : subtotal * (discountPercent / 100);
+    const vatRate = raw.vat_rate != null ? Number(raw.vat_rate) / 100 : 0;
+    const vat = raw.vat_amount != null
+      ? Number(raw.vat_amount)
+      : (subtotal - discount) * vatRate;
+    const total = raw.total_amount != null
+      ? Number(raw.total_amount)
+      : subtotal - discount + vat;
+    return { lineItems, subtotal, discountPercent, discount, vatRate, vat, total };
   }, [invoice]);
 }
 
@@ -31,6 +42,7 @@ function useInvoiceActionsData(invoice) {
   const status = invoice.status;
   return React.useMemo(() => ({
     canDownload: !!invoice.id,
+    canEmail: !!invoice.id && ['issued', 'paid'].includes(status),
     canIssue: !!invoice.id && status === 'draft',
     canMarkPaid: !!invoice.id && status === 'issued',
     canCancel: !!invoice.id && status !== 'paid' && status !== 'cancelled',
@@ -146,7 +158,7 @@ function InvoiceForm({ invoice }) {
 }
 
 function InvoiceLineItems({ invoice }) {
-  const { lineItems, subtotal, vatRate, vat, total } = useInvoiceLineItemsData(invoice);
+  const { lineItems, subtotal, discountPercent, discount, vatRate, vat, total } = useInvoiceLineItemsData(invoice);
   return React.createElement('div', null,
     React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 8px', letterSpacing: '-0.01em' } }, 'Položky faktúry'),
     lineItems.length === 0
@@ -166,6 +178,10 @@ function InvoiceLineItems({ invoice }) {
               React.createElement('span', null, 'Medzisúčet'),
               React.createElement('span', null, fmtEur(subtotal))
             ),
+            discountPercent > 0 && React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', color: '#5a6b66' } },
+              React.createElement('span', null, `Zľava ${discountPercent} %`),
+              React.createElement('span', null, `−${fmtEur(discount)}`)
+            ),
             React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', color: '#5a6b66' } },
               React.createElement('span', null, `DPH ${Math.round(vatRate * 100)} %`),
               React.createElement('span', null, fmtEur(vat))
@@ -184,6 +200,7 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
   const [confirmAction, setConfirmAction] = React.useState(null);
   const [printOpen, setPrintOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [emailSent, setEmailSent] = React.useState('');
   const openPrint = () => { if (actions.canDownload) setPrintOpen(true); };
 
   const runConfirmedAction = async () => {
@@ -224,6 +241,25 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
     });
   };
 
+  const askEmail = () => {
+    const recipient = invoice.raw && invoice.raw.clinic_email;
+    if (!recipient) {
+      if (onError) onError('Klinika nemá nastavený kontaktný e-mail. Doplňte ho v detaile kliniky.');
+      return;
+    }
+    setConfirmAction({
+      title: 'Poslať faktúru klinike',
+      message: `Faktúra ${invoice.number} vrátane prílohy s pacientmi, úkonmi a receptami sa odošle na ${recipient}.`,
+      confirmText: 'Poslať e-mail',
+      destructive: false,
+      error: 'Faktúru sa nepodarilo odoslať. Skontrolujte e-mail kliniky a nastavenie odosielania.',
+      run: async () => {
+        const result = await window.MolarisAPI.sendInvoiceEmail(invoice.id);
+        setEmailSent(result.sent_to || 'kontaktný e-mail kliniky');
+      },
+    });
+  };
+
   const dialog = React.createElement(ConfirmDialog, {
     open: !!confirmAction,
     title: confirmAction && confirmAction.title,
@@ -240,6 +276,12 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
       React.createElement(IconButton, { key: 'view', name: 'eye', title: 'Detail', onClick: () => onView && onView(invoice) }),
       React.createElement(IconButton, { key: 'pdf', name: 'download', title: 'Náhľad / PDF', onClick: openPrint }),
     ];
+    if (actions.canEmail) compactActions.push(React.createElement(IconButton, {
+      key: 'email',
+      name: 'mail',
+      title: emailSent ? `Odoslané: ${emailSent}` : 'Poslať klinike e-mailom',
+      onClick: askEmail,
+    }));
     if (actions.canIssue) compactActions.push(React.createElement(IconButton, {
       key: 'issue',
       name: 'send',
@@ -280,6 +322,12 @@ function InvoiceActions({ invoice, compact = false, onView, onError, onClose }) 
       React.createElement(Icon, { name: 'printer', size: 14 }),
       'Náhľad PDF'
     ),
+    actions.canEmail && React.createElement(Button, {
+      key: 'email',
+      variant: 'outline',
+      onClick: askEmail,
+      disabled: busy,
+    }, React.createElement(Icon, { name: 'mail', size: 14 }), emailSent ? `Odoslané: ${emailSent}` : 'Poslať klinike'),
     actions.canIssue && React.createElement(Button, {
       key: 'issue',
       onClick: () => askStatus('issued', 'Vystaviť faktúru', `Faktúra ${invoice.number} bude označená ako vystavená a vstúpi do pohľadávok.`, 'Vystaviť', 'Faktúru sa nepodarilo vystaviť.'),

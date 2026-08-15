@@ -127,6 +127,7 @@ test.describe('Invoice lifecycle', () => {
       const inv = await window.MolarisAPI.createRecord('/invoices/', {
         clinic_id: workspace.clinics[0].id,
         job_ids: [job.id],
+        discount_percent: 10,
       });
       return inv.id;
     }, ws);
@@ -155,5 +156,33 @@ test.describe('Invoice lifecycle', () => {
     // primary action is marking it as paid.
     await expect(page.locator('body')).toContainText('Zatvoriť', { timeout: 5000 });
     await expect(page.getByRole('button', { name: 'Zaplatená', exact: true })).toBeVisible({ timeout: 5000 });
+
+    // Preview uses the exact backend-calculated discounted total.
+    await page.getByRole('button', { name: 'Náhľad PDF', exact: true }).click();
+    const formattedTotal = new Intl.NumberFormat('sk-SK', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(createdInvoice.raw.total_amount));
+    await expect(page.locator('.molaris-print-content')).toContainText(`${formattedTotal} €`, { timeout: 5000 });
+    await page.getByRole('button', { name: '✕ Zatvoriť', exact: true }).click();
+
+    // The confirmation names the exact clinic recipient and sends to the
+    // dedicated action endpoint.
+    const recipient = createdInvoice.raw.clinic_email;
+    expect(recipient).toBeTruthy();
+    let sendPayload = null;
+    await page.route(`**/api/invoices/${invoiceId}/send-email/`, async (route) => {
+      sendPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ sent_to: recipient, invoice: createdInvoice.number }),
+      });
+    });
+    await page.getByRole('button', { name: 'Poslať klinike', exact: true }).click();
+    await expect(page.locator('body')).toContainText(recipient);
+    await page.getByRole('button', { name: 'Poslať e-mail', exact: true }).click();
+    await expect.poll(() => sendPayload).not.toBeNull();
+    expect(sendPayload).toEqual({});
   });
 });

@@ -250,7 +250,7 @@ const CREATE_ENTITY_CONFIG = {
   },
   invoice: {
     title: 'Nová faktúra',
-    subtitle: 'Vystavenie faktúry z dokončených prác.',
+    subtitle: 'Vyberte faktúru s pacientmi alebo diskrétnu faktúru s voľným textom. Detailný rozpis sa priloží automaticky.',
     saveText: 'Vytvoriť faktúru',
     width: 720,
     columns: '1fr 1fr',
@@ -262,15 +262,14 @@ const CREATE_ENTITY_CONFIG = {
       return [
         { name: 'clinic_id', label: 'Klinika', required: true, type: 'select', options: (workspace.clinics || []).map((c) => ({ value: String(c.id), label: c.name })) },
         { name: 'doctor_id', label: 'Lekár', type: 'select', placeholder: 'Všetci lekári', options: doctors.map((d) => ({ value: String(d.id), label: `${d.title ? `${d.title} ` : ''}${d.first} ${d.last}`.trim() })) },
-        { name: 'description_mode', label: 'Popis na faktúre', type: 'select', options: [
-          { value: 'structured', label: 'Štruktúrovaný rozpis výkonov' },
-          { value: 'custom', label: 'Voľný popis' },
+        { name: 'description_mode', label: 'Typ faktúry', type: 'select', options: [
+          { value: 'structured', label: 'S pacientmi – mená a sumy' },
+          { value: 'custom', label: 'Bez pacientov – voľný text' },
         ] },
-        { name: 'show_patient_list', label: 'Príloha', type: 'checkbox', placeholder: 'Pridať zoznam pacientov a prác ako prílohu' },
         ...(form.description_mode === 'custom'
-          ? [{ name: 'custom_description', label: 'Voľný popis', type: 'textarea', rows: 2, required: true, helpText: 'Napr. Protetické práce.' }]
+          ? [{ name: 'custom_description', label: 'Text na hlavnej faktúre', type: 'textarea', rows: 2, required: true, helpText: 'Mená pacientov zostanú iba v prílohe. Napr. „Protetické práce podľa prílohy“.' }]
           : []),
-        { name: 'job_ids', label: 'Pacienti/práce', type: 'job-checklist', jobs, helpText: 'Predvolene sú vybrané všetky dokončené nefakturované práce zvoleného lekára.' },
+        { name: 'job_ids', label: 'Pacienti/práce', type: 'job-checklist', jobs, helpText: 'Predvolene sú vybrané všetky dokončené nefakturované práce zvoleného lekára. Príloha bude obsahovať úkony aj použité recepty a materiály.' },
       ];
     },
     submit: (form) => window.MolarisAPI.createRecord('/invoices/', {
@@ -278,7 +277,7 @@ const CREATE_ENTITY_CONFIG = {
       job_ids: (Array.isArray(form.job_ids) ? form.job_ids : []).map((id) => Number(id)).filter(Boolean),
       description_mode: form.description_mode || 'structured',
       custom_description: form.description_mode === 'custom' ? String(form.custom_description || '').trim() : '',
-      show_patient_list: !!form.show_patient_list,
+      show_patient_list: true,
     }),
   },
 };

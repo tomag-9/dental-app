@@ -11,6 +11,7 @@ from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
 from apps.finance.models import Invoice, InvoiceSequence
 from apps.jobs.models import Job, Technician
+from apps.materials.models import MaterialUsage, MaterialUsageLine
 
 
 class InvoiceLifecycleApiTests(APITestCase):
@@ -164,11 +165,71 @@ class InvoiceLifecycleApiTests(APITestCase):
             ],
         )
         self.assertGreaterEqual(len(response.data["items"]), 2)
+        self.assertEqual(
+            response.data["patient_summaries"],
+            [
+                {
+                    "patient_id": self.patient_a.id,
+                    "patient_name": "Alice Patient",
+                    "total": "320.00",
+                }
+            ],
+        )
+        self.assertEqual(len(response.data["appendix_rows"]), 2)
 
         self.job_a1.refresh_from_db()
         self.job_a2.refresh_from_db()
         self.assertEqual(self.job_a1.status, "finished_factured")
         self.assertEqual(self.job_a2.status, "finished_factured")
+
+    def test_invoice_appendix_contains_procedures_recipes_and_materials(self):
+        usage = MaterialUsage.objects.create(
+            lab=self.lab_a,
+            job=self.job_a1,
+            patient_label="Alice Patient",
+            technician="Tech A",
+            recipe="Zirkónový recept",
+        )
+        MaterialUsageLine.objects.create(
+            usage=usage,
+            name="Zirkónový disk",
+            code="ZR-01",
+            manufacturer="Dental Materials",
+            lot="LOT-2026-07",
+            qty="1.500",
+            unit="g",
+        )
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a1.id]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        row = response.data["appendix_rows"][0]
+        self.assertEqual(row["patient_name"], "Alice Patient")
+        self.assertEqual(row["procedures"][0]["description"], "CROWN")
+        self.assertEqual(row["recipes"][0]["name"], "Zirkónový recept")
+        self.assertEqual(row["recipes"][0]["materials"][0]["name"], "Zirkónový disk")
+        self.assertEqual(row["recipes"][0]["materials"][0]["lot"], "LOT-2026-07")
+
+        invoice_id = response.data["id"]
+        self.patient_a.first_name = "Zmenené"
+        self.patient_a.save(update_fields=["first_name"])
+        usage.recipe = "Zmenený recept"
+        usage.save(update_fields=["recipe"])
+        material = usage.lines.get()
+        MaterialUsageLine.objects.filter(pk=material.pk).update(name="Zmenený materiál")
+
+        detail = self.client.get(f"/api/finance/invoices/{invoice_id}/")
+
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        snapshotted_row = detail.data["appendix_rows"][0]
+        self.assertEqual(snapshotted_row["patient_name"], "Alice Patient")
+        self.assertEqual(snapshotted_row["recipes"][0]["name"], "Zirkónový recept")
+        self.assertEqual(snapshotted_row["recipes"][0]["materials"][0]["name"], "Zirkónový disk")
 
     def test_create_invoice_uses_lab_billing_defaults(self):
         self.lab_a.invoice_prefix = "MOL"
@@ -305,6 +366,40 @@ class InvoiceLifecycleApiTests(APITestCase):
 
         self.assertEqual(pdf_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(self._pdf_page_count(pdf_resp.content), 1)
+
+    def test_invoice_pdf_paginates_many_patients_without_dropping_appendix(self):
+        jobs = []
+        for index in range(30):
+            patient = Patient.objects.create(
+                lab=self.lab_a,
+                first_name=f"Pacient {index:02d}",
+                last_name="Veľmi dlhé priezvisko pre zalomenie",
+                birth_number=f"990101/{index:04d}",
+            )
+            jobs.append(
+                Job.objects.create(
+                    lab=self.lab_a,
+                    patient=patient,
+                    clinic=self.clinic_a,
+                    doctor=self.doctor_a,
+                    technician=self.tech_a,
+                    status="completed",
+                    price="10.00",
+                    description="Rozsiahly protetický úkon so zachovaným úplným popisom",
+                )
+            )
+        self.client.force_authenticate(user=self.admin_a)
+        create_resp = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [job.id for job in jobs]},
+            format="json",
+        )
+        self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
+
+        pdf_resp = self.client.get(f"/api/finance/invoices/{create_resp.data['id']}/pdf/")
+
+        self.assertEqual(pdf_resp.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(self._pdf_page_count(pdf_resp.content), 3)
 
     def test_non_superadmin_cannot_create_invoice_for_other_lab(self):
         self.client.force_authenticate(user=self.admin_a)
@@ -564,7 +659,7 @@ class ProformaInvoiceTests(APITestCase):
         self.client.force_authenticate(user=self.user)
         resp = self.client.get("/api/finance/invoices/")
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(any(i["document_type"] == "proforma" for i in resp.data))
+        self.assertTrue(any(i["document_type"] == "proforma" for i in resp.data["results"]))
 
     def test_invalid_document_type_rejected(self):
         job = self._create_job()

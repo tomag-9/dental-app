@@ -159,7 +159,10 @@ class AliasAuthenticationTests(RoleMatrixTestMixin, APITestCase):
         self.assertEqual(scoped.status_code, status.HTTP_200_OK)
         self.assertEqual(self.response_ids(root), self.response_ids(scoped))
         self.assertEqual(self.response_ids(root), {self.invoice_a.id})
-        self.assertEqual(set(root.data[0].keys()), set(scoped.data[0].keys()))
+        self.assertEqual(
+            set(root.data["results"][0].keys()),
+            set(scoped.data["results"][0].keys()),
+        )
 
     def test_invoice_detail_aliases_share_serializer_fields(self):
         self.client.force_authenticate(user=self.admin_a)
