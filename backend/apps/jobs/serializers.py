@@ -2,6 +2,7 @@ from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlparse
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -10,6 +11,7 @@ from apps.crm.models import Clinic, Doctor, Patient
 from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
+from . import job_service
 from .dental import (
     expand_fdi_range,
     normalize_tooth_scope,
@@ -75,11 +77,14 @@ class JobItemSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "price_list_code",
+            "ipzp_code",
             "description",
             "tooth",
             "quantity",
             "unit_price",
             "total",
+            "insurance_amount",
+            "patient_amount",
             "procedure_category",
             "material",
             "color",
@@ -163,14 +168,32 @@ class JobSerializer(serializers.ModelSerializer):
     technician_details = TechnicianSerializer(source="technician", read_only=True)
     items = JobItemSerializer(many=True, required=False)
     timeline = JobTimelineEventSerializer(many=True, read_only=True)
+    insurance_total = serializers.SerializerMethodField()
+    patient_total = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
         fields = "__all__"
-        read_only_fields = ["lab"]
+        read_only_fields = ["lab", "label_number", "label_issued_at"]
         extra_kwargs = {
             "doctor": {"required": False, "allow_null": True},
         }
+
+    def get_insurance_total(self, obj):
+        return str(obj.insurance_total)
+
+    def get_patient_total(self, obj):
+        return str(obj.patient_total)
+
+    def validate_diagnosis_code(self, value):
+        if not value:
+            return ""
+        normalized = value.strip().upper()
+        if not job_service.DIAGNOSIS_CODE_PATTERN.match(normalized):
+            raise serializers.ValidationError(
+                "Kód diagnózy musí byť v tvare MKCH-10, napríklad K08 alebo K08.9.",
+            )
+        return normalized
 
     def _price_list_queryset(self):
         request = self.context.get("request")
@@ -257,6 +280,7 @@ class JobSerializer(serializers.ModelSerializer):
 
         return data
 
+    @transaction.atomic
     def _sync_items(self, job, items):
         if items is None:
             return
@@ -272,13 +296,27 @@ class JobSerializer(serializers.ModelSerializer):
         procedure_codes = []
         procedure_quantities = {}
 
-        for entry in items:
+        for index, entry in enumerate(items):
             code = entry["price_list_code"]
             price_item = price_items[code]
             quantity = max(1, int(entry.get("quantity") or 1))
+            item_total = Decimal(str(price_item.price)) * quantity
+            try:
+                insurance_amount, patient_amount = job_service.resolve_payment_split(
+                    item_total,
+                    insurance_amount=entry.get("insurance_amount"),
+                    patient_amount=entry.get("patient_amount"),
+                    price_list_item=price_item,
+                    quantity=quantity,
+                )
+            except serializers.ValidationError as exc:
+                raise serializers.ValidationError({"items": {index: exc.detail}}) from exc
             job_item = JobItem(
                 job=job,
                 price_list_code=code,
+                ipzp_code=entry.get("ipzp_code") or price_item.ipzp_code or "",
+                insurance_amount=insurance_amount,
+                patient_amount=patient_amount,
                 description=price_item.description,
                 tooth=entry.get("tooth") or None,
                 quantity=quantity,

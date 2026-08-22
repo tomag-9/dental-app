@@ -11662,6 +11662,12 @@ components:
           items:
             $ref: '#/components/schemas/JobTimelineEvent'
           readOnly: true
+        insurance_total:
+          type: string
+          readOnly: true
+        patient_total:
+          type: string
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -11690,6 +11696,19 @@ components:
           type: string
           nullable: true
           maxLength: 10
+        diagnosis_code:
+          type: string
+          maxLength: 10
+        health_note:
+          type: string
+        label_number:
+          type: string
+          readOnly: true
+        label_issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         start_date:
           type: string
           format: date
@@ -11699,6 +11718,26 @@ components:
           format: date
           nullable: true
         try_in_date:
+          type: string
+          format: date
+          nullable: true
+        received_at:
+          type: string
+          format: date
+          nullable: true
+        assigned_at:
+          type: string
+          format: date
+          nullable: true
+        completed_at:
+          type: string
+          format: date
+          nullable: true
+        seated_at:
+          type: string
+          format: date
+          nullable: true
+        handover_at:
           type: string
           format: date
           nullable: true
@@ -11729,9 +11768,13 @@ components:
       - created_at
       - doctor_details
       - id
+      - insurance_total
       - lab
+      - label_issued_at
+      - label_number
       - patient
       - patient_details
+      - patient_total
       - technician_details
       - timeline
       - updated_at
@@ -11744,6 +11787,9 @@ components:
         price_list_code:
           type: string
           maxLength: 50
+        ipzp_code:
+          type: string
+          maxLength: 20
         description:
           type: string
           readOnly: true
@@ -11765,6 +11811,14 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           readOnly: true
+        insurance_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        patient_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         procedure_category:
           nullable: true
           oneOf:
@@ -11959,6 +12013,13 @@ components:
           type: string
         enable_qr_payment:
           type: boolean
+        label_prefix:
+          type: string
+          maxLength: 20
+        label_start_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         created_at:
           type: string
           format: date-time
@@ -13163,6 +13224,12 @@ components:
           items:
             $ref: '#/components/schemas/JobTimelineEvent'
           readOnly: true
+        insurance_total:
+          type: string
+          readOnly: true
+        patient_total:
+          type: string
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -13191,6 +13258,19 @@ components:
           type: string
           nullable: true
           maxLength: 10
+        diagnosis_code:
+          type: string
+          maxLength: 10
+        health_note:
+          type: string
+        label_number:
+          type: string
+          readOnly: true
+        label_issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         start_date:
           type: string
           format: date
@@ -13200,6 +13280,26 @@ components:
           format: date
           nullable: true
         try_in_date:
+          type: string
+          format: date
+          nullable: true
+        received_at:
+          type: string
+          format: date
+          nullable: true
+        assigned_at:
+          type: string
+          format: date
+          nullable: true
+        completed_at:
+          type: string
+          format: date
+          nullable: true
+        seated_at:
+          type: string
+          format: date
+          nullable: true
+        handover_at:
           type: string
           format: date
           nullable: true
@@ -13317,6 +13417,13 @@ components:
           type: string
         enable_qr_payment:
           type: boolean
+        label_prefix:
+          type: string
+          maxLength: 20
+        label_start_number:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         created_at:
           type: string
           format: date-time
@@ -13605,6 +13712,19 @@ components:
         valid_to:
           type: string
           format: date
+          nullable: true
+        ipzp_code:
+          type: string
+          maxLength: 20
+        default_insurance_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        default_patient_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           nullable: true
         created_at:
           type: string
@@ -13996,6 +14116,19 @@ components:
         valid_to:
           type: string
           format: date
+          nullable: true
+        ipzp_code:
+          type: string
+          maxLength: 20
+        default_insurance_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        default_patient_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           nullable: true
         created_at:
           type: string

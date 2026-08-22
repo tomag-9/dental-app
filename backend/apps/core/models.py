@@ -26,6 +26,9 @@ class Lab(models.Model):
     payment_method = models.CharField(max_length=50, default="bank_transfer")
     invoice_default_note = models.TextField(blank=True, default="")
     enable_qr_payment = models.BooleanField(default=False)
+    # Prosthetic label numbering (#95) - independent of the invoice series.
+    label_prefix = models.CharField(max_length=20, blank=True, default="")
+    label_start_number = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
