@@ -23,3 +23,6 @@ djangorestframework-simplejwt
 pyotp
 qrcode[pil]
 openpyxl
+# Pay by Square QR payload encoder (MIT, stdlib-only). Pinned: payment-critical
+# and rarely released — upgrades must be re-verified by the round-trip tests.
+pay-by-square==0.2.0

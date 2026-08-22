@@ -95,3 +95,18 @@ def update_invoice_status(*, user, invoice, status):
     Returns the updated ``Invoice`` instance.
     """
     return invoice_service.update_invoice_status(user, invoice, status)
+
+
+# ---------------------------------------------------------------------------
+# Payment QR (Pay by Square)
+# ---------------------------------------------------------------------------
+
+
+def build_invoice_payment_payload(invoice):
+    """
+    Return the Pay by Square payment string for *invoice*.
+
+    Raises ``PayBySquareError`` when the lab has QR payments disabled or its
+    banking data cannot produce a valid payment order.
+    """
+    return invoice_service.build_invoice_payment_payload(invoice)

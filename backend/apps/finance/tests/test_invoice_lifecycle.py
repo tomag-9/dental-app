@@ -1,4 +1,5 @@
 import threading
+from decimal import Decimal
 
 from django.db import connection
 from django.test import TransactionTestCase
@@ -9,7 +10,12 @@ from rest_framework.test import APIClient, APITestCase
 from apps.core.models import AuditLog, Lab, User
 from apps.core.test_helpers import RoleMatrixTestMixin
 from apps.crm.models import Clinic, Doctor, Patient
+from apps.finance import services as finance_services
 from apps.finance.models import Invoice, InvoiceSequence
+from apps.finance.pay_by_square import (
+    decode_pay_by_square_payload,
+    sanitize_variable_symbol,
+)
 from apps.jobs.models import Job, Technician
 from apps.materials.models import MaterialUsage, MaterialUsageLine
 
@@ -329,6 +335,10 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertEqual(log.metadata["status"], "issued")
 
     def test_qr_and_pdf_endpoints(self):
+        self.lab_a.enable_qr_payment = True
+        self.lab_a.bank_account = "SK3112000000198742637541"
+        self.lab_a.save(update_fields=["enable_qr_payment", "bank_account"])
+
         self.client.force_authenticate(user=self.admin_a)
         create_resp = self.client.post(
             "/api/finance/invoices/",
@@ -346,6 +356,47 @@ class InvoiceLifecycleApiTests(APITestCase):
         self.assertIn("application/pdf", pdf_resp["Content-Type"])
         self.assertTrue(pdf_resp.content.startswith(b"%PDF"))
         self.assertEqual(self._pdf_page_count(pdf_resp.content), 2)
+
+    def test_qr_endpoint_rejected_when_lab_has_qr_payments_disabled(self):
+        """No Pay by Square data -> no QR at all, never a fake payment code."""
+        self.assertFalse(self.lab_a.enable_qr_payment)
+        self.client.force_authenticate(user=self.admin_a)
+        create_resp = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a1.id]},
+            format="json",
+        )
+        invoice_id = create_resp.data["id"]
+
+        qr_resp = self.client.get(f"/api/finance/invoices/{invoice_id}/qr/")
+        self.assertEqual(qr_resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("QR", qr_resp.data["detail"])
+
+        # The PDF must still render, just without the payment QR block.
+        pdf_resp = self.client.get(f"/api/finance/invoices/{invoice_id}/pdf/")
+        self.assertEqual(pdf_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(pdf_resp.content.startswith(b"%PDF"))
+
+    def test_invoice_qr_payload_is_decodable_pay_by_square(self):
+        self.lab_a.enable_qr_payment = True
+        self.lab_a.bank_account = "SK3112000000198742637541"
+        self.lab_a.save(update_fields=["enable_qr_payment", "bank_account"])
+
+        self.client.force_authenticate(user=self.admin_a)
+        create_resp = self.client.post(
+            "/api/finance/invoices/",
+            {"clinic_id": self.clinic_a.id, "job_ids": [self.job_a1.id]},
+            format="json",
+        )
+        invoice = Invoice.objects.get(pk=create_resp.data["id"])
+
+        payload = finance_services.build_invoice_payment_payload(invoice)
+        decoded = decode_pay_by_square_payload(payload)
+
+        self.assertTrue(decoded["crc_valid"])
+        self.assertEqual(decoded["iban"], "SK3112000000198742637541")
+        self.assertEqual(decoded["amount"], Decimal(invoice.total_amount).quantize(Decimal("0.01")))
+        self.assertEqual(decoded["variable_symbol"], sanitize_variable_symbol(invoice.number))
 
     def test_invoice_pdf_omits_patient_appendix_when_disabled(self):
         self.client.force_authenticate(user=self.admin_a)
