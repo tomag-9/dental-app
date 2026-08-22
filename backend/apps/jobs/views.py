@@ -14,7 +14,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_admin_or_superadmin,
     is_superadmin,
@@ -58,6 +60,7 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -75,6 +78,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
     allowed_transitions = job_service.ALLOWED_TRANSITIONS
 
@@ -585,6 +589,7 @@ class VacationViewSet(viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -612,6 +617,7 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -644,7 +650,7 @@ def _calendar_window(request):
 
 
 class CalendarView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def _tenant_filter(self, model):
         user = self.request.user

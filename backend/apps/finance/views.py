@@ -13,6 +13,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from reportlab.graphics import renderPDF, renderSVG
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
@@ -22,12 +24,15 @@ from reportlab.lib.utils import simpleSplit
 from reportlab.pdfgen import canvas
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     assert_lab_permission,
     is_superadmin,
@@ -38,9 +43,11 @@ from apps.core.localization import (
     format_sk_currency,
     format_sk_date,
 )
+from apps.core.models import User
 
 from . import invoice_service
 from . import services as finance_services
+from . import stripe_service
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
 from .pay_by_square import PayBySquareError
@@ -79,6 +86,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -160,6 +168,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_serializer_class(self):
@@ -739,7 +748,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def _assert_superadmin(self, user):
         # "manage_platform" is a platform-scoped action: no per-lab override
@@ -791,7 +800,123 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(SubscriptionSerializer(subscription).data)
+        data = SubscriptionSerializer(subscription).data
+        # Billing state the UI needs *before* a user runs into a 402.
+        grace_ends_at = subscription.grace_ends_at()
+        data["billing"] = {
+            "read_only": subscription.is_read_only,
+            "grace_ends_at": grace_ends_at.isoformat() if grace_ends_at else None,
+            "billing_url": getattr(django_settings, "SUBSCRIPTION_BILLING_URL", ""),
+            "stripe_enabled": stripe_service.stripe_enabled(),
+            "has_payment_account": bool(subscription.stripe_customer_id),
+            "seat_limit": subscription.seats,
+            "seats_used": User.objects.filter(lab_id=user.lab_id, is_active=True).count(),
+        }
+        return Response(data)
+
+    def _lab_admin_or_403(self, request):
+        """Checkout and portal are billing actions — lab admins only.
+
+        The lab always comes from ``request.user``; a lab admin can never name
+        another tenant, so there is no way to open a session against a
+        different lab's Stripe customer.
+        """
+        assert_lab_permission(
+            request.user,
+            "lab:write",
+            "Predplatné môže spravovať iba administrátor laboratória.",
+        )
+        lab = getattr(request.user, "lab", None)
+        if lab is None:
+            raise ValidationError("Používateľ nemá priradené laboratórium.")
+        return lab
+
+    @action(detail=False, methods=["post"], url_path="checkout")
+    def checkout(self, request):
+        lab = self._lab_admin_or_403(request)
+        # The plan name is the only client input; the price behind it is
+        # resolved from settings, never from the request.
+        plan = str(request.data.get("plan") or "").strip()
+        try:
+            url = stripe_service.create_checkout_session(lab, plan)
+        except stripe_service.StripeNotConfigured as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except stripe_service.StripeServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"url": url})
+
+    @action(detail=False, methods=["post"], url_path="portal")
+    def portal(self, request):
+        lab = self._lab_admin_or_403(request)
+        try:
+            url = stripe_service.create_portal_session(lab)
+        except stripe_service.StripeNotConfigured as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except stripe_service.StripeServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"url": url})
+
+
+class StripeWebhookView(APIView):
+    """Stripe's authoritative channel for subscription lifecycle changes.
+
+    Three deliberate exemptions, each of which would otherwise break delivery:
+
+    * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+      CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+      no CSRF token. Dropping authentication also drops that check; the view is
+      additionally ``csrf_exempt`` so nothing re-adds it.
+    * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+      A burst of deliveries throttled to 429 is a burst of events lost after
+      Stripe exhausts its retries.
+    * ``permission_classes = [AllowAny]`` — the signature *is* the
+      authentication. Nothing is processed before it verifies.
+    """
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = []
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        if not stripe_service.webhook_enabled():
+            # Not configured: nothing can be verified, so nothing is trusted.
+            return Response(
+                {"detail": "Stripe webhook nie je nakonfigurovaný."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+        try:
+            event = stripe_service.construct_event(request.body, signature)
+        except stripe_service.StripeNotConfigured:
+            return Response(
+                {"detail": "Stripe webhook nie je nakonfigurovaný."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception:
+            # Invalid or missing signature — 400 so Stripe surfaces it in the
+            # dashboard, and so a forged payload never reaches a handler.
+            logger.warning("Rejected Stripe webhook with invalid signature")
+            return Response(
+                {"detail": "Neplatný podpis webhooku."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            handled, note = stripe_service.process_event(event)
+        except Exception:
+            # A handler bug must not turn into an infinite Stripe retry loop
+            # against an endpoint that will keep failing the same way.
+            logger.exception("Stripe webhook handler failed")
+            return Response({"received": True, "handled": False}, status=status.HTTP_200_OK)
+
+        # Always 200 — including unknown types and duplicates. 4xx/5xx here
+        # starts a retry cycle that we cannot stop.
+        return Response({"received": True, "handled": handled, "note": note}, status=status.HTTP_200_OK)
 
 
 def _month_window(dt):
@@ -811,7 +936,7 @@ def _months_ago(n):
 
 
 class FinanceStatsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user
@@ -927,7 +1052,7 @@ class FinanceStatsView(APIView):
 class ProcedureCatalogView(APIView):
     """Returns PriceList items grouped by category for the current lab."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user
@@ -983,7 +1108,7 @@ class ProcedureCatalogView(APIView):
 class InvoiceAgingView(APIView):
     """Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user

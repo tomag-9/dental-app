@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.core.access import (
+    AUTHENTICATED,
     LabActionPermissionMixin,
     TenantScopedQuerysetMixin,
     assert_lab_permission,
@@ -73,7 +74,7 @@ class InsurerViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Insurer.objects.all()
     serializer_class = InsurerSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
     pagination_class = None
 
     def get_queryset(self):
@@ -93,7 +94,7 @@ class ClinicViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewset
     )
     queryset = Clinic.objects.all()
     serializer_class = ClinicSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         qs = clinics_for_user(self.request.user)
@@ -149,7 +150,7 @@ class DoctorViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewset
     )
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         queryset = doctors_for_user(self.request.user)
@@ -215,7 +216,7 @@ class PatientViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewse
     )
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         qs = patients_for_user(self.request.user)
