@@ -19,6 +19,9 @@ class Lab(models.Model):
     website = models.URLField(blank=True, null=True)
     logo_url = models.CharField(max_length=500, blank=True, null=True)
     contact_info = models.JSONField(blank=True, null=True)
+    # Odborný garant zubnej techniky — povinný údaj na protetickom štítku.
+    garant_name = models.CharField(max_length=255, blank=True, default="")
+    garant_registration_number = models.CharField(max_length=50, blank=True, default="")
     invoice_prefix = models.CharField(max_length=20, default="INV")
     invoice_due_days = models.PositiveIntegerField(default=14)
     is_vat_payer = models.BooleanField(default=True)
