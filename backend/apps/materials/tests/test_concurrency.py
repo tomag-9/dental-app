@@ -32,10 +32,12 @@ class FefoLockingTests(TransactionTestCase):
         )
 
     def test_locked_queryset_emits_select_for_update(self):
-        sql = str(available_lots(self.catalog, lock=True).query)
+        with transaction.atomic():
+            query = available_lots(self.catalog, lock=True).query
 
-        self.assertIn("SELECT", sql.upper())
-        self.assertTrue(available_lots(self.catalog, lock=True).query.select_for_update)
+            self.assertTrue(query.select_for_update)
+            if connection.features.has_select_for_update:
+                self.assertIn("FOR UPDATE", str(query).upper())
 
     def test_unlocked_queryset_does_not_lock(self):
         self.assertFalse(available_lots(self.catalog).query.select_for_update)
