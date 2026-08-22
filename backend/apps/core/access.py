@@ -193,6 +193,36 @@ def assert_lab_permission(user, action, message):
         raise PermissionDenied(message)
 
 
+class LabActionPermissionMixin:
+    """Check lab-scoped actions before the view body runs.
+
+    DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+    validation. Guarding only in ``perform_create``/``perform_update`` means an
+    invalid payload from a forbidden user answers 400 ("your data is wrong")
+    instead of 403 ("you may not do this") — which both leaks whether the
+    payload was well-formed and confuses the caller.
+
+    Views map their DRF action name to a permission action::
+
+        lab_permission_actions = {
+            "create": "patient:write",
+            "destroy": "patient:write",
+        }
+
+    ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+    ``initial()`` runs, so it is available here.
+    """
+
+    lab_permission_actions: dict = {}
+    lab_permission_message = "Na túto akciu nemáte oprávnenie."
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        required = self.lab_permission_actions.get(getattr(self, "action", None))
+        if required:
+            assert_lab_permission(request.user, required, self.lab_permission_message)
+
+
 def is_superadmin(user):
     return bool(getattr(user, "is_superuser", False) or getattr(user, "role", None) == "superadmin")
 

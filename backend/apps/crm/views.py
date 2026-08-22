@@ -9,7 +9,11 @@ from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.core.access import TenantScopedQuerysetMixin, assert_lab_permission
+from apps.core.access import (
+    LabActionPermissionMixin,
+    TenantScopedQuerysetMixin,
+    assert_lab_permission,
+)
 from apps.core.exports import limited_export_queryset
 from apps.core.localization import format_sk_date
 from apps.jobs.models import Job
@@ -59,7 +63,14 @@ def _assert_crm_write(user, action):
     )
 
 
-class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class ClinicViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "clinic:write",
+        "export": "clinic:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Clinic.objects.all()
     serializer_class = ClinicSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -108,7 +119,14 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return _csv_response(header, rows, "clinics.csv")
 
 
-class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class DoctorViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "doctor:write",
+        "export": "doctor:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -167,7 +185,14 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return _csv_response(header, rows, "doctors.csv")
 
 
-class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class PatientViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "patient:write",
+        "export": "patient:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
