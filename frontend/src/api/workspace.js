@@ -5,7 +5,7 @@ import { createUseWorkspace } from '../hooks/useWorkspace.js';
 const userKey = 'molaris.user';
 
 export async function loadWorkspace() {
-  const [stats, jobsRaw, patientsRaw, clinicsRaw, doctors, technicians, invoices, priceList, warehouse] = await Promise.all([
+  const [stats, jobsRaw, patientsRaw, clinicsRaw, doctors, technicians, invoices, priceList, warehouse, insurers] = await Promise.all([
     request('/dashboard/stats/'),
     request('/jobs/jobs/'),
     request('/crm/patients/'),
@@ -15,6 +15,7 @@ export async function loadWorkspace() {
     request('/invoices/'),
     request('/finance/price-list/'),
     request('/warehouse/'),
+    request('/crm/insurers/'),
   ]);
   const jobs = jobsRaw.map(normalizeJob);
   const patients = patientsRaw.map((patient) => normalizePatient(patient, jobs));
@@ -37,6 +38,7 @@ export async function loadWorkspace() {
     priceList: normalizedPriceList,
     warehouse: normalizedWarehouse,
     calendarEvents,
+    insurers: Array.isArray(insurers) ? insurers : (insurers.results || []),
   };
 }
 

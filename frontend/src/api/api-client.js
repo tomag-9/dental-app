@@ -46,6 +46,7 @@ window.MolarisAPI = {
   downloadJobsExport: jobs.downloadJobsExport,
   downloadWarehouseExport: inventory.downloadWarehouseExport,
   fetchPatientDetail: crm.fetchPatientDetail,
+  fetchInsurers: crm.fetchInsurers,
   fetchPatientToothMap: crm.fetchPatientToothMap,
   createRecord: crm.createRecord,
   transitionJobStatus: jobs.transitionJobStatus,

@@ -328,6 +328,15 @@ function PatientCreateForm({ initialQuery = '', onSave, onCancel }) {
 
   const [f, setF] = React.useState({ first: seed.first, last: seed.last, birth: fmtRC(seed.birth), phone: '', email: '', insurer: '' });
   const [touched, setTouched] = React.useState(false);
+  // Číselník poisťovní ťaháme z API — hodnotou je id záznamu, nie kód.
+  const [insurers, setInsurers] = React.useState([]);
+  React.useEffect(() => {
+    let cancelled = false;
+    window.MolarisAPI.fetchInsurers()
+      .then((rows) => { if (!cancelled) setInsurers(rows.map((i) => ({ value: String(i.id), label: i.name, meta: i.code }))); })
+      .catch(() => { if (!cancelled) setInsurers([]); });
+    return () => { cancelled = true; };
+  }, []);
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
 
   const rcDigits = f.birth.replace(/\D/g, '');
@@ -350,12 +359,6 @@ function PatientCreateForm({ initialQuery = '', onSave, onCancel }) {
     if (!valid) return;
     onSave({ first: f.first.trim(), last: f.last.trim(), birth: rcDigits, phone: f.phone.trim(), email: f.email.trim(), insurer: f.insurer, isNew: true });
   };
-
-  const insurers = [
-    { value: '25', label: 'Všeobecná zdravotná poisťovňa', meta: '25' },
-    { value: '24', label: 'Dôvera', meta: '24' },
-    { value: '27', label: 'Union', meta: '27' },
-  ];
 
   return React.createElement('div', {
     style: { border: '1px solid #b0ddd5', background: '#f7fcfb', borderRadius: 10, padding: 14 }

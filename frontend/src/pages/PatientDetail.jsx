@@ -70,7 +70,9 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
     first: workspacePatient.first,
     last: workspacePatient.last,
     birth: workspacePatient.birth,
-    insurance: '—',
+    insurance: workspacePatient.insurer
+      ? `${workspacePatient.insurer.code} — ${workspacePatient.insurer.short_name || workspacePatient.insurer.name}`
+      : '—',
     age: workspacePatient.raw.age != null ? workspacePatient.raw.age : '',
     phone: workspacePatient.phone || '—',
     email: workspacePatient.email || '—',
@@ -120,8 +122,9 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
         React.createElement('div', {
           style: { width: 72, height: 72, borderRadius: '50%', background: '#d4f0eb', color: '#085c4e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 26, fontWeight: 700, flexShrink: 0, border: '2px solid #b0ddd5' }
         }, initials),
-        React.createElement('div', { style: { flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 } },
+        React.createElement('div', { style: { flex: 1, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 } },
           React.createElement(IdCell, { label: 'Rodné číslo', value: React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace' } }, p.birth) }),
+          React.createElement(IdCell, { label: 'Poisťovňa', value: p.insurance }),
           React.createElement(IdCell, { label: 'Telefón', value: p.phone, icon: 'phone' }),
           React.createElement(IdCell, { label: 'E-mail', value: p.email, icon: 'mail' }),
           React.createElement(IdCell, { label: 'Adresa', value: p.address, icon: 'mapPin' }),

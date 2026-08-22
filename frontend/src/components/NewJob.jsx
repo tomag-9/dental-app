@@ -99,6 +99,7 @@ function NewJobDrawer({ open, onClose, initialPatient }) {
           birth_number: data.patient.birth,
           phone: data.patient.phone || '',
           email: data.patient.email || '',
+          insurer: data.patient.insurer ? Number(data.patient.insurer) : null,
         });
         patientId = createdPatient.id;
       }
