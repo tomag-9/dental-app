@@ -240,6 +240,12 @@ class LotImportSerializer(serializers.Serializer):
     expiry = serializers.DateField(required=False, allow_null=True)
     opened = serializers.DateField(required=False, allow_null=True)
     qty_received = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0.001"))
-    qty_remaining = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=Decimal("0"), required=False)
+    qty_remaining = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        min_value=Decimal("0"),
+        required=False,
+        allow_null=True,
+    )
     status = serializers.ChoiceField(choices=MaterialLot.Status.choices, default=MaterialLot.Status.ACTIVE)
     location = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")

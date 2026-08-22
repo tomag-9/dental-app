@@ -20,6 +20,7 @@ from .models import (
 def available_lots(catalog, *, lock=False):
     queryset = MaterialLot.objects.filter(
         catalog=catalog,
+        lab_id=catalog.lab_id,
         status__in=(MaterialLot.Status.ACTIVE, MaterialLot.Status.OPEN),
         qty_remaining__gt=0,
     ).filter(Q(expiry__isnull=True) | Q(expiry__gte=timezone.localdate()))
