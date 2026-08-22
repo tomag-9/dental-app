@@ -1,3 +1,4 @@
+from django.db.models import ProtectedError
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -7,7 +8,7 @@ from rest_framework.test import APITestCase
 
 from apps.core.models import Lab, User
 from apps.core.test_helpers import RoleMatrixTestMixin
-from apps.crm.models import Clinic, Doctor, Patient
+from apps.crm.models import Clinic, Doctor, Insurer, Patient
 from apps.crm.selectors import clinics_for_user, doctors_for_user, patients_for_user
 from apps.crm.serializers import _validate_birth_number, _validate_dic, _validate_ico
 from apps.finance.models import Invoice, InvoiceItem
@@ -1572,3 +1573,227 @@ class CrmRoleMatrixTests(RoleMatrixTestMixin, APITestCase):
             with self.subTest(role=role):
                 resp = _delete_matrix(role)
                 self.assertEqual(resp.status_code, expected, f"DELETE clinic as {role}")
+
+
+class InsurerCatalogTests(APITestCase):
+    """Číselník poisťovní je celoštátny — naplnený migráciou, read-only cez API."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Insurer Catalog Lab")
+        self.user = User.objects.create_user(
+            username="insurer_user",
+            password="pw",
+            email="insurer_user@test.sk",
+            role="user",
+            lab=self.lab,
+        )
+
+    def test_migration_seeds_slovak_insurers(self):
+        codes = set(Insurer.objects.values_list("code", flat=True))
+        self.assertTrue({"24", "25", "27"}.issubset(codes))
+        self.assertIn("Všeobecná", Insurer.objects.get(code="25").name)
+        self.assertIn("Dôvera", Insurer.objects.get(code="24").name)
+        self.assertIn("Union", Insurer.objects.get(code="27").name)
+
+    def test_list_endpoint_returns_active_insurers(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/v1/crm/insurers/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        payload = resp.json()
+        self.assertGreaterEqual(len(payload), 3)
+        self.assertEqual([row["code"] for row in payload][:3], ["24", "25", "27"])
+        self.assertIn("short_name", payload[0])
+
+    def test_inactive_insurers_hidden_by_default(self):
+        Insurer.objects.create(code="99", name="Zrušená poisťovňa", is_active=False)
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.get("/api/v1/crm/insurers/")
+        self.assertNotIn("99", [row["code"] for row in resp.json()])
+        resp = self.client.get("/api/v1/crm/insurers/?include_inactive=1")
+        self.assertIn("99", [row["code"] for row in resp.json()])
+
+    def test_endpoint_is_read_only(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/v1/crm/insurers/", {"code": "31", "name": "Nová"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_endpoint_requires_authentication(self):
+        resp = self.client.get("/api/v1/crm/insurers/")
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_catalog_is_shared_across_labs(self):
+        other_lab = Lab.objects.create(name="Insurer Catalog Lab B")
+        other_user = User.objects.create_user(
+            username="insurer_user_b",
+            password="pw",
+            email="insurer_user_b@test.sk",
+            role="user",
+            lab=other_lab,
+        )
+        self.client.force_authenticate(user=self.user)
+        mine = [row["code"] for row in self.client.get("/api/v1/crm/insurers/").json()]
+        self.client.force_authenticate(user=other_user)
+        theirs = [row["code"] for row in self.client.get("/api/v1/crm/insurers/").json()]
+        self.assertEqual(mine, theirs)
+
+
+class PatientInsurerRoundTripTests(APITestCase):
+    """Regresia na #92 — poisťovňa poslaná pri vytvorení pacienta sa nesmie stratiť."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Patient Insurer Lab")
+        self.admin = User.objects.create_user(
+            username="patient_insurer_admin",
+            password="pw",
+            email="patient_insurer_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.insurer = Insurer.objects.get(code="27")
+        self.client.force_authenticate(user=self.admin)
+
+    def _create_payload(self, **overrides):
+        payload = {
+            "first_name": "Peter",
+            "last_name": "Poistenec",
+            "birth_number": "900101/1234",
+            "insurer": self.insurer.id,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_insurer_survives_create_and_retrieve(self):
+        resp = self.client.post("/api/v1/crm/patients/", self._create_payload(), format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["insurer"], self.insurer.id)
+
+        patient_id = resp.data["id"]
+        detail = self.client.get(f"/api/v1/crm/patients/{patient_id}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data["insurer"], self.insurer.id)
+        self.assertEqual(detail.data["insurer_details"]["code"], "27")
+        self.assertEqual(detail.data["insurer_details"]["id"], self.insurer.id)
+        self.assertEqual(Patient.objects.get(pk=patient_id).insurer_id, self.insurer.id)
+
+    def test_insurer_is_optional(self):
+        payload = self._create_payload()
+        payload.pop("insurer")
+        resp = self.client.post("/api/v1/crm/patients/", payload, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertIsNone(resp.data["insurer"])
+        self.assertIsNone(resp.data["insurer_details"])
+
+    def test_insurer_can_be_patched(self):
+        patient = Patient.objects.create(
+            lab=self.lab,
+            first_name="Eva",
+            last_name="Bezpoistky",
+            birth_number="8551015555",
+        )
+        vszp = Insurer.objects.get(code="25")
+        resp = self.client.patch(
+            f"/api/v1/crm/patients/{patient.id}/",
+            {"insurer": vszp.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        patient.refresh_from_db()
+        self.assertEqual(patient.insurer_id, vszp.id)
+
+    def test_insurer_details_is_read_only(self):
+        resp = self.client.post(
+            "/api/v1/crm/patients/",
+            self._create_payload(insurer_details={"code": "24", "name": "Podvrh"}),
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["insurer_details"]["code"], "27")
+
+    def test_unknown_insurer_rejected(self):
+        resp = self.client.post(
+            "/api/v1/crm/patients/",
+            self._create_payload(insurer=999999),
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("insurer", resp.data)
+
+    def test_insurer_appears_in_patient_export(self):
+        self.client.post("/api/v1/crm/patients/", self._create_payload(), format="json")
+        resp = self.client.get("/api/crm/patients/export/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        content = resp.content.decode("utf-8")
+        self.assertIn("Poisťovňa", content)
+        self.assertIn("27", content)
+
+    def test_insurer_in_use_cannot_be_deleted(self):
+        self.client.post("/api/v1/crm/patients/", self._create_payload(), format="json")
+        with self.assertRaises(ProtectedError):
+            self.insurer.delete()
+
+
+class ProstheticLabelIdentifiersTests(APITestCase):
+    """#93 — identifikátory PZS, lekára a odborného garanta ZT."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Label Ids Lab")
+        self.admin = User.objects.create_user(
+            username="label_ids_admin",
+            password="pw",
+            email="label_ids_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_clinic_pzs_code_round_trip(self):
+        resp = self.client.post(
+            "/api/v1/crm/clinics/",
+            {"name": "DELTA med, spol. s r.o.", "pzs_code": "P0599380220"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["pzs_code"], "P0599380220")
+        clinic_id = resp.data["id"]
+        detail = self.client.get(f"/api/v1/crm/clinics/{clinic_id}/")
+        self.assertEqual(detail.data["pzs_code"], "P0599380220")
+        self.assertEqual(Clinic.objects.get(pk=clinic_id).pzs_code, "P0599380220")
+
+    def test_clinic_pzs_code_defaults_to_empty(self):
+        clinic = Clinic.objects.create(lab=self.lab, name="Bez kódu")
+        detail = self.client.get(f"/api/v1/crm/clinics/{clinic.id}/")
+        self.assertEqual(detail.data["pzs_code"], "")
+
+    def test_doctor_codes_round_trip(self):
+        clinic = Clinic.objects.create(lab=self.lab, name="Klinika lekára")
+        resp = self.client.post(
+            "/api/v1/crm/doctors/",
+            {
+                "first_name": "Ján",
+                "last_name": "Zubár",
+                "clinic": clinic.id,
+                "doctor_code": "B06160016",
+                "registration_number": "SKZL-12345",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        doctor_id = resp.data["id"]
+        detail = self.client.get(f"/api/v1/crm/doctors/{doctor_id}/")
+        self.assertEqual(detail.data["doctor_code"], "B06160016")
+        self.assertEqual(detail.data["registration_number"], "SKZL-12345")
+        doctor = Doctor.objects.get(pk=doctor_id)
+        self.assertEqual(doctor.doctor_code, "B06160016")
+        self.assertEqual(doctor.registration_number, "SKZL-12345")
+
+    def test_doctor_codes_default_to_empty(self):
+        doctor = Doctor.objects.create(lab=self.lab, first_name="Bez", last_name="Kódu")
+        detail = self.client.get(f"/api/v1/crm/doctors/{doctor.id}/")
+        self.assertEqual(detail.data["doctor_code"], "")
+        self.assertEqual(detail.data["registration_number"], "")
+
+    def test_label_identifiers_are_tenant_isolated(self):
+        other_lab = Lab.objects.create(name="Label Ids Lab B")
+        other_clinic = Clinic.objects.create(lab=other_lab, name="Cudzia klinika", pzs_code="P0000000001")
+        resp = self.client.get(f"/api/v1/crm/clinics/{other_clinic.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)

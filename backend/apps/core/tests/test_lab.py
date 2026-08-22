@@ -374,3 +374,55 @@ class LabRolePermissionTests(APITestCase):
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
         self.assertEqual(resp.status_code, 401)
+
+
+class LabGarantFieldsTests(APITestCase):
+    """#93 — odborný garant ZT a jeho registračné číslo na laboratóriu."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Garant Lab")
+        self.admin = User.objects.create_user(
+            username="garant_admin",
+            password="pw",
+            email="garant_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_garant_fields_default_to_empty(self):
+        resp = self.client.get(f"/api/labs/{self.lab.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["garant_name"], "")
+        self.assertEqual(resp.data["garant_registration_number"], "")
+
+    def test_garant_fields_round_trip(self):
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {
+                "garant_name": "Bc. Peter Technik",
+                "garant_registration_number": "ZT-004521",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["garant_name"], "Bc. Peter Technik")
+        self.assertEqual(resp.data["garant_registration_number"], "ZT-004521")
+
+        self.lab.refresh_from_db()
+        self.assertEqual(self.lab.garant_name, "Bc. Peter Technik")
+        self.assertEqual(self.lab.garant_registration_number, "ZT-004521")
+
+        detail = self.client.get(f"/api/labs/{self.lab.id}/")
+        self.assertEqual(detail.data["garant_name"], "Bc. Peter Technik")
+
+    def test_admin_cannot_edit_other_lab_garant(self):
+        other_lab = Lab.objects.create(name="Garant Lab B")
+        resp = self.client.patch(
+            f"/api/labs/{other_lab.id}/",
+            {"garant_name": "Cudzí garant"},
+            format="json",
+        )
+        self.assertIn(resp.status_code, (403, 404))
+        other_lab.refresh_from_db()
+        self.assertEqual(other_lab.garant_name, "")
