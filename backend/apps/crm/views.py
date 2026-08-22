@@ -15,9 +15,14 @@ from apps.core.exports import limited_export_queryset
 from apps.core.localization import format_sk_date
 from apps.jobs.models import Job
 
-from .models import Clinic, Doctor, Patient
+from .models import Clinic, Doctor, Insurer, Patient
 from .selectors import clinics_for_user, doctors_for_user, patients_for_user
-from .serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
+from .serializers import (
+    ClinicSerializer,
+    DoctorSerializer,
+    InsurerSerializer,
+    PatientSerializer,
+)
 
 _XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
@@ -52,6 +57,21 @@ def _assert_crm_write(user):
         raise PermissionDenied(
             "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
         )
+
+
+class InsurerViewSet(viewsets.ReadOnlyModelViewSet):
+    """Celoštátny číselník zdravotných poisťovní — read-only, nie je tenant-scoped."""
+
+    queryset = Insurer.objects.all()
+    serializer_class = InsurerSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = Insurer.objects.all()
+        if self.request.query_params.get("include_inactive") not in ("1", "true", "True"):
+            queryset = queryset.filter(is_active=True)
+        return queryset.order_by("code")
 
 
 class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -267,6 +287,7 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             "Meno",
             "Priezvisko",
             "Rodné číslo",
+            "Poisťovňa",
             "Adresa",
             "Telefón",
             "E-mail",
@@ -278,12 +299,16 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                 p.first_name or "",
                 p.last_name or "",
                 p.birth_number or "",
+                p.insurer.code if p.insurer else "",
                 p.address or "",
                 p.phone or "",
                 p.email or "",
                 format_sk_date(p.created_at),
             ]
-            for p in limited_export_queryset(self.get_queryset().order_by("last_name", "first_name"), "patients")
+            for p in limited_export_queryset(
+                self.get_queryset().select_related("insurer").order_by("last_name", "first_name"),
+                "patients",
+            )
         ]
         if request.query_params.get("export_format") == "xlsx":
             return _xlsx_response(header, rows, "Pacienti", "patients.xlsx")
