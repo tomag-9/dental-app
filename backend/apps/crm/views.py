@@ -7,10 +7,13 @@ from django.db.models import Q, Sum
 from django.http import HttpResponse
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from apps.core.access import TenantScopedQuerysetMixin, is_admin_or_superadmin
+from apps.core.access import (
+    LabActionPermissionMixin,
+    TenantScopedQuerysetMixin,
+    assert_lab_permission,
+)
 from apps.core.exports import limited_export_queryset
 from apps.core.localization import format_sk_date
 from apps.jobs.models import Job
@@ -52,11 +55,17 @@ def _csv_response(header, rows, filename):
     return response
 
 
-def _assert_crm_write(user):
-    if not is_admin_or_superadmin(user):
-        raise PermissionDenied(
-            "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
-        )
+def _assert_crm_write(user, action):
+    """Guard CRM writes/exports through the shared permission registry.
+
+    ``action`` is one of ``clinic:write`` / ``doctor:write`` / ``patient:write``
+    so that a lab can revoke (or grant) each resource independently.
+    """
+    assert_lab_permission(
+        user,
+        action,
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor.",
+    )
 
 
 class InsurerViewSet(viewsets.ReadOnlyModelViewSet):
@@ -74,7 +83,14 @@ class InsurerViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset.order_by("code")
 
 
-class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class ClinicViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "clinic:write",
+        "export": "clinic:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Clinic.objects.all()
     serializer_class = ClinicSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -87,15 +103,15 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "clinic:write")
         self.save_with_request_lab(serializer)
 
     def perform_update(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "clinic:write")
         serializer.save()
 
     def perform_destroy(self, instance):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "clinic:write")
         instance.delete()
 
     def get_serializer_context(self):
@@ -123,7 +139,14 @@ class ClinicViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return _csv_response(header, rows, "clinics.csv")
 
 
-class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class DoctorViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "doctor:write",
+        "export": "doctor:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -139,20 +162,20 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "doctor:write")
         self.save_with_request_lab(serializer)
 
     def perform_update(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "doctor:write")
         serializer.save()
 
     def perform_destroy(self, instance):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "doctor:write")
         instance.delete()
 
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
-        _assert_crm_write(request.user)
+        _assert_crm_write(request.user, "doctor:write")
         header = [
             "ID",
             "Titul pred menom",
@@ -182,7 +205,14 @@ class DoctorViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return _csv_response(header, rows, "doctors.csv")
 
 
-class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+class PatientViewSet(LabActionPermissionMixin, TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    lab_permission_actions = {
+        "create": "patient:write",
+        "export": "patient:write",
+    }
+    lab_permission_message = (
+        "CRM záznamy môže vytvárať, upravovať alebo mazať iba administrátor alebo superadministrátor."
+    )
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -197,15 +227,15 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "patient:write")
         self.save_with_request_lab(serializer)
 
     def perform_update(self, serializer):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "patient:write")
         serializer.save()
 
     def perform_destroy(self, instance):
-        _assert_crm_write(self.request.user)
+        _assert_crm_write(self.request.user, "patient:write")
         instance.delete()
 
     def retrieve(self, request, *args, **kwargs):
@@ -281,7 +311,7 @@ class PatientViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
-        _assert_crm_write(request.user)
+        _assert_crm_write(request.user, "patient:write")
         header = [
             "ID",
             "Meno",

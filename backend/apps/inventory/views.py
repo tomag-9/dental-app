@@ -55,6 +55,8 @@ def _check_low_stock_notification(item):
 
 
 class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    # Per-lab overrides for this coarse UI capability are enforced here.
+    lab_permission_action = "manage_inventory"
     queryset = WarehouseItem.objects.all()
     serializer_class = WarehouseItemSerializer
     permission_classes = [
