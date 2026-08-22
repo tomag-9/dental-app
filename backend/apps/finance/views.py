@@ -43,6 +43,7 @@ from . import invoice_service
 from . import services as finance_services
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
+from .pay_by_square import PayBySquareError
 from .selectors import invoices_for_user, price_list_for_user
 from .serializers import (
     InvoiceCreateSerializer,
@@ -239,7 +240,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="qr")
     def qr(self, request, pk=None):
         invoice = self.get_object()
-        payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount):.2f}|{invoice.status}"
+        try:
+            payload = finance_services.build_invoice_payment_payload(invoice)
+        except PayBySquareError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         svg_markup, _ = self._build_qr_svg(payload)
         if isinstance(svg_markup, bytes):
             content = svg_markup
@@ -325,18 +329,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             hline(page_y - 2 * mm)
             return page_y - 8 * mm
 
-        if lab.enable_qr_payment and lab.bank_account:
-            iban = (lab.bank_account or "").replace(" ", "")
-            amount = Decimal(str(invoice.total_amount or 0))
-            bic = lab.bank_bic or ""
-            msg_text = f"Faktura {invoice.number}"
-            payload = (
-                f"PAY*QR%0100*1*1%AM{amount:.2f}%CC EUR%IBAN{iban}" + (f"%BIC{bic}" if bic else "") + f"%MSG{msg_text}"
-            )
+        # Only a valid Pay by Square code goes on the invoice. If the lab has QR
+        # payments disabled or its banking data is unusable we print no QR at
+        # all rather than a code no banking app can read (issue #125).
+        try:
+            payload = finance_services.build_invoice_payment_payload(invoice)
+        except PayBySquareError as exc:
+            logger.info("Skipping payment QR for invoice %s: %s", invoice.number, exc)
         else:
-            payload = f"INVOICE|{invoice.number}|{Decimal(invoice.total_amount or 0):.2f}|{invoice.status}"
-        _, qr_drawing = self._build_qr_svg(payload, size=72)
-        renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
+            _, qr_drawing = self._build_qr_svg(payload, size=72)
+            renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
 
         doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
         pdf.setFont("Helvetica-Bold", 18)
