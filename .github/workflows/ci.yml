@@ -140,6 +140,13 @@ jobs:
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run build
+    # Static smoke check — no stack needed, so it runs here rather than in the
+    # e2e job. Only smoke:no-prod-mocks is wired up: auth-smoke, permissions-smoke
+    # and role-nav-smoke still read the removed frontend/public/design/ directory
+    # and die with ENOENT (same root cause as #114, tracked separately), and
+    # visual-smoke needs a running stack plus a browser.
+    - name: Run production-mock smoke check
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:no-prod-mocks
     - name: Cleanup
       if: always()
       run: |
@@ -151,10 +158,163 @@ jobs:
         docker image rm "$FRONTEND_CI_IMAGE" 2>/dev/null || true
 
   # ──────────────────────────────────────────────
+  # Playwright end-to-end tests against a real stack
+  # ──────────────────────────────────────────────
+  e2e:
+    needs: [backend-tests, frontend-check]
+    runs-on: [self-hosted]
+    name: E2E Tests
+    # config/settings/dev.py hardcodes CSRF_TRUSTED_ORIGINS to localhost:5367
+    # and ignores the env var, so the frontend has to be published on that exact
+    # host port — which makes the port a shared resource on this runner. This
+    # group is deliberately NOT keyed on github.ref: it serialises e2e across
+    # every branch. Everything else stays isolated per run through
+    # COMPOSE_PROJECT_NAME, exactly like the other jobs.
+    concurrency:
+      group: ${{ github.workflow }}-e2e-host-ports
+      cancel-in-progress: false
+    env:
+      COMPOSE_PROJECT_NAME: dental-app-ci-${{ github.run_id }}-${{ github.run_attempt }}-e2e
+      BACKEND_CI_IMAGE: local/dental-backend-ci:${{ github.run_id }}-${{ github.run_attempt }}-e2e
+      FRONTEND_CI_IMAGE: local/dental-frontend-ci:${{ github.run_id }}-${{ github.run_attempt }}-e2e
+      BACKEND_PORT: 8810
+      FRONTEND_PORT: 5367
+      VITE_API_URL: http://localhost:8810/api
+      E2E_BASE_URL: http://localhost:5367
+    steps:
+    - name: Prepare workspace
+      run: |
+        mkdir -p "$GITHUB_WORKSPACE"
+        docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
+        docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+    - uses: actions/checkout@v4
+      with:
+        clean: false
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Build backend image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        load: true
+        tags: ${{ env.BACKEND_CI_IMAGE }}
+        cache-from: type=gha,scope=dental-backend-ci
+        cache-to: type=gha,scope=dental-backend-ci,mode=max
+    - name: Build frontend image
+      uses: docker/build-push-action@v6
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        target: dev
+        load: true
+        tags: ${{ env.FRONTEND_CI_IMAGE }}
+        cache-from: type=gha,scope=dental-frontend-ci
+        cache-to: type=gha,scope=dental-frontend-ci,mode=max
+    - name: Start stack
+      run: |
+        docker compose --env-file env/dev.env.example \
+          -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml \
+          up -d --force-recreate
+    - name: Wait for backend health
+      run: |
+        for i in $(seq 1 90); do
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${BACKEND_PORT}/api/health/")" = "200" ]; then
+            echo "backend healthy after ${i} attempt(s)"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "::error::backend did not become healthy on port ${BACKEND_PORT}"
+        docker compose --env-file env/dev.env.example \
+          -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml logs backend
+        exit 1
+    - name: Wait for frontend dev server
+      run: |
+        for i in $(seq 1 90); do
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${FRONTEND_PORT}/")" = "200" ]; then
+            echo "frontend serving after ${i} attempt(s)"
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "::error::frontend did not start on port ${FRONTEND_PORT}"
+        docker compose --env-file env/dev.env.example \
+          -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml logs frontend
+        exit 1
+    # The canonical seeder is the `seed_users` management command; `runscript`
+    # is not available (django-extensions is not installed) and seed_data.py is
+    # only a thin wrapper around the same command.
+    - name: Seed demo data
+      run: |
+        docker compose --env-file env/dev.env.example \
+          -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml \
+          exec -T backend python manage.py seed_users
+    - name: Install Playwright dependencies
+      run: |
+        PW_VERSION="$(sed -n 's/.*"@playwright\/test": *"[^0-9]*\([0-9.]*\)".*/\1/p' frontend/package.json)"
+        if [ -z "$PW_VERSION" ]; then
+          echo "::error::could not read the @playwright/test version from frontend/package.json"
+          exit 1
+        fi
+        echo "PLAYWRIGHT_IMAGE=mcr.microsoft.com/playwright:v${PW_VERSION}-noble" >> "$GITHUB_ENV"
+        docker run --rm -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
+          "mcr.microsoft.com/playwright:v${PW_VERSION}-noble" npm ci
+    # Specs that are stable under load. These gate the job.
+    - name: Run Playwright e2e tests
+      run: |
+        docker run --rm --network host \
+          -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
+          -e CI=1 -e E2E_BASE_URL \
+          "$PLAYWRIGHT_IMAGE" \
+          npx playwright test auth permissions materials pr-ui-regressions \
+            --workers=1 --retries=2 --reporter=list
+    # invoice-flow and patient-job-flow pass on an idle machine but their
+    # hardcoded 5–8 s assertion timeouts are too tight when the shared runner is
+    # busy, so they are reported without failing the job until those timeouts are
+    # raised. Do not promote them to a gating step before that is fixed.
+    - name: Run data-mutating e2e flows (non-blocking)
+      continue-on-error: true
+      run: |
+        docker run --rm --network host \
+          -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
+          -e CI=1 -e E2E_BASE_URL \
+          "$PLAYWRIGHT_IMAGE" \
+          npx playwright test invoice-flow patient-job-flow \
+            --workers=1 --retries=2 --reporter=list
+    - name: Upload Playwright artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-artifacts-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          frontend/test-results/
+          frontend/playwright-report/
+        if-no-files-found: ignore
+        retention-days: 7
+    - name: Dump stack logs on failure
+      if: failure()
+      run: |
+        docker compose --env-file env/dev.env.example \
+          -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml \
+          logs --tail=200
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ -f env/dev.env.example ]; then
+          docker compose --env-file env/dev.env.example \
+            -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml \
+            down -v --remove-orphans
+        else
+          docker ps -aq --filter "label=com.docker.compose.project=$COMPOSE_PROJECT_NAME" | xargs -r docker rm -f
+        fi
+        docker image rm "$BACKEND_CI_IMAGE" "$FRONTEND_CI_IMAGE" 2>/dev/null || true
+
+  # ──────────────────────────────────────────────
   # Docker image build — only on push to main/develop
   # ──────────────────────────────────────────────
   docker-build:
-    needs: [lint, backend-tests, frontend-check]
+    needs: [lint, backend-tests, frontend-check, e2e]
     runs-on: [self-hosted]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     name: Build Docker Images
