@@ -36,22 +36,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/calendar/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["calendar_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/calendar-events/": {
         parameters: {
             query?: never;
@@ -82,6 +66,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["calendar_events_partial_update"];
+        trace?: never;
+    };
+    "/api/calendar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["calendar_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/core/2fa/": {
@@ -257,6 +257,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/core/labs/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["core_labs_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/labs/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["core_labs_retrieve"];
+        put: operations["core_labs_update"];
+        post?: never;
+        delete: operations["core_labs_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["core_labs_partial_update"];
+        trace?: never;
+    };
     "/api/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -292,38 +324,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/core/labs/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["core_labs_retrieve"];
-        put: operations["core_labs_update"];
-        post?: never;
-        delete: operations["core_labs_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["core_labs_partial_update"];
-        trace?: never;
-    };
-    "/api/core/labs/superadmin/all/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["core_labs_superadmin_all_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/core/notifications/": {
         parameters: {
             query?: never;
@@ -334,38 +334,6 @@ export interface paths {
         get: operations["core_notifications_list"];
         put?: never;
         post: operations["core_notifications_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/core/notifications/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["core_notifications_retrieve"];
-        put: operations["core_notifications_update"];
-        post?: never;
-        delete: operations["core_notifications_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["core_notifications_partial_update"];
-        trace?: never;
-    };
-    "/api/core/notifications/{id}/mark-read/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["core_notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -398,6 +366,38 @@ export interface paths {
         get: operations["core_notifications_unread_count_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/notifications/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["core_notifications_retrieve"];
+        put: operations["core_notifications_update"];
+        post?: never;
+        delete: operations["core_notifications_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["core_notifications_partial_update"];
+        trace?: never;
+    };
+    "/api/core/notifications/{id}/mark-read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -470,23 +470,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/core/sessions/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** @description List and revoke the current user's active sessions. */
-        delete: operations["core_sessions_destroy"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/core/sessions/revoke-all/": {
         parameters: {
             query?: never;
@@ -499,6 +482,23 @@ export interface paths {
         post?: never;
         /** @description List and revoke the current user's active sessions. */
         delete: operations["core_sessions_revoke_all_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description List and revoke the current user's active sessions. */
+        delete: operations["core_sessions_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -617,22 +617,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/core/users/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["core_users_retrieve"];
-        put: operations["core_users_update"];
-        post?: never;
-        delete: operations["core_users_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["core_users_partial_update"];
-        trace?: never;
-    };
     "/api/core/users/me/": {
         parameters: {
             query?: never;
@@ -697,6 +681,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/core/users/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["core_users_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/core/users/superadmin/{target_user_id}/impersonate/": {
         parameters: {
             query?: never;
@@ -729,20 +729,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/core/users/superadmin/all/": {
+    "/api/core/users/{id}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["core_users_superadmin_all_retrieve"];
-        put?: never;
+        get: operations["core_users_retrieve"];
+        put: operations["core_users_update"];
         post?: never;
-        delete?: never;
+        delete: operations["core_users_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["core_users_partial_update"];
         trace?: never;
     };
     "/api/crm/clinics/": {
@@ -755,6 +755,22 @@ export interface paths {
         get: operations["crm_clinics_list"];
         put?: never;
         post: operations["crm_clinics_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/clinics/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["crm_clinics_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -777,22 +793,6 @@ export interface paths {
         patch: operations["crm_clinics_partial_update"];
         trace?: never;
     };
-    "/api/crm/clinics/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["crm_clinics_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/crm/doctors/": {
         parameters: {
             query?: never;
@@ -803,6 +803,22 @@ export interface paths {
         get: operations["crm_doctors_list"];
         put?: never;
         post: operations["crm_doctors_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/doctors/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["crm_doctors_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -825,14 +841,32 @@ export interface paths {
         patch: operations["crm_doctors_partial_update"];
         trace?: never;
     };
-    "/api/crm/doctors/export/": {
+    "/api/crm/insurers/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["crm_doctors_export_retrieve"];
+        /** @description Celoštátny číselník zdravotných poisťovní — read-only, nie je tenant-scoped. */
+        get: operations["crm_insurers_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/insurers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Celoštátny číselník zdravotných poisťovní — read-only, nie je tenant-scoped. */
+        get: operations["crm_insurers_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -851,6 +885,22 @@ export interface paths {
         get: operations["crm_patients_list"];
         put?: never;
         post: operations["crm_patients_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/crm/patients/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["crm_patients_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -889,22 +939,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/crm/patients/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["crm_patients_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/dashboard/stats/": {
         parameters: {
             query?: never;
@@ -931,6 +965,56 @@ export interface paths {
         get: operations["finance_invoices_list"];
         put?: never;
         post: operations["finance_invoices_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/invoices/aging/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days. */
+        get: operations["finance_invoices_aging_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/invoices/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["finance_invoices_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/invoices/send-overdue-reminders/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send reminder emails for all overdue issued invoices in this lab. */
+        post: operations["finance_invoices_send_overdue_reminders_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1018,56 +1102,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/invoices/aging/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days. */
-        get: operations["finance_invoices_aging_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/finance/invoices/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["finance_invoices_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/finance/invoices/send-overdue-reminders/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Send reminder emails for all overdue issued invoices in this lab. */
-        post: operations["finance_invoices_send_overdue_reminders_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/finance/price-list/": {
         parameters: {
             query?: never;
@@ -1078,6 +1112,22 @@ export interface paths {
         get: operations["finance_price_list_list"];
         put?: never;
         post: operations["finance_price_list_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/price-list/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["finance_price_list_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1110,22 +1160,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["finance_price_list_duplicate_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/finance/price-list/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["finance_price_list_export_retrieve"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1181,22 +1215,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/finance/subscriptions/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["finance_subscriptions_retrieve"];
-        put: operations["finance_subscriptions_update"];
-        post?: never;
-        delete: operations["finance_subscriptions_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["finance_subscriptions_partial_update"];
-        trace?: never;
-    };
     "/api/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -1211,6 +1229,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/finance/subscriptions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["finance_subscriptions_retrieve"];
+        put: operations["finance_subscriptions_update"];
+        post?: never;
+        delete: operations["finance_subscriptions_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["finance_subscriptions_partial_update"];
         trace?: never;
     };
     "/api/health/": {
@@ -1245,22 +1279,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/warehouse/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["inventory_warehouse_retrieve"];
-        put: operations["inventory_warehouse_update"];
-        post?: never;
-        delete: operations["inventory_warehouse_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["inventory_warehouse_partial_update"];
-        trace?: never;
-    };
     "/api/inventory/warehouse/export/": {
         parameters: {
             query?: never;
@@ -1271,27 +1289,6 @@ export interface paths {
         get: operations["inventory_warehouse_export_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/inventory/warehouse/import/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * @description Import multiple warehouse items in a single atomic transaction.
-         *     Validates all rows first; returns 400 if any row is invalid.
-         *     Superadmin must supply ?lab=<id> query parameter.
-         */
-        post: operations["inventory_warehouse_import_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1341,6 +1338,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/warehouse/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Import multiple warehouse items in a single atomic transaction.
+         *     Validates all rows first; returns 400 if any row is invalid.
+         *     Superadmin must supply ?lab=<id> query parameter.
+         */
+        post: operations["inventory_warehouse_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/inventory/warehouse/stats/": {
         parameters: {
             query?: never;
@@ -1357,6 +1375,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/warehouse/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["inventory_warehouse_retrieve"];
+        put: operations["inventory_warehouse_update"];
+        post?: never;
+        delete: operations["inventory_warehouse_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["inventory_warehouse_partial_update"];
+        trace?: never;
+    };
     "/api/invoices/": {
         parameters: {
             query?: never;
@@ -1367,6 +1401,39 @@ export interface paths {
         get: operations["invoices_list"];
         put?: never;
         post: operations["invoices_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invoices/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["invoices_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invoices/send-overdue-reminders/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send reminder emails for all overdue issued invoices in this lab. */
+        post: operations["invoices_send_overdue_reminders_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1454,55 +1521,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/invoices/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["invoices_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/invoices/send-overdue-reminders/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Send reminder emails for all overdue issued invoices in this lab. */
-        post: operations["invoices_send_overdue_reminders_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/jobs/calendar/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["jobs_calendar_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/jobs/calendar-events/": {
         parameters: {
             query?: never;
@@ -1535,6 +1553,22 @@ export interface paths {
         patch: operations["jobs_calendar_events_partial_update"];
         trace?: never;
     };
+    "/api/jobs/calendar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jobs_calendar_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/jobs/": {
         parameters: {
             query?: never;
@@ -1545,70 +1579,6 @@ export interface paths {
         get: operations["jobs_jobs_list"];
         put?: never;
         post: operations["jobs_jobs_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/jobs/jobs/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["jobs_jobs_retrieve"];
-        put: operations["jobs_jobs_update"];
-        post?: never;
-        delete: operations["jobs_jobs_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["jobs_jobs_partial_update"];
-        trace?: never;
-    };
-    "/api/jobs/jobs/{id}/attachments/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["jobs_jobs_attachments_retrieve"];
-        put?: never;
-        post: operations["jobs_jobs_attachments_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/jobs/jobs/{id}/transition-status/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["jobs_jobs_transition_status_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/jobs/jobs/{id}/work_order/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["jobs_jobs_work_order_retrieve"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1688,6 +1658,70 @@ export interface paths {
             cookie?: never;
         };
         get: operations["jobs_jobs_status_config_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jobs_jobs_retrieve"];
+        put: operations["jobs_jobs_update"];
+        post?: never;
+        delete: operations["jobs_jobs_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["jobs_jobs_partial_update"];
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/attachments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jobs_jobs_attachments_retrieve"];
+        put?: never;
+        post: operations["jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/transition-status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["jobs_jobs_transition_status_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/work_order/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["jobs_jobs_work_order_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1776,6 +1810,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/labs/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["labs_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/labs/{id}/": {
         parameters: {
             query?: never;
@@ -1792,14 +1842,271 @@ export interface paths {
         patch: operations["labs_partial_update"];
         trace?: never;
     };
-    "/api/labs/superadmin/all/": {
+    "/api/materials/catalog/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["labs_superadmin_all_retrieve"];
+        get: operations["materials_catalog_list"];
+        put?: never;
+        post: operations["materials_catalog_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/catalog/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["materials_catalog_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/catalog/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_catalog_retrieve"];
+        put: operations["materials_catalog_update"];
+        post?: never;
+        delete: operations["materials_catalog_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["materials_catalog_partial_update"];
+        trace?: never;
+    };
+    "/api/materials/fefo/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return non-expired, usable lots for every recipe line in FEFO order. */
+        get: operations["materials_fefo_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/lots/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_lots_list"];
+        put?: never;
+        post: operations["materials_lots_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/lots/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["materials_lots_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/lots/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_lots_retrieve"];
+        put: operations["materials_lots_update"];
+        post?: never;
+        delete: operations["materials_lots_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["materials_lots_partial_update"];
+        trace?: never;
+    };
+    "/api/materials/lots/{id}/conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_lots_conformity_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/lots/{id}/label-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_lots_label_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/manufacturers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_manufacturers_list"];
+        put?: never;
+        post: operations["materials_manufacturers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/manufacturers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_manufacturers_retrieve"];
+        put: operations["materials_manufacturers_update"];
+        post?: never;
+        delete: operations["materials_manufacturers_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["materials_manufacturers_partial_update"];
+        trace?: never;
+    };
+    "/api/materials/recipes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_recipes_list"];
+        put?: never;
+        post: operations["materials_recipes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/recipes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_recipes_retrieve"];
+        put: operations["materials_recipes_update"];
+        post?: never;
+        delete: operations["materials_recipes_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["materials_recipes_partial_update"];
+        trace?: never;
+    };
+    "/api/materials/usage/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_usage_list"];
+        put?: never;
+        post: operations["materials_usage_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/usage/job-conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_usage_job_conformity_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/usage/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_usage_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/materials/usage/{id}/conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["materials_usage_conformity_pdf_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1818,38 +2125,6 @@ export interface paths {
         get: operations["notifications_list"];
         put?: never;
         post: operations["notifications_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["notifications_retrieve"];
-        put: operations["notifications_update"];
-        post?: never;
-        delete: operations["notifications_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["notifications_partial_update"];
-        trace?: never;
-    };
-    "/api/notifications/{id}/mark-read/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1882,6 +2157,38 @@ export interface paths {
         get: operations["notifications_unread_count_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["notifications_retrieve"];
+        put: operations["notifications_update"];
+        post?: never;
+        delete: operations["notifications_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["notifications_partial_update"];
+        trace?: never;
+    };
+    "/api/notifications/{id}/mark-read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2056,22 +2363,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["users_retrieve"];
-        put: operations["users_update"];
-        post?: never;
-        delete: operations["users_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["users_partial_update"];
-        trace?: never;
-    };
     "/api/users/me/": {
         parameters: {
             query?: never;
@@ -2136,6 +2427,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/users/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["users_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/superadmin/{target_user_id}/impersonate/": {
         parameters: {
             query?: never;
@@ -2168,20 +2475,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/users/superadmin/all/": {
+    "/api/users/{id}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["users_superadmin_all_retrieve"];
-        put?: never;
+        get: operations["users_retrieve"];
+        put: operations["users_update"];
         post?: never;
-        delete?: never;
+        delete: operations["users_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["users_partial_update"];
         trace?: never;
     };
     "/api/v1/calendar/": {
@@ -2373,6 +2680,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/core/labs/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_core_labs_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/labs/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_core_labs_retrieve"];
+        put: operations["v1_core_labs_update"];
+        post?: never;
+        delete: operations["v1_core_labs_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_core_labs_partial_update"];
+        trace?: never;
+    };
     "/api/v1/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -2408,38 +2747,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/core/labs/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_core_labs_retrieve"];
-        put: operations["v1_core_labs_update"];
-        post?: never;
-        delete: operations["v1_core_labs_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_core_labs_partial_update"];
-        trace?: never;
-    };
-    "/api/v1/core/labs/superadmin/all/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_core_labs_superadmin_all_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/core/notifications/": {
         parameters: {
             query?: never;
@@ -2450,38 +2757,6 @@ export interface paths {
         get: operations["v1_core_notifications_list"];
         put?: never;
         post: operations["v1_core_notifications_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/core/notifications/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_core_notifications_retrieve"];
-        put: operations["v1_core_notifications_update"];
-        post?: never;
-        delete: operations["v1_core_notifications_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_core_notifications_partial_update"];
-        trace?: never;
-    };
-    "/api/v1/core/notifications/{id}/mark-read/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["v1_core_notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2514,6 +2789,38 @@ export interface paths {
         get: operations["v1_core_notifications_unread_count_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/notifications/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_core_notifications_retrieve"];
+        put: operations["v1_core_notifications_update"];
+        post?: never;
+        delete: operations["v1_core_notifications_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_core_notifications_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/core/notifications/{id}/mark-read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_notifications_mark_read_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2586,23 +2893,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/core/sessions/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** @description List and revoke the current user's active sessions. */
-        delete: operations["v1_core_sessions_destroy"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/core/sessions/revoke-all/": {
         parameters: {
             query?: never;
@@ -2615,6 +2905,23 @@ export interface paths {
         post?: never;
         /** @description List and revoke the current user's active sessions. */
         delete: operations["v1_core_sessions_revoke_all_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/sessions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** @description List and revoke the current user's active sessions. */
+        delete: operations["v1_core_sessions_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2733,22 +3040,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/core/users/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_core_users_retrieve"];
-        put: operations["v1_core_users_update"];
-        post?: never;
-        delete: operations["v1_core_users_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_core_users_partial_update"];
-        trace?: never;
-    };
     "/api/v1/core/users/me/": {
         parameters: {
             query?: never;
@@ -2813,6 +3104,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/core/users/superadmin/all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_core_users_superadmin_all_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/core/users/superadmin/{target_user_id}/impersonate/": {
         parameters: {
             query?: never;
@@ -2845,20 +3152,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/core/users/superadmin/all/": {
+    "/api/v1/core/users/{id}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_core_users_superadmin_all_retrieve"];
-        put?: never;
+        get: operations["v1_core_users_retrieve"];
+        put: operations["v1_core_users_update"];
         post?: never;
-        delete?: never;
+        delete: operations["v1_core_users_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["v1_core_users_partial_update"];
         trace?: never;
     };
     "/api/v1/crm/clinics/": {
@@ -2871,6 +3178,22 @@ export interface paths {
         get: operations["v1_crm_clinics_list"];
         put?: never;
         post: operations["v1_crm_clinics_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/clinics/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_crm_clinics_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2893,22 +3216,6 @@ export interface paths {
         patch: operations["v1_crm_clinics_partial_update"];
         trace?: never;
     };
-    "/api/v1/crm/clinics/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_crm_clinics_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/crm/doctors/": {
         parameters: {
             query?: never;
@@ -2919,6 +3226,22 @@ export interface paths {
         get: operations["v1_crm_doctors_list"];
         put?: never;
         post: operations["v1_crm_doctors_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/doctors/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_crm_doctors_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2941,14 +3264,32 @@ export interface paths {
         patch: operations["v1_crm_doctors_partial_update"];
         trace?: never;
     };
-    "/api/v1/crm/doctors/export/": {
+    "/api/v1/crm/insurers/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_crm_doctors_export_retrieve"];
+        /** @description Celoštátny číselník zdravotných poisťovní — read-only, nie je tenant-scoped. */
+        get: operations["v1_crm_insurers_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/insurers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Celoštátny číselník zdravotných poisťovní — read-only, nie je tenant-scoped. */
+        get: operations["v1_crm_insurers_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2967,6 +3308,22 @@ export interface paths {
         get: operations["v1_crm_patients_list"];
         put?: never;
         post: operations["v1_crm_patients_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/patients/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_crm_patients_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3005,22 +3362,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/crm/patients/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_crm_patients_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/dashboard/stats/": {
         parameters: {
             query?: never;
@@ -3047,6 +3388,56 @@ export interface paths {
         get: operations["v1_finance_invoices_list"];
         put?: never;
         post: operations["v1_finance_invoices_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/aging/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days. */
+        get: operations["v1_finance_invoices_aging_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_finance_invoices_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/send-overdue-reminders/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Send reminder emails for all overdue issued invoices in this lab. */
+        post: operations["v1_finance_invoices_send_overdue_reminders_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3134,56 +3525,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/invoices/aging/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days. */
-        get: operations["v1_finance_invoices_aging_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/invoices/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_finance_invoices_export_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/invoices/send-overdue-reminders/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Send reminder emails for all overdue issued invoices in this lab. */
-        post: operations["v1_finance_invoices_send_overdue_reminders_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/finance/price-list/": {
         parameters: {
             query?: never;
@@ -3194,6 +3535,22 @@ export interface paths {
         get: operations["v1_finance_price_list_list"];
         put?: never;
         post: operations["v1_finance_price_list_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/price-list/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_finance_price_list_export_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3226,22 +3583,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["v1_finance_price_list_duplicate_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finance/price-list/export/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_finance_price_list_export_retrieve"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3297,22 +3638,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance/subscriptions/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_finance_subscriptions_retrieve"];
-        put: operations["v1_finance_subscriptions_update"];
-        post?: never;
-        delete: operations["v1_finance_subscriptions_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_finance_subscriptions_partial_update"];
-        trace?: never;
-    };
     "/api/v1/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -3327,6 +3652,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/subscriptions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_finance_subscriptions_retrieve"];
+        put: operations["v1_finance_subscriptions_update"];
+        post?: never;
+        delete: operations["v1_finance_subscriptions_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_finance_subscriptions_partial_update"];
         trace?: never;
     };
     "/api/v1/inventory/warehouse/": {
@@ -3345,22 +3686,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/inventory/warehouse/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_inventory_warehouse_retrieve"];
-        put: operations["v1_inventory_warehouse_update"];
-        post?: never;
-        delete: operations["v1_inventory_warehouse_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_inventory_warehouse_partial_update"];
-        trace?: never;
-    };
     "/api/v1/inventory/warehouse/export/": {
         parameters: {
             query?: never;
@@ -3371,27 +3696,6 @@ export interface paths {
         get: operations["v1_inventory_warehouse_export_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/inventory/warehouse/import/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * @description Import multiple warehouse items in a single atomic transaction.
-         *     Validates all rows first; returns 400 if any row is invalid.
-         *     Superadmin must supply ?lab=<id> query parameter.
-         */
-        post: operations["v1_inventory_warehouse_import_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3441,6 +3745,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/warehouse/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Import multiple warehouse items in a single atomic transaction.
+         *     Validates all rows first; returns 400 if any row is invalid.
+         *     Superadmin must supply ?lab=<id> query parameter.
+         */
+        post: operations["v1_inventory_warehouse_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/warehouse/stats/": {
         parameters: {
             query?: never;
@@ -3457,20 +3782,20 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/jobs/calendar/": {
+    "/api/v1/inventory/warehouse/{id}/": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_jobs_calendar_retrieve"];
-        put?: never;
+        get: operations["v1_inventory_warehouse_retrieve"];
+        put: operations["v1_inventory_warehouse_update"];
         post?: never;
-        delete?: never;
+        delete: operations["v1_inventory_warehouse_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["v1_inventory_warehouse_partial_update"];
         trace?: never;
     };
     "/api/v1/jobs/calendar-events/": {
@@ -3505,6 +3830,22 @@ export interface paths {
         patch: operations["v1_jobs_calendar_events_partial_update"];
         trace?: never;
     };
+    "/api/v1/jobs/calendar/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_jobs_calendar_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/jobs/": {
         parameters: {
             query?: never;
@@ -3515,70 +3856,6 @@ export interface paths {
         get: operations["v1_jobs_jobs_list"];
         put?: never;
         post: operations["v1_jobs_jobs_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/jobs/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_jobs_jobs_retrieve"];
-        put: operations["v1_jobs_jobs_update"];
-        post?: never;
-        delete: operations["v1_jobs_jobs_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["v1_jobs_jobs_partial_update"];
-        trace?: never;
-    };
-    "/api/v1/jobs/jobs/{id}/attachments/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_jobs_jobs_attachments_retrieve"];
-        put?: never;
-        post: operations["v1_jobs_jobs_attachments_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/jobs/{id}/transition-status/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["v1_jobs_jobs_transition_status_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/jobs/{id}/work_order/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_jobs_jobs_work_order_retrieve"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3666,6 +3943,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/jobs/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_jobs_jobs_retrieve"];
+        put: operations["v1_jobs_jobs_update"];
+        post?: never;
+        delete: operations["v1_jobs_jobs_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_jobs_jobs_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/jobs/jobs/{id}/attachments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_jobs_jobs_attachments_retrieve"];
+        put?: never;
+        post: operations["v1_jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/jobs/{id}/transition-status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_jobs_jobs_transition_status_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/jobs/{id}/work_order/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_jobs_jobs_work_order_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/technicians/": {
         parameters: {
             query?: never;
@@ -3728,6 +4069,279 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1_jobs_vacations_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/materials/catalog/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_catalog_list"];
+        put?: never;
+        post: operations["v1_materials_catalog_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/catalog/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_materials_catalog_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/catalog/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_catalog_retrieve"];
+        put: operations["v1_materials_catalog_update"];
+        post?: never;
+        delete: operations["v1_materials_catalog_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_materials_catalog_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/materials/fefo/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return non-expired, usable lots for every recipe line in FEFO order. */
+        get: operations["v1_materials_fefo_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/lots/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_lots_list"];
+        put?: never;
+        post: operations["v1_materials_lots_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/lots/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_materials_lots_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/lots/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_lots_retrieve"];
+        put: operations["v1_materials_lots_update"];
+        post?: never;
+        delete: operations["v1_materials_lots_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_materials_lots_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/materials/lots/{id}/conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_lots_conformity_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/lots/{id}/label-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_lots_label_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/manufacturers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_manufacturers_list"];
+        put?: never;
+        post: operations["v1_materials_manufacturers_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/manufacturers/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_manufacturers_retrieve"];
+        put: operations["v1_materials_manufacturers_update"];
+        post?: never;
+        delete: operations["v1_materials_manufacturers_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_materials_manufacturers_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/materials/recipes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_recipes_list"];
+        put?: never;
+        post: operations["v1_materials_recipes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/recipes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_recipes_retrieve"];
+        put: operations["v1_materials_recipes_update"];
+        post?: never;
+        delete: operations["v1_materials_recipes_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["v1_materials_recipes_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/materials/usage/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_usage_list"];
+        put?: never;
+        post: operations["v1_materials_usage_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/usage/job-conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_usage_job_conformity_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/usage/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_usage_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/usage/{id}/conformity-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_materials_usage_conformity_pdf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/permissions/": {
@@ -3826,22 +4440,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/warehouse/{id}/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["warehouse_retrieve"];
-        put: operations["warehouse_update"];
-        post?: never;
-        delete: operations["warehouse_destroy"];
-        options?: never;
-        head?: never;
-        patch: operations["warehouse_partial_update"];
-        trace?: never;
-    };
     "/api/warehouse/export/": {
         parameters: {
             query?: never;
@@ -3852,27 +4450,6 @@ export interface paths {
         get: operations["warehouse_export_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/warehouse/import/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * @description Import multiple warehouse items in a single atomic transaction.
-         *     Validates all rows first; returns 400 if any row is invalid.
-         *     Superadmin must supply ?lab=<id> query parameter.
-         */
-        post: operations["warehouse_import_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3922,6 +4499,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/warehouse/import/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Import multiple warehouse items in a single atomic transaction.
+         *     Validates all rows first; returns 400 if any row is invalid.
+         *     Superadmin must supply ?lab=<id> query parameter.
+         */
+        post: operations["warehouse_import_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/warehouse/stats/": {
         parameters: {
             query?: never;
@@ -3938,43 +4536,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/warehouse/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["warehouse_retrieve"];
+        put: operations["warehouse_update"];
+        post?: never;
+        delete: operations["warehouse_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["warehouse_partial_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         AuditLog: {
-            readonly id: number;
+            readonly action: string;
             readonly actor: number | null;
             readonly actor_username: string;
-            readonly lab: number | null;
-            readonly lab_name: string;
-            readonly action: string;
-            readonly entity_type: string;
-            readonly entity_id: string;
-            readonly description: string;
-            readonly metadata: unknown;
-            readonly ip_address: string | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly description: string;
+            readonly entity_id: string;
+            readonly entity_type: string;
+            readonly id: number;
+            readonly ip_address: string | null;
+            readonly lab: number | null;
+            readonly lab_name: string;
+            readonly metadata: unknown;
         };
         /** @enum {unknown} */
         BlankEnum: "";
         CalendarEvent: {
-            readonly id: number;
-            title: string;
-            event_type?: components["schemas"]["EventTypeEnum"];
-            /** Format: date-time */
-            start: string;
-            /** Format: date-time */
-            end?: string | null;
-            description?: string | null;
-            location?: string | null;
             contact_person?: string | null;
             contact_phone?: string | null;
             /** Format: date-time */
             readonly created_at: string;
+            description?: string | null;
+            /** Format: date-time */
+            end?: string | null;
+            event_type?: components["schemas"]["EventTypeEnum"];
+            readonly id: number;
             readonly lab: number;
+            location?: string | null;
             related_job?: number | null;
+            /** Format: date-time */
+            start: string;
+            title: string;
         };
         /**
          * @description * `crown` - Korunka
@@ -3988,43 +4602,52 @@ export interface components {
          */
         CategoryEnum: "crown" | "bridge" | "denture" | "implant" | "orthodontic" | "repair" | "other";
         Clinic: {
-            readonly id: number;
-            readonly lab: number;
-            name: string;
-            ico?: string | null;
-            dic?: string | null;
+            readonly active_jobs: string;
             address?: string | null;
             bank_details?: string | null;
+            city?: string | null;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at: string;
-            email?: string | null;
-            phone?: string | null;
-            street?: string | null;
-            city?: string | null;
-            zip_code?: string | null;
+            dic?: string | null;
             readonly doctor_count: number;
             readonly doctors: string;
-            readonly jobs_count: string;
-            readonly active_jobs: string;
-            readonly ytd_revenue: string;
-        };
-        Doctor: {
+            email?: string | null;
+            ico?: string | null;
             readonly id: number;
+            readonly jobs_count: string;
             readonly lab: number;
+            name: string;
+            phone?: string | null;
+            pzs_code?: string;
+            street?: string | null;
+            readonly ytd_revenue: string;
+            zip_code?: string | null;
+        };
+        /**
+         * @description * `structured` - Štruktúrovaný popis
+         *     * `custom` - Voľný popis
+         * @enum {string}
+         */
+        DescriptionModeEnum: "structured" | "custom";
+        Doctor: {
+            readonly active_jobs: string;
             clinic?: number | null;
             readonly clinic_name: string | null;
-            first_name: string;
-            last_name: string;
-            title_before?: string | null;
-            title_after?: string | null;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at: string;
+            doctor_code?: string;
             email?: string | null;
-            phone?: string | null;
+            first_name: string;
+            readonly id: number;
             readonly jobs_count: string;
-            readonly active_jobs: string;
+            readonly lab: number;
+            last_name: string;
+            phone?: string | null;
+            registration_number?: string;
+            title_after?: string | null;
+            title_before?: string | null;
             readonly ytd_revenue: string;
         };
         /**
@@ -4052,10 +4675,10 @@ export interface components {
          */
         EventTypeEnum: "meeting" | "pickup" | "delivery" | "deadline" | "other";
         HealthCheckResponse: {
-            status: components["schemas"]["HealthCheckResponseStatusEnum"];
             checks: {
                 [key: string]: "ok" | "error";
             };
+            status: components["schemas"]["HealthCheckResponseStatusEnum"];
         };
         /**
          * @description * `ok` - ok
@@ -4063,112 +4686,213 @@ export interface components {
          * @enum {string}
          */
         HealthCheckResponseStatusEnum: "ok" | "unhealthy";
-        Invoice: {
+        /** @description Read-only celoštátny číselník zdravotných poisťovní. */
+        Insurer: {
+            readonly code: string;
             readonly id: number;
-            number: string;
-            lab: number;
+            readonly is_active: boolean;
+            readonly name: string;
+            readonly short_name: string;
+        };
+        Invoice: {
+            readonly appendix_rows: components["schemas"]["InvoiceAppendixRow"][];
+            readonly audit_log: components["schemas"]["InvoiceAuditLogEntry"][];
             clinic: number;
+            readonly clinic_email: string;
             readonly clinic_name: string;
-            status?: components["schemas"]["InvoiceStatusEnum"];
-            document_type?: components["schemas"]["DocumentTypeEnum"];
-            /** Format: decimal */
-            vat_rate?: string;
-            /** Format: decimal */
-            discount_percent?: string;
-            /** Format: decimal */
-            total_amount?: string;
-            readonly subtotal_amount: string;
-            readonly vat_amount: string;
-            readonly formatted_total: string;
-            readonly formatted_due_date: string;
-            readonly formatted_issued_at: string;
-            readonly is_overdue: string;
-            readonly days_overdue: string;
             /** Format: date-time */
             readonly created_at: string;
-            /** Format: date-time */
-            issued_at?: string | null;
-            /** Format: date-time */
-            paid_at?: string | null;
+            custom_description?: string;
+            readonly days_overdue: string;
+            description_mode?: components["schemas"]["DescriptionModeEnum"];
+            readonly discount_amount: string;
+            /** Format: decimal */
+            discount_percent?: string;
+            document_type?: components["schemas"]["DocumentTypeEnum"];
             /** Format: date */
             due_date?: string | null;
+            readonly formatted_due_date: string;
+            readonly formatted_issued_at: string;
+            readonly formatted_total: string;
+            readonly id: number;
+            readonly is_overdue: string;
+            /** Format: date-time */
+            issued_at?: string | null;
             readonly items: components["schemas"]["InvoiceItem"][];
+            lab: number;
+            number: string;
+            /** Format: date-time */
+            paid_at?: string | null;
             readonly patient_names: string;
+            readonly patient_summaries: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs: string;
+            show_patient_list?: boolean;
+            status?: components["schemas"]["Status12cEnum"];
+            readonly subtotal_amount: string;
+            readonly taxable_amount: string;
+            /** Format: decimal */
+            total_amount?: string;
+            readonly vat_amount: string;
+            /** Format: decimal */
+            vat_rate?: string;
+        };
+        InvoiceAppendixRow: {
+            job_description: string;
+            job_id: number | null;
+            patient_id: number | null;
+            patient_name: string;
+            procedures: components["schemas"]["InvoiceProcedure"][];
+            recipes: components["schemas"]["InvoiceRecipe"][];
+            /** Format: decimal */
+            total: string;
+        };
+        InvoiceAuditLogEntry: {
+            action: string;
+            actor_name: string;
+            /** Format: date-time */
+            created_at: string;
+            id: number;
+            label: string;
+            message: string | null;
+            metadata: {
+                [key: string]: unknown;
+            };
         };
         InvoiceItem: {
+            description: string;
             readonly id: number;
             invoice: number;
             job?: number | null;
-            description: string;
+            /** Format: decimal */
+            line_total?: string;
+            /** Format: int64 */
             quantity?: number;
             /** Format: decimal */
             unit_price?: string;
-            /** Format: decimal */
-            line_total?: string;
         };
-        /**
-         * @description * `draft` - Koncept
-         *     * `issued` - Vystavená
-         *     * `paid` - Zaplatená
-         *     * `cancelled` - Zrušená
-         * @enum {string}
-         */
-        InvoiceStatusEnum: "draft" | "issued" | "paid" | "cancelled";
-        Job: {
-            readonly id: number;
-            readonly patient_details: components["schemas"]["Patient"];
-            readonly clinic_details: components["schemas"]["Clinic"];
-            readonly doctor_details: components["schemas"]["Doctor"];
-            readonly technician_details: components["schemas"]["Technician"];
-            items?: components["schemas"]["JobItem"][];
-            readonly timeline: components["schemas"]["JobTimelineEvent"][];
+        /** @description Lightweight invoice representation for collection/workspace responses. */
+        InvoiceList: {
+            clinic: number;
+            readonly clinic_email: string;
+            readonly clinic_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            custom_description?: string;
+            readonly days_overdue: string;
+            description_mode?: components["schemas"]["DescriptionModeEnum"];
+            readonly discount_amount: string;
             /** Format: decimal */
-            price?: string | null;
+            discount_percent?: string;
+            document_type?: components["schemas"]["DocumentTypeEnum"];
             /** Format: date */
             due_date?: string | null;
-            status?: components["schemas"]["JobStatusEnum"];
+            readonly formatted_due_date: string;
+            readonly formatted_issued_at: string;
+            readonly formatted_total: string;
+            readonly id: number;
+            readonly is_overdue: string;
+            /** Format: date-time */
+            issued_at?: string | null;
+            readonly items: components["schemas"]["InvoiceItem"][];
+            lab: number;
+            number: string;
+            /** Format: date-time */
+            paid_at?: string | null;
+            readonly patient_names: string;
+            readonly related_jobs: string;
+            show_patient_list?: boolean;
+            status?: components["schemas"]["Status12cEnum"];
+            readonly subtotal_amount: string;
+            readonly taxable_amount: string;
+            /** Format: decimal */
+            total_amount?: string;
+            readonly vat_amount: string;
+            /** Format: decimal */
+            vat_rate?: string;
+        };
+        InvoiceMaterialLine: {
+            code: string;
+            lot: string;
+            manufacturer: string;
+            name: string;
+            /** Format: decimal */
+            quantity: string;
+            unit: string;
+        };
+        InvoicePatientSummary: {
+            patient_id: number | null;
+            patient_name: string;
+            /** Format: decimal */
+            total: string;
+        };
+        InvoiceProcedure: {
+            description: string;
+            /** Format: decimal */
+            line_total: string;
+            quantity: number;
+            /** Format: decimal */
+            unit_price: string;
+        };
+        InvoiceRecipe: {
+            date: string | null;
+            materials: components["schemas"]["InvoiceMaterialLine"][];
+            name: string;
+        };
+        Job: {
+            clinic: number;
+            readonly clinic_details: components["schemas"]["Clinic"];
+            /** Format: date-time */
+            readonly created_at: string;
+            description?: string | null;
+            doctor?: number | null;
+            readonly doctor_details: components["schemas"]["Doctor"];
+            /** Format: date */
+            due_date?: string | null;
+            /** Format: date */
+            end_date?: string | null;
+            readonly id: number;
+            input_tooth_procedures?: unknown;
+            items?: components["schemas"]["JobItem"][];
+            readonly lab: number;
+            output_tooth_procedures?: unknown;
+            patient: number;
+            readonly patient_details: components["schemas"]["Patient"];
+            /** Format: decimal */
+            price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
-            input_tooth_procedures?: unknown;
-            output_tooth_procedures?: unknown;
-            description?: string | null;
-            tooth_color?: string | null;
             /** Format: date */
             start_date?: string | null;
-            /** Format: date */
-            end_date?: string | null;
+            status?: components["schemas"]["JobStatusEnum"];
+            technician?: number | null;
+            readonly technician_details: components["schemas"]["Technician"];
+            readonly timeline: components["schemas"]["JobTimelineEvent"][];
+            tooth_color?: string | null;
             /** Format: date */
             try_in_date?: string | null;
             /** Format: date-time */
-            readonly created_at: string;
-            /** Format: date-time */
             readonly updated_at: string;
-            readonly lab: number;
-            patient: number;
-            clinic: number;
-            doctor?: number | null;
-            technician?: number | null;
         };
         JobItem: {
-            readonly id: number;
-            price_list_code: string;
-            readonly description: string;
-            tooth?: string | null;
-            quantity?: number;
-            /** Format: decimal */
-            readonly unit_price: string;
-            /** Format: decimal */
-            readonly total: string;
-            procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            material?: string | null;
-            color?: string | null;
             bridge_span?: string | null;
-            tooth_scope?: (components["schemas"]["ToothScopeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            tooth_state?: components["schemas"]["ToothStateEnum"];
+            color?: string | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly description: string;
+            readonly id: number;
+            material?: string | null;
+            price_list_code: string;
+            procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: int64 */
+            quantity?: number;
+            tooth?: string | null;
+            tooth_scope?: (components["schemas"]["ToothScopeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            tooth_state?: components["schemas"]["ToothStateEnum"];
+            /** Format: decimal */
+            readonly total: string;
+            /** Format: decimal */
+            readonly unit_price: string;
         };
         /**
          * @description * `new` - Nová
@@ -4182,71 +4906,194 @@ export interface components {
          */
         JobStatusEnum: "new" | "in_progress" | "completed" | "cancelled" | "finished_factured" | "finished_unfactured" | "closed";
         JobTimelineEvent: {
-            readonly id: number;
-            readonly event: components["schemas"]["EventEnum"];
-            readonly note: string | null;
-            readonly from_status: string | null;
-            readonly to_status: string | null;
-            readonly changed_fields: unknown;
             readonly actor: number | null;
             readonly actor_name: string;
+            readonly changed_fields: unknown;
             /** Format: date-time */
             readonly created_at: string;
+            readonly event: components["schemas"]["EventEnum"];
+            readonly from_status: string | null;
+            readonly id: number;
+            readonly note: string | null;
+            readonly to_status: string | null;
         };
         Lab: {
-            readonly id: number;
-            name: string;
-            slug?: string;
             address?: string | null;
-            city?: string | null;
-            postal_code?: string | null;
-            country?: string;
-            tax_id?: string | null;
-            vat_id?: string | null;
             bank_account?: string | null;
             bank_bic?: string | null;
-            phone?: string | null;
-            /** Format: email */
-            email?: string | null;
-            /** Format: uri */
-            website?: string | null;
-            logo_url?: string | null;
+            city?: string | null;
             contact_info?: unknown;
-            invoice_prefix?: string;
-            invoice_due_days?: number;
-            /** Format: decimal */
-            vat_rate?: string;
-            payment_method?: string;
-            invoice_default_note?: string;
-            enable_qr_payment?: boolean;
+            country?: string;
             /** Format: date-time */
             readonly created_at: string;
+            email?: (string) | null;
+            enable_qr_payment?: boolean;
+            garant_name?: string;
+            garant_registration_number?: string;
+            readonly id: number;
+            invoice_default_note?: string;
+            /** Format: int64 */
+            invoice_due_days?: number;
+            invoice_prefix?: string;
+            is_vat_payer?: boolean;
+            logo_url?: string | null;
+            name: string;
+            payment_method?: string;
+            phone?: string | null;
+            postal_code?: string | null;
+            slug?: string;
+            tax_id?: string | null;
+            /** Format: date-time */
+            readonly updated_at: string;
+            vat_id?: string | null;
+            /** Format: decimal */
+            vat_rate?: string;
+            website?: (string) | null;
+        };
+        Manufacturer: {
+            country?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly id: number;
+            readonly lab: number;
+            name: string;
+            note?: string;
+            prefix: string;
             /** Format: date-time */
             readonly updated_at: string;
         };
+        MaterialCatalog: {
+            allow_in_job?: boolean;
+            category?: string;
+            code: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly id: number;
+            readonly lab: number;
+            manufacturer: number;
+            readonly manufacturer_name: string;
+            mdr_class?: (components["schemas"]["MdrClassEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            mode?: components["schemas"]["ModeEnum"];
+            name: string;
+            note?: string;
+            stock_code?: string | null;
+            readonly stock_item: number;
+            unit?: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        MaterialLot: {
+            catalog: number;
+            readonly catalog_details: components["schemas"]["MaterialCatalog"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date */
+            expiry?: string | null;
+            readonly expiry_state: string;
+            readonly id: number;
+            readonly lab: number;
+            location?: string;
+            lot: string;
+            /** Format: date */
+            opened?: string | null;
+            /** Format: decimal */
+            qty_received: string;
+            /** Format: decimal */
+            qty_remaining?: string;
+            /** Format: date */
+            received?: string;
+            short_code: string;
+            status?: components["schemas"]["MaterialLotStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `active` - Aktívna
+         *     * `open` - Otvorená
+         *     * `depleted` - Spotrebovaná
+         *     * `discarded` - Vyradená
+         * @enum {string}
+         */
+        MaterialLotStatusEnum: "active" | "open" | "depleted" | "discarded";
+        MaterialRecipe: {
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly id: number;
+            readonly lab: number;
+            lines: components["schemas"]["RecipeLine"][];
+            mdr?: boolean;
+            name: string;
+            product_type?: components["schemas"]["ProductTypeEnum"];
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        MaterialUsage: {
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date */
+            readonly date: string;
+            readonly id: number;
+            readonly job: number;
+            readonly lab: number;
+            readonly lines: components["schemas"]["MaterialUsageLine"][];
+            readonly patient_label: string;
+            readonly recipe: string;
+            readonly recipe_source: number | null;
+            readonly technician: string;
+        };
+        MaterialUsageLine: {
+            readonly code: string;
+            /** Format: date */
+            readonly expiry: string | null;
+            readonly id: number;
+            readonly lot: string;
+            readonly manufacturer: string;
+            readonly mdr_class: string | null;
+            readonly name: string;
+            /** Format: decimal */
+            readonly qty: string;
+            readonly source_catalog_id: number | null;
+            readonly source_lot_id: number | null;
+            readonly unit: string;
+            readonly usage: number;
+        };
+        /**
+         * @description * `I` - Trieda I
+         *     * `IIa` - Trieda IIa
+         *     * `IIb` - Trieda IIb
+         *     * `III` - Trieda III
+         * @enum {string}
+         */
+        MdrClassEnum: "I" | "IIa" | "IIb" | "III";
+        /**
+         * @description * `repeat` - Opakované použitie
+         *     * `single` - Jednorazové použitie
+         * @enum {string}
+         */
+        ModeEnum: "repeat" | "single";
         /** @description Issue JWT tokens and enforce TOTP for users with 2FA enabled. */
         MolarisTokenObtainPair: {
-            username: string;
             password: string;
+            username: string;
         };
         /** @description Reject refresh tokens whose persisted session was revoked. */
         MolarisTokenRefresh: {
-            refresh: string;
             readonly access: string;
+            refresh: string;
         };
         Notification: {
-            readonly id: number;
-            lab?: number | null;
-            recipient: number;
-            type?: components["schemas"]["TypeEnum"];
-            title: string;
-            message?: string | null;
-            url?: string | null;
-            readonly is_read: boolean;
-            /** Format: date-time */
-            readonly read_at: string | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly id: number;
+            readonly is_read: boolean;
+            lab?: number | null;
+            message?: string | null;
+            /** Format: date-time */
+            readonly read_at: string | null;
+            recipient: number;
+            title: string;
+            type?: components["schemas"]["TypeEnum"];
+            url?: string | null;
         };
         /** @enum {unknown} */
         NullEnum: null;
@@ -4310,7 +5157,7 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Doctor"][];
         };
-        PaginatedInvoiceList: {
+        PaginatedInvoiceListList: {
             /** @example 123 */
             count: number;
             /**
@@ -4323,7 +5170,7 @@ export interface components {
              * @example http://api.example.org/accounts/?page=2
              */
             previous?: string | null;
-            results: components["schemas"]["Invoice"][];
+            results: components["schemas"]["InvoiceList"][];
         };
         PaginatedJobList: {
             /** @example 123 */
@@ -4354,6 +5201,81 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Lab"][];
+        };
+        PaginatedManufacturerList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Manufacturer"][];
+        };
+        PaginatedMaterialCatalogList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MaterialCatalog"][];
+        };
+        PaginatedMaterialLotList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MaterialLot"][];
+        };
+        PaginatedMaterialRecipeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MaterialRecipe"][];
+        };
+        PaginatedMaterialUsageList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MaterialUsage"][];
         };
         PaginatedNotificationList: {
             /** @example 123 */
@@ -4491,340 +5413,424 @@ export interface components {
             results: components["schemas"]["WarehouseItem"][];
         };
         PatchedCalendarEvent: {
-            readonly id?: number;
-            title?: string;
-            event_type?: components["schemas"]["EventTypeEnum"];
-            /** Format: date-time */
-            start?: string;
-            /** Format: date-time */
-            end?: string | null;
-            description?: string | null;
-            location?: string | null;
             contact_person?: string | null;
             contact_phone?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
+            description?: string | null;
+            /** Format: date-time */
+            end?: string | null;
+            event_type?: components["schemas"]["EventTypeEnum"];
+            readonly id?: number;
             readonly lab?: number;
+            location?: string | null;
             related_job?: number | null;
+            /** Format: date-time */
+            start?: string;
+            title?: string;
         };
         PatchedClinic: {
-            readonly id?: number;
-            readonly lab?: number;
-            name?: string;
-            ico?: string | null;
-            dic?: string | null;
+            readonly active_jobs?: string;
             address?: string | null;
             bank_details?: string | null;
+            city?: string | null;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at?: string;
-            email?: string | null;
-            phone?: string | null;
-            street?: string | null;
-            city?: string | null;
-            zip_code?: string | null;
+            dic?: string | null;
             readonly doctor_count?: number;
             readonly doctors?: string;
+            email?: string | null;
+            ico?: string | null;
+            readonly id?: number;
             readonly jobs_count?: string;
-            readonly active_jobs?: string;
+            readonly lab?: number;
+            name?: string;
+            phone?: string | null;
+            pzs_code?: string;
+            street?: string | null;
             readonly ytd_revenue?: string;
+            zip_code?: string | null;
         };
         PatchedDoctor: {
-            readonly id?: number;
-            readonly lab?: number;
+            readonly active_jobs?: string;
             clinic?: number | null;
             readonly clinic_name?: string | null;
-            first_name?: string;
-            last_name?: string;
-            title_before?: string | null;
-            title_after?: string | null;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at?: string;
+            doctor_code?: string;
             email?: string | null;
-            phone?: string | null;
+            first_name?: string;
+            readonly id?: number;
             readonly jobs_count?: string;
-            readonly active_jobs?: string;
+            readonly lab?: number;
+            last_name?: string;
+            phone?: string | null;
+            registration_number?: string;
+            title_after?: string | null;
+            title_before?: string | null;
             readonly ytd_revenue?: string;
         };
         PatchedInvoice: {
-            readonly id?: number;
-            number?: string;
-            lab?: number;
+            readonly appendix_rows?: components["schemas"]["InvoiceAppendixRow"][];
+            readonly audit_log?: components["schemas"]["InvoiceAuditLogEntry"][];
             clinic?: number;
+            readonly clinic_email?: string;
             readonly clinic_name?: string;
-            status?: components["schemas"]["InvoiceStatusEnum"];
-            document_type?: components["schemas"]["DocumentTypeEnum"];
-            /** Format: decimal */
-            vat_rate?: string;
-            /** Format: decimal */
-            discount_percent?: string;
-            /** Format: decimal */
-            total_amount?: string;
-            readonly subtotal_amount?: string;
-            readonly vat_amount?: string;
-            readonly formatted_total?: string;
-            readonly formatted_due_date?: string;
-            readonly formatted_issued_at?: string;
-            readonly is_overdue?: string;
-            readonly days_overdue?: string;
             /** Format: date-time */
             readonly created_at?: string;
+            custom_description?: string;
+            readonly days_overdue?: string;
+            description_mode?: components["schemas"]["DescriptionModeEnum"];
+            readonly discount_amount?: string;
+            /** Format: decimal */
+            discount_percent?: string;
+            document_type?: components["schemas"]["DocumentTypeEnum"];
+            /** Format: date */
+            due_date?: string | null;
+            readonly formatted_due_date?: string;
+            readonly formatted_issued_at?: string;
+            readonly formatted_total?: string;
+            readonly id?: number;
+            readonly is_overdue?: string;
             /** Format: date-time */
             issued_at?: string | null;
+            readonly items?: components["schemas"]["InvoiceItem"][];
+            lab?: number;
+            number?: string;
             /** Format: date-time */
             paid_at?: string | null;
-            /** Format: date */
-            due_date?: string | null;
-            readonly items?: components["schemas"]["InvoiceItem"][];
             readonly patient_names?: string;
+            readonly patient_summaries?: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs?: string;
+            show_patient_list?: boolean;
+            status?: components["schemas"]["Status12cEnum"];
+            readonly subtotal_amount?: string;
+            readonly taxable_amount?: string;
+            /** Format: decimal */
+            total_amount?: string;
+            readonly vat_amount?: string;
+            /** Format: decimal */
+            vat_rate?: string;
         };
         PatchedJob: {
-            readonly id?: number;
-            readonly patient_details?: components["schemas"]["Patient"];
+            clinic?: number;
             readonly clinic_details?: components["schemas"]["Clinic"];
+            /** Format: date-time */
+            readonly created_at?: string;
+            description?: string | null;
+            doctor?: number | null;
             readonly doctor_details?: components["schemas"]["Doctor"];
-            readonly technician_details?: components["schemas"]["Technician"];
-            items?: components["schemas"]["JobItem"][];
-            readonly timeline?: components["schemas"]["JobTimelineEvent"][];
-            /** Format: decimal */
-            price?: string | null;
             /** Format: date */
             due_date?: string | null;
-            status?: components["schemas"]["JobStatusEnum"];
+            /** Format: date */
+            end_date?: string | null;
+            readonly id?: number;
+            input_tooth_procedures?: unknown;
+            items?: components["schemas"]["JobItem"][];
+            readonly lab?: number;
+            output_tooth_procedures?: unknown;
+            patient?: number;
+            readonly patient_details?: components["schemas"]["Patient"];
+            /** Format: decimal */
+            price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
-            input_tooth_procedures?: unknown;
-            output_tooth_procedures?: unknown;
-            description?: string | null;
-            tooth_color?: string | null;
             /** Format: date */
             start_date?: string | null;
-            /** Format: date */
-            end_date?: string | null;
+            status?: components["schemas"]["JobStatusEnum"];
+            technician?: number | null;
+            readonly technician_details?: components["schemas"]["Technician"];
+            readonly timeline?: components["schemas"]["JobTimelineEvent"][];
+            tooth_color?: string | null;
             /** Format: date */
             try_in_date?: string | null;
             /** Format: date-time */
-            readonly created_at?: string;
-            /** Format: date-time */
             readonly updated_at?: string;
-            readonly lab?: number;
-            patient?: number;
-            clinic?: number;
-            doctor?: number | null;
-            technician?: number | null;
         };
         PatchedLab: {
-            readonly id?: number;
-            name?: string;
-            slug?: string;
             address?: string | null;
-            city?: string | null;
-            postal_code?: string | null;
-            country?: string;
-            tax_id?: string | null;
-            vat_id?: string | null;
             bank_account?: string | null;
             bank_bic?: string | null;
-            phone?: string | null;
-            /** Format: email */
-            email?: string | null;
-            /** Format: uri */
-            website?: string | null;
-            logo_url?: string | null;
+            city?: string | null;
             contact_info?: unknown;
-            invoice_prefix?: string;
-            invoice_due_days?: number;
-            /** Format: decimal */
-            vat_rate?: string;
-            payment_method?: string;
-            invoice_default_note?: string;
-            enable_qr_payment?: boolean;
+            country?: string;
             /** Format: date-time */
             readonly created_at?: string;
+            email?: (string) | null;
+            enable_qr_payment?: boolean;
+            garant_name?: string;
+            garant_registration_number?: string;
+            readonly id?: number;
+            invoice_default_note?: string;
+            /** Format: int64 */
+            invoice_due_days?: number;
+            invoice_prefix?: string;
+            is_vat_payer?: boolean;
+            logo_url?: string | null;
+            name?: string;
+            payment_method?: string;
+            phone?: string | null;
+            postal_code?: string | null;
+            slug?: string;
+            tax_id?: string | null;
+            /** Format: date-time */
+            readonly updated_at?: string;
+            vat_id?: string | null;
+            /** Format: decimal */
+            vat_rate?: string;
+            website?: (string) | null;
+        };
+        PatchedManufacturer: {
+            country?: string;
+            /** Format: date-time */
+            readonly created_at?: string;
+            readonly id?: number;
+            readonly lab?: number;
+            name?: string;
+            note?: string;
+            prefix?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
+        PatchedMaterialCatalog: {
+            allow_in_job?: boolean;
+            category?: string;
+            code?: string;
+            /** Format: date-time */
+            readonly created_at?: string;
+            readonly id?: number;
+            readonly lab?: number;
+            manufacturer?: number;
+            readonly manufacturer_name?: string;
+            mdr_class?: (components["schemas"]["MdrClassEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            mode?: components["schemas"]["ModeEnum"];
+            name?: string;
+            note?: string;
+            stock_code?: string | null;
+            readonly stock_item?: number;
+            unit?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
+        PatchedMaterialLot: {
+            catalog?: number;
+            readonly catalog_details?: components["schemas"]["MaterialCatalog"];
+            /** Format: date-time */
+            readonly created_at?: string;
+            /** Format: date */
+            expiry?: string | null;
+            readonly expiry_state?: string;
+            readonly id?: number;
+            readonly lab?: number;
+            location?: string;
+            lot?: string;
+            /** Format: date */
+            opened?: string | null;
+            /** Format: decimal */
+            qty_received?: string;
+            /** Format: decimal */
+            qty_remaining?: string;
+            /** Format: date */
+            received?: string;
+            short_code?: string;
+            status?: components["schemas"]["MaterialLotStatusEnum"];
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
+        PatchedMaterialRecipe: {
+            /** Format: date-time */
+            readonly created_at?: string;
+            readonly id?: number;
+            readonly lab?: number;
+            lines?: components["schemas"]["RecipeLine"][];
+            mdr?: boolean;
+            name?: string;
+            product_type?: components["schemas"]["ProductTypeEnum"];
             /** Format: date-time */
             readonly updated_at?: string;
         };
         PatchedNotification: {
+            /** Format: date-time */
+            readonly created_at?: string;
             readonly id?: number;
-            lab?: number | null;
-            recipient?: number;
-            type?: components["schemas"]["TypeEnum"];
-            title?: string;
-            message?: string | null;
-            url?: string | null;
             readonly is_read?: boolean;
+            lab?: number | null;
+            message?: string | null;
             /** Format: date-time */
             readonly read_at?: string | null;
-            /** Format: date-time */
-            readonly created_at?: string;
+            recipient?: number;
+            title?: string;
+            type?: components["schemas"]["TypeEnum"];
+            url?: string | null;
         };
         PatchedPatient: {
-            readonly id?: number;
-            readonly lab?: number;
-            first_name?: string;
-            last_name?: string;
-            birth_number?: string;
+            readonly active_jobs?: string;
             address?: string | null;
-            phone?: string | null;
-            /** Format: email */
-            email?: string | null;
-            tooth_procedures?: unknown;
+            readonly age?: string;
+            birth_number?: string;
             /** Format: date-time */
             readonly created_at?: string;
+            email?: (string) | null;
+            first_name?: string;
+            readonly id?: number;
+            insurer?: number | null;
+            readonly insurer_details?: components["schemas"]["Insurer"];
             readonly jobs_count?: string;
-            readonly active_jobs?: string;
+            readonly lab?: number;
+            last_name?: string;
+            phone?: string | null;
+            tooth_procedures?: unknown;
             readonly ytd_revenue?: string;
-            readonly age?: string;
         };
         PatchedPriceList: {
-            readonly id?: number;
+            category?: (components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             code?: string;
+            /** Format: date-time */
+            readonly created_at?: string;
             description?: string;
+            readonly id?: number;
+            readonly lab?: number;
             /** Format: decimal */
             price?: string;
-            category?: (components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: date */
             valid_from?: string | null;
             /** Format: date */
             valid_to?: string | null;
-            /** Format: date-time */
-            readonly created_at?: string;
-            readonly lab?: number;
         };
         PatchedSubscription: {
+            billing_email?: (string) | null;
+            /** Format: date-time */
+            cancelled_at?: string | null;
+            /** Format: date-time */
+            readonly created_at?: string;
+            /** Format: date */
+            current_period_end?: string | null;
+            /** Format: date */
+            current_period_start?: string | null;
             readonly id?: number;
-            plan?: components["schemas"]["PlanEnum"];
-            status?: components["schemas"]["SubscriptionStatusEnum"];
-            seats?: number;
+            lab?: number;
             /** Format: decimal */
             mrr?: string | null;
-            /** Format: email */
-            billing_email?: string | null;
+            plan?: components["schemas"]["PlanEnum"];
+            /** Format: int64 */
+            seats?: number;
+            status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
             trial_ends_at?: string | null;
             /** Format: date-time */
-            cancelled_at?: string | null;
-            /** Format: date */
-            current_period_start?: string | null;
-            /** Format: date */
-            current_period_end?: string | null;
-            /** Format: date-time */
-            readonly created_at?: string;
-            /** Format: date-time */
             readonly updated_at?: string;
-            lab?: number;
         };
         PatchedTeamInvitation: {
-            readonly id?: number;
-            lab?: number;
-            readonly lab_name?: string;
-            /** Format: email */
-            email?: string;
-            role?: components["schemas"]["RoleEnum"];
-            readonly token?: string;
-            readonly status?: components["schemas"]["TeamInvitationStatusEnum"];
-            readonly is_expired?: boolean;
-            readonly invited_by?: number | null;
-            readonly invited_by_username?: string;
+            /** Format: date-time */
+            readonly accepted_at?: string | null;
             readonly accepted_by?: number | null;
             readonly accepted_by_username?: string;
             /** Format: date-time */
-            readonly expires_at?: string;
-            /** Format: date-time */
-            readonly accepted_at?: string | null;
-            /** Format: date-time */
             readonly created_at?: string;
+            /** Format: email */
+            email?: string;
+            /** Format: date-time */
+            readonly expires_at?: string;
+            readonly id?: number;
+            readonly invited_by?: number | null;
+            readonly invited_by_username?: string;
+            readonly is_expired?: boolean;
+            lab?: number;
+            readonly lab_name?: string;
+            role?: components["schemas"]["RoleEnum"];
+            readonly status?: components["schemas"]["TeamInvitationStatusEnum"];
+            readonly token?: string;
         };
         PatchedTechnician: {
-            readonly id?: number;
-            readonly lab?: number;
-            first_name?: string;
-            last_name?: string;
-            title_before?: string | null;
-            title_after?: string | null;
+            readonly active_jobs?: string;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at?: string;
+            first_name?: string;
+            readonly id?: number;
             readonly jobs_count?: string;
-            readonly active_jobs?: string;
             readonly jobs_this_month?: string;
+            readonly lab?: number;
+            last_name?: string;
+            title_after?: string | null;
+            title_before?: string | null;
         };
         PatchedUser: {
-            readonly id?: number;
-            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
-            username?: string;
+            avatar_url?: (string) | null;
+            /** Format: date-time */
+            readonly date_joined?: string;
             /** Format: email */
             email?: string | null;
-            nickname?: string | null;
-            password?: string;
-            role?: components["schemas"]["RoleEnum"];
-            lab?: number | null;
-            readonly lab_details?: components["schemas"]["Lab"];
             first_name?: string;
-            last_name?: string;
+            readonly id?: number;
             /**
              * Active
              * @description Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
              */
             is_active?: boolean;
+            lab?: number | null;
+            readonly lab_details?: components["schemas"]["Lab"];
+            last_name?: string;
+            nickname?: string | null;
             notification_preferences?: unknown;
-            /** Format: uri */
-            avatar_url?: string | null;
-            /** Format: date-time */
-            readonly date_joined?: string;
+            password?: string;
+            role?: components["schemas"]["RoleEnum"];
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            username?: string;
         };
         PatchedVacation: {
-            readonly id?: number;
             /** Format: date-time */
-            start?: string;
-            /** Format: date-time */
-            end?: string;
+            readonly created_at?: string;
             description?: string | null;
             /** Format: date-time */
-            readonly created_at?: string;
+            end?: string;
+            readonly id?: number;
             lab?: number | null;
+            /** Format: date-time */
+            start?: string;
         };
         PatchedWarehouseItem: {
-            readonly id?: number;
-            name?: string;
-            sku?: string | null;
-            /** Format: decimal */
-            quantity?: string;
-            unit?: string;
-            /** Format: decimal */
-            min_threshold?: string | null;
             category?: string | null;
-            location?: string | null;
-            supplier?: string | null;
             /** Format: decimal */
             cost_price?: string | null;
-            notes?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
+            readonly id?: number;
+            readonly lab?: number;
+            location?: string | null;
+            /** Format: decimal */
+            min_threshold?: string | null;
+            name?: string;
+            notes?: string | null;
+            /** Format: decimal */
+            quantity?: string;
+            sku?: string | null;
+            supplier?: string | null;
+            unit?: string;
             /** Format: date-time */
             readonly updated_at?: string;
-            readonly lab?: number;
         };
         Patient: {
-            readonly id: number;
-            readonly lab: number;
-            first_name: string;
-            last_name: string;
-            birth_number: string;
+            readonly active_jobs: string;
             address?: string | null;
-            phone?: string | null;
-            /** Format: email */
-            email?: string | null;
-            tooth_procedures?: unknown;
+            readonly age: string;
+            birth_number: string;
             /** Format: date-time */
             readonly created_at: string;
+            email?: (string) | null;
+            first_name: string;
+            readonly id: number;
+            insurer?: number | null;
+            readonly insurer_details: components["schemas"]["Insurer"];
             readonly jobs_count: string;
-            readonly active_jobs: string;
+            readonly lab: number;
+            last_name: string;
+            phone?: string | null;
+            tooth_procedures?: unknown;
             readonly ytd_revenue: string;
-            readonly age: string;
         };
         /**
          * @description * `free` - Bezplatný
@@ -4834,19 +5840,19 @@ export interface components {
          */
         PlanEnum: "free" | "pro" | "enterprise";
         PriceList: {
-            readonly id: number;
+            category?: (components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             code: string;
+            /** Format: date-time */
+            readonly created_at: string;
             description: string;
+            readonly id: number;
+            readonly lab: number;
             /** Format: decimal */
             price: string;
-            category?: (components["schemas"]["CategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: date */
             valid_from?: string | null;
             /** Format: date */
             valid_to?: string | null;
-            /** Format: date-time */
-            readonly created_at: string;
-            readonly lab: number;
         };
         /**
          * @description * `low` - Nízka
@@ -4868,6 +5874,22 @@ export interface components {
          */
         ProcedureCategoryEnum: "crown" | "bridge" | "denture" | "implant" | "orthodontic" | "repair" | "other";
         /**
+         * @description * `single` - Samostatná práca
+         *     * `bridge` - Mostík
+         *     * `arch` - Oblúk
+         *     * `other` - Iné
+         * @enum {string}
+         */
+        ProductTypeEnum: "single" | "bridge" | "arch" | "other";
+        RecipeLine: {
+            catalog: number;
+            readonly catalog_details: components["schemas"]["MaterialCatalog"];
+            readonly id: number;
+            note?: string;
+            /** Format: decimal */
+            qty: string;
+        };
+        /**
          * @description * `superadmin` - Superadministrátor
          *     * `admin` - Administrátor laboratória
          *     * `user` - Používateľ
@@ -4875,28 +5897,36 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "superadmin" | "admin" | "user" | "technician";
+        /**
+         * @description * `draft` - Koncept
+         *     * `issued` - Vystavená
+         *     * `paid` - Zaplatená
+         *     * `cancelled` - Zrušená
+         * @enum {string}
+         */
+        Status12cEnum: "draft" | "issued" | "paid" | "cancelled";
         Subscription: {
+            billing_email?: (string) | null;
+            /** Format: date-time */
+            cancelled_at?: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date */
+            current_period_end?: string | null;
+            /** Format: date */
+            current_period_start?: string | null;
             readonly id: number;
-            plan?: components["schemas"]["PlanEnum"];
-            status?: components["schemas"]["SubscriptionStatusEnum"];
-            seats?: number;
+            lab: number;
             /** Format: decimal */
             mrr?: string | null;
-            /** Format: email */
-            billing_email?: string | null;
+            plan?: components["schemas"]["PlanEnum"];
+            /** Format: int64 */
+            seats?: number;
+            status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
             trial_ends_at?: string | null;
             /** Format: date-time */
-            cancelled_at?: string | null;
-            /** Format: date */
-            current_period_start?: string | null;
-            /** Format: date */
-            current_period_end?: string | null;
-            /** Format: date-time */
-            readonly created_at: string;
-            /** Format: date-time */
             readonly updated_at: string;
-            lab: number;
         };
         /**
          * @description * `active` - Aktívne
@@ -4907,25 +5937,25 @@ export interface components {
          */
         SubscriptionStatusEnum: "active" | "past_due" | "cancelled" | "inactive";
         TeamInvitation: {
-            readonly id: number;
-            lab: number;
-            readonly lab_name: string;
-            /** Format: email */
-            email: string;
-            role?: components["schemas"]["RoleEnum"];
-            readonly token: string;
-            readonly status: components["schemas"]["TeamInvitationStatusEnum"];
-            readonly is_expired: boolean;
-            readonly invited_by: number | null;
-            readonly invited_by_username: string;
+            /** Format: date-time */
+            readonly accepted_at: string | null;
             readonly accepted_by: number | null;
             readonly accepted_by_username: string;
             /** Format: date-time */
-            readonly expires_at: string;
-            /** Format: date-time */
-            readonly accepted_at: string | null;
-            /** Format: date-time */
             readonly created_at: string;
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            readonly expires_at: string;
+            readonly id: number;
+            readonly invited_by: number | null;
+            readonly invited_by_username: string;
+            readonly is_expired: boolean;
+            lab: number;
+            readonly lab_name: string;
+            role?: components["schemas"]["RoleEnum"];
+            readonly status: components["schemas"]["TeamInvitationStatusEnum"];
+            readonly token: string;
         };
         /**
          * @description * `pending` - Čaká
@@ -4936,18 +5966,18 @@ export interface components {
          */
         TeamInvitationStatusEnum: "pending" | "accepted" | "cancelled" | "expired";
         Technician: {
-            readonly id: number;
-            readonly lab: number;
-            first_name: string;
-            last_name: string;
-            title_before?: string | null;
-            title_after?: string | null;
+            readonly active_jobs: string;
             contact_info?: unknown;
             /** Format: date-time */
             readonly created_at: string;
+            first_name: string;
+            readonly id: number;
             readonly jobs_count: string;
-            readonly active_jobs: string;
             readonly jobs_this_month: string;
+            readonly lab: number;
+            last_name: string;
+            title_after?: string | null;
+            title_before?: string | null;
         };
         /**
          * @description * `A` - Všetky zuby
@@ -4979,60 +6009,59 @@ export interface components {
          */
         TypeEnum: "job" | "invoice" | "deadline" | "stock" | "team" | "system";
         User: {
-            readonly id: number;
-            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
-            username: string;
+            avatar_url?: (string) | null;
+            /** Format: date-time */
+            readonly date_joined: string;
             /** Format: email */
             email?: string | null;
-            nickname?: string | null;
-            password?: string;
-            role?: components["schemas"]["RoleEnum"];
-            lab?: number | null;
-            readonly lab_details: components["schemas"]["Lab"];
             first_name?: string;
-            last_name?: string;
+            readonly id: number;
             /**
              * Active
              * @description Designates whether this user should be treated as active. Unselect this instead of deleting accounts.
              */
             is_active?: boolean;
+            lab?: number | null;
+            readonly lab_details: components["schemas"]["Lab"];
+            last_name?: string;
+            nickname?: string | null;
             notification_preferences?: unknown;
-            /** Format: uri */
-            avatar_url?: string | null;
-            /** Format: date-time */
-            readonly date_joined: string;
+            password?: string;
+            role?: components["schemas"]["RoleEnum"];
+            /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
+            username: string;
         };
         Vacation: {
-            readonly id: number;
             /** Format: date-time */
-            start: string;
-            /** Format: date-time */
-            end: string;
+            readonly created_at: string;
             description?: string | null;
             /** Format: date-time */
-            readonly created_at: string;
+            end: string;
+            readonly id: number;
             lab?: number | null;
+            /** Format: date-time */
+            start: string;
         };
         WarehouseItem: {
-            readonly id: number;
-            name: string;
-            sku?: string | null;
-            /** Format: decimal */
-            quantity?: string;
-            unit?: string;
-            /** Format: decimal */
-            min_threshold?: string | null;
             category?: string | null;
-            location?: string | null;
-            supplier?: string | null;
             /** Format: decimal */
             cost_price?: string | null;
-            notes?: string | null;
             /** Format: date-time */
             readonly created_at: string;
+            readonly id: number;
+            readonly lab: number;
+            location?: string | null;
+            /** Format: decimal */
+            min_threshold?: string | null;
+            name: string;
+            notes?: string | null;
+            /** Format: decimal */
+            quantity?: string;
+            sku?: string | null;
+            supplier?: string | null;
+            unit?: string;
             /** Format: date-time */
             readonly updated_at: string;
-            readonly lab: number;
         };
     };
     responses: never;
@@ -5086,24 +6115,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditLog"];
                 };
-            };
-        };
-    };
-    calendar_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -5252,6 +6263,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CalendarEvent"];
                 };
+            };
+        };
+    };
+    calendar_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5514,64 +6543,22 @@ export interface operations {
             };
         };
     };
-    core_labs_permissions_retrieve: {
+    core_labs_superadmin_all_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                lab_pk: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    core_labs_permissions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                lab_pk: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            201: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["Lab"];
                 };
-                content?: never;
-            };
-        };
-    };
-    core_labs_permissions_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                lab_pk: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -5674,22 +6661,64 @@ export interface operations {
             };
         };
     };
-    core_labs_superadmin_all_retrieve: {
+    core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                lab_pk: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Lab"];
+                content?: never;
+            };
+        };
+    };
+    core_labs_permissions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lab_pk: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            201: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+        };
+    };
+    core_labs_permissions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lab_pk: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5733,6 +6762,50 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    core_notifications_mark_all_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    core_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5869,50 +6942,6 @@ export interface operations {
             };
         };
     };
-    core_notifications_mark_all_read_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Notification"];
-                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
-                "multipart/form-data": components["schemas"]["Notification"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
-    core_notifications_unread_count_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
     core_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -5985,13 +7014,11 @@ export interface operations {
             };
         };
     };
-    core_sessions_destroy: {
+    core_sessions_revoke_all_destroy: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -6005,11 +7032,13 @@ export interface operations {
             };
         };
     };
-    core_sessions_revoke_all_destroy: {
+    core_sessions_destroy: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -6312,105 +7341,6 @@ export interface operations {
             };
         };
     };
-    core_users_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    core_users_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["User"];
-                "application/x-www-form-urlencoded": components["schemas"]["User"];
-                "multipart/form-data": components["schemas"]["User"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    core_users_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    core_users_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedUser"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
-                "multipart/form-data": components["schemas"]["PatchedUser"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
     core_users_me_retrieve: {
         parameters: {
             query?: never;
@@ -6530,6 +7460,25 @@ export interface operations {
             };
         };
     };
+    core_users_superadmin_all_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
     core_users_superadmin_impersonate_create: {
         parameters: {
             query?: never;
@@ -6584,14 +7533,94 @@ export interface operations {
             };
         };
     };
-    core_users_superadmin_all_retrieve: {
+    core_users_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    core_users_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["User"];
+                "application/x-www-form-urlencoded": components["schemas"]["User"];
+                "multipart/form-data": components["schemas"]["User"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    core_users_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_users_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedUser"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
+                "multipart/form-data": components["schemas"]["PatchedUser"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -6643,6 +7672,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Clinic"];
+                };
+            };
+        };
+    };
+    crm_clinics_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6751,25 +7799,6 @@ export interface operations {
             };
         };
     };
-    crm_clinics_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Clinic"];
-                };
-            };
-        };
-    };
     crm_doctors_list: {
         parameters: {
             query?: {
@@ -6810,6 +7839,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Doctor"];
+                };
+            };
+        };
+    };
+    crm_doctors_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6918,7 +7966,7 @@ export interface operations {
             };
         };
     };
-    crm_doctors_export_retrieve: {
+    crm_insurers_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -6932,7 +7980,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Doctor"];
+                    "application/json": components["schemas"]["Insurer"][];
+                };
+            };
+        };
+    };
+    crm_insurers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this insurer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Insurer"];
                 };
             };
         };
@@ -6977,6 +8047,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Patient"];
+                };
+            };
+        };
+    };
+    crm_patients_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7107,25 +8196,6 @@ export interface operations {
             };
         };
     };
-    crm_patients_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Patient"];
-                };
-            };
-        };
-    };
     dashboard_stats_retrieve: {
         parameters: {
             query?: never;
@@ -7163,7 +8233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedInvoiceList"];
+                    "application/json": components["schemas"]["PaginatedInvoiceListList"];
                 };
             };
         };
@@ -7184,6 +8254,68 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    finance_invoices_aging_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    finance_invoices_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    finance_invoices_send_overdue_reminders_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invoice"];
+                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
+                "multipart/form-data": components["schemas"]["Invoice"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7392,68 +8524,6 @@ export interface operations {
             };
         };
     };
-    finance_invoices_aging_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    finance_invoices_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
-    finance_invoices_send_overdue_reminders_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Invoice"];
-                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
-                "multipart/form-data": components["schemas"]["Invoice"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
     finance_price_list_list: {
         parameters: {
             query?: {
@@ -7494,6 +8564,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    finance_price_list_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7630,25 +8719,6 @@ export interface operations {
             };
         };
     };
-    finance_price_list_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PriceList"];
-                };
-            };
-        };
-    };
     finance_procedure_catalog_retrieve: {
         parameters: {
             query?: never;
@@ -7725,6 +8795,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    finance_subscriptions_my_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7833,25 +8922,6 @@ export interface operations {
             };
         };
     };
-    finance_subscriptions_my_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Subscription"];
-                };
-            };
-        };
-    };
     health_retrieve: {
         parameters: {
             query?: never;
@@ -7920,6 +8990,119 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    inventory_warehouse_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    inventory_warehouse_import_csv_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    inventory_warehouse_import_partial_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    inventory_warehouse_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    inventory_warehouse_stats_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8028,119 +9211,6 @@ export interface operations {
             };
         };
     };
-    inventory_warehouse_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    inventory_warehouse_import_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    inventory_warehouse_import_csv_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    inventory_warehouse_import_partial_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    inventory_warehouse_stats_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
     invoices_list: {
         parameters: {
             query?: {
@@ -8160,7 +9230,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedInvoiceList"];
+                    "application/json": components["schemas"]["PaginatedInvoiceListList"];
                 };
             };
         };
@@ -8181,6 +9251,50 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    invoices_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    invoices_send_overdue_reminders_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invoice"];
+                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
+                "multipart/form-data": components["schemas"]["Invoice"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8389,68 +9503,6 @@ export interface operations {
             };
         };
     };
-    invoices_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
-    invoices_send_overdue_reminders_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Invoice"];
-                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
-                "multipart/form-data": components["schemas"]["Invoice"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
-    jobs_calendar_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     jobs_calendar_events_list: {
         parameters: {
             query?: {
@@ -8599,6 +9651,24 @@ export interface operations {
             };
         };
     };
+    jobs_calendar_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     jobs_jobs_list: {
         parameters: {
             query?: {
@@ -8639,6 +9709,94 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_bulk_update_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Job"];
+                "application/x-www-form-urlencoded": components["schemas"]["Job"];
+                "multipart/form-data": components["schemas"]["Job"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_quick_create_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Job"];
+                "application/x-www-form-urlencoded": components["schemas"]["Job"];
+                "multipart/form-data": components["schemas"]["Job"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_status_config_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8833,94 +9991,6 @@ export interface operations {
                 /** @description A unique integer value identifying this job. */
                 id: number;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    jobs_jobs_bulk_update_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Job"];
-                "application/x-www-form-urlencoded": components["schemas"]["Job"];
-                "multipart/form-data": components["schemas"]["Job"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    jobs_jobs_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    jobs_jobs_quick_create_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Job"];
-                "application/x-www-form-urlencoded": components["schemas"]["Job"];
-                "multipart/form-data": components["schemas"]["Job"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    jobs_jobs_status_config_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -9280,6 +10350,25 @@ export interface operations {
             };
         };
     };
+    labs_superadmin_all_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     labs_retrieve: {
         parameters: {
             query?: never;
@@ -9379,7 +10468,766 @@ export interface operations {
             };
         };
     };
-    labs_superadmin_all_retrieve: {
+    materials_catalog_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialCatalogList"];
+                };
+            };
+        };
+    };
+    materials_catalog_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    materials_catalog_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    materials_catalog_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    materials_catalog_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    materials_catalog_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    materials_catalog_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialCatalog"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    materials_fefo_retrieve: {
+        parameters: {
+            query: {
+                job?: number;
+                recipe: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    materials_lots_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialLotList"];
+                };
+            };
+        };
+    };
+    materials_lots_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    materials_lots_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialLot"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_conformity_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_lots_label_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    materials_manufacturers_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedManufacturerList"];
+                };
+            };
+        };
+    };
+    materials_manufacturers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Manufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["Manufacturer"];
+                "multipart/form-data": components["schemas"]["Manufacturer"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    materials_manufacturers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    materials_manufacturers_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Manufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["Manufacturer"];
+                "multipart/form-data": components["schemas"]["Manufacturer"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    materials_manufacturers_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    materials_manufacturers_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedManufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedManufacturer"];
+                "multipart/form-data": components["schemas"]["PatchedManufacturer"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    materials_recipes_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialRecipeList"];
+                };
+            };
+        };
+    };
+    materials_recipes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRecipe"];
+                "multipart/form-data": components["schemas"]["MaterialRecipe"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    materials_recipes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    materials_recipes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRecipe"];
+                "multipart/form-data": components["schemas"]["MaterialRecipe"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    materials_recipes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    materials_recipes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialRecipe"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialRecipe"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    materials_usage_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialUsageList"];
+                };
+            };
+        };
+    };
+    materials_usage_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MaterialUsage"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialUsage"];
+                "multipart/form-data": components["schemas"]["MaterialUsage"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    materials_usage_job_conformity_pdf_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -9393,7 +11241,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Lab"];
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    materials_usage_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material usage. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    materials_usage_conformity_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material usage. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
                 };
             };
         };
@@ -9438,6 +11330,50 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    notifications_mark_all_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9563,50 +11499,6 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["Notification"];
             };
         };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
-    notifications_mark_all_read_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Notification"];
-                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
-                "multipart/form-data": components["schemas"]["Notification"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
-    notifications_unread_count_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             200: {
                 headers: {
@@ -9975,105 +11867,6 @@ export interface operations {
             };
         };
     };
-    users_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    users_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["User"];
-                "application/x-www-form-urlencoded": components["schemas"]["User"];
-                "multipart/form-data": components["schemas"]["User"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    users_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    users_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedUser"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
-                "multipart/form-data": components["schemas"]["PatchedUser"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
     users_me_retrieve: {
         parameters: {
             query?: never;
@@ -10193,6 +11986,25 @@ export interface operations {
             };
         };
     };
+    users_superadmin_all_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
     users_superadmin_impersonate_create: {
         parameters: {
             query?: never;
@@ -10247,14 +12059,94 @@ export interface operations {
             };
         };
     };
-    users_superadmin_all_retrieve: {
+    users_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    users_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["User"];
+                "application/x-www-form-urlencoded": components["schemas"]["User"];
+                "multipart/form-data": components["schemas"]["User"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    users_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    users_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedUser"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
+                "multipart/form-data": components["schemas"]["PatchedUser"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -10543,64 +12435,22 @@ export interface operations {
             };
         };
     };
-    v1_core_labs_permissions_retrieve: {
+    v1_core_labs_superadmin_all_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                lab_pk: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    v1_core_labs_permissions_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                lab_pk: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            201: {
-                headers: {
-                    [name: string]: unknown;
+                content: {
+                    "application/json": components["schemas"]["Lab"];
                 };
-                content?: never;
-            };
-        };
-    };
-    v1_core_labs_permissions_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                lab_pk: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -10703,22 +12553,64 @@ export interface operations {
             };
         };
     };
-    v1_core_labs_superadmin_all_retrieve: {
+    v1_core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                lab_pk: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
+            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Lab"];
+                content?: never;
+            };
+        };
+    };
+    v1_core_labs_permissions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lab_pk: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            201: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+        };
+    };
+    v1_core_labs_permissions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                lab_pk: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -10762,6 +12654,50 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    v1_core_notifications_mark_all_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    v1_core_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10898,50 +12834,6 @@ export interface operations {
             };
         };
     };
-    v1_core_notifications_mark_all_read_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Notification"];
-                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
-                "multipart/form-data": components["schemas"]["Notification"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
-    v1_core_notifications_unread_count_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-        };
-    };
     v1_core_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -11014,13 +12906,11 @@ export interface operations {
             };
         };
     };
-    v1_core_sessions_destroy: {
+    v1_core_sessions_revoke_all_destroy: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -11034,11 +12924,13 @@ export interface operations {
             };
         };
     };
-    v1_core_sessions_revoke_all_destroy: {
+    v1_core_sessions_destroy: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -11341,105 +13233,6 @@ export interface operations {
             };
         };
     };
-    v1_core_users_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    v1_core_users_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["User"];
-                "application/x-www-form-urlencoded": components["schemas"]["User"];
-                "multipart/form-data": components["schemas"]["User"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    v1_core_users_destroy: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    v1_core_users_partial_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A unique integer value identifying this user. */
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["PatchedUser"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
-                "multipart/form-data": components["schemas"]["PatchedUser"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
     v1_core_users_me_retrieve: {
         parameters: {
             query?: never;
@@ -11559,6 +13352,25 @@ export interface operations {
             };
         };
     };
+    v1_core_users_superadmin_all_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
     v1_core_users_superadmin_impersonate_create: {
         parameters: {
             query?: never;
@@ -11613,14 +13425,94 @@ export interface operations {
             };
         };
     };
-    v1_core_users_superadmin_all_retrieve: {
+    v1_core_users_retrieve: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    v1_core_users_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["User"];
+                "application/x-www-form-urlencoded": components["schemas"]["User"];
+                "multipart/form-data": components["schemas"]["User"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    v1_core_users_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_users_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this user. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedUser"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedUser"];
+                "multipart/form-data": components["schemas"]["PatchedUser"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -11672,6 +13564,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Clinic"];
+                };
+            };
+        };
+    };
+    v1_crm_clinics_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11780,25 +13691,6 @@ export interface operations {
             };
         };
     };
-    v1_crm_clinics_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Clinic"];
-                };
-            };
-        };
-    };
     v1_crm_doctors_list: {
         parameters: {
             query?: {
@@ -11839,6 +13731,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Doctor"];
+                };
+            };
+        };
+    };
+    v1_crm_doctors_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11947,7 +13858,7 @@ export interface operations {
             };
         };
     };
-    v1_crm_doctors_export_retrieve: {
+    v1_crm_insurers_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -11961,7 +13872,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Doctor"];
+                    "application/json": components["schemas"]["Insurer"][];
+                };
+            };
+        };
+    };
+    v1_crm_insurers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this insurer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Insurer"];
                 };
             };
         };
@@ -12006,6 +13939,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Patient"];
+                };
+            };
+        };
+    };
+    v1_crm_patients_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12136,25 +14088,6 @@ export interface operations {
             };
         };
     };
-    v1_crm_patients_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Patient"];
-                };
-            };
-        };
-    };
     v1_dashboard_stats_retrieve: {
         parameters: {
             query?: never;
@@ -12192,7 +14125,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedInvoiceList"];
+                    "application/json": components["schemas"]["PaginatedInvoiceListList"];
                 };
             };
         };
@@ -12213,6 +14146,68 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    v1_finance_invoices_aging_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_finance_invoices_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invoice"];
+                };
+            };
+        };
+    };
+    v1_finance_invoices_send_overdue_reminders_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Invoice"];
+                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
+                "multipart/form-data": components["schemas"]["Invoice"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12421,68 +14416,6 @@ export interface operations {
             };
         };
     };
-    v1_finance_invoices_aging_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    v1_finance_invoices_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
-    v1_finance_invoices_send_overdue_reminders_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Invoice"];
-                "application/x-www-form-urlencoded": components["schemas"]["Invoice"];
-                "multipart/form-data": components["schemas"]["Invoice"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Invoice"];
-                };
-            };
-        };
-    };
     v1_finance_price_list_list: {
         parameters: {
             query?: {
@@ -12523,6 +14456,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceList"];
+                };
+            };
+        };
+    };
+    v1_finance_price_list_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12659,25 +14611,6 @@ export interface operations {
             };
         };
     };
-    v1_finance_price_list_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PriceList"];
-                };
-            };
-        };
-    };
     v1_finance_procedure_catalog_retrieve: {
         parameters: {
             query?: never;
@@ -12754,6 +14687,25 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    v1_finance_subscriptions_my_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12862,25 +14814,6 @@ export interface operations {
             };
         };
     };
-    v1_finance_subscriptions_my_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Subscription"];
-                };
-            };
-        };
-    };
     v1_inventory_warehouse_list: {
         parameters: {
             query?: {
@@ -12921,6 +14854,119 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    v1_inventory_warehouse_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    v1_inventory_warehouse_import_csv_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    v1_inventory_warehouse_import_partial_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    v1_inventory_warehouse_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    v1_inventory_warehouse_stats_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13026,137 +15072,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WarehouseItem"];
                 };
-            };
-        };
-    };
-    v1_inventory_warehouse_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    v1_inventory_warehouse_import_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    v1_inventory_warehouse_import_csv_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    v1_inventory_warehouse_import_partial_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    v1_inventory_warehouse_stats_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    v1_jobs_calendar_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -13308,6 +15223,24 @@ export interface operations {
             };
         };
     };
+    v1_jobs_calendar_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_jobs_jobs_list: {
         parameters: {
             query?: {
@@ -13348,6 +15281,94 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_bulk_update_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Job"];
+                "application/x-www-form-urlencoded": components["schemas"]["Job"];
+                "multipart/form-data": components["schemas"]["Job"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_quick_create_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Job"];
+                "application/x-www-form-urlencoded": components["schemas"]["Job"];
+                "multipart/form-data": components["schemas"]["Job"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_status_config_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13542,94 +15563,6 @@ export interface operations {
                 /** @description A unique integer value identifying this job. */
                 id: number;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    v1_jobs_jobs_bulk_update_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Job"];
-                "application/x-www-form-urlencoded": components["schemas"]["Job"];
-                "multipart/form-data": components["schemas"]["Job"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    v1_jobs_jobs_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    v1_jobs_jobs_quick_create_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Job"];
-                "application/x-www-form-urlencoded": components["schemas"]["Job"];
-                "multipart/form-data": components["schemas"]["Job"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Job"];
-                };
-            };
-        };
-    };
-    v1_jobs_jobs_status_config_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -13940,6 +15873,828 @@ export interface operations {
             };
         };
     };
+    v1_materials_catalog_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialCatalogList"];
+                };
+            };
+        };
+    };
+    v1_materials_catalog_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    v1_materials_catalog_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    v1_materials_catalog_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    v1_materials_catalog_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialCatalog"];
+                "multipart/form-data": components["schemas"]["MaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    v1_materials_catalog_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_materials_catalog_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material catalog. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialCatalog"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialCatalog"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialCatalog"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialCatalog"];
+                };
+            };
+        };
+    };
+    v1_materials_fefo_retrieve: {
+        parameters: {
+            query: {
+                job?: number;
+                recipe: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_materials_lots_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialLotList"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialLot"];
+                "multipart/form-data": components["schemas"]["MaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_materials_lots_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialLot"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialLot"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialLot"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_conformity_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_lots_label_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material lot. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialLot"];
+                };
+            };
+        };
+    };
+    v1_materials_manufacturers_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedManufacturerList"];
+                };
+            };
+        };
+    };
+    v1_materials_manufacturers_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Manufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["Manufacturer"];
+                "multipart/form-data": components["schemas"]["Manufacturer"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    v1_materials_manufacturers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    v1_materials_manufacturers_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Manufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["Manufacturer"];
+                "multipart/form-data": components["schemas"]["Manufacturer"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    v1_materials_manufacturers_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_materials_manufacturers_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this manufacturer. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedManufacturer"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedManufacturer"];
+                "multipart/form-data": components["schemas"]["PatchedManufacturer"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Manufacturer"];
+                };
+            };
+        };
+    };
+    v1_materials_recipes_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialRecipeList"];
+                };
+            };
+        };
+    };
+    v1_materials_recipes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRecipe"];
+                "multipart/form-data": components["schemas"]["MaterialRecipe"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    v1_materials_recipes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    v1_materials_recipes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialRecipe"];
+                "multipart/form-data": components["schemas"]["MaterialRecipe"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    v1_materials_recipes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_materials_recipes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material recipe. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMaterialRecipe"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMaterialRecipe"];
+                "multipart/form-data": components["schemas"]["PatchedMaterialRecipe"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialRecipe"];
+                };
+            };
+        };
+    };
+    v1_materials_usage_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMaterialUsageList"];
+                };
+            };
+        };
+    };
+    v1_materials_usage_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MaterialUsage"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialUsage"];
+                "multipart/form-data": components["schemas"]["MaterialUsage"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    v1_materials_usage_job_conformity_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    v1_materials_usage_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material usage. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
+    v1_materials_usage_conformity_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this material usage. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialUsage"];
+                };
+            };
+        };
+    };
     v1_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -14191,6 +16946,119 @@ export interface operations {
             };
         };
     };
+    warehouse_export_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    warehouse_import_csv_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    warehouse_import_partial_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    warehouse_import_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WarehouseItem"];
+                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
+                "multipart/form-data": components["schemas"]["WarehouseItem"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
+    warehouse_stats_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WarehouseItem"];
+                };
+            };
+        };
+    };
     warehouse_retrieve: {
         parameters: {
             query?: never;
@@ -14279,119 +17147,6 @@ export interface operations {
                 "multipart/form-data": components["schemas"]["PatchedWarehouseItem"];
             };
         };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    warehouse_export_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    warehouse_import_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    warehouse_import_csv_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    warehouse_import_partial_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WarehouseItem"];
-                "application/x-www-form-urlencoded": components["schemas"]["WarehouseItem"];
-                "multipart/form-data": components["schemas"]["WarehouseItem"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WarehouseItem"];
-                };
-            };
-        };
-    };
-    warehouse_stats_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             200: {
                 headers: {
