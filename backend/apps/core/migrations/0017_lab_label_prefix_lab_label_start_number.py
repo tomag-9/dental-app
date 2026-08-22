@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0015_lab_is_vat_payer"),
+        ("core", "0016_lab_garant_name_lab_garant_registration_number"),
     ]
 
     operations = [

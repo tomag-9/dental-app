@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0016_lab_label_prefix_lab_label_start_number"),
+        ("core", "0017_lab_label_prefix_lab_label_start_number"),
         ("jobs", "0013_alter_calendarevent_event_type_alter_job_priority_and_more"),
     ]
 
