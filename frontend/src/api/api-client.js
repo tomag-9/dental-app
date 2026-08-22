@@ -5,6 +5,7 @@ import * as jobs from './jobs.js';
 import * as finance from './finance.js';
 import * as inventory from './inventory.js';
 import * as materials from './materials.js';
+import * as superadmin from './superadmin.js';
 import { loadWorkspace, useWorkspace } from './workspace.js';
 
 setUnauthorizedHandler(auth.logout);
@@ -16,6 +17,7 @@ window.MolarisAPI = {
   finance,
   inventory,
   materials,
+  superadmin,
 
   // Flat backward-compatible API — all pages still use these directly
   API_BASE,
@@ -64,6 +66,12 @@ window.MolarisAPI = {
   downloadInvoicePdf: finance.downloadInvoicePdf,
   downloadInvoicesExport: finance.downloadInvoicesExport,
   fetchCurrentLab: auth.fetchCurrentLab,
+  fetchSuperadminMetrics: superadmin.fetchSuperadminMetrics,
+  fetchAllLabs: superadmin.fetchAllLabs,
+  fetchAllUsers: superadmin.fetchAllUsers,
+  fetchSubscriptions: superadmin.fetchSubscriptions,
+  fetchSystemHealth: superadmin.fetchSystemHealth,
+  fetchAuditLogs: superadmin.fetchAuditLogs,
   loadWorkspace,
   useWorkspace,
 };

@@ -64,10 +64,10 @@ function Sidebar({ currentPage, onNavigate, user = { name: 'Ján Novák', role: 
     { id: 'sa_audit',    name: 'Audit log',     icon: 'fileText'   },
     { id: 'sa_system',   name: 'Systém',        icon: 'activity'   },
   ];
+  // Bezpečnosť a Integrácie boli odstránené v #109 — nemali za sebou žiadny
+  // backend a zobrazovali vymyslené služby.
   const saPlatform = [
-    { id: 'sa_security',     name: 'Bezpečnosť',          icon: 'lock'    },
     { id: 'sa_billing',      name: 'Platformová fakt.',   icon: 'receipt' },
-    { id: 'sa_integrations', name: 'Integrácie',          icon: 'layers'  },
   ];
   const saBottom = [
     { id: 'settings', name: 'Môj profil', icon: 'user' },
