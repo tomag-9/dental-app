@@ -237,13 +237,16 @@ class MaterialLotViewSet(MaterialTenantViewSet):
         for serializer in serializers:
             data = dict(serializer.validated_data)
             catalog = catalogs[data.pop("catalog_code")]
-            data.setdefault("qty_remaining", data["qty_received"])
+            if data.get("qty_remaining") is None:
+                data["qty_remaining"] = data["qty_received"]
             if data["qty_remaining"] > data["qty_received"]:
                 raise ValidationError({"qty_remaining": "Zostatok nemôže prekročiť prijaté množstvo."})
             if data.get("expiry") and data["expiry"] < data["received"]:
                 raise ValidationError({"expiry": "Expirácia nemôže byť pred dátumom príjmu."})
             if data["qty_remaining"] == 0:
                 data["status"] = MaterialLot.Status.DEPLETED
+            elif data.get("status") == MaterialLot.Status.DEPLETED:
+                raise ValidationError({"status": "Spotrebovaná šarža musí mať nulový zostatok."})
             objects.append(MaterialLot(lab=lab, catalog=catalog, **data))
         with transaction.atomic():
             MaterialLot.objects.bulk_create(objects)
