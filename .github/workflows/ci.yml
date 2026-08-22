@@ -260,28 +260,16 @@ jobs:
         echo "PLAYWRIGHT_IMAGE=mcr.microsoft.com/playwright:v${PW_VERSION}-noble" >> "$GITHUB_ENV"
         docker run --rm -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
           "mcr.microsoft.com/playwright:v${PW_VERSION}-noble" npm ci
-    # Specs that are stable under load. These gate the job.
+    # All 6 spec files gate the job. --workers=1 keeps the specs from racing each
+    # other over shared lab data; the retry count comes from playwright.config.js
+    # (1 when CI is set).
     - name: Run Playwright e2e tests
       run: |
         docker run --rm --network host \
           -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
           -e CI=1 -e E2E_BASE_URL \
           "$PLAYWRIGHT_IMAGE" \
-          npx playwright test auth permissions materials pr-ui-regressions \
-            --workers=1 --retries=2 --reporter=list
-    # invoice-flow and patient-job-flow pass on an idle machine but their
-    # hardcoded 5–8 s assertion timeouts are too tight when the shared runner is
-    # busy, so they are reported without failing the job until those timeouts are
-    # raised. Do not promote them to a gating step before that is fixed.
-    - name: Run data-mutating e2e flows (non-blocking)
-      continue-on-error: true
-      run: |
-        docker run --rm --network host \
-          -v "$GITHUB_WORKSPACE/frontend:/work" -w /work \
-          -e CI=1 -e E2E_BASE_URL \
-          "$PLAYWRIGHT_IMAGE" \
-          npx playwright test invoice-flow patient-job-flow \
-            --workers=1 --retries=2 --reporter=list
+          npx playwright test --workers=1 --reporter=list
     - name: Upload Playwright artifacts
       if: always()
       uses: actions/upload-artifact@v4
