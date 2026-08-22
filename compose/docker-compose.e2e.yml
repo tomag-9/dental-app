@@ -1,0 +1,31 @@
+# Overlay on top of docker-compose.ci.yml, used only by the `e2e` CI job.
+#
+# docker-compose.ci.yml deliberately publishes no host ports (its services are
+# only ever driven through `docker compose run`). Playwright needs to reach the
+# stack from outside Docker, so this overlay:
+#   * gives the backend an explicit runserver command (the backend image has no
+#     CMD of its own — the dev compose file supplies one too),
+#   * publishes both services on host ports that the caller picks, so that
+#     concurrent runs on the shared self-hosted runner never fight over a port,
+#   * relaxes the login throttle, the same way the dev compose file does, so
+#     the auth specs are not rate-limited.
+#
+# Usage:
+#   docker compose --env-file env/dev.env.example \
+#     -f compose/docker-compose.ci.yml -f compose/docker-compose.e2e.yml up -d
+services:
+  backend:
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8810"
+    ports:
+      - "${BACKEND_PORT:-8810}:8810"
+    environment:
+      - THROTTLE_LOGIN_RATE=${THROTTLE_LOGIN_RATE:-1000/min}
+
+  frontend:
+    ports:
+      - "${FRONTEND_PORT:-5367}:5367"
+    depends_on:
+      backend:
+        condition: service_started
