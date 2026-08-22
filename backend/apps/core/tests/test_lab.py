@@ -267,19 +267,19 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "user", "action": "crm.export", "allowed": False},
+            {"role": "user", "action": "patient:write", "allowed": False},
             format="json",
         )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["role"], "user")
-        self.assertEqual(resp.data["action"], "crm.export")
+        self.assertEqual(resp.data["action"], "patient:write")
         self.assertFalse(resp.data["allowed"])
 
     def test_create_permission_override_writes_audit_log(self):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "user", "action": "crm.export", "allowed": False},
+            {"role": "user", "action": "patient:write", "allowed": False},
             format="json",
         )
 
@@ -289,7 +289,7 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
         self.assertEqual(log.metadata["role"], "user")
-        self.assertEqual(log.metadata["action"], "crm.export")
+        self.assertEqual(log.metadata["action"], "patient:write")
         self.assertFalse(log.metadata["allowed"])
 
     def test_create_requires_role_and_action(self):
@@ -307,7 +307,7 @@ class LabRolePermissionTests(APITestCase):
         override = LabRolePermission.objects.create(
             lab=self.lab,
             role="user",
-            action="crm.export",
+            action="patient:write",
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
@@ -321,7 +321,7 @@ class LabRolePermissionTests(APITestCase):
         override = LabRolePermission.objects.create(
             lab=self.lab,
             role="user",
-            action="crm.export",
+            action="patient:write",
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
@@ -333,7 +333,7 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
         self.assertEqual(log.metadata["role"], "user")
-        self.assertEqual(log.metadata["action"], "crm.export")
+        self.assertEqual(log.metadata["action"], "patient:write")
         self.assertFalse(log.metadata["allowed"])
 
     def test_admin_cannot_manage_other_lab_permissions(self):
@@ -351,13 +351,16 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.superadmin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "technician", "action": "jobs.write", "allowed": True},
+            {"role": "technician", "action": "job:write", "allowed": True},
             format="json",
         )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["role"], "technician")
 
-    def test_permission_override_is_metadata_only_for_runtime_permissions(self):
+    def test_permission_override_is_enforced_in_runtime_permissions(self):
+        # Issue #112: overrides used to be metadata only. They are now the
+        # single source of truth behind GET /api/permissions/ and the API
+        # guards, so a deny override must be visible in the payload.
         from apps.core.models import LabRolePermission
 
         LabRolePermission.objects.create(
@@ -369,8 +372,62 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/core/permissions/")
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.data["actions"]["create_invoice"])
+        self.assertFalse(resp.data["actions"]["create_invoice"])
+        # Untouched actions keep their role default.
+        self.assertTrue(resp.data["actions"]["create_job"])
 
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")
         self.assertEqual(resp.status_code, 401)
+
+
+class LabGarantFieldsTests(APITestCase):
+    """#93 — odborný garant ZT a jeho registračné číslo na laboratóriu."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Garant Lab")
+        self.admin = User.objects.create_user(
+            username="garant_admin",
+            password="pw",
+            email="garant_admin@test.sk",
+            role="admin",
+            lab=self.lab,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_garant_fields_default_to_empty(self):
+        resp = self.client.get(f"/api/labs/{self.lab.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["garant_name"], "")
+        self.assertEqual(resp.data["garant_registration_number"], "")
+
+    def test_garant_fields_round_trip(self):
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {
+                "garant_name": "Bc. Peter Technik",
+                "garant_registration_number": "ZT-004521",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["garant_name"], "Bc. Peter Technik")
+        self.assertEqual(resp.data["garant_registration_number"], "ZT-004521")
+
+        self.lab.refresh_from_db()
+        self.assertEqual(self.lab.garant_name, "Bc. Peter Technik")
+        self.assertEqual(self.lab.garant_registration_number, "ZT-004521")
+
+        detail = self.client.get(f"/api/labs/{self.lab.id}/")
+        self.assertEqual(detail.data["garant_name"], "Bc. Peter Technik")
+
+    def test_admin_cannot_edit_other_lab_garant(self):
+        other_lab = Lab.objects.create(name="Garant Lab B")
+        resp = self.client.patch(
+            f"/api/labs/{other_lab.id}/",
+            {"garant_name": "Cudzí garant"},
+            format="json",
+        )
+        self.assertIn(resp.status_code, (403, 404))
+        other_lab.refresh_from_db()
+        self.assertEqual(other_lab.garant_name, "")

@@ -13,6 +13,8 @@ function Settings({ onNavigate, user }) {
     vat_id: '',
     address: '',
     bank_account: '',
+    garant_name: '',
+    garant_registration_number: '',
     invoice_prefix: 'INV',
     invoice_due_days: 14,
     is_vat_payer: true,
@@ -80,6 +82,8 @@ function Settings({ onNavigate, user }) {
       vat_id: lab.vat_id || '',
       address: lab.address || '',
       bank_account: lab.bank_account || '',
+      garant_name: lab.garant_name || '',
+      garant_registration_number: lab.garant_registration_number || '',
       invoice_prefix: lab.invoice_prefix || 'INV',
       invoice_due_days: lab.invoice_due_days || 14,
       is_vat_payer: lab.is_vat_payer !== false,
@@ -135,6 +139,8 @@ function Settings({ onNavigate, user }) {
         vat_id: labForm.vat_id,
         address: labForm.address,
         bank_account: labForm.bank_account,
+        garant_name: labForm.garant_name || '',
+        garant_registration_number: labForm.garant_registration_number || '',
       };
       const updated = await window.MolarisAPI.updateLab(labForm.id, payload);
       setLab(updated);
@@ -319,6 +325,19 @@ function LabPanel({ form, onChange, onSave, status, loading }) {
       React.createElement(FormRow, null,
         React.createElement(FormField, { label: 'IBAN', value: form.bank_account, onChange: (e) => onChange({ ...form, bank_account: e.target.value }) }),
         React.createElement(FormField, { label: 'Mena', type: 'select', value: 'EUR', onChange: () => {}, options: [{ value: 'EUR', label: 'EUR (€)' }], disabled: true })
+      ),
+      React.createElement(FormRow, null,
+        React.createElement(FormField, {
+          label: 'Odborný garant ZT',
+          value: form.garant_name,
+          onChange: (e) => onChange({ ...form, garant_name: e.target.value }),
+          helpText: 'Meno odborného garanta zubnej techniky — uvádza sa na protetickom štítku.',
+        }),
+        React.createElement(FormField, {
+          label: 'Registračné číslo garanta',
+          value: form.garant_registration_number,
+          onChange: (e) => onChange({ ...form, garant_registration_number: e.target.value }),
+        })
       )
     ),
     React.createElement(PanelFooter, null,
@@ -491,34 +510,338 @@ function BillingPanel({ form, onChange, onSave, status }) {
   );
 }
 
+const sectionTitleStyle = { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 4px' };
+const mutedTextStyle = { fontSize: 12, color: '#8a9490', margin: 0, maxWidth: 420, lineHeight: 1.5 };
+
+function apiErrorMessage(error, fallback) {
+  const detail = error && error.data && error.data.detail;
+  if (typeof detail === 'string' && detail) return detail;
+  if (error && typeof error.message === 'string' && error.message && error.message !== 'API request failed') return error.message;
+  return fallback;
+}
+
+// The backend stores the raw user agent as device_info — turn it into something readable.
+function describeDevice(userAgent) {
+  const ua = String(userAgent || '');
+  if (!ua) return 'Neznáme zariadenie';
+  const browser = /Edg\//.test(ua) ? 'Edge'
+    : /OPR\/|Opera/.test(ua) ? 'Opera'
+      : /Firefox\//.test(ua) ? 'Firefox'
+        : /Chrome\//.test(ua) ? 'Chrome'
+          : /Safari\//.test(ua) ? 'Safari'
+            : 'Prehliadač';
+  const system = /Windows/.test(ua) ? 'Windows'
+    : /Android/.test(ua) ? 'Android'
+      : /iPhone|iPad|iPod/.test(ua) ? 'iOS'
+        : /Mac OS X|Macintosh/.test(ua) ? 'macOS'
+          : /Linux/.test(ua) ? 'Linux'
+            : 'Neznámy systém';
+  return `${browser} / ${system}`;
+}
+
+function fmtDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function TwoFactorSection() {
+  const [enabled, setEnabled] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
+  const [setup, setSetup] = React.useState(null);
+  const [backupCodes, setBackupCodes] = React.useState([]);
+  const [mode, setMode] = React.useState('idle'); // idle | enroll | disable
+  const [code, setCode] = React.useState('');
+
+  React.useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.fetchTwoFactorStatus) { setLoading(false); return; }
+      try {
+        const data = await window.MolarisAPI.fetchTwoFactorStatus();
+        if (!alive) return;
+        setEnabled(!!(data && data.totp_enabled));
+      } catch (err) {
+        if (!alive) return;
+        setError(apiErrorMessage(err, 'Stav dvojfázového overenia sa nepodarilo načítať.'));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  const resetFlow = () => { setMode('idle'); setSetup(null); setCode(''); setError(''); };
+
+  const startEnroll = async () => {
+    setError(''); setMessage(''); setBusy(true);
+    try {
+      const data = await window.MolarisAPI.setupTwoFactor();
+      setSetup(data || null);
+      setMode('enroll');
+      setCode('');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Aktiváciu sa nepodarilo spustiť.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmEnroll = async () => {
+    setError(''); setBusy(true);
+    try {
+      const data = await window.MolarisAPI.verifyTwoFactor(code.trim());
+      setEnabled(true);
+      setBackupCodes(Array.isArray(data && data.backup_codes) ? data.backup_codes : []);
+      setSetup(null);
+      setMode('idle');
+      setCode('');
+      setMessage('Dvojfázové overenie je aktívne.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Overovací kód je neplatný.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDisable = async () => {
+    setError(''); setBusy(true);
+    try {
+      await window.MolarisAPI.disableTwoFactor(code.trim());
+      setEnabled(false);
+      setBackupCodes([]);
+      setMode('idle');
+      setCode('');
+      setMessage('Dvojfázové overenie bolo vypnuté.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Vypnutie zlyhalo.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const codeField = (label, onSubmit, submitLabel, destructive) => React.createElement('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' } },
+    React.createElement('div', { style: { width: 180 } },
+      React.createElement(FormField, {
+        label,
+        value: code,
+        onChange: (e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6)),
+        placeholder: '123456',
+      })
+    ),
+    React.createElement(Button, { size: 'sm', variant: destructive ? 'destructive' : 'primary', disabled: busy || code.trim().length < 6, onClick: onSubmit }, busy ? 'Pracujem…' : submitLabel),
+    React.createElement(Button, { size: 'sm', variant: 'outline', disabled: busy, onClick: resetFlow }, 'Zrušiť')
+  );
+
+  return React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
+      React.createElement('div', null,
+        React.createElement('h3', { style: sectionTitleStyle },
+          'Dvojfázové overenie',
+          !loading && enabled && React.createElement('span', { style: { marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#0d7c6b', background: '#d4f0eb', borderRadius: 999, padding: '2px 8px' } }, 'Aktívne')
+        ),
+        React.createElement('p', { style: mutedTextStyle }, 'Pridajte druhú vrstvu bezpečnosti pomocou autentifikačnej aplikácie (Google Authenticator, Authy…).')
+      ),
+      loading
+        ? React.createElement('span', { style: { fontSize: 12, color: '#8a9490' } }, 'Načítavam…')
+        : mode === 'idle' && (enabled
+          ? React.createElement(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: () => { setMode('disable'); setCode(''); setError(''); setMessage(''); } }, 'Deaktivovať')
+          : React.createElement(Button, { variant: 'outline', size: 'sm', disabled: busy, onClick: startEnroll }, busy ? 'Pripravujem…' : 'Aktivovať'))
+    ),
+
+    mode === 'enroll' && setup && React.createElement('div', { style: { display: 'flex', gap: 18, flexWrap: 'wrap', padding: 14, background: '#fbfaf6', border: '1px solid #ece7dc', borderRadius: 10 } },
+      React.createElement(QRCodeImage, { value: setup.provisioning_uri, size: 168, alt: 'QR kód pre autentifikačnú aplikáciu' }),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 240, flex: 1 } },
+        React.createElement('p', { style: mutedTextStyle }, '1. Naskenujte QR kód v autentifikačnej aplikácii. 2. Zadajte 6-miestny kód, ktorý aplikácia zobrazí.'),
+        React.createElement('div', null,
+          React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490' } }, 'Alebo zadajte kľúč ručne:'),
+          React.createElement('code', { style: { display: 'block', marginTop: 4, fontSize: 12.5, letterSpacing: '0.06em', color: '#1a2320', background: '#ffffff', border: '1px solid #ece7dc', borderRadius: 6, padding: '6px 8px', wordBreak: 'break-all' } }, setup.secret)
+        ),
+        codeField('Overovací kód', confirmEnroll, 'Overiť a aktivovať', false)
+      )
+    ),
+
+    mode === 'disable' && React.createElement('div', { style: { padding: 14, background: '#fbfaf6', border: '1px solid #ece7dc', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 10 } },
+      React.createElement('p', { style: mutedTextStyle }, 'Na vypnutie dvojfázového overenia zadajte aktuálny kód z autentifikačnej aplikácie.'),
+      codeField('Overovací kód', confirmDisable, 'Vypnúť 2FA', true)
+    ),
+
+    backupCodes.length > 0 && React.createElement('div', { style: { padding: 14, background: '#fff8e6', border: '1px solid #f0e2bb', borderRadius: 10 } },
+      React.createElement('p', { style: { ...mutedTextStyle, color: '#7a5c14', marginBottom: 8 } }, 'Záložné kódy — uložte si ich na bezpečné miesto, zobrazia sa iba raz.'),
+      React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
+        ...backupCodes.map((backupCode) => React.createElement('code', { key: backupCode, style: { fontSize: 12.5, background: '#ffffff', border: '1px solid #f0e2bb', borderRadius: 6, padding: '4px 8px' } }, backupCode))
+      )
+    ),
+
+    error && React.createElement('p', { style: { fontSize: 12, color: '#c0392b', margin: 0 } }, error),
+    message && !error && React.createElement('p', { style: { fontSize: 12, color: '#0d7c6b', margin: 0 } }, message)
+  );
+}
+
+function SessionsSection() {
+  const [sessions, setSessions] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
+  const [busyId, setBusyId] = React.useState(null);
+  const [confirmState, setConfirmState] = React.useState(null);
+
+  const load = React.useCallback(async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.fetchSessions) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const data = await window.MolarisAPI.fetchSessions();
+      setSessions(Array.isArray(data) ? data : (data && data.results) || []);
+      setError('');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Relácie sa nepodarilo načítať.'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  // The refresh-token jti is httpOnly, so the current session is matched by user
+  // agent — the newest session created from this exact browser.
+  const currentId = React.useMemo(() => {
+    const ua = navigator.userAgent || '';
+    const mine = sessions.filter((s) => (s.device_info || '') === ua);
+    if (!mine.length) return null;
+    const newest = mine.reduce((best, s) => (new Date(s.created_at) > new Date(best.created_at) ? s : best), mine[0]);
+    return newest.id;
+  }, [sessions]);
+
+  const revoke = async (session) => {
+    setBusyId(session.id); setMessage(''); setError('');
+    try {
+      await window.MolarisAPI.revokeSession(session.id);
+      if (session.id === currentId) {
+        // Revoking our own session — drop the local credentials and return to the login screen.
+        if (window.MolarisAPI.logout) window.MolarisAPI.logout();
+        window.dispatchEvent(new CustomEvent('molaris-auth-expired'));
+        return;
+      }
+      setSessions((current) => current.filter((s) => s.id !== session.id));
+      setMessage('Relácia bola odhlásená.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Odhlásenie relácie zlyhalo.'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const revokeOthers = async () => {
+    const others = sessions.filter((s) => s.id !== currentId);
+    if (!others.length) return;
+    setBusyId('all'); setMessage(''); setError('');
+    try {
+      // revoke-all would kill this session too, so revoke the others one by one.
+      await Promise.all(others.map((s) => window.MolarisAPI.revokeSession(s.id)));
+      setSessions((current) => current.filter((s) => s.id === currentId));
+      setMessage(`Odhlásené relácie: ${others.length}.`);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Odhlásenie ostatných relácií zlyhalo.'));
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const otherCount = sessions.filter((s) => s.id !== currentId).length;
+
+  return React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 10 } },
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
+      React.createElement('div', null,
+        React.createElement('h3', { style: sectionTitleStyle }, 'Aktívne relácie'),
+        React.createElement('p', { style: mutedTextStyle }, 'Zariadenia, ktoré sú momentálne prihlásené k vášmu účtu.')
+      ),
+      React.createElement('div', { style: { display: 'flex', gap: 8 } },
+        React.createElement(Button, { variant: 'outline', size: 'sm', disabled: loading || busyId !== null, onClick: load }, 'Obnoviť'),
+        React.createElement(Button, {
+          variant: 'outline',
+          size: 'sm',
+          disabled: loading || busyId !== null || otherCount === 0,
+          onClick: () => setConfirmState({ kind: 'others' }),
+        }, 'Odhlásiť všade inde')
+      )
+    ),
+
+    loading && React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0 } }, 'Načítavam relácie…'),
+    !loading && !sessions.length && !error && React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0 } }, 'Žiadne aktívne relácie.'),
+
+    ...sessions.map((session) => {
+      const isCurrent = session.id === currentId;
+      return React.createElement('div', {
+        key: session.id,
+        style: {
+          fontSize: 12, color: '#5a6b66', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, padding: '10px 12px', background: isCurrent ? '#f2fbf9' : '#fbfaf6',
+          border: `1px solid ${isCurrent ? '#bfe6de' : '#ece7dc'}`, borderRadius: 8, flexWrap: 'wrap',
+        }
+      },
+        React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 200 } },
+          React.createElement('span', { style: { color: '#1a2320', fontWeight: 600 } },
+            describeDevice(session.device_info),
+            isCurrent && React.createElement('span', { style: { marginLeft: 8, color: '#0d7c6b', fontWeight: 600 } }, '· táto relácia')
+          ),
+          React.createElement('span', { style: { color: '#8a9490' } },
+            `IP ${session.ip_address || 'neznáma'} · Prihlásenie: ${fmtDateTime(session.created_at)} · Platí do: ${fmtDateTime(session.expires_at)}`
+          )
+        ),
+        React.createElement(Button, {
+          variant: 'outline',
+          size: 'sm',
+          disabled: busyId !== null,
+          onClick: () => setConfirmState({ kind: 'one', session }),
+        }, busyId === session.id ? 'Odhlasujem…' : 'Odhlásiť')
+      );
+    }),
+
+    error && React.createElement('p', { style: { fontSize: 12, color: '#c0392b', margin: 0 } }, error),
+    message && !error && React.createElement('p', { style: { fontSize: 12, color: '#0d7c6b', margin: 0 } }, message),
+
+    React.createElement(ConfirmDialog, {
+      open: !!confirmState,
+      title: confirmState && confirmState.kind === 'others' ? 'Odhlásiť ostatné relácie?' : 'Odhlásiť reláciu?',
+      message: confirmState && confirmState.kind === 'others'
+        ? `Odhlásených bude ${otherCount} relácií na ostatných zariadeniach. Táto relácia zostane prihlásená.`
+        : (confirmState && confirmState.session && confirmState.session.id === currentId
+          ? 'Toto je vaša aktuálna relácia — po odhlásení sa budete musieť znova prihlásiť.'
+          : 'Zariadenie bude odhlásené a bude sa musieť znova prihlásiť.'),
+      confirmText: 'Odhlásiť',
+      destructive: true,
+      onCancel: () => setConfirmState(null),
+      onConfirm: () => {
+        const pending = confirmState;
+        setConfirmState(null);
+        if (!pending) return;
+        if (pending.kind === 'others') revokeOthers();
+        else revoke(pending.session);
+      },
+    })
+  );
+}
+
 function SecurityPanel({ form, onChange, onSave, status }) {
   return React.createElement(Card, null,
-    React.createElement(PanelHeader, { title: 'Bezpečnosť', desc: 'Heslo a dvojfázové overenie.' }),
+    React.createElement(PanelHeader, { title: 'Bezpečnosť', desc: 'Heslo, dvojfázové overenie a prihlásené zariadenia.' }),
     React.createElement(PanelBody, null,
       React.createElement('div', null,
-        React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 8px' } }, 'Zmena hesla'),
+        React.createElement('h3', { style: { ...sectionTitleStyle, margin: '0 0 8px' } }, 'Zmena hesla'),
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 } },
           React.createElement(FormField, { label: 'Súčasné heslo', type: 'password', value: form.current, onChange: (e) => onChange({ ...form, current: e.target.value }) }),
           React.createElement(FormField, { label: 'Nové heslo', type: 'password', value: form.next, onChange: (e) => onChange({ ...form, next: e.target.value }) }),
           React.createElement(FormField, { label: 'Potvrdiť heslo', type: 'password', value: form.confirm, onChange: (e) => onChange({ ...form, confirm: e.target.value }) })
         )
       ),
-      React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },
-        React.createElement('div', null,
-          React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 4px' } }, 'Dvojfázové overenie'),
-          React.createElement('p', { style: { fontSize: 12, color: '#8a9490', margin: 0, maxWidth: 380 } }, 'Pridajte druhú vrstvu bezpečnosti pomocou autentifikačnej aplikácie.')
-        ),
-        React.createElement(Button, { variant: 'outline', size: 'sm' }, 'Aktivovať')
-      ),
-      React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16 } },
-        React.createElement('h3', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 8px' } }, 'Aktívne relácie'),
-        React.createElement('div', { style: { fontSize: 12, color: '#5a6b66', display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#fbfaf6', border: '1px solid #ece7dc', borderRadius: 8 } },
-          React.createElement('span', null, 'Chrome / macOS · Bratislava · ',
-            React.createElement('span', { style: { color: '#0d7c6b', fontWeight: 600 } }, 'táto relácia')
-          ),
-          React.createElement('span', { style: { color: '#8a9490' } }, 'Posledná aktivita: práve teraz')
-        )
-      ),
+      React.createElement(TwoFactorSection, null),
+      React.createElement(SessionsSection, null),
       React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
         React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490', alignSelf: 'center' } }, status || ''),
         React.createElement(Button, { onClick: onSave }, 'Uložiť zmeny')

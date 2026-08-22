@@ -18,6 +18,7 @@ from apps.jobs import services as jobs_services
 
 from .calculations import calculate_invoice_amounts
 from .models import Invoice, InvoiceItem, InvoiceSequence, PriceList
+from .pay_by_square import PayBySquareError, build_pay_by_square_payload
 
 # ---------------------------------------------------------------------------
 # Pure helpers
@@ -153,6 +154,29 @@ def generate_invoice_number(lab):
     prefix = (getattr(lab, "invoice_prefix", None) or "INV").strip() or "INV"
     year = timezone.now().year
     return f"{prefix}-{year}-{seq.last_number:04d}"
+
+
+def build_invoice_payment_payload(invoice):
+    """Return the Pay by Square payment string for *invoice*.
+
+    Raises :class:`PayBySquareError` (Slovak message) when the lab has QR
+    payments disabled or its banking data cannot produce a valid payment order.
+    Callers must never fall back to a free-text payload: a QR code that looks
+    like a payment order but is not one is worse than no QR code at all.
+    """
+    lab = invoice.lab
+    if lab is None or not getattr(lab, "enable_qr_payment", False):
+        raise PayBySquareError("Laboratórium nemá zapnuté platobné QR kódy.")
+
+    return build_pay_by_square_payload(
+        iban=lab.bank_account,
+        amount=invoice.total_amount,
+        variable_symbol=invoice.number,
+        note=f"Faktura {invoice.number}",
+        beneficiary_name=lab.name or "",
+        swift=getattr(lab, "bank_bic", "") or "",
+        due_date=invoice.due_date,
+    )
 
 
 def sync_jobs_for_invoice_status(invoice, new_status):

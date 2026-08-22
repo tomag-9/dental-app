@@ -23,6 +23,11 @@ from apps.core.tests.test_misc import (
     NotificationFilterTests,
     PermissionsMatrixTests,
 )
+from apps.core.tests.test_permission_overrides import (
+    LabPermissionOverrideCacheTests,
+    LabPermissionOverrideEnforcementTests,
+    PermissionDefaultsRegressionTests,
+)
 from apps.core.tests.test_role_matrix import (
     CrossDomainExportRoleMatrixTests,
     CrossDomainWriteRoleMatrixTests,
@@ -56,6 +61,9 @@ __all__ = [
     "LabSettingsValidationTests",
     "LabApiKeyTests",
     "LabRolePermissionTests",
+    "PermissionDefaultsRegressionTests",
+    "LabPermissionOverrideEnforcementTests",
+    "LabPermissionOverrideCacheTests",
     "SuperadminMetricsTests",
     "ImpersonationTests",
     "SystemHealthRuntimeTests",

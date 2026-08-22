@@ -19,7 +19,16 @@ from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent, Vacation
 
 from . import user_service
-from .access import assert_lab_write_allowed, is_admin_or_superadmin, is_superadmin
+from .access import (
+    LAB_PERMISSION_ACTIONS,
+    UI_PERMISSION_ACTIONS,
+    assert_lab_write_allowed,
+    has_lab_permission,
+    invalidate_lab_permission_cache,
+    is_admin_or_superadmin,
+    is_superadmin,
+    role_permission_matrix,
+)
 from .auth import MolarisTokenObtainPairSerializer
 from .cookie_auth import _REFRESH_COOKIE, clear_jwt_cookies
 from .models import (
@@ -287,14 +296,10 @@ def _role_permission_payload(user):
         ("settings", "Nastavenia", "/settings", "settings", admin),
         ("superadmin", "Superadmin", "/superadmin", "shield", superadmin),
     ]
-    actions = {
-        "create_job": admin,
-        "create_patient": admin,
-        "create_invoice": admin,
-        "manage_inventory": admin,
-        "manage_team": admin,
-        "manage_platform": superadmin,
-    }
+    # Actions come from the shared registry in apps.core.access and honour
+    # per-lab LabRolePermission overrides, so the UI and the API answer the
+    # very same question.
+    actions = {action: has_lab_permission(user, action) for action in UI_PERMISSION_ACTIONS}
 
     return {
         "role": role,
@@ -1576,6 +1581,10 @@ class LabApiKeyViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# Subscription statuses that still represent billable platform revenue.
+BILLING_SUBSCRIPTION_STATUSES = ("active", "past_due")
+
+
 class SuperadminMetricsView(APIView):
     """Platform-level MRR/activity aggregates for superadmin."""
 
@@ -1585,20 +1594,34 @@ class SuperadminMetricsView(APIView):
         if not is_superadmin(request.user):
             raise PermissionDenied("Superadmin only endpoint")
 
-        from apps.finance.models import Invoice, Subscription
+        from apps.finance.models import Subscription
 
         today = timezone.localdate()
         month_start = today.replace(day=1)
 
         total_labs = Lab.objects.count()
         total_users = User.objects.filter(is_active=True).count()
-        active_subscriptions = Subscription.objects.filter(status="active").count()
 
-        mrr = Invoice.objects.filter(
-            status="paid",
-            paid_at__date__gte=month_start,
-            paid_at__date__lte=today,
-        ).aggregate(total=Sum("total_amount"))["total"] or Decimal("0.00")
+        # Platform metrics are derived from Subscription (what labs pay us).
+        # Invoice rows are lab->clinic revenue (what our customers bill their
+        # customers) and must never leak into platform MRR/ARR — see issue #110.
+        subscriptions = Subscription.objects.all()
+        active_subscriptions = subscriptions.filter(status="active").count()
+        past_due_subscriptions = subscriptions.filter(status="past_due").count()
+        billing_subscriptions = subscriptions.filter(status__in=BILLING_SUBSCRIPTION_STATUSES)
+
+        mrr = billing_subscriptions.aggregate(total=Sum("mrr"))["total"] or Decimal("0.00")
+        arr = mrr * 12
+
+        trial_labs = subscriptions.filter(trial_ends_at__gte=today).exclude(status="cancelled").count()
+
+        cancelled_this_month = subscriptions.filter(
+            status="cancelled",
+            cancelled_at__date__gte=month_start,
+            cancelled_at__date__lte=today,
+        ).count()
+        churn_base = active_subscriptions + past_due_subscriptions + cancelled_this_month
+        churn_rate = (Decimal(cancelled_this_month) / Decimal(churn_base) * 100) if churn_base else Decimal("0")
 
         recent_activity = []
         for log in AuditLog.objects.select_related("actor", "lab").order_by("-created_at")[:10]:
@@ -1621,7 +1644,12 @@ class SuperadminMetricsView(APIView):
                 "total_labs": total_labs,
                 "total_users": total_users,
                 "active_subscriptions": active_subscriptions,
+                "past_due_subscriptions": past_due_subscriptions,
+                "trial_labs": trial_labs,
                 "mrr": f"{mrr:.2f}",
+                "arr": f"{arr:.2f}",
+                "cancelled_this_month": cancelled_this_month,
+                "churn_rate": f"{churn_rate.quantize(Decimal('0.01'))}",
                 "new_labs_this_month": new_labs_this_month,
                 "new_users_this_month": new_users_this_month,
                 "recent_activity": recent_activity,
@@ -1740,125 +1768,28 @@ class TwoFactorView(APIView):
         )
 
 
-_ROLE_PERMISSIONS = {
-    "superadmin": {
-        "description": "Full platform access across all labs",
-        "actions": [
-            "lab:read",
-            "lab:write",
-            "lab:delete",
-            "user:read",
-            "user:write",
-            "user:delete",
-            "user:impersonate",
-            "patient:read",
-            "patient:write",
-            "patient:delete",
-            "clinic:read",
-            "clinic:write",
-            "clinic:delete",
-            "doctor:read",
-            "doctor:write",
-            "doctor:delete",
-            "job:read",
-            "job:write",
-            "job:delete",
-            "invoice:read",
-            "invoice:write",
-            "invoice:delete",
-            "inventory:read",
-            "inventory:write",
-            "inventory:delete",
-            "audit_log:read",
-            "session:read",
-            "session:revoke",
-            "api_key:read",
-            "api_key:write",
-            "api_key:delete",
-            "2fa:manage",
-            "system_health:read",
-            "superadmin_metrics:read",
-        ],
-    },
-    "admin": {
-        "description": "Full access within own lab",
-        "actions": [
-            "lab:read",
-            "lab:write",
-            "user:read",
-            "user:write",
-            "patient:read",
-            "patient:write",
-            "patient:delete",
-            "clinic:read",
-            "clinic:write",
-            "clinic:delete",
-            "doctor:read",
-            "doctor:write",
-            "doctor:delete",
-            "job:read",
-            "job:write",
-            "job:delete",
-            "invoice:read",
-            "invoice:write",
-            "invoice:delete",
-            "inventory:read",
-            "inventory:write",
-            "inventory:delete",
-            "audit_log:read",
-            "session:read",
-            "session:revoke",
-            "api_key:read",
-            "api_key:write",
-            "api_key:delete",
-            "2fa:manage",
-        ],
-    },
-    "user": {
-        "description": "Standard lab user — can read most resources, limited write",
-        "actions": [
-            "lab:read",
-            "patient:read",
-            "clinic:read",
-            "doctor:read",
-            "job:read",
-            "job:write",
-            "invoice:read",
-            "inventory:read",
-            "session:read",
-            "session:revoke",
-            "2fa:manage",
-        ],
-    },
-    "technician": {
-        "description": "Technician — focused on job execution, no invoicing or admin",
-        "actions": [
-            "lab:read",
-            "patient:read",
-            "job:read",
-            "job:write",
-            "inventory:read",
-            "session:read",
-            "session:revoke",
-            "2fa:manage",
-        ],
-    },
-}
-
-
 class PermissionsMatrixView(APIView):
-    """Return the full role → allowed actions matrix."""
+    """Return the full role → allowed actions matrix.
+
+    ``matrix`` lists the *defaults* per role; ``current_permissions`` is the
+    caller's effective set with per-lab overrides already applied.
+    """
 
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
         role = getattr(user, "role", "user")
+        matrix = role_permission_matrix()
+        if role in matrix:
+            effective = [action for action in sorted(LAB_PERMISSION_ACTIONS) if has_lab_permission(user, action)]
+        else:
+            effective = []
         return Response(
             {
                 "current_role": role,
-                "current_permissions": _ROLE_PERMISSIONS.get(role, {}).get("actions", []),
-                "matrix": _ROLE_PERMISSIONS,
+                "current_permissions": effective,
+                "matrix": matrix,
             }
         )
 
@@ -1900,6 +1831,11 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
                 {"detail": "role and action are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if action_name not in LAB_PERMISSION_ACTIONS:
+            return Response(
+                {"detail": f"Neznáma akcia: {action_name}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         valid_roles = {r for r, _ in LabRolePermission.ROLE_CHOICES}
         if role not in valid_roles:
             return Response(
@@ -1917,6 +1853,7 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
             action=action_name,
             defaults={"allowed": allowed},
         )
+        invalidate_lab_permission_cache(request.user)
         _write_audit_log(
             request,
             action="permission_override.saved",
@@ -1951,6 +1888,7 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
         entity_id = override.id
         description = f"Permission override {override.role}:{override.action} deleted"
         override.delete()
+        invalidate_lab_permission_cache(request.user)
         _write_audit_log(
             request,
             action="permission_override.deleted",

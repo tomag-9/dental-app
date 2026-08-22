@@ -153,3 +153,49 @@ export async function searchGlobal(query, limit = 8) {
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
   return request(`/search/${suffix}`);
 }
+
+// --- Two-factor authentication (TOTP) -------------------------------------
+
+/** Current 2FA status of the signed-in user. */
+export async function fetchTwoFactorStatus() {
+  return request('/v1/core/2fa/');
+}
+
+/** Generate a new TOTP secret; returns { secret, provisioning_uri }. */
+export async function setupTwoFactor() {
+  return request('/v1/core/2fa/?action=setup', { method: 'POST', body: JSON.stringify({}) });
+}
+
+/** Confirm a TOTP code and activate 2FA. @param {string} code */
+export async function verifyTwoFactor(code) {
+  return request('/v1/core/2fa/?action=verify', {
+    method: 'POST',
+    body: JSON.stringify({ code: String(code || '') }),
+  });
+}
+
+/** Deactivate 2FA (requires a valid TOTP code). @param {string} code */
+export async function disableTwoFactor(code) {
+  return request('/v1/core/2fa/?action=disable', {
+    method: 'POST',
+    body: JSON.stringify({ code: String(code || '') }),
+  });
+}
+
+// --- Active sessions ------------------------------------------------------
+
+/** Active (non-revoked, non-expired) sessions of the signed-in user. */
+export async function fetchSessions() {
+  return request('/v1/core/sessions/');
+}
+
+/** Revoke a single session. @param {number|string} id */
+export async function revokeSession(id) {
+  if (!id && id !== 0) throw new Error('Session ID is required');
+  return request(`/v1/core/sessions/${id}/`, { method: 'DELETE' });
+}
+
+/** Revoke every session of the user, including the current one. */
+export async function revokeAllSessions() {
+  return request('/v1/core/sessions/revoke-all/', { method: 'DELETE' });
+}

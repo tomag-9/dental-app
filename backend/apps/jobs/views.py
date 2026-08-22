@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -68,6 +68,8 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
 
 class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    # Per-lab overrides for this coarse UI capability are enforced here.
+    lab_permission_action = "create_job"
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [
@@ -87,9 +89,8 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         # Patient filtering
         patient_id = self.request.query_params.get("patient_id")
         if patient_id:
+            # A patient without jobs is a legitimate state - return an empty list, not 404.
             qs = qs.filter(patient_id=patient_id)
-            if not qs.exists():
-                raise NotFound(f"No jobs found for patient_id: {patient_id}")
 
         status_filter = self.request.query_params.get("status")
         if status_filter:
@@ -209,6 +210,8 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                     job.priority = new_priority
                     update_fields.append("priority")
                 job.save(update_fields=update_fields)
+                if new_status and old_status != job.status:
+                    job_service.sync_completion_date(job, job.status)
 
                 actor = request.user if request.user.is_authenticated else None
                 if new_status and old_status != job.status:
@@ -262,6 +265,9 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         items = [
             {
                 "price_list_code": item.price_list_code,
+                "ipzp_code": item.ipzp_code,
+                "insurance_amount": str(item.insurance_amount),
+                "patient_amount": str(item.patient_amount),
                 "description": item.description,
                 "tooth": item.tooth,
                 "tooth_scope": item.tooth_scope,
@@ -293,10 +299,20 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
             "priority": job.priority,
             "description": job.description,
             "tooth_color": job.tooth_color,
+            "diagnosis_code": job.diagnosis_code,
+            "health_note": job.health_note,
+            "label_number": job.label_number,
             "due_date": job.due_date,
             "start_date": job.start_date,
             "end_date": job.end_date,
             "try_in_date": job.try_in_date,
+            "received_at": job.received_at,
+            "assigned_at": job.assigned_at,
+            "completed_at": job.completed_at,
+            "seated_at": job.seated_at,
+            "handover_at": job.handover_at,
+            "insurance_total": str(job.insurance_total),
+            "patient_total": str(job.patient_total),
             "created_at": job.created_at,
             "patient": (
                 {

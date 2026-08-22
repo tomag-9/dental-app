@@ -261,8 +261,8 @@ class JobValidationApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], self.job_a.id)
 
-    def test_list_jobs_with_patient_filter_no_results_returns_404(self):
-        """GET /jobs/?patient_id=X should return 404 if no jobs found."""
+    def test_list_jobs_with_patient_filter_no_results_returns_empty_list(self):
+        """GET /jobs/?patient_id=X returns 200 [] for an existing patient without jobs."""
         self.client.force_authenticate(user=self.admin_a)
         url = reverse("job-list")
         # Use a patient ID that exists but has no jobs
@@ -275,8 +275,28 @@ class JobValidationApiTests(APITestCase):
 
         response = self.client.get(url, {"patient_id": non_job_patient.id})
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn(f"patient_id: {non_job_patient.id}", str(response.data))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(response.data), [])
+
+    def test_list_jobs_with_unknown_patient_filter_returns_empty_list(self):
+        """An unknown patient id is filtered out, not turned into a 404."""
+        self.client.force_authenticate(user=self.admin_a)
+        url = reverse("job-list")
+
+        response = self.client.get(url, {"patient_id": 999999})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(response.data), [])
+
+    def test_list_jobs_patient_filter_is_tenant_scoped(self):
+        """A patient from another lab yields an empty list, never foreign jobs."""
+        self.client.force_authenticate(user=self.admin_b)
+        url = reverse("job-list")
+
+        response = self.client.get(url, {"patient_id": self.patient_a.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list(response.data), [])
 
     def test_list_jobs_scoped_by_lab_for_non_superadmin(self):
         """Non-superadmin should only see jobs from their lab."""
