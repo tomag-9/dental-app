@@ -32,6 +32,26 @@ class Lab(models.Model):
     # Prosthetic label numbering (#95) - independent of the invoice series.
     label_prefix = models.CharField(max_length=20, blank=True, default="")
     label_start_number = models.PositiveIntegerField(default=1)
+    # MDR 2017/745, Annex XIII section 1 — declaration for custom-made devices (#99).
+    # The wording is lab-configurable; an empty value falls back to the built-in
+    # template in ``apps.jobs.prosthetic_label.DEFAULT_MDR_DECLARATION_TEXT``.
+    mdr_declaration_text = models.TextField(blank=True, default="")
+    # Annex XIII 1(1): additional manufacturing sites, one per line.
+    production_sites = models.TextField(blank=True, default="")
+    # Annex XIII 1(2): authorised representative, if one is appointed.
+    authorized_representative = models.CharField(max_length=255, blank=True, default="")
+    # Annex XIII 1(4): the patient may be identified by name, acronym or numeric code.
+    LABEL_PATIENT_IDENTIFIER_CHOICES = (
+        ("name", "Meno pacienta"),
+        ("code", "Kód pacienta"),
+    )
+    label_patient_identifier_mode = models.CharField(
+        max_length=10,
+        choices=LABEL_PATIENT_IDENTIFIER_CHOICES,
+        default="name",
+    )
+    # MDR traceability (#101): block finishing a job with no recorded material usage.
+    require_material_usage = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -76,6 +76,14 @@ class Job(models.Model):
     label_number = models.CharField(max_length=50, blank=True, default="", db_index=True)
     label_issued_at = models.DateTimeField(null=True, blank=True)
 
+    # MDR 2017/745, Annex XIII section 1 (#99).
+    # Point 7: general safety and performance requirements (Annex I) that are not
+    # met in full, together with the reason. Empty means "all requirements met".
+    safety_performance_deviations = models.TextField(blank=True, default="")
+    # Point 8: medicinal substance / human or animal tissue content.
+    contains_medicinal_substance = models.BooleanField(default=False)
+    medicinal_substance_note = models.CharField(max_length=255, blank=True, default="")
+
     # DEPRECATED (#97): superseded by assigned_at / completed_at.
     # Kept until the frontend migrates off them; do not use in new code.
     start_date = models.DateField(null=True, blank=True)
@@ -199,6 +207,7 @@ class JobTimelineEvent(models.Model):
         ("status_changed", "Status changed"),
         ("assigned", "Assigned"),
         ("deleted", "Deleted"),
+        ("label_issued", "Prosthetic label issued"),
     )
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="timeline")
