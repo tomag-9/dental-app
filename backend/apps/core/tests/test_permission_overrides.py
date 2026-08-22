@@ -359,3 +359,40 @@ class LabPermissionOverrideCacheTests(TestCase):
         # Same in-memory instance moved to a different lab must re-read.
         user.lab = self.other_lab
         self.assertTrue(has_lab_permission(user, "create_invoice"))
+
+
+class OverrideActionValidationTests(APITestCase):
+    """Neznáma akcia sa nesmie dať uložiť ako override.
+
+    Bez tejto validácie by preklep v názve akcie vytvoril riadok, ktorý
+    `has_lab_permission` vyhodnotí mimo registra: neznáma akcia obíde kontrolu
+    platformových akcií a override s `allowed=True` ju udelí.
+    """
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Override validation lab")
+        self.admin = User.objects.create_user(
+            username="override_validation_admin",
+            password="pwd12345",
+            role="admin",
+            lab=self.lab,
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.url = f"/api/core/labs/{self.lab.id}/permissions/"
+
+    def test_unknown_action_is_rejected(self):
+        resp = self.client.post(
+            self.url,
+            {"role": "user", "action": "patient:writ", "allowed": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(LabRolePermission.objects.filter(lab=self.lab).count(), 0)
+
+    def test_known_action_is_accepted(self):
+        resp = self.client.post(
+            self.url,
+            {"role": "user", "action": "patient:write", "allowed": False},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)

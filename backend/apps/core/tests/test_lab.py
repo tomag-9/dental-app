@@ -267,19 +267,19 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "user", "action": "crm.export", "allowed": False},
+            {"role": "user", "action": "patient:write", "allowed": False},
             format="json",
         )
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["role"], "user")
-        self.assertEqual(resp.data["action"], "crm.export")
+        self.assertEqual(resp.data["action"], "patient:write")
         self.assertFalse(resp.data["allowed"])
 
     def test_create_permission_override_writes_audit_log(self):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "user", "action": "crm.export", "allowed": False},
+            {"role": "user", "action": "patient:write", "allowed": False},
             format="json",
         )
 
@@ -289,7 +289,7 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
         self.assertEqual(log.metadata["role"], "user")
-        self.assertEqual(log.metadata["action"], "crm.export")
+        self.assertEqual(log.metadata["action"], "patient:write")
         self.assertFalse(log.metadata["allowed"])
 
     def test_create_requires_role_and_action(self):
@@ -307,7 +307,7 @@ class LabRolePermissionTests(APITestCase):
         override = LabRolePermission.objects.create(
             lab=self.lab,
             role="user",
-            action="crm.export",
+            action="patient:write",
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
@@ -321,7 +321,7 @@ class LabRolePermissionTests(APITestCase):
         override = LabRolePermission.objects.create(
             lab=self.lab,
             role="user",
-            action="crm.export",
+            action="patient:write",
             allowed=False,
         )
         self.client.force_authenticate(user=self.admin)
@@ -333,7 +333,7 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(log.actor, self.admin)
         self.assertEqual(log.lab, self.lab)
         self.assertEqual(log.metadata["role"], "user")
-        self.assertEqual(log.metadata["action"], "crm.export")
+        self.assertEqual(log.metadata["action"], "patient:write")
         self.assertFalse(log.metadata["allowed"])
 
     def test_admin_cannot_manage_other_lab_permissions(self):
@@ -351,7 +351,7 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.superadmin)
         resp = self.client.post(
             f"/api/core/labs/{self.lab.id}/permissions/",
-            {"role": "technician", "action": "jobs.write", "allowed": True},
+            {"role": "technician", "action": "job:write", "allowed": True},
             format="json",
         )
         self.assertEqual(resp.status_code, 201)

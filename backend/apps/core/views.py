@@ -1831,6 +1831,11 @@ class LabRolePermissionViewSet(viewsets.ViewSet):
                 {"detail": "role and action are required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if action_name not in LAB_PERMISSION_ACTIONS:
+            return Response(
+                {"detail": f"Neznáma akcia: {action_name}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         valid_roles = {r for r, _ in LabRolePermission.ROLE_CHOICES}
         if role not in valid_roles:
             return Response(
