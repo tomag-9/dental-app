@@ -359,7 +359,17 @@ SUBSCRIPTION_LOCK_EXEMPT_PATH_FRAGMENTS = (
     # Billing — checkout, portal, `my`, Stripe callbacks.
     "/finance/subscriptions/",
     "/finance/stripe/",
-    # Exports and printable documents.
+    # Account security and session handling. These are not business writes, and
+    # locking a user out of logging out, rotating a password or revoking a
+    # stolen session would trade a billing problem for a security one.
+    "/auth/",
+    "/2fa/",
+    "/sessions/",
+    "/csrf/",
+    "me/password",
+    # Exports and printable documents. Some are POSTs whose body is a filter,
+    # not a mutation — they are reads, and a lapsed lab keeps its right to take
+    # its data with it.
     "/export",
     "/pdf",
     "-pdf",

@@ -100,6 +100,63 @@ Bulk catalog and lot imports accept either a JSON list or UTF-8 CSV in the
 multipart `file` field. Label and MDR declaration PDFs are available on lot and
 usage endpoints.
 
+## Stripe billing and the subscription read-only lock
+
+Flat plans (`free` / `pro` / `enterprise`), one price per plan. `seats` is a
+head-count limit, never a billing quantity.
+
+All Stripe logic lives in `apps/finance/stripe_service.py`. **With
+`STRIPE_SECRET_KEY` unset the module is disabled**: nothing reaches the
+network, and the checkout/portal/webhook endpoints answer `503`. Dev and CI
+therefore need no Stripe account.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/finance/subscriptions/checkout/` | Stripe Checkout URL, lab admin only |
+| `POST /api/v1/finance/subscriptions/portal/` | Billing Portal URL (plan, card, invoices) |
+| `GET  /api/v1/finance/subscriptions/my/` | Own subscription + `billing` block (read-only flag, grace end, seat usage) |
+| `POST /api/v1/finance/stripe/webhook/` | Stripe lifecycle events |
+
+Prices come from `STRIPE_PRICE_PRO` / `STRIPE_PRICE_ENTERPRISE` on the server —
+never from the request. `stripe_customer_id` and `stripe_subscription_id` are
+excluded from the serializer; the client only ever receives a redirect URL.
+
+**Webhook.** The signature is the authentication: `construct_event` runs before
+anything else, and an unverified payload is dropped with `400`. The view sets
+`authentication_classes = []` (which also removes the CSRF enforcement that
+`JWTCookieAuthentication` performs), is `csrf_exempt`, and sets
+`throttle_classes = []` because `ScopedRateThrottle` is the project-wide
+default and a `429` would silently lose events. Idempotency comes from
+`StripeEvent.event_id` (unique); duplicates and unknown event types answer
+`200`, since any `4xx`/`5xx` starts a Stripe retry cycle. Events older than
+`Subscription.stripe_state_updated_at` are ignored — Stripe delivers out of
+order. `Subscription.mrr` is written only by the webhook.
+
+Local webhook development:
+
+```bash
+stripe listen --forward-to http://localhost:8810/api/v1/finance/stripe/webhook/
+# copy the printed whsec_... into STRIPE_WEBHOOK_SECRET
+stripe trigger customer.subscription.updated
+```
+
+**Read-only lock (#104).** A lapsed lab keeps reading and exporting its data —
+it holds patient records and MDR traceability with a ten-year retention duty,
+and GDPR art. 20 gives it a right to take those with it. Only writes stop.
+`apps.core.access.SubscriptionWriteAllowed` refuses them with `402 Payment
+Required` plus a billing link. Exemptions live in one place
+(`SUBSCRIPTION_LOCK_EXEMPT_URL_NAMES` / `_PATH_FRAGMENTS`): superadmins, all
+safe methods, exports and PDFs, billing endpoints, auth/logout and account
+security. The class is in `DEFAULT_PERMISSION_CLASSES` *and* in every view that
+overrides them (those use `apps.core.access.AUTHENTICATED`).
+
+Flow: `active`/`trialing` → `past_due` on a failed payment → full access for
+`SUBSCRIPTION_GRACE_DAYS` (14) → `read_only`. Run the daily job:
+
+```bash
+python manage.py enforce_subscription_grace
+```
+
 ## Documentation
 
 The `doc/` directory contains:

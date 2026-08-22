@@ -848,6 +848,34 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         return AuditLog.objects.select_related("actor", "lab").all()
 
 
+def _assert_seat_available(lab):
+    """Enforce ``Subscription.seats`` when a lab invites someone.
+
+    Plans are flat — one price regardless of head count — so ``seats`` is not a
+    billing quantity. It is the only place it means anything: the size of the
+    team the plan allows. Pending invitations count, otherwise a lab could
+    queue up unlimited members and blow past the limit on acceptance.
+    """
+    from apps.finance.models import Subscription
+
+    subscription = Subscription.objects.filter(lab=lab).only("seats").first()
+    if subscription is None or not subscription.seats:
+        return
+
+    used = User.objects.filter(lab=lab, is_active=True).count()
+    pending = TeamInvitation.objects.filter(lab=lab, status="pending").count()
+    if used + pending >= subscription.seats:
+        raise ValidationError(
+            {
+                "detail": (
+                    f"Váš plán umožňuje {subscription.seats} používateľov a limit je vyčerpaný "
+                    f"({used} členov, {pending} čakajúcich pozvánok). "
+                    "Zvýšte počet miest v nastaveniach predplatného."
+                )
+            }
+        )
+
+
 class TeamInvitationViewSet(viewsets.ModelViewSet):
     queryset = TeamInvitation.objects.all()
     serializer_class = TeamInvitationSerializer
@@ -901,6 +929,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"lab": "Lab must be provided"})
         else:
             lab = user.lab
+        _assert_seat_available(lab)
         invitation = serializer.save(
             lab=lab,
             invited_by=user,

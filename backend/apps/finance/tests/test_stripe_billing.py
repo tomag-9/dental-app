@@ -307,6 +307,18 @@ class SubscriptionReadOnlyLockTests(APITestCase):
 
         self.assertNotEqual(response.status_code, 402)
 
+    def test_account_security_actions_stay_reachable(self):
+        """Losing a subscription must not cost a user their security controls."""
+        self.client.force_authenticate(user=self.admin)
+
+        password = self.client.post(
+            "/api/v1/core/users/me/password/",
+            {"current_password": "pw", "new_password": "new-password-123"},
+            format="json",
+        )
+
+        self.assertNotEqual(password.status_code, 402)
+
     def test_superadmin_is_never_blocked(self):
         self.client.force_authenticate(user=self.superadmin)
 
@@ -351,6 +363,76 @@ class SubscriptionReadOnlyLockTests(APITestCase):
                 request = getattr(factory, method)("/api/v1/crm/patients/")
                 request.user = self.admin
                 self.assertTrue(permission.has_permission(request, None))
+
+
+class SeatLimitTests(APITestCase):
+    """``seats`` is a head-count limit, not a billing quantity (#102)."""
+
+    def setUp(self):
+        self.lab = Lab.objects.create(name="Seat Lab")
+        self.subscription = Subscription.objects.create(
+            lab=self.lab, plan="pro", status="active", seats=2
+        )
+        self.admin = User.objects.create_user(
+            username="seat_admin", password="pw", role="admin", lab=self.lab
+        )
+
+    def test_invitation_within_the_limit_is_accepted(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/v1/core/team-invitations/",
+            {"email": "new@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+    def test_invitation_over_the_limit_is_refused(self):
+        User.objects.create_user(
+            username="seat_member", password="pw", role="user", lab=self.lab
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.post(
+            "/api/v1/core/team-invitations/",
+            {"email": "third@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("2", str(response.data))
+
+    def test_pending_invitations_count_against_the_limit(self):
+        self.client.force_authenticate(user=self.admin)
+        first = self.client.post(
+            "/api/v1/core/team-invitations/",
+            {"email": "one@example.com", "role": "user"},
+            format="json",
+        )
+        second = self.client.post(
+            "/api/v1/core/team-invitations/",
+            {"email": "two@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+
+    def test_lab_without_subscription_is_not_seat_limited(self):
+        other_lab = Lab.objects.create(name="Unlimited Lab")
+        admin = User.objects.create_user(
+            username="unlimited_admin", password="pw", role="admin", lab=other_lab
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.post(
+            "/api/v1/core/team-invitations/",
+            {"email": "anyone@example.com", "role": "user"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
 
 
 class GracePeriodTests(APITestCase):
