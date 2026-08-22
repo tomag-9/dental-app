@@ -22,7 +22,6 @@ from reportlab.lib.utils import simpleSplit
 from reportlab.pdfgen import canvas
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,6 +29,7 @@ from rest_framework.views import APIView
 from apps.core.access import (
     IsReadOnlyOrAdminOrSuperadminPermission,
     TenantScopedQuerysetMixin,
+    assert_lab_permission,
     is_superadmin,
 )
 from apps.core.exports import limited_export_queryset
@@ -151,6 +151,8 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
 
 class InvoiceViewSet(viewsets.ModelViewSet):
+    # Per-lab overrides for this coarse UI capability are enforced here.
+    lab_permission_action = "create_invoice"
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
     pagination_class = InvoicePageNumberPagination
@@ -738,8 +740,9 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def _assert_superadmin(self, user):
-        if not is_superadmin(user):
-            raise PermissionDenied("Superadmin only endpoint")
+        # "manage_platform" is a platform-scoped action: no per-lab override
+        # can ever grant it, so this stays superadmin-only by construction.
+        assert_lab_permission(user, "manage_platform", "Superadmin only endpoint")
 
     def get_queryset(self):
         if is_superadmin(self.request.user):

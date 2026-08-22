@@ -357,7 +357,10 @@ class LabRolePermissionTests(APITestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data["role"], "technician")
 
-    def test_permission_override_is_metadata_only_for_runtime_permissions(self):
+    def test_permission_override_is_enforced_in_runtime_permissions(self):
+        # Issue #112: overrides used to be metadata only. They are now the
+        # single source of truth behind GET /api/permissions/ and the API
+        # guards, so a deny override must be visible in the payload.
         from apps.core.models import LabRolePermission
 
         LabRolePermission.objects.create(
@@ -369,7 +372,9 @@ class LabRolePermissionTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.get("/api/core/permissions/")
         self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.data["actions"]["create_invoice"])
+        self.assertFalse(resp.data["actions"]["create_invoice"])
+        # Untouched actions keep their role default.
+        self.assertTrue(resp.data["actions"]["create_job"])
 
     def test_unauthenticated_denied(self):
         resp = self.client.get(f"/api/core/labs/{self.lab.id}/permissions/")

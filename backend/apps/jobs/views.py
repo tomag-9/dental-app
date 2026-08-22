@@ -68,6 +68,8 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
 
 
 class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
+    # Per-lab overrides for this coarse UI capability are enforced here.
+    lab_permission_action = "create_job"
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [
