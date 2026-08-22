@@ -5,10 +5,15 @@ Extracted from JobViewSet so the logic can be tested independently
 and reused without going through the HTTP layer.
 """
 
+import re
+from decimal import Decimal
+
+from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.core.models import AuditLog
-from apps.jobs.models import JobTimelineEvent
+from apps.jobs.models import JobTimelineEvent, ProstheticLabelSequence
 
 ALLOWED_TRANSITIONS = {
     "new": {"in_progress", "cancelled"},
@@ -38,7 +43,23 @@ TRACKED_FIELDS = (
     "price",
     "technician_id",
     "tooth_color",
+    "diagnosis_code",
+    "health_note",
+    "received_at",
+    "assigned_at",
+    "completed_at",
+    "seated_at",
+    "handover_at",
+    "try_in_date",
 )
+
+# MKCH-10 (ICD-10) diagnosis code shape, e.g. K08 or K08.9
+DIAGNOSIS_CODE_PATTERN = re.compile(r"^[A-Z]\d{2}(\.\d)?$")
+
+# Statuses that mean the job is finished in the lab.
+COMPLETED_STATUSES = ("completed", "finished_unfactured", "finished_factured", "closed")
+
+PAYMENT_SPLIT_TOLERANCE = Decimal("0.01")
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +123,120 @@ def record_job_timeline(
         )
 
 
+def generate_label_number(lab):
+    """
+    Return the next prosthetic label number for *lab*.
+
+    Must be called inside a transaction - the sequence row is locked with
+    ``select_for_update`` so two concurrent requests cannot get the same number
+    (same pattern as ``finance.invoice_service.generate_invoice_number``).
+    """
+    start = max(1, int(getattr(lab, "label_start_number", 1) or 1))
+    seq, created = ProstheticLabelSequence.objects.select_for_update().get_or_create(
+        lab=lab,
+        defaults={"last_number": start - 1},
+    )
+    if created:
+        next_number = seq.last_number + 1
+    else:
+        next_number = max(seq.last_number + 1, start)
+    seq.last_number = next_number
+    seq.save(update_fields=["last_number"])
+    prefix = (getattr(lab, "label_prefix", "") or "").strip()
+    return f"{prefix}{next_number:06d}"
+
+
+@transaction.atomic
+def issue_label_number(job):
+    """
+    Assign a prosthetic label number to *job* if it does not have one yet.
+
+    Idempotent: a job that already carries a label number keeps it, so repeated
+    label generation never burns a number from the series.
+    """
+    locked = job.__class__.objects.select_for_update().get(pk=job.pk)
+    if locked.label_number:
+        job.label_number = locked.label_number
+        job.label_issued_at = locked.label_issued_at
+        return locked.label_number
+
+    locked.label_number = generate_label_number(locked.lab)
+    locked.label_issued_at = timezone.now()
+    locked.save(update_fields=["label_number", "label_issued_at", "updated_at"])
+
+    job.label_number = locked.label_number
+    job.label_issued_at = locked.label_issued_at
+    return locked.label_number
+
+
+def resolve_payment_split(total, insurance_amount=None, patient_amount=None, price_list_item=None, quantity=1):
+    """
+    Resolve the insurance/patient split for a job item worth *total*.
+
+    Rules (in order):
+    * both amounts given - the invariant ``insurance + patient == total`` is enforced
+      with a one-cent tolerance;
+    * one amount given - the other is derived as the remainder, so a price change
+      without a matching split change cannot silently break the invariant;
+    * neither given - the price list defaults (scaled by *quantity*) are used when
+      they add up to *total*, otherwise the whole amount falls on the patient.
+
+    Returns a ``(insurance_amount, patient_amount)`` tuple of ``Decimal``.
+    Raises ``ValidationError`` (Slovak message) on an inconsistent split.
+    """
+    total = Decimal(str(total or "0.00"))
+
+    def _dec(value):
+        return None if value is None or value == "" else Decimal(str(value))
+
+    insurance = _dec(insurance_amount)
+    patient = _dec(patient_amount)
+
+    if insurance is None and patient is None and price_list_item is not None:
+        default_insurance = getattr(price_list_item, "default_insurance_amount", None)
+        default_patient = getattr(price_list_item, "default_patient_amount", None)
+        if default_insurance is not None or default_patient is not None:
+            insurance = (default_insurance or Decimal("0.00")) * quantity
+            patient = (default_patient or Decimal("0.00")) * quantity
+            if abs((insurance + patient) - total) > PAYMENT_SPLIT_TOLERANCE:
+                # Defaults do not fit the actual price - keep the invariant, drop the defaults.
+                patient = total - insurance
+
+    if insurance is None and patient is None:
+        return Decimal("0.00"), total
+    if patient is None:
+        patient = total - insurance
+    elif insurance is None:
+        insurance = total - patient
+
+    if insurance < 0 or patient < 0:
+        raise ValidationError("Úhrada poisťovňou ani doplatok pacienta nesmú byť záporné.")
+    if abs((insurance + patient) - total) > PAYMENT_SPLIT_TOLERANCE:
+        raise ValidationError("Úhrada poisťovňou a doplatok pacienta musia dať dokopy cenu položky.")
+    return insurance, patient
+
+
+def sync_completion_date(job, new_status, save=True):
+    """
+    Keep ``Job.completed_at`` in sync with the job status (#97).
+
+    Fills the date when the job first reaches a finished status; clears it when the
+    job goes back to an unfinished one. Returns the list of changed field names.
+    """
+    changed = []
+    if new_status in COMPLETED_STATUSES:
+        if job.completed_at is None:
+            job.completed_at = timezone.localdate()
+            changed.append("completed_at")
+    elif job.completed_at is not None:
+        job.completed_at = None
+        changed.append("completed_at")
+
+    if changed and save:
+        job.save(update_fields=[*changed, "updated_at"])
+    return changed
+
+
 def create_job(actor, serializer, lab):
     """
     Save *serializer* with *lab*, record a creation timeline event, and return the job.
@@ -132,6 +267,9 @@ def update_job(actor, serializer):
             raise ValidationError(f"Invalid status transition from {old_status} to {new_status}")
 
     job = serializer.save()
+
+    if old_status != job.status:
+        sync_completion_date(job, job.status)
 
     changed = {
         f: {"from": str(old_snapshot[f]), "to": str(getattr(job, f))}
@@ -194,8 +332,14 @@ def transition_job_status(actor, job, new_status, note=None):
         raise ValidationError(f"Invalid status transition from {job.status} to {new_status}")
 
     old_status = job.status
+    old_completed_at = job.completed_at
     job.status = new_status
     job.save(update_fields=["status", "updated_at"])
+    sync_completion_date(job, new_status)
+
+    changed_fields = None
+    if old_completed_at != job.completed_at:
+        changed_fields = {"completed_at": {"from": str(old_completed_at), "to": str(job.completed_at)}}
 
     record_job_timeline(
         job,
@@ -204,6 +348,7 @@ def transition_job_status(actor, job, new_status, note=None):
         note=note or "Stav práce bol zmenený.",
         from_status=old_status,
         to_status=new_status,
+        changed_fields=changed_fields,
     )
 
     patient = job.patient

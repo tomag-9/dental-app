@@ -28,6 +28,21 @@ class PriceList(models.Model):
     )
     valid_from = models.DateField(null=True, blank=True)
     valid_to = models.DateField(null=True, blank=True)
+    # Prosthetic label defaults (#96): payer IPZP code and the default split of the
+    # unit price between the health insurer and the patient co-payment.
+    ipzp_code = models.CharField(max_length=20, blank=True, default="")
+    default_insurance_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+    default_patient_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

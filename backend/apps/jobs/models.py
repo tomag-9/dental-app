@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
@@ -63,18 +65,46 @@ class Job(models.Model):
     input_tooth_procedures = models.JSONField(blank=True, null=True)  # Job-specific tooth map data (input)
     output_tooth_procedures = models.JSONField(blank=True, null=True)  # Resulting work (output)
 
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)  # Poznámka pre technika (ZT, AMB)
     tooth_color = models.CharField(max_length=10, blank=True, null=True)  # A1-D4
 
+    # Prosthetic label: diagnosis and patient health note (#94)
+    diagnosis_code = models.CharField(max_length=10, blank=True, default="")  # MKCH-10, e.g. K08.9
+    health_note = models.TextField(blank=True, default="")  # Poznámka k zdravotnému stavu pacienta
+
+    # Prosthetic label numbering (#95). Assigned lazily on first label generation.
+    label_number = models.CharField(max_length=50, blank=True, default="", db_index=True)
+    label_issued_at = models.DateTimeField(null=True, blank=True)
+
+    # DEPRECATED (#97): superseded by assigned_at / completed_at.
+    # Kept until the frontend migrates off them; do not use in new code.
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
-    try_in_date = models.DateField(null=True, blank=True)
+
+    try_in_date = models.DateField(null=True, blank=True)  # Dátum skúšky v AMB
+
+    # Prosthetic label lifecycle dates (#97)
+    received_at = models.DateField(null=True, blank=True)  # Prijatie práce do ZT
+    assigned_at = models.DateField(null=True, blank=True)  # Zadanie práce do ZT
+    completed_at = models.DateField(null=True, blank=True)  # Ukončenie práce v ZT
+    seated_at = models.DateField(null=True, blank=True)  # Nasadenie v AMB
+    handover_at = models.DateField(null=True, blank=True)  # Pacient prevzal prácu
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Job {self.id} - {self.patient}"
+
+    @property
+    def insurance_total(self):
+        """Sum of the insurance-covered part of all items (derived, never stored)."""
+        return sum((item.insurance_amount or Decimal("0.00") for item in self.items.all()), Decimal("0.00"))
+
+    @property
+    def patient_total(self):
+        """Sum of the patient co-payment part of all items (derived, never stored)."""
+        return sum((item.patient_amount or Decimal("0.00") for item in self.items.all()), Decimal("0.00"))
 
     class Meta:
         indexes = [
@@ -112,7 +142,11 @@ class JobItem(models.Model):
     )
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="items")
-    price_list_code = models.CharField(max_length=50)
+    price_list_code = models.CharField(max_length=50)  # Internal lab price list code
+    # Payer's IPZP code (individually prepared medical device), e.g. PFR91 (#96)
+    ipzp_code = models.CharField(max_length=20, blank=True, default="")
+    insurance_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    patient_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     description = models.CharField(max_length=255)
     tooth = models.CharField(max_length=20, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
@@ -146,6 +180,16 @@ class JobItem(models.Model):
 
     def __str__(self):
         return f"{self.job_id} - {self.price_list_code}"
+
+
+class ProstheticLabelSequence(models.Model):
+    """Per-lab counter for the prosthetic label number series (#95)."""
+
+    lab = models.OneToOneField(Lab, on_delete=models.CASCADE, related_name="label_sequence")
+    last_number = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.lab_id}: {self.last_number}"
 
 
 class JobTimelineEvent(models.Model):
