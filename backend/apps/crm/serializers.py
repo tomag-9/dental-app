@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Clinic, Doctor, Patient
+from .models import Clinic, Doctor, Insurer, Patient
 
 
 def _age_from_birth_number(birth_number):
@@ -96,6 +96,15 @@ def _paid_invoice_revenue_for_jobs(jobs):
     return f"{total:.2f}"
 
 
+class InsurerSerializer(serializers.ModelSerializer):
+    """Read-only celoštátny číselník zdravotných poisťovní."""
+
+    class Meta:
+        model = Insurer
+        fields = ["id", "code", "name", "short_name", "is_active"]
+        read_only_fields = fields
+
+
 class ClinicSerializer(serializers.ModelSerializer):
     email = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -116,6 +125,7 @@ class ClinicSerializer(serializers.ModelSerializer):
             "name",
             "ico",
             "dic",
+            "pzs_code",
             "address",
             "bank_details",
             "contact_info",
@@ -250,6 +260,8 @@ class DoctorSerializer(serializers.ModelSerializer):
             "last_name",
             "title_before",
             "title_after",
+            "doctor_code",
+            "registration_number",
             "contact_info",
             "created_at",
             "email",
@@ -310,6 +322,7 @@ class DoctorSerializer(serializers.ModelSerializer):
 
 
 class PatientSerializer(serializers.ModelSerializer):
+    insurer_details = InsurerSerializer(source="insurer", read_only=True)
     jobs_count = serializers.SerializerMethodField()
     active_jobs = serializers.SerializerMethodField()
     ytd_revenue = serializers.SerializerMethodField()
@@ -323,6 +336,8 @@ class PatientSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "birth_number",
+            "insurer",
+            "insurer_details",
             "address",
             "phone",
             "email",
@@ -333,7 +348,14 @@ class PatientSerializer(serializers.ModelSerializer):
             "ytd_revenue",
             "age",
         ]
-        read_only_fields = ["lab", "jobs_count", "active_jobs", "ytd_revenue", "age"]
+        read_only_fields = [
+            "lab",
+            "insurer_details",
+            "jobs_count",
+            "active_jobs",
+            "ytd_revenue",
+            "age",
+        ]
 
     def validate_birth_number(self, value):
         if value:

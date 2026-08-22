@@ -18,6 +18,19 @@ export async function fetchPatientToothMap(id) {
   return request(`/crm/patients/${id}/cumulative_tooth_map/`);
 }
 
+let _insurersCache = null;
+
+/**
+ * Celoštátny číselník zdravotných poisťovní — read-only, cachovaný na reláciu.
+ * @returns {Promise<Array<{ id: number, code: string, name: string, short_name: string }>>}
+ */
+export async function fetchInsurers() {
+  if (_insurersCache) return _insurersCache;
+  const data = await request('/crm/insurers/');
+  _insurersCache = Array.isArray(data) ? data : (data.results || []);
+  return _insurersCache;
+}
+
 /** @returns {Promise<Schemas['Clinic'][]>} */
 export async function fetchClinics() {
   return request('/crm/clinics/');

@@ -13,6 +13,8 @@ function Settings({ onNavigate, user }) {
     vat_id: '',
     address: '',
     bank_account: '',
+    garant_name: '',
+    garant_registration_number: '',
     invoice_prefix: 'INV',
     invoice_due_days: 14,
     is_vat_payer: true,
@@ -80,6 +82,8 @@ function Settings({ onNavigate, user }) {
       vat_id: lab.vat_id || '',
       address: lab.address || '',
       bank_account: lab.bank_account || '',
+      garant_name: lab.garant_name || '',
+      garant_registration_number: lab.garant_registration_number || '',
       invoice_prefix: lab.invoice_prefix || 'INV',
       invoice_due_days: lab.invoice_due_days || 14,
       is_vat_payer: lab.is_vat_payer !== false,
@@ -135,6 +139,8 @@ function Settings({ onNavigate, user }) {
         vat_id: labForm.vat_id,
         address: labForm.address,
         bank_account: labForm.bank_account,
+        garant_name: labForm.garant_name || '',
+        garant_registration_number: labForm.garant_registration_number || '',
       };
       const updated = await window.MolarisAPI.updateLab(labForm.id, payload);
       setLab(updated);
@@ -319,6 +325,19 @@ function LabPanel({ form, onChange, onSave, status, loading }) {
       React.createElement(FormRow, null,
         React.createElement(FormField, { label: 'IBAN', value: form.bank_account, onChange: (e) => onChange({ ...form, bank_account: e.target.value }) }),
         React.createElement(FormField, { label: 'Mena', type: 'select', value: 'EUR', onChange: () => {}, options: [{ value: 'EUR', label: 'EUR (€)' }], disabled: true })
+      ),
+      React.createElement(FormRow, null,
+        React.createElement(FormField, {
+          label: 'Odborný garant ZT',
+          value: form.garant_name,
+          onChange: (e) => onChange({ ...form, garant_name: e.target.value }),
+          helpText: 'Meno odborného garanta zubnej techniky — uvádza sa na protetickom štítku.',
+        }),
+        React.createElement(FormField, {
+          label: 'Registračné číslo garanta',
+          value: form.garant_registration_number,
+          onChange: (e) => onChange({ ...form, garant_registration_number: e.target.value }),
+        })
       )
     ),
     React.createElement(PanelFooter, null,

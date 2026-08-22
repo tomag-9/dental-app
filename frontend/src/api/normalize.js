@@ -42,6 +42,7 @@ export function normalizePatient(patient, jobs = []) {
     birth: patient.birth_number || '',
     phone: patient.phone || '',
     email: patient.email || '',
+    insurer: patient.insurer_details || null,
     jobs: jobs.filter((job) => job.raw && job.raw.patient === patient.id).length,
     raw: patient,
   };
