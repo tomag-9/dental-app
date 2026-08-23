@@ -422,6 +422,22 @@ def _pdf_response(buffer, filename):
     return response
 
 
+def _conformity_identifier(primary_usage, lot):
+    """
+    Identify the device the way the prosthetic label does (#99).
+
+    Annex XIII 1(3) asks for data allowing the device to be identified. The
+    prosthetic label number is that identifier once one has been issued, so both
+    documents point at the same record instead of contradicting each other.
+    """
+    if not primary_usage:
+        return f"LOT {lot.lot}"
+    label_number = getattr(primary_usage.job, "label_number", "")
+    if label_number:
+        return f"Label {label_number} (Job {primary_usage.job_id})"
+    return f"Job {primary_usage.job_id}"
+
+
 def _render_conformity_pdf(*, lab, usage=None, usages=None, lot=None):
     usage_records = list(usages or ([usage] if usage else []))
     primary_usage = usage_records[0] if usage_records else None
@@ -437,7 +453,7 @@ def _render_conformity_pdf(*, lab, usage=None, usages=None, lot=None):
         "Custom-made medical device — MDR (EU) 2017/745, Annex XIII",
         f"Manufacturer: {lab.name}",
         f"Address: {', '.join(filter(None, [lab.address, lab.postal_code, lab.city, lab.country]))}",
-        f"Identifier: {'Job ' + str(primary_usage.job_id) if primary_usage else 'LOT ' + lot.lot}",
+        f"Identifier: {_conformity_identifier(primary_usage, lot)}",
     ]
     if primary_usage:
         technicians = sorted({item.technician for item in usage_records if item.technician})
@@ -469,8 +485,10 @@ def _render_conformity_pdf(*, lab, usage=None, usages=None, lot=None):
         )
     lines.extend(
         [
-            "The device/material conforms to the applicable general safety and performance requirements.",
+            "The device/material conforms to the general safety and performance requirements "
+            "of Annex I to Regulation (EU) 2017/745.",
             "Any requirements not fully met are documented in the technical documentation.",
+            "Retention: at least 10 years from placing on the market (15 years for implantable devices).",
             "Authorized person: ____________________",
             f"Issued: {timezone.localdate().isoformat()}    Signature: ____________________",
         ]

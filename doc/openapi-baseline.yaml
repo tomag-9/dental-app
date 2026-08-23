@@ -4106,6 +4106,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/jobs/jobs/{id}/prosthetic-label/:
+    get:
+      operationId: jobs_jobs_prosthetic_label_retrieve
+      description: Issue the prosthetic label for the job and return it as PDF (or
+        as its data snapshot with ?format=json).
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+        description: Pass 'json' for the label data snapshot; PDF is returned otherwise.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this job.
+        required: true
+      tags:
+      - jobs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/jobs/jobs/{id}/transition-status/:
     post:
       operationId: jobs_jobs_transition_status_create
@@ -4204,6 +4233,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+          description: ''
+  /api/jobs/jobs/prosthetic-labels/:
+    get:
+      operationId: jobs_jobs_prosthetic_labels_retrieve
+      description: Bulk prosthetic label export — one job per page, in one PDF.
+      parameters:
+      - in: query
+        name: ids
+        schema:
+          type: string
+        description: Comma-separated job ids.
+      tags:
+      - jobs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/jobs/jobs/quick-create/:
     post:
@@ -10019,6 +10070,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/v1/jobs/jobs/{id}/prosthetic-label/:
+    get:
+      operationId: v1_jobs_jobs_prosthetic_label_retrieve
+      description: Issue the prosthetic label for the job and return it as PDF (or
+        as its data snapshot with ?format=json).
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+        description: Pass 'json' for the label data snapshot; PDF is returned otherwise.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this job.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/jobs/jobs/{id}/transition-status/:
     post:
       operationId: v1_jobs_jobs_transition_status_create
@@ -10117,6 +10197,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/jobs/jobs/prosthetic-labels/:
+    get:
+      operationId: v1_jobs_jobs_prosthetic_labels_retrieve
+      description: Bulk prosthetic label export — one job per page, in one PDF.
+      parameters:
+      - in: query
+        name: ids
+        schema:
+          type: string
+        description: Comma-separated job ids.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/v1/jobs/jobs/quick-create/:
     post:
@@ -12055,6 +12157,7 @@ components:
       - status_changed
       - assigned
       - deleted
+      - label_issued
       type: string
       description: |-
         * `created` - Created
@@ -12062,6 +12165,7 @@ components:
         * `status_changed` - Status changed
         * `assigned` - Assigned
         * `deleted` - Deleted
+        * `label_issued` - Prosthetic label issued
     EventTypeEnum:
       enum:
       - meeting
@@ -12580,6 +12684,15 @@ components:
         patient_total:
           type: string
           readOnly: true
+        material_usage_missing:
+          type: boolean
+          readOnly: true
+        label_missing_fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -12621,6 +12734,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        safety_performance_deviations:
+          type: string
+        contains_medicinal_substance:
+          type: boolean
+        medicinal_substance_note:
+          type: string
+          maxLength: 255
         start_date:
           type: string
           format: date
@@ -12683,7 +12803,9 @@ components:
       - insurance_total
       - lab
       - label_issued_at
+      - label_missing_fields
       - label_number
+      - material_usage_missing
       - patient
       - patient_details
       - patient_total
@@ -12938,6 +13060,17 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        mdr_declaration_text:
+          type: string
+        production_sites:
+          type: string
+        authorized_representative:
+          type: string
+          maxLength: 255
+        label_patient_identifier_mode:
+          $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
+        require_material_usage:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -12951,6 +13084,14 @@ components:
       - id
       - name
       - updated_at
+    LabelPatientIdentifierModeEnum:
+      enum:
+      - name
+      - code
+      type: string
+      description: |-
+        * `name` - Meno pacienta
+        * `code` - Kód pacienta
     Manufacturer:
       type: object
       properties:
@@ -14157,6 +14298,15 @@ components:
         patient_total:
           type: string
           readOnly: true
+        material_usage_missing:
+          type: boolean
+          readOnly: true
+        label_missing_fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -14198,6 +14348,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        safety_performance_deviations:
+          type: string
+        contains_medicinal_substance:
+          type: boolean
+        medicinal_substance_note:
+          type: string
+          maxLength: 255
         start_date:
           type: string
           format: date
@@ -14357,6 +14514,17 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        mdr_declaration_text:
+          type: string
+        production_sites:
+          type: string
+        authorized_representative:
+          type: string
+          maxLength: 255
+        label_patient_identifier_mode:
+          $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
+        require_material_usage:
+          type: boolean
         created_at:
           type: string
           format: date-time

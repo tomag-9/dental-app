@@ -765,3 +765,32 @@ class LabelPdfRenderTests(LabelExportFixtureMixin, APITestCase):
         self.assertTrue(regular)
         self.assertTrue(bold)
         self.assertNotEqual(regular, bold)
+
+
+class ConformityPdfAlignmentTests(LabelExportFixtureMixin, APITestCase):
+    """#99 — the MDR declaration and the materials conformity PDF must not contradict."""
+
+    def setUp(self):
+        self.fixtures = self.build_full_fixtures(name="Align Lab", username="align_admin")
+        self.job = self.fixtures["job"]
+
+    def test_conformity_pdf_identifier_uses_the_issued_label_number(self):
+        from apps.materials.views import _conformity_identifier
+
+        usage = self.add_material_usage(self.job)
+        self.assertEqual(_conformity_identifier(usage, None), f"Job {self.job.id}")
+
+        job_service.issue_label_number(self.job)
+        usage.job.refresh_from_db()
+
+        identifier = _conformity_identifier(usage, None)
+        self.assertIn(self.job.label_number, identifier)
+
+    def test_conformity_pdf_does_not_cite_the_repealed_directive(self):
+        import inspect
+
+        from apps.materials import views as materials_views
+
+        source = inspect.getsource(materials_views)
+        self.assertNotIn("93/42", source)
+        self.assertIn("2017/745", source)
