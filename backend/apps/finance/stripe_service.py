@@ -103,11 +103,20 @@ def _unix_to_date(value):
 
 
 def _as_dict(obj):
-    """Stripe objects behave like dicts; plain dicts pass through unchanged."""
+    """Normalise a Stripe resource to a plain dict.
+
+    ``StripeObject`` is deliberately *not* a mapping in stripe-python 8+ —
+    ``dict(obj)`` raises — so the whole payload is flattened once, up front,
+    and every handler below works on ordinary dicts.
+    """
     if obj is None:
         return {}
     if isinstance(obj, dict):
         return obj
+    for method in ("to_dict_recursive", "to_dict"):
+        converter = getattr(obj, method, None)
+        if callable(converter):
+            return converter()
     return dict(obj)
 
 
@@ -228,9 +237,7 @@ def sync_from_stripe(subscription):
         return subscription
     client = _client()
     try:
-        remote = client.Subscription.retrieve(
-            subscription.stripe_subscription_id, expand=["items.data.price"]
-        )
+        remote = client.Subscription.retrieve(subscription.stripe_subscription_id, expand=["items.data.price"])
     except Exception as exc:  # pragma: no cover - network failure path
         logger.exception("Stripe subscription sync failed for lab %s", subscription.lab_id)
         raise StripeServiceError("Nepodarilo sa načítať stav predplatného zo Stripe.") from exc
@@ -302,9 +309,7 @@ def apply_subscription_object(subscription, remote, event_created=None):
     if fields["status"] == Subscription.STATUS_CANCELLED:
         fields["cancelled_at"] = subscription.cancelled_at or timezone.now()
     elif remote.get("canceled_at"):
-        fields["cancelled_at"] = datetime.fromtimestamp(
-            int(remote["canceled_at"]), tz=dt_timezone.utc
-        )
+        fields["cancelled_at"] = datetime.fromtimestamp(int(remote["canceled_at"]), tz=dt_timezone.utc)
     else:
         fields["cancelled_at"] = None
 
@@ -452,9 +457,7 @@ def _handle_invoice_payment_failed(subscription, obj, event_created):
     subscription.status = Subscription.STATUS_PAST_DUE
     subscription.past_due_since = subscription.past_due_since or timezone.now()
     subscription.stripe_state_updated_at = int(event_created)
-    subscription.save(
-        update_fields=["status", "past_due_since", "stripe_state_updated_at", "updated_at"]
-    )
+    subscription.save(update_fields=["status", "past_due_since", "stripe_state_updated_at", "updated_at"])
     return "platba zlyhala, začína sa odkladná lehota"
 
 
@@ -553,9 +556,7 @@ def enforce_grace_period(now=None):
                 action="subscription:read_only",
                 entity_type="Subscription",
                 entity_id=subscription.pk,
-                description=(
-                    f"Odkladná lehota {days} dní uplynula, laboratórium prepnuté do režimu iba na čítanie."
-                ),
+                description=(f"Odkladná lehota {days} dní uplynula, laboratórium prepnuté do režimu iba na čítanie."),
                 metadata={"past_due_since": subscription.past_due_since.isoformat()},
             )
             locked += 1

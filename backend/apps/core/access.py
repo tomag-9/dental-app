@@ -411,7 +411,10 @@ class PaymentRequired(APIException):
     """402 — the tenant may read, but must settle billing before writing."""
 
     status_code = 402
-    default_detail = "Predplatné laboratória nie je aktívne. Dáta zostávajú čitateľné a exportovateľné, zápisy sú pozastavené."
+    default_detail = (
+        "Predplatné laboratória nie je aktívne. Dáta zostávajú čitateľné "
+        "a exportovateľné, zápisy sú pozastavené."
+    )
     default_code = "subscription_read_only"
 
 

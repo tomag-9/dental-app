@@ -45,9 +45,8 @@ from apps.core.localization import (
 )
 from apps.core.models import User
 
-from . import invoice_service
+from . import invoice_service, stripe_service
 from . import services as finance_services
-from . import stripe_service
 from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
 from .pay_by_square import PayBySquareError

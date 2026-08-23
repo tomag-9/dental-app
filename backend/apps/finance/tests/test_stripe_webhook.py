@@ -120,9 +120,7 @@ class StripeWebhookTests(APITestCase):
         now = int(time.time())
         payload = json.dumps(subscription_event(event_id="evt_unsigned", created=now)).encode()
 
-        response = self.client.post(
-            WEBHOOK_URL, data=payload, content_type="application/json"
-        )
+        response = self.client.post(WEBHOOK_URL, data=payload, content_type="application/json")
 
         self.assertEqual(response.status_code, 400)
         self.subscription.refresh_from_db()
@@ -131,9 +129,7 @@ class StripeWebhookTests(APITestCase):
 
     def test_event_signed_with_wrong_secret_is_rejected(self):
         now = int(time.time())
-        response = self.post_event(
-            subscription_event(event_id="evt_forged", created=now), secret="whsec_attacker"
-        )
+        response = self.post_event(subscription_event(event_id="evt_forged", created=now), secret="whsec_attacker")
 
         self.assertEqual(response.status_code, 400)
         self.subscription.refresh_from_db()
@@ -144,9 +140,7 @@ class StripeWebhookTests(APITestCase):
         now = int(time.time())
         good = json.dumps(subscription_event(event_id="evt_ok", created=now)).encode()
         header = sign(good)
-        forged = json.dumps(
-            subscription_event(event_id="evt_ok", created=now, price_id="price_enterprise")
-        ).encode()
+        forged = json.dumps(subscription_event(event_id="evt_ok", created=now, price_id="price_enterprise")).encode()
 
         response = self.client.post(
             WEBHOOK_URL,
@@ -184,9 +178,7 @@ class StripeWebhookTests(APITestCase):
     def test_burst_of_deliveries_all_land(self):
         now = int(time.time())
         for index in range(8):
-            response = self.post_event(
-                subscription_event(event_id=f"evt_burst_{index}", created=now + index)
-            )
+            response = self.post_event(subscription_event(event_id=f"evt_burst_{index}", created=now + index))
             self.assertEqual(response.status_code, 200, response.data)
 
     # -- idempotency -------------------------------------------------------
@@ -208,9 +200,7 @@ class StripeWebhookTests(APITestCase):
 
     def test_out_of_order_event_is_ignored(self):
         now = int(time.time())
-        self.post_event(
-            subscription_event(event_id="evt_new", created=now, status="active", price_id="price_pro")
-        )
+        self.post_event(subscription_event(event_id="evt_new", created=now, status="active", price_id="price_pro"))
         # An older "cancelled" delivered late must not undo the newer state.
         response = self.post_event(
             subscription_event(
@@ -242,9 +232,7 @@ class StripeWebhookTests(APITestCase):
 
     def test_event_for_unknown_customer_answers_200(self):
         now = int(time.time())
-        response = self.post_event(
-            subscription_event(event_id="evt_ghost", created=now, customer="cus_nobody")
-        )
+        response = self.post_event(subscription_event(event_id="evt_ghost", created=now, customer="cus_nobody"))
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data["handled"])
@@ -343,9 +331,7 @@ class StripeWebhookTests(APITestCase):
 
     def test_trialing_status_is_supported(self):
         now = int(time.time())
-        self.post_event(
-            subscription_event(event_id="evt_trial", created=now, status="trialing")
-        )
+        self.post_event(subscription_event(event_id="evt_trial", created=now, status="trialing"))
 
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.status, "trialing")

@@ -35,16 +35,12 @@ class Command(BaseCommand):
             from apps.finance.models import Subscription
 
             now = timezone.now()
-            candidates = Subscription.objects.filter(
-                status=Subscription.STATUS_PAST_DUE, past_due_since__isnull=False
-            )
+            candidates = Subscription.objects.filter(status=Subscription.STATUS_PAST_DUE, past_due_since__isnull=False)
             pending = [s for s in candidates if (s.grace_ends_at() or now) <= now]
             self.stdout.write(f"Dry run: {len(pending)} subscription(s) would go read-only.")
             return
 
         locked = enforce_grace_period()
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Grace period {days} days: {locked} subscription(s) switched to read-only."
-            )
+            self.style.SUCCESS(f"Grace period {days} days: {locked} subscription(s) switched to read-only.")
         )
