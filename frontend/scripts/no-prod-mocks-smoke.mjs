@@ -59,14 +59,12 @@ const EXCEPTIONS = [
 
 // ── Additional structural check: pages that must talk to the API ──────────
 // A page whose whole content is hardcoded is a mock even without a `fallback`
-// identifier. Superadmin.jsx is exactly that case today (#109), so it is listed
-// as a known exception rather than a hard failure.
+// identifier. Superadmin.jsx used to be exactly that case; it now reads live
+// data (#109), so the exception is gone and a regression fails the build.
 const API_BACKED_PAGES = [
   'pages/Superadmin.jsx',
 ];
-const API_BACKED_EXCEPTIONS = {
-  'pages/Superadmin.jsx': '#109',
-};
+const API_BACKED_EXCEPTIONS = {};
 const API_CALL_RE = /\b(MolarisAPI|useWorkspace|loadWorkspace|request\()/;
 
 const patternIndex = new Map(PATTERNS.map((p) => [p.name, p]));
