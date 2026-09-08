@@ -117,6 +117,21 @@ function JobDetail({ jobId, onBack }) {
           React.createElement(Icon, { name: 'printer', size: 14 }),
           'Tlač pracovného listu'
         ),
+        React.createElement(Button, {
+          key: 't',
+          variant: 'outline',
+          onClick: () => window.dispatchEvent(new CustomEvent('open-tooth-detail', {
+            detail: {
+              patient: { name: workspaceJob.patient, workId: `#${rawJob.id}` },
+              job: rawJob,
+              // Editable here: saving PATCHes Job.output_tooth_procedures.
+              readonly: false,
+            },
+          })),
+        },
+          React.createElement(Icon, { name: 'search', size: 14 }),
+          'Zubný kríž'
+        ),
         React.createElement(Button, { key: 'e', onClick: () => setEditMode((value) => !value), disabled: !rawJob },
           React.createElement(Icon, { name: 'edit', size: 14 }),
           editMode ? 'Zavrieť úpravy' : 'Upraviť'
