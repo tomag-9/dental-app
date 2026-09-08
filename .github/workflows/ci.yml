@@ -147,6 +147,10 @@ jobs:
     # visual-smoke needs a running stack plus a browser.
     - name: Run production-mock smoke check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:no-prod-mocks
+    # Guards against .jsx files that no longer appear in main.js `appModules`
+    # and are therefore never loaded into the build (#115).
+    - name: Run orphan-module smoke check
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:orphan-modules
     - name: Cleanup
       if: always()
       run: |
