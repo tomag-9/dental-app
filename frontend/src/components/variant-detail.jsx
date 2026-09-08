@@ -116,7 +116,6 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
     }
   }
   const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
-  const total = allProcs.reduce((s, x) => s + (Number(x.p.price) || 0) * (Number(x.qty) || 1), 0);
 
   // Highlight the teeth that fall in the currently-selected region scope (when the
   // user has turned the highlight on). This is purely visual context — region
@@ -326,7 +325,7 @@ function LegendItem({ color, label }) {
 // Wide horizontal info bar placed BELOW the cross: tooth glyph + name + flags on the
 // left, the per-tooth procedures laid out horizontally as chips on the right.
 // NOTE: no prices here — pricing belongs to the work-items table, not to the chart.
-function FocusedToothBar({ fdi, notation, codes, missing, implant, temporary, fmt }) {
+function FocusedToothBar({ fdi, notation, codes, missing, implant, temporary }) {
   const type = toothType(fdi);
   const typeLabel = { incisor: 'Rezák', canine: 'Očný zub', premolar: 'Predstoličkov', molar: 'Stolička' }[type];
   return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 } },
@@ -385,53 +384,6 @@ function detailFlagStyle(cat) {
   return { background: cat.bg, color: cat.fg, fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 9999, textTransform: 'uppercase', letterSpacing: '.04em' };
 }
 
-// Summary of ALL procedures across the chart (read-only list).
-function ProcSummaryPanel({ items, total, fmt, selected }) {
-  // Group by tooth for a readable summary
-  const byTooth = {};
-  for (const it of items) {
-    if (!byTooth[it.tooth]) byTooth[it.tooth] = [];
-    byTooth[it.tooth].push(it);
-  }
-  return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 10, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' } },
-    React.createElement('div', { style: { padding: '10px 14px', background: '#fbfaf6', borderBottom: '1px solid #ece7dc' } },
-      React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320' } }, `Všetky výkony (${items.length})`),
-      React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } }, 'Zoskupené podľa zuba')
-    ),
-    React.createElement('div', { style: { flex: 1, overflowY: 'auto', maxHeight: 280 } },
-      ...Object.entries(byTooth).map(([tooth, group]) => {
-        const isOnSelected = tooth === String(selected) || (tooth.includes('–') && (() => {
-          const [a, b] = tooth.split('–').map(n => parseInt(n));
-          return selected >= a && selected <= b;
-        })());
-        return React.createElement('div', {
-          key: tooth,
-          style: { padding: '8px 14px', borderTop: '1px solid #f0ede5', background: isOnSelected ? '#fbf9f1' : '#fff' }
-        },
-          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 } },
-            React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', fontSize: 11.5, fontWeight: 700, color: isOnSelected ? '#0d7c6b' : '#1a2320', padding: '1px 7px', background: '#fbfaf6', borderRadius: 4, border: '1px solid #ece7dc' } }, tooth),
-            React.createElement('span', { style: { fontSize: 10.5, color: '#8a9490' } }, `${group.length} výkon(ov)`)
-          ),
-          ...group.map((it, i) => {
-            const cat = PROC_CATS[it.p.cat];
-            return React.createElement('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0 2px 8px' } },
-              React.createElement('div', { style: { width: 14, height: 14, borderRadius: 3, background: cat.bg, color: cat.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
-                React.createElement(ProcGlyph, { code: it.code, size: 9 })
-              ),
-              React.createElement('span', { style: { fontSize: 11, color: '#1a2320', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, it.p.name),
-              React.createElement('span', { style: { fontSize: 10.5, fontWeight: 700, color: '#5a6b66', fontFamily: 'Plus Jakarta Sans,sans-serif' } }, fmt(it.p.price))
-            );
-          })
-        );
-      })
-    ),
-    React.createElement('div', { style: { padding: '10px 14px', background: '#fbfaf6', borderTop: '1px solid #ece7dc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-      React.createElement('span', { style: { fontSize: 11.5, color: '#8a9490' } }, 'Spolu'),
-      React.createElement('span', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 15, fontWeight: 700, color: '#1a2320' } }, fmt(total))
-    )
-  );
-}
-
 // ─── Modal wrapper ────────────────────────────────────────────────────────────────
 // Listens to window 'open-tooth-detail' events and shows the detail in an overlay.
 function ToothDetailModal() {
@@ -485,7 +437,7 @@ function ToothDetailModal() {
 // ─── Region procedures panel ──────────────────────────────────────────────────────
 // Shows procedures performed on a WHOLE region (full mouth / jaw / side / quadrant).
 // These aren't drawn on the dental cross — they live in their own table here.
-function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightChange, items, notation }) {
+function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightChange, items }) {
   const visible = scope === 'all' ? items : items.filter(it => it.scope === scope);
   const region = REGION_BY_ID[scope] || REGION_BY_ID.all;
   const counts = {};
