@@ -5,6 +5,13 @@ on:
     branches: [ "main", "develop" ]
   pull_request:
     branches: [ "main", "develop" ]
+    # A release-please release PR only touches these — no application code
+    # to test, so don't spin up the full backend/frontend/e2e pipeline for it.
+    paths-ignore:
+      - VERSION
+      - frontend/package.json
+      - CHANGELOG.md
+      - .release-please-manifest.json
 
 # Serialize runs per branch on the shared self-hosted runner so that the
 # Docker container cleanup step in one run never kills containers owned by
