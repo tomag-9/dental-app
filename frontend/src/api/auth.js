@@ -40,6 +40,11 @@ export async function login(username, password, totpCode = '') {
     if (isTotpInvalidError(error)) error.invalidTotp = true;
     throw error;
   }
+  return storeCurrentUser();
+}
+
+/** Load /users/me/ after a successful token exchange and cache the session user. */
+async function storeCurrentUser() {
   const me = await request('/core/users/me/');
   const name = [me.first_name, me.last_name].filter(Boolean).join(' ') || me.nickname || me.username;
   const user = {
@@ -198,4 +203,76 @@ export async function revokeSession(id) {
 /** Revoke every session of the user, including the current one. */
 export async function revokeAllSessions() {
   return request('/v1/core/sessions/revoke-all/', { method: 'DELETE' });
+}
+
+
+// --- Sign in with Google (#107, #108) -------------------------------------
+
+/** @param {unknown} err */
+function errorCode(err) {
+  const e = /** @type {ApiError} */ (err);
+  return String((e && e.data && /** @type {any} */(e.data).code) || '');
+}
+
+/** The Google e-mail belongs to no account in any lab — an invitation is needed. */
+/** @param {unknown} err */
+export function isGoogleUnknownAccountError(err) {
+  return errorCode(err) === 'google_account_unknown';
+}
+
+/** Google sign-in is not configured on this server (missing client ID). */
+/** @param {unknown} err */
+export function isGoogleUnconfiguredError(err) {
+  return errorCode(err) === 'google_not_configured';
+}
+
+/**
+ * Public Google sign-in config. Never throws: on any failure the button stays
+ * hidden, so dev and CI do not depend on Google being reachable.
+ */
+export async function fetchGoogleAuthConfig() {
+  try {
+    const data = await request('/v1/core/auth/google/');
+    return {
+      configured: !!(data && data.configured && data.client_id),
+      clientId: (data && data.client_id) || '',
+    };
+  } catch {
+    return { configured: false, clientId: '' };
+  }
+}
+
+/**
+ * Exchange a Google ID token for the httpOnly JWT cookies.
+ * @param {string} credential Google ID token from Google Identity Services
+ * @param {string} [totpCode] required when the account has 2FA enabled
+ */
+export async function loginWithGoogle(credential, totpCode = '') {
+  const payload = { credential };
+  if (totpCode) payload.totp_code = totpCode;
+  try {
+    await request('/v1/core/auth/google/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: {},
+    });
+  } catch (error) {
+    if (isTotpRequiredError(error)) error.requiresTotp = true;
+    if (isTotpInvalidError(error)) error.invalidTotp = true;
+    throw error;
+  }
+  return storeCurrentUser();
+}
+
+/** Link the signed-in account to a Google identity. @param {string} credential */
+export async function linkGoogleAccount(credential) {
+  return request('/v1/core/auth/google/link/', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
+}
+
+/** Unlink Google from the signed-in account (refused when no password is set). */
+export async function unlinkGoogleAccount() {
+  return request('/v1/core/auth/google/link/', { method: 'DELETE' });
 }
