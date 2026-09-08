@@ -24,6 +24,11 @@ services:
       - SQL_PORT=${SQL_PORT:-5432}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367,http://192.168.0.14:5367}
       - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:5367,http://127.0.0.1:5367,http://192.168.0.14:5367}
+      # config/settings/dev.py adds http://localhost:$FRONTEND_PORT and
+      # http://127.0.0.1:$FRONTEND_PORT to the trusted origins, so a stack on a
+      # non-default port works without editing CSRF_TRUSTED_ORIGINS by hand.
+      - FRONTEND_PORT=${FRONTEND_PORT:-5367}
+      - BACKEND_PORT=${BACKEND_PORT:-8810}
     depends_on:
       db:
         condition: service_healthy

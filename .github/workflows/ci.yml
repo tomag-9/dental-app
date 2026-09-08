@@ -166,12 +166,15 @@ jobs:
     needs: [backend-tests, frontend-check]
     runs-on: [self-hosted]
     name: E2E Tests
-    # config/settings/dev.py hardcodes CSRF_TRUSTED_ORIGINS to localhost:5367
-    # and ignores the env var, so the frontend has to be published on that exact
-    # host port — which makes the port a shared resource on this runner. This
+    # BACKEND_PORT/FRONTEND_PORT below are fixed host ports, so two concurrent
+    # e2e jobs on this shared self-hosted runner would fight over them. This
     # group is deliberately NOT keyed on github.ref: it serialises e2e across
     # every branch. Everything else stays isolated per run through
     # COMPOSE_PROJECT_NAME, exactly like the other jobs.
+    #
+    # Since #123 the backend derives its CSRF trusted origins from FRONTEND_PORT
+    # (it used to hardcode 5367), so picking free ports per run is now the only
+    # thing standing between this job and full parallelism.
     concurrency:
       group: ${{ github.workflow }}-e2e-host-ports
       cancel-in-progress: false
