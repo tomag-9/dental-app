@@ -328,6 +328,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLog'
           description: ''
+  /api/core/auth/google/:
+    get:
+      operationId: core_auth_google_retrieve
+      description: '``GET`` reports the public config; ``POST`` exchanges an ID token
+        for JWT cookies.'
+      tags:
+      - core
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: core_auth_google_create
+      description: '``GET`` reports the public config; ``POST`` exchanges an ID token
+        for JWT cookies.'
+      tags:
+      - core
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/core/auth/google/link/:
+    post:
+      operationId: core_auth_google_link_create
+      description: Link (``POST``) or unlink (``DELETE``) the signed-in user's Google
+        account.
+      tags:
+      - core
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: core_auth_google_link_destroy
+      description: Link (``POST``) or unlink (``DELETE``) the signed-in user's Google
+        account.
+      tags:
+      - core
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/core/auth/login/:
     post:
       operationId: core_auth_login_create
@@ -6563,6 +6609,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLog'
           description: ''
+  /api/v1/core/auth/google/:
+    get:
+      operationId: v1_core_auth_google_retrieve
+      description: '``GET`` reports the public config; ``POST`` exchanges an ID token
+        for JWT cookies.'
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_core_auth_google_create
+      description: '``GET`` reports the public config; ``POST`` exchanges an ID token
+        for JWT cookies.'
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/core/auth/google/link/:
+    post:
+      operationId: v1_core_auth_google_link_create
+      description: Link (``POST``) or unlink (``DELETE``) the signed-in user's Google
+        account.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+    delete:
+      operationId: v1_core_auth_google_link_destroy
+      description: Link (``POST``) or unlink (``DELETE``) the signed-in user's Google
+        account.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/core/auth/login/:
     post:
       operationId: v1_core_auth_login_create
@@ -12337,8 +12429,9 @@ components:
           maxLength: 255
         quantity:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         unit_price:
           type: string
           format: decimal
@@ -12711,8 +12804,9 @@ components:
           maxLength: 20
         quantity:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         unit_price:
           type: string
           format: decimal
@@ -12916,8 +13010,9 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -12936,8 +13031,9 @@ components:
           maxLength: 20
         label_start_number:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         created_at:
           type: string
           format: date-time
@@ -14335,8 +14431,9 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -14355,8 +14452,9 @@ components:
           maxLength: 20
         label_start_number:
           type: integer
-          maximum: 2147483647
+          maximum: 9223372036854775807
           minimum: 0
+          format: int64
         created_at:
           type: string
           format: date-time
@@ -14685,8 +14783,9 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         mrr:
           type: string
           format: decimal
@@ -14874,6 +14973,12 @@ components:
         date_joined:
           type: string
           format: date-time
+          readOnly: true
+        google_linked:
+          type: boolean
+          readOnly: true
+        has_password:
+          type: boolean
           readOnly: true
     PatchedVacation:
       type: object
@@ -15193,8 +15298,9 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 2147483647
-          minimum: -2147483648
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
         mrr:
           type: string
           format: decimal
@@ -15482,8 +15588,16 @@ components:
           type: string
           format: date-time
           readOnly: true
+        google_linked:
+          type: boolean
+          readOnly: true
+        has_password:
+          type: boolean
+          readOnly: true
       required:
       - date_joined
+      - google_linked
+      - has_password
       - id
       - lab_details
       - username

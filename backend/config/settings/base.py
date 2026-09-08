@@ -216,6 +216,10 @@ EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "0") == "1"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentallab.sk")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
 
+# Sign in with Google (#107). Unset by default: the endpoint then answers 503 and
+# the UI hides the button, so dev and CI never depend on Google.
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+
 
 class DefaultingJsonFormatter(jsonlogger.JsonFormatter):
     """Add request fields as null/empty values when non-request logs omit them."""

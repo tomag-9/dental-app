@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 # Note: Users and Labs are also exposed at root level (/api/users/, /api/labs/)
 # This is kept for backward compatibility and nested access (/api/core/users/, /api/core/labs/)
+from .google_auth import GoogleAccountLinkView, GoogleLoginView
 from .views import (
     AuditLogViewSet,
     CsrfView,
@@ -47,6 +48,12 @@ urlpatterns = [
     ),
     path("auth/login/", SessionLoginView.as_view(), name="session-login"),
     path("auth/logout/", LogoutView.as_view(), name="logout"),
+    path("auth/google/", GoogleLoginView.as_view(), name="google-login"),
+    path(
+        "auth/google/link/",
+        GoogleAccountLinkView.as_view(),
+        name="google-account-link",
+    ),
     path("csrf/", CsrfView.as_view(), name="csrf"),
     path(
         "dashboard/chart-data/",
