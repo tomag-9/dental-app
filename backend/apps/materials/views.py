@@ -20,7 +20,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_superadmin,
 )
@@ -52,6 +54,7 @@ class MaterialTenantViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def perform_create(self, serializer):
@@ -310,6 +313,7 @@ class MaterialUsageViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelView
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -343,7 +347,7 @@ class MaterialUsageViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelView
 
 
 class FefoView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     @extend_schema(
         parameters=[

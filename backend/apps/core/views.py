@@ -20,6 +20,7 @@ from apps.jobs.models import CalendarEvent, Vacation
 
 from . import user_service
 from .access import (
+    AUTHENTICATED,
     LAB_PERMISSION_ACTIONS,
     UI_PERMISSION_ACTIONS,
     assert_lab_write_allowed,
@@ -187,7 +188,7 @@ def _static_search_results(query, user):
 
 
 class GlobalSearchView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         from apps.crm.models import Patient
@@ -319,7 +320,7 @@ def _role_permission_payload(user):
 
 
 class PermissionsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         return Response(_role_permission_payload(request.user))
@@ -388,7 +389,7 @@ class HealthCheckView(APIView):
 
 
 class SystemHealthView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         if not is_superadmin(request.user):
@@ -494,7 +495,7 @@ class SystemHealthView(APIView):
 
 
 class DashboardStatsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         from apps.crm.models import Patient
@@ -681,7 +682,7 @@ class DashboardStatsView(APIView):
 class DashboardChartDataView(APIView):
     """Daily revenue and job counts for the last 30 days, plus status distribution."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         from apps.finance.models import Invoice
@@ -749,7 +750,7 @@ class DashboardChartDataView(APIView):
 class LabViewSet(viewsets.ModelViewSet):
     queryset = Lab.objects.all()
     serializer_class = LabSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         user = self.request.user
@@ -839,7 +840,7 @@ class LabViewSet(viewsets.ModelViewSet):
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         if not is_superadmin(self.request.user):
@@ -847,10 +848,38 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         return AuditLog.objects.select_related("actor", "lab").all()
 
 
+def _assert_seat_available(lab):
+    """Enforce ``Subscription.seats`` when a lab invites someone.
+
+    Plans are flat — one price regardless of head count — so ``seats`` is not a
+    billing quantity. It is the only place it means anything: the size of the
+    team the plan allows. Pending invitations count, otherwise a lab could
+    queue up unlimited members and blow past the limit on acceptance.
+    """
+    from apps.finance.models import Subscription
+
+    subscription = Subscription.objects.filter(lab=lab).only("seats").first()
+    if subscription is None or not subscription.seats:
+        return
+
+    used = User.objects.filter(lab=lab, is_active=True).count()
+    pending = TeamInvitation.objects.filter(lab=lab, status="pending").count()
+    if used + pending >= subscription.seats:
+        raise ValidationError(
+            {
+                "detail": (
+                    f"Váš plán umožňuje {subscription.seats} používateľov a limit je vyčerpaný "
+                    f"({used} členov, {pending} čakajúcich pozvánok). "
+                    "Zvýšte počet miest v nastaveniach predplatného."
+                )
+            }
+        )
+
+
 class TeamInvitationViewSet(viewsets.ModelViewSet):
     queryset = TeamInvitation.objects.all()
     serializer_class = TeamInvitationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_throttles(self):
         if self.action == "accept":
@@ -900,6 +929,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"lab": "Lab must be provided"})
         else:
             lab = user.lab
+        _assert_seat_available(lab)
         invitation = serializer.save(
             lab=lab,
             invited_by=user,
@@ -1006,7 +1036,7 @@ class TeamInvitationViewSet(viewsets.ModelViewSet):
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_queryset(self):
         qs = Notification.objects.select_related("lab", "recipient")
@@ -1056,7 +1086,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_throttles(self):
         if self.action == "signup":
@@ -1430,7 +1460,7 @@ class SessionLoginView(APIView):
 class SessionViewSet(viewsets.ViewSet):
     """List and revoke the current user's active sessions."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def list(self, request):
         qs = UserSession.objects.filter(user=request.user, revoked=False, expires_at__gt=timezone.now()).order_by(
@@ -1467,7 +1497,7 @@ class SessionViewSet(viewsets.ViewSet):
 class LabApiKeyViewSet(viewsets.ViewSet):
     """Generate and manage lab API keys (hashed storage, plaintext shown once)."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_throttles(self):
         if self.action == "create":
@@ -1588,7 +1618,7 @@ BILLING_SUBSCRIPTION_STATUSES = ("active", "past_due")
 class SuperadminMetricsView(APIView):
     """Platform-level MRR/activity aggregates for superadmin."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         if not is_superadmin(request.user):
@@ -1660,7 +1690,7 @@ class SuperadminMetricsView(APIView):
 class TwoFactorView(APIView):
     """TOTP-based 2FA: setup, verify (activate), disable."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get_throttles(self):
         if self.request.method == "POST" and self.request.query_params.get("action", "setup") == "verify":
@@ -1775,7 +1805,7 @@ class PermissionsMatrixView(APIView):
     caller's effective set with per-lab overrides already applied.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user
@@ -1797,7 +1827,7 @@ class PermissionsMatrixView(APIView):
 class LabRolePermissionViewSet(viewsets.ViewSet):
     """Manage per-lab role permission metadata overrides. Admin-only."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def _get_lab(self, request, lab_pk):
         user = request.user

@@ -26,3 +26,141 @@
   release-please z nich generuje changelog). `develop` → `main` (release PR) obyčajný merge —
   jednotlivé conventional commity musia ostať zachované.
 
+## Key conventions
+
+- All ViewSets filter by `request.user.lab` so data is tenant-isolated per lab.
+- Superadmin users (`role == "superadmin"`) bypass lab filters and see all data.
+- Job status flow: `new` → `in_progress` → `completed` / `cancelled`. When invoiced, finance views additionally set `finished_factured`, `finished_unfactured`, or `closed` (see `apps/finance/views.py:_sync_jobs_for_invoice_status`).
+
+## Known incomplete areas (open issues)
+
+| # | Area | Status |
+|---|---|---|
+| #34 | Job status mismatch in finance views | **Fixed** — migration `0004_add_billing_job_statuses` added |
+| #35 | LabSettings save was a placeholder | **Fixed** — now calls `PATCH /api/labs/<id>/` |
+| #36 | Password change in ProfileSettings | **Fixed** — now calls `PUT /api/users/me/` |
+| #37 | Finance dashboard is a stub | **Fixed** — `/api/finance/stats/`, aging and procedure catalog are implemented |
+| #38 | Dashboard loads all data for 4 stats | **Fixed** — `/api/dashboard/stats/` and chart-data are implemented |
+| #39 | Inventory CSV import is sequential | **Fixed** — atomic JSON and CSV bulk import endpoints are implemented |
+| #40 | Mixed Slovak/English UI | Open — language decision needed |
+| #41 | Wrong repo URL in root package.json | **Fixed** |
+| #42 | Stale branches on GitHub | Open — delete manually |
+| #43 | Missing CLAUDE.md | **Fixed** (this file) |
+
+## MDR materials API
+
+The versioned API under `/api/v1/materials/` exposes tenant-scoped CRUD for
+manufacturers, catalog entries, lots and recipes, plus FEFO selection and
+immutable material-usage snapshots linked to jobs. Catalog entries can link to
+an inventory item through its `stock_code`/SKU. LOT balances are authoritative
+for traceable material availability; `WarehouseItem.quantity` remains the
+aggregate non-LOT inventory balance, avoiding two independently editable values
+being silently synchronized.
+
+Bulk catalog and lot imports accept either a JSON list or UTF-8 CSV in the
+multipart `file` field. Label and MDR declaration PDFs are available on lot and
+usage endpoints.
+
+## Stripe billing and the subscription read-only lock
+
+Flat plans (`free` / `pro` / `enterprise`), one price per plan. `seats` is a
+head-count limit, never a billing quantity.
+
+All Stripe logic lives in `apps/finance/stripe_service.py`. **With
+`STRIPE_SECRET_KEY` unset the module is disabled**: nothing reaches the
+network, and the checkout/portal/webhook endpoints answer `503`. Dev and CI
+therefore need no Stripe account.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/finance/subscriptions/checkout/` | Stripe Checkout URL, lab admin only |
+| `POST /api/v1/finance/subscriptions/portal/` | Billing Portal URL (plan, card, invoices) |
+| `GET  /api/v1/finance/subscriptions/my/` | Own subscription + `billing` block (read-only flag, grace end, seat usage) |
+| `POST /api/v1/finance/stripe/webhook/` | Stripe lifecycle events |
+
+Prices come from `STRIPE_PRICE_PRO` / `STRIPE_PRICE_ENTERPRISE` on the server —
+never from the request. `stripe_customer_id` and `stripe_subscription_id` are
+excluded from the serializer; the client only ever receives a redirect URL.
+
+**Webhook.** The signature is the authentication: `construct_event` runs before
+anything else, and an unverified payload is dropped with `400`. The view sets
+`authentication_classes = []` (which also removes the CSRF enforcement that
+`JWTCookieAuthentication` performs), is `csrf_exempt`, and sets
+`throttle_classes = []` because `ScopedRateThrottle` is the project-wide
+default and a `429` would silently lose events. Idempotency comes from
+`StripeEvent.event_id` (unique); duplicates and unknown event types answer
+`200`, since any `4xx`/`5xx` starts a Stripe retry cycle. Events older than
+`Subscription.stripe_state_updated_at` are ignored — Stripe delivers out of
+order. `Subscription.mrr` is written only by the webhook.
+
+Local webhook development:
+
+```bash
+stripe listen --forward-to http://localhost:8810/api/v1/finance/stripe/webhook/
+# copy the printed whsec_... into STRIPE_WEBHOOK_SECRET
+stripe trigger customer.subscription.updated
+```
+
+**Read-only lock (#104).** A lapsed lab keeps reading and exporting its data —
+it holds patient records and MDR traceability with a ten-year retention duty,
+and GDPR art. 20 gives it a right to take those with it. Only writes stop.
+`apps.core.access.SubscriptionWriteAllowed` refuses them with `402 Payment
+Required` plus a billing link. Exemptions live in one place
+(`SUBSCRIPTION_LOCK_EXEMPT_URL_NAMES` / `_PATH_FRAGMENTS`): superadmins, all
+safe methods, exports and PDFs, billing endpoints, auth/logout and account
+security. The class is in `DEFAULT_PERMISSION_CLASSES` *and* in every view that
+overrides them (those use `apps.core.access.AUTHENTICATED`).
+
+Flow: `active`/`trialing` → `past_due` on a failed payment → full access for
+`SUBSCRIPTION_GRACE_DAYS` (14) → `read_only`. Run the daily job:
+
+```bash
+python manage.py enforce_subscription_grace
+```
+
+## Documentation
+
+The `doc/` directory contains:
+- `requirements.md` — original Slovak requirements spec
+- `testing.md` — testing strategy
+- `test_coverage.md` — test coverage summary
+- `github_actions_fix.md` — notes on CI pipeline
+
+<!-- code-review-graph MCP tools -->
+## MCP Tools: code-review-graph
+
+**IMPORTANT: This project has a knowledge graph. ALWAYS use the
+code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
+the codebase.** The graph is faster, cheaper (fewer tokens), and gives
+you structural context (callers, dependents, test coverage) that file
+scanning cannot.
+
+### When to use graph tools FIRST
+
+- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
+- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
+- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
+- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
+- **Architecture questions**: `get_architecture_overview` + `list_communities`
+
+Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+
+### Key Tools
+
+| Tool | Use when |
+|------|----------|
+| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
+| `get_review_context` | Need source snippets for review — token-efficient |
+| `get_impact_radius` | Understanding blast radius of a change |
+| `get_affected_flows` | Finding which execution paths are impacted |
+| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
+| `semantic_search_nodes` | Finding functions/classes by name or keyword |
+| `get_architecture_overview` | Understanding high-level codebase structure |
+| `refactor_tool` | Planning renames, finding dead code |
+
+### Workflow
+
+1. The graph auto-updates on file changes (via hooks).
+2. Use `detect_changes` for code review.
+3. Use `get_affected_flows` to understand impact.
+4. Use `query_graph` pattern="tests_for" to check coverage.

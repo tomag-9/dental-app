@@ -25,6 +25,9 @@ pyotp
 google-auth[requests]
 qrcode[pil]
 openpyxl
+# Stripe billing (issues #102-#104). Optional at runtime: with STRIPE_SECRET_KEY
+# unset the billing module reports itself disabled and never calls out.
+stripe
 # Pay by Square QR payload encoder (MIT, stdlib-only). Pinned: payment-critical
 # and rarely released — upgrades must be re-verified by the round-trip tests.
 pay-by-square==0.2.0
