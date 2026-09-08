@@ -66,6 +66,10 @@ class User(AbstractUser):
     avatar_url = models.URLField(max_length=500, blank=True, null=True)
     totp_secret = models.CharField(max_length=64, blank=True, null=True)
     totp_enabled = models.BooleanField(default=False)
+    # Google's stable subject identifier. Bound instead of the e-mail because a
+    # Google account e-mail can change while ``sub`` never does; the e-mail is
+    # only used for the initial pairing (#107).
+    google_sub = models.CharField(max_length=64, blank=True, null=True, unique=True, db_index=True)
 
     # Required for custom user model
     REQUIRED_FIELDS = ["email"]

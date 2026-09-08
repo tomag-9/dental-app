@@ -174,6 +174,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/core/auth/google/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        get: operations["core_auth_google_retrieve"];
+        put?: never;
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        post: operations["core_auth_google_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/auth/google/link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        post: operations["core_auth_google_link_create"];
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        delete: operations["core_auth_google_link_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/core/auth/login/": {
         parameters: {
             query?: never;
@@ -427,7 +463,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Return the full role → allowed actions matrix. */
+        /**
+         * @description Return the full role → allowed actions matrix.
+         *
+         *     ``matrix`` lists the *defaults* per role; ``current_permissions`` is the
+         *     caller's effective set with per-lab overrides already applied.
+         */
         get: operations["core_permissions_matrix_retrieve"];
         put?: never;
         post?: never;
@@ -752,8 +793,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_clinics_create"];
         delete?: never;
         options?: never;
@@ -768,6 +847,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_export_retrieve"];
         put?: never;
         post?: never;
@@ -784,12 +882,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_clinics_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_clinics_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_clinics_partial_update"];
         trace?: never;
     };
@@ -800,8 +974,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_doctors_create"];
         delete?: never;
         options?: never;
@@ -816,6 +1028,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_export_retrieve"];
         put?: never;
         post?: never;
@@ -832,12 +1063,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_doctors_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_doctors_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_doctors_partial_update"];
         trace?: never;
     };
@@ -882,8 +1189,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_patients_create"];
         delete?: never;
         options?: never;
@@ -898,6 +1243,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_export_retrieve"];
         put?: never;
         post?: never;
@@ -914,12 +1278,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_patients_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_patients_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_patients_partial_update"];
         trace?: never;
     };
@@ -930,6 +1370,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_cumulative_tooth_map_retrieve"];
         put?: never;
         post?: never;
@@ -2597,6 +3056,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/core/auth/google/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        get: operations["v1_core_auth_google_retrieve"];
+        put?: never;
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        post: operations["v1_core_auth_google_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/auth/google/link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        post: operations["v1_core_auth_google_link_create"];
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        delete: operations["v1_core_auth_google_link_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/core/auth/login/": {
         parameters: {
             query?: never;
@@ -2850,7 +3345,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Return the full role → allowed actions matrix. */
+        /**
+         * @description Return the full role → allowed actions matrix.
+         *
+         *     ``matrix`` lists the *defaults* per role; ``current_permissions`` is the
+         *     caller's effective set with per-lab overrides already applied.
+         */
         get: operations["v1_core_permissions_matrix_retrieve"];
         put?: never;
         post?: never;
@@ -3175,8 +3675,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_clinics_create"];
         delete?: never;
         options?: never;
@@ -3191,6 +3729,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_export_retrieve"];
         put?: never;
         post?: never;
@@ -3207,12 +3764,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_clinics_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_clinics_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_clinics_partial_update"];
         trace?: never;
     };
@@ -3223,8 +3856,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_doctors_create"];
         delete?: never;
         options?: never;
@@ -3239,6 +3910,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_export_retrieve"];
         put?: never;
         post?: never;
@@ -3255,12 +3945,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_doctors_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_doctors_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_doctors_partial_update"];
         trace?: never;
     };
@@ -3305,8 +4071,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_patients_create"];
         delete?: never;
         options?: never;
@@ -3321,6 +4125,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_export_retrieve"];
         put?: never;
         post?: never;
@@ -3337,12 +4160,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_patients_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_patients_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_patients_partial_update"];
         trace?: never;
     };
@@ -3353,6 +4252,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_cumulative_tooth_map_retrieve"];
         put?: never;
         post?: never;
@@ -4839,29 +5757,46 @@ export interface components {
             name: string;
         };
         Job: {
+            /** Format: date */
+            assigned_at?: string | null;
             clinic: number;
             readonly clinic_details: components["schemas"]["Clinic"];
+            /** Format: date */
+            completed_at?: string | null;
             /** Format: date-time */
             readonly created_at: string;
             description?: string | null;
+            diagnosis_code?: string;
             doctor?: number | null;
             readonly doctor_details: components["schemas"]["Doctor"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
             end_date?: string | null;
+            /** Format: date */
+            handover_at?: string | null;
+            health_note?: string;
             readonly id: number;
             input_tooth_procedures?: unknown;
+            readonly insurance_total: string;
             items?: components["schemas"]["JobItem"][];
             readonly lab: number;
+            /** Format: date-time */
+            readonly label_issued_at: string | null;
+            readonly label_number: string;
             output_tooth_procedures?: unknown;
             patient: number;
             readonly patient_details: components["schemas"]["Patient"];
+            readonly patient_total: string;
             /** Format: decimal */
             price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
+            /** Format: date */
+            received_at?: string | null;
+            /** Format: date */
+            seated_at?: string | null;
             /** Format: date */
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
@@ -4881,7 +5816,12 @@ export interface components {
             readonly created_at: string;
             readonly description: string;
             readonly id: number;
+            /** Format: decimal */
+            insurance_amount?: string;
+            ipzp_code?: string;
             material?: string | null;
+            /** Format: decimal */
+            patient_amount?: string;
             price_list_code: string;
             procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             /** Format: int64 */
@@ -4936,6 +5876,9 @@ export interface components {
             invoice_due_days?: number;
             invoice_prefix?: string;
             is_vat_payer?: boolean;
+            label_prefix?: string;
+            /** Format: int64 */
+            label_start_number?: number;
             logo_url?: string | null;
             name: string;
             payment_method?: string;
@@ -5515,29 +6458,46 @@ export interface components {
             vat_rate?: string;
         };
         PatchedJob: {
+            /** Format: date */
+            assigned_at?: string | null;
             clinic?: number;
             readonly clinic_details?: components["schemas"]["Clinic"];
+            /** Format: date */
+            completed_at?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
             description?: string | null;
+            diagnosis_code?: string;
             doctor?: number | null;
             readonly doctor_details?: components["schemas"]["Doctor"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
             end_date?: string | null;
+            /** Format: date */
+            handover_at?: string | null;
+            health_note?: string;
             readonly id?: number;
             input_tooth_procedures?: unknown;
+            readonly insurance_total?: string;
             items?: components["schemas"]["JobItem"][];
             readonly lab?: number;
+            /** Format: date-time */
+            readonly label_issued_at?: string | null;
+            readonly label_number?: string;
             output_tooth_procedures?: unknown;
             patient?: number;
             readonly patient_details?: components["schemas"]["Patient"];
+            readonly patient_total?: string;
             /** Format: decimal */
             price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
+            /** Format: date */
+            received_at?: string | null;
+            /** Format: date */
+            seated_at?: string | null;
             /** Format: date */
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
@@ -5569,6 +6529,9 @@ export interface components {
             invoice_due_days?: number;
             invoice_prefix?: string;
             is_vat_payer?: boolean;
+            label_prefix?: string;
+            /** Format: int64 */
+            label_start_number?: number;
             logo_url?: string | null;
             name?: string;
             payment_method?: string;
@@ -5690,8 +6653,13 @@ export interface components {
             code?: string;
             /** Format: date-time */
             readonly created_at?: string;
+            /** Format: decimal */
+            default_insurance_amount?: string | null;
+            /** Format: decimal */
+            default_patient_amount?: string | null;
             description?: string;
             readonly id?: number;
+            ipzp_code?: string;
             readonly lab?: number;
             /** Format: decimal */
             price?: string;
@@ -5765,6 +6733,8 @@ export interface components {
             /** Format: email */
             email?: string | null;
             first_name?: string;
+            readonly google_linked?: boolean;
+            readonly has_password?: boolean;
             readonly id?: number;
             /**
              * Active
@@ -5844,8 +6814,13 @@ export interface components {
             code: string;
             /** Format: date-time */
             readonly created_at: string;
+            /** Format: decimal */
+            default_insurance_amount?: string | null;
+            /** Format: decimal */
+            default_patient_amount?: string | null;
             description: string;
             readonly id: number;
+            ipzp_code?: string;
             readonly lab: number;
             /** Format: decimal */
             price: string;
@@ -6015,6 +6990,8 @@ export interface components {
             /** Format: email */
             email?: string | null;
             first_name?: string;
+            readonly google_linked: boolean;
+            readonly has_password: boolean;
             readonly id: number;
             /**
              * Active
@@ -6419,6 +7396,78 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditLog"];
                 };
+            };
+        };
+    };
+    core_auth_google_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_link_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -12311,6 +13360,78 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditLog"];
                 };
+            };
+        };
+    };
+    v1_core_auth_google_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_link_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

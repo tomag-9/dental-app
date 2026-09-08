@@ -29,6 +29,7 @@ services:
       # non-default port works without editing CSRF_TRUSTED_ORIGINS by hand.
       - FRONTEND_PORT=${FRONTEND_PORT:-5367}
       - BACKEND_PORT=${BACKEND_PORT:-8810}
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
     depends_on:
       db:
         condition: service_healthy

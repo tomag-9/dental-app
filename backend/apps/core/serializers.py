@@ -29,6 +29,14 @@ class LabSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     lab_details = LabSerializer(source="lab", read_only=True)
     password = serializers.CharField(write_only=True, required=False, allow_blank=False)
+    google_linked = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField()
+
+    def get_google_linked(self, obj) -> bool:
+        return bool(obj.google_sub)
+
+    def get_has_password(self, obj) -> bool:
+        return obj.has_usable_password()
 
     class Meta:
         model = User
@@ -47,8 +55,10 @@ class UserSerializer(serializers.ModelSerializer):
             "notification_preferences",
             "avatar_url",
             "date_joined",
+            "google_linked",
+            "has_password",
         )
-        read_only_fields = ("date_joined",)
+        read_only_fields = ("date_joined", "google_linked", "has_password")
         extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):

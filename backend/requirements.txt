@@ -21,6 +21,8 @@ flake8
 coverage
 djangorestframework-simplejwt
 pyotp
+# Google ID token verification for Sign in with Google (#107).
+google-auth[requests]
 qrcode[pil]
 openpyxl
 # Pay by Square QR payload encoder (MIT, stdlib-only). Pinned: payment-critical
