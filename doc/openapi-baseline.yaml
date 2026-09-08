@@ -12429,9 +12429,8 @@ components:
           maxLength: 255
         quantity:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
         unit_price:
           type: string
           format: decimal
@@ -12804,9 +12803,8 @@ components:
           maxLength: 20
         quantity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         unit_price:
           type: string
           format: decimal
@@ -13010,9 +13008,8 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -13031,9 +13028,8 @@ components:
           maxLength: 20
         label_start_number:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         created_at:
           type: string
           format: date-time
@@ -14431,9 +14427,8 @@ components:
           maxLength: 20
         invoice_due_days:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         is_vat_payer:
           type: boolean
         vat_rate:
@@ -14452,9 +14447,8 @@ components:
           maxLength: 20
         label_start_number:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         created_at:
           type: string
           format: date-time
@@ -14783,9 +14777,8 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
         mrr:
           type: string
           format: decimal
@@ -15298,9 +15291,8 @@ components:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
         seats:
           type: integer
-          maximum: 9223372036854775807
-          minimum: -9223372036854775808
-          format: int64
+          maximum: 2147483647
+          minimum: -2147483648
         mrr:
           type: string
           format: decimal
