@@ -1,7 +1,9 @@
 // Technicians.jsx — Molaris Technicians (Technici)
 
-function Technicians({ onNavigate, onCreate }) {
-  const [search, setSearch] = React.useState('');
+function Technicians({ onCreate }) {
+  // No search box on this page yet — the filter below is kept so wiring one up
+  // stays a one-liner.
+  const [search] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   const techs = workspace.technicians || [];

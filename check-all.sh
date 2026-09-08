@@ -108,6 +108,8 @@ require_service db
 
 run_step "docker compose config" "${COMPOSE[@]}" config --quiet
 run_step "eslint" "${COMPOSE[@]}" exec -T frontend npm run lint
+run_step "frontend unit tests" "${COMPOSE[@]}" exec -T frontend npm run test:unit
+run_step "no-prod-mocks smoke" "${COMPOSE[@]}" exec -T frontend npm run smoke:no-prod-mocks
 
 mkdir -p frontend/.tmp
 run_step "frontend build" "${COMPOSE[@]}" exec -T frontend npm run build

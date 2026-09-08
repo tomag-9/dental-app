@@ -1,6 +1,6 @@
 // Jobs.jsx — Molaris Jobs list (refreshed with SVG icons, row click → detail)
 
-function Jobs({ onNavigate, onOpenJob, onNewJob }) {
+function Jobs({ onOpenJob, onNewJob }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [jobToDelete, setJobToDelete] = React.useState(null);

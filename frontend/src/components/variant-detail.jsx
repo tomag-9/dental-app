@@ -256,8 +256,8 @@ function ToothCrossDetail({
       qty: Number(item.quantity != null ? item.quantity : item.qty) || 1,
     };
   });
-  const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
   const total = allProcs.reduce((s, x) => s + (Number(x.p.price) || 0) * (Number(x.qty) || 1), 0);
+  const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
 
   // Highlight the teeth that fall in the currently-selected region scope (when the
   // user has turned the highlight on). This is purely visual context — region

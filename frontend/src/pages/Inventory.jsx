@@ -1,6 +1,6 @@
 // Inventory.jsx — Molaris Inventory (Sklad)
 
-function Inventory({ onNavigate, onCreate }) {
+function Inventory({ onCreate }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [exporting, setExporting] = React.useState(false);
@@ -129,7 +129,7 @@ function Inventory({ onNavigate, onCreate }) {
                     const s = stockState(r);
                     return React.createElement(Badge, { color: s.color }, s.label);
                   }},
-                { key: 'actions', label: '', width: 80, align: 'right', render: r =>
+                { key: 'actions', label: '', width: 80, align: 'right', render: () =>
                     React.createElement('div', { style: { display: 'flex', gap: 2, justifyContent: 'flex-end' } },
                       React.createElement(IconButton, { name: 'edit', title: 'Upraviť' }),
                       React.createElement(IconButton, { name: 'trash', title: 'Zmazať', destructive: true })

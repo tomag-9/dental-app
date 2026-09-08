@@ -1,6 +1,6 @@
 // Settings.jsx — Molaris Settings (Nastavenia)
 
-function Settings({ onNavigate, user }) {
+function Settings({ user }) {
   const [tab, setTab] = React.useState('profile');
   const [me, setMe] = React.useState(user || null);
   const [lab, setLab] = React.useState((user && user.lab) || null);

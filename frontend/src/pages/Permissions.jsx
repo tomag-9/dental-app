@@ -53,7 +53,7 @@ const PERM_ACTION_SUFFIX = {
 const allPermissionModules = () => PERM_MODULES.flatMap(group => group.items);
 const roleById = Object.fromEntries(PERM_ROLE_DEFS.map(role => [role.id, role]));
 
-function Permissions({ onNavigate, user }) {
+function Permissions({ user }) {
   const savedUser = user || (window.MolarisAPI.savedUser && window.MolarisAPI.savedUser()) || {};
   const labId = savedUser.lab && savedUser.lab.id;
   const [matrix, setMatrix] = React.useState(null);

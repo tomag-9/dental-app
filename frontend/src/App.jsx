@@ -116,8 +116,6 @@ function App() {
         onNewJob: () => setNewJobOpen(true),
         onNewPatient: () => setCreateType('patient'),
         onNewInvoice: () => setCreateType('invoice'),
-        onCreateClinic: () => setCreateType('clinic'),
-        onCreateDoctor: () => setCreateType('doctor'),
       }),
       React.createElement('main', {
         className: 'molaris-main',

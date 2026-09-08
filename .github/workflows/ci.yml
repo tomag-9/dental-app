@@ -140,11 +140,11 @@ jobs:
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run build
-    # Static smoke check — no stack needed, so it runs here rather than in the
-    # e2e job. Only smoke:no-prod-mocks is wired up: auth-smoke, permissions-smoke
-    # and role-nav-smoke still read the removed frontend/public/design/ directory
-    # and die with ENOENT (same root cause as #114, tracked separately), and
-    # visual-smoke needs a running stack plus a browser.
+    # Static checks — no stack needed, so they run here rather than in the e2e
+    # job. auth-smoke and permissions-smoke were deleted in #127 (redundant with
+    # e2e/auth.spec.js and e2e/permissions.spec.js) and role-nav-smoke became
+    # tests/unit/role-nav.test.mjs. visual-smoke stays out of CI on purpose: it
+    # needs a running stack plus a browser and asserts nothing.
     - name: Run production-mock smoke check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:no-prod-mocks
     # Guards against .jsx files that no longer appear in main.js `appModules`
@@ -155,6 +155,8 @@ jobs:
     # DEMO_STATE fixtures (#116).
     - name: Run tooth-chart data smoke check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:tooth-chart
+    - name: Run frontend unit tests
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run test:unit
     - name: Cleanup
       if: always()
       run: |
@@ -172,12 +174,15 @@ jobs:
     needs: [backend-tests, frontend-check]
     runs-on: [self-hosted]
     name: E2E Tests
-    # config/settings/dev.py hardcodes CSRF_TRUSTED_ORIGINS to localhost:5367
-    # and ignores the env var, so the frontend has to be published on that exact
-    # host port — which makes the port a shared resource on this runner. This
+    # BACKEND_PORT/FRONTEND_PORT below are fixed host ports, so two concurrent
+    # e2e jobs on this shared self-hosted runner would fight over them. This
     # group is deliberately NOT keyed on github.ref: it serialises e2e across
     # every branch. Everything else stays isolated per run through
     # COMPOSE_PROJECT_NAME, exactly like the other jobs.
+    #
+    # Since #123 the backend derives its CSRF trusted origins from FRONTEND_PORT
+    # (it used to hardcode 5367), so picking free ports per run is now the only
+    # thing standing between this job and full parallelism.
     concurrency:
       group: ${{ github.workflow }}-e2e-host-ports
       cancel-in-progress: false

@@ -22,7 +22,7 @@ const COLOR_BY_TYPE = {
   system: '#6b7280',
 };
 
-function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, onCreateClinic, onCreateDoctor }) {
+function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice }) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [addOpen, setAddOpen] = React.useState(false);
@@ -379,7 +379,6 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, o
     searchOpen && React.createElement(CommandPalette, {
       onClose: () => setSearchOpen(false),
       query: q, onQueryChange: setQ,
-      onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice,
       items: searchItems,
       loading: searchLoading,
       onAction: handleSearchAction,
@@ -423,12 +422,8 @@ function PopoverItem({ icon, label, sub, onClick }) {
   );
 }
 
-function PopoverDivider() {
-  return React.createElement('div', { style: { height: 1, background: '#f0ede5', margin: '4px 0' } });
-}
-
 // ─── Command palette ───────────────────────────────────────────────
-function CommandPalette({ onClose, query, onQueryChange, onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice, items, loading, onAction }) {
+function CommandPalette({ onClose, query, onQueryChange, items, loading, onAction }) {
   const inputRef = React.useRef(null);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const dialogId = React.useId ? React.useId() : 'command-palette';
