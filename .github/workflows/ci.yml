@@ -140,13 +140,15 @@ jobs:
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run lint
     - name: Run frontend build
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm frontend npm run build
-    # Static smoke check — no stack needed, so it runs here rather than in the
-    # e2e job. Only smoke:no-prod-mocks is wired up: auth-smoke, permissions-smoke
-    # and role-nav-smoke still read the removed frontend/public/design/ directory
-    # and die with ENOENT (same root cause as #114, tracked separately), and
-    # visual-smoke needs a running stack plus a browser.
+    # Static checks — no stack needed, so they run here rather than in the e2e
+    # job. auth-smoke and permissions-smoke were deleted in #127 (redundant with
+    # e2e/auth.spec.js and e2e/permissions.spec.js) and role-nav-smoke became
+    # tests/unit/role-nav.test.mjs. visual-smoke stays out of CI on purpose: it
+    # needs a running stack plus a browser and asserts nothing.
     - name: Run production-mock smoke check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:no-prod-mocks
+    - name: Run frontend unit tests
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run test:unit
     - name: Cleanup
       if: always()
       run: |

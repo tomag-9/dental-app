@@ -1,10 +1,25 @@
+// visual-smoke.mjs — MANUAL QA tool, deliberately not part of CI (#127).
+//
+// It needs a running backend + frontend stack and a real browser, and it makes
+// no assertions: it only captures screenshots of the main screens in two
+// viewports for a human to look at. Regressions that can be asserted belong in
+// e2e/*.spec.js instead.
+//
+// Usage:
+//   docker compose … up -d               # or npm run dev in another shell
+//   npm run smoke:visual                 # writes doc/qa/visual-smoke/<today>/
+// Env: VISUAL_SMOKE_URL, VISUAL_SMOKE_OUT, VITE_API_URL.
+
 import { chromium } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const rootDir = path.resolve(import.meta.dirname, '..', '..');
-const outDir = path.join(rootDir, 'doc', 'qa', 'visual-smoke', '2026-05-26');
+// The output directory used to be a hardcoded date, so every run overwrote the
+// same historical folder. Default to today's run instead.
+const outDir = process.env.VISUAL_SMOKE_OUT
+  || path.join(rootDir, 'doc', 'qa', 'visual-smoke', new Date().toISOString().slice(0, 10));
 const baseUrl = process.env.VISUAL_SMOKE_URL || 'http://127.0.0.1:5367';
 
 const screens = [
