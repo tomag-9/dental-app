@@ -412,8 +412,7 @@ class PaymentRequired(APIException):
 
     status_code = 402
     default_detail = (
-        "Predplatné laboratória nie je aktívne. Dáta zostávajú čitateľné "
-        "a exportovateľné, zápisy sú pozastavené."
+        "Predplatné laboratória nie je aktívne. Dáta zostávajú čitateľné a exportovateľné, zápisy sú pozastavené."
     )
     default_code = "subscription_read_only"
 

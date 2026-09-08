@@ -44,8 +44,12 @@ class CheckoutAndPortalTests(APITestCase):
         self.sub_b = Subscription.objects.create(
             lab=self.lab_b, plan="pro", status="active", stripe_customer_id="cus_lab_b"
         )
-        self.admin_a = User.objects.create_user(username="admin_a", email="admin_a@stripe.test", password="pw", role="admin", lab=self.lab_a)
-        self.member_a = User.objects.create_user(username="member_a", email="member_a@stripe.test", password="pw", role="user", lab=self.lab_a)
+        self.admin_a = User.objects.create_user(
+            username="admin_a", email="admin_a@stripe.test", password="pw", role="admin", lab=self.lab_a
+        )
+        self.member_a = User.objects.create_user(
+            username="member_a", email="member_a@stripe.test", password="pw", role="user", lab=self.lab_a
+        )
 
     def test_checkout_returns_only_a_url(self):
         self.client.force_authenticate(user=self.admin_a)
@@ -124,7 +128,9 @@ class CheckoutAndPortalTests(APITestCase):
         self.assertEqual(self.sub_a.stripe_customer_id, "cus_stub")
 
     def test_portal_returns_url_for_existing_customer(self):
-        admin_b = User.objects.create_user(username="admin_b", email="admin_b@stripe.test", password="pw", role="admin", lab=self.lab_b)
+        admin_b = User.objects.create_user(
+            username="admin_b", email="admin_b@stripe.test", password="pw", role="admin", lab=self.lab_b
+        )
         self.client.force_authenticate(user=admin_b)
         stub = stripe_stub()
 
@@ -167,7 +173,9 @@ class StripeDisabledTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Offline Lab")
         Subscription.objects.create(lab=self.lab, status="active")
-        self.admin = User.objects.create_user(username="offline_admin", email="offline_admin@stripe.test", password="pw", role="admin", lab=self.lab)
+        self.admin = User.objects.create_user(
+            username="offline_admin", email="offline_admin@stripe.test", password="pw", role="admin", lab=self.lab
+        )
 
     @override_settings(STRIPE_SECRET_KEY="", STRIPE_PRICE_PRO="")
     def test_module_reports_itself_disabled(self):
@@ -188,7 +196,9 @@ class SubscriptionReadOnlyLockTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Locked Lab")
         self.subscription = Subscription.objects.create(lab=self.lab, plan="pro", status="read_only")
-        self.admin = User.objects.create_user(username="locked_admin", email="locked_admin@stripe.test", password="pw", role="admin", lab=self.lab)
+        self.admin = User.objects.create_user(
+            username="locked_admin", email="locked_admin@stripe.test", password="pw", role="admin", lab=self.lab
+        )
         self.superadmin = User.objects.create_user(
             username="locked_super",
             email="locked_super@stripe.test",
@@ -309,10 +319,14 @@ class SubscriptionReadOnlyLockTests(APITestCase):
 
     def test_lab_without_subscription_row_is_not_locked(self):
         other_lab = Lab.objects.create(name="No Billing Lab")
-        admin = User.objects.create_user(username="nobilling_admin", email="nobilling_admin@stripe.test", password="pw", role="admin", lab=other_lab)
+        admin = User.objects.create_user(
+            username="nobilling_admin", email="nobilling_admin@stripe.test", password="pw", role="admin", lab=other_lab
+        )
         self.client.force_authenticate(user=admin)
 
-        response = self.client.post("/api/v1/crm/patients/", {"first_name": "A", "last_name": "B", "birth_number": "900101/1234"}, format="json")
+        response = self.client.post(
+            "/api/v1/crm/patients/", {"first_name": "A", "last_name": "B", "birth_number": "900101/1234"}, format="json"
+        )
 
         self.assertEqual(response.status_code, 201)
 
@@ -344,7 +358,9 @@ class SeatLimitTests(APITestCase):
     def setUp(self):
         self.lab = Lab.objects.create(name="Seat Lab")
         self.subscription = Subscription.objects.create(lab=self.lab, plan="pro", status="active", seats=2)
-        self.admin = User.objects.create_user(username="seat_admin", email="seat_admin@stripe.test", password="pw", role="admin", lab=self.lab)
+        self.admin = User.objects.create_user(
+            username="seat_admin", email="seat_admin@stripe.test", password="pw", role="admin", lab=self.lab
+        )
 
     def test_invitation_within_the_limit_is_accepted(self):
         self.client.force_authenticate(user=self.admin)
@@ -358,7 +374,9 @@ class SeatLimitTests(APITestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_invitation_over_the_limit_is_refused(self):
-        User.objects.create_user(username="seat_member", email="seat_member@stripe.test", password="pw", role="user", lab=self.lab)
+        User.objects.create_user(
+            username="seat_member", email="seat_member@stripe.test", password="pw", role="user", lab=self.lab
+        )
         self.client.force_authenticate(user=self.admin)
 
         response = self.client.post(
@@ -388,7 +406,9 @@ class SeatLimitTests(APITestCase):
 
     def test_lab_without_subscription_is_not_seat_limited(self):
         other_lab = Lab.objects.create(name="Unlimited Lab")
-        admin = User.objects.create_user(username="unlimited_admin", email="unlimited_admin@stripe.test", password="pw", role="admin", lab=other_lab)
+        admin = User.objects.create_user(
+            username="unlimited_admin", email="unlimited_admin@stripe.test", password="pw", role="admin", lab=other_lab
+        )
         self.client.force_authenticate(user=admin)
 
         response = self.client.post(
