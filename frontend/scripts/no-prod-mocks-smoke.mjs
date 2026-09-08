@@ -42,20 +42,13 @@ const PATTERNS = [
 //
 // `patterns` scopes the exception: anything matching a pattern NOT listed here
 // still fails, even in an excepted file.
-const EXCEPTIONS = [
-  {
-    // Design-prototype tooth-chart components. Still rendered from a static
-    // DEMO_STATE object instead of the workspace API. Removing them is tracked
-    // separately; failing CI on them here would just block every pipeline.
-    file: 'components/polozky-shared.jsx',
-    patterns: ['DEMO_*'],
-    issue: '#115',
-  },
-  { file: 'components/variant-anatomical.jsx', patterns: ['DEMO_*', 'demo literal'], issue: '#115' },
-  { file: 'components/variant-arch.jsx', patterns: ['DEMO_*', 'demo literal'], issue: '#115' },
-  { file: 'components/variant-detail.jsx', patterns: ['DEMO_*'], issue: '#116' },
-  { file: 'components/variant-grid.jsx', patterns: ['DEMO_*'], issue: '#116' },
-];
+// Empty on purpose: the tooth-chart prototypes that used to live here are gone.
+// The three losing design variants (variant-grid / variant-arch /
+// variant-anatomical) were deleted with #115 and `variant-detail.jsx` now derives
+// its state from the job payload (#116, see scripts/tooth-chart-smoke.mjs), so
+// `DEMO_STATE` no longer exists anywhere in src/.
+/** @type {{ file: string, patterns: string[], issue: string }[]} */
+const EXCEPTIONS = [];
 
 // ── Additional structural check: pages that must talk to the API ──────────
 // A page whose whole content is hardcoded is a mock even without a `fallback`

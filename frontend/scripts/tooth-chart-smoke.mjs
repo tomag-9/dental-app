@@ -174,6 +174,35 @@ if (typeof sandbox.ToothCrossDetail === 'function') {
   }
 }
 
+// ── 6. Panels render for every backend procedure_category ────────────────
+console.log('tooth-chart smoke: panels survive every backend procedure_category');
+const CATEGORIES = ['crown', 'bridge', 'denture', 'implant', 'orthodontic', 'repair', 'other', null];
+const catJob = {
+  id: 99,
+  items: CATEGORIES.map((cat, i) => ({
+    id: i, price_list_code: `X-${i}`, description: `Výkon ${i}`, tooth: String([11, 12, 13, 14, 15, 16, 17, 21][i]),
+    procedure_category: cat, quantity: 1, unit_price: '10.00', tooth_state: 'planned',
+  })),
+};
+try {
+  const tree = sandbox.ToothCrossDetail({ job: catJob, patient: { name: 'Kategórie Test' } });
+  const found = [];
+  (function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (typeof node.type === 'function') {
+      found.push(node.type.name);
+      // Render the child component too — a bad category only throws in there.
+      node.type(node.props);
+    }
+    for (const child of node.children || []) walk(child);
+  })(tree);
+  check('ProcSummaryPanel is rendered under the cross', found.includes('ProcSummaryPanel'), found.join(', '));
+  check('RegionProceduresPanel is rendered', found.includes('RegionProceduresPanel'));
+  check('every procedure_category renders', true);
+} catch (err) {
+  check('every procedure_category renders', false, err.message);
+}
+
 report();
 
 function report() {
