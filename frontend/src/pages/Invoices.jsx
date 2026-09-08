@@ -1,6 +1,6 @@
 // Invoices.jsx — Molaris Invoices (Faktúry)
 
-function Invoices({ onNavigate, onCreate }) {
+function Invoices({ onCreate }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [selected, setSelected] = React.useState(null);

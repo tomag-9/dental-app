@@ -1,13 +1,47 @@
 // Login.jsx — Molaris Login (Option A: Deep Teal)
 
+const GOOGLE_UNKNOWN_ACCOUNT_MESSAGE = 'Tento Google účet nie je priradený k žiadnemu laboratóriu. Požiadajte administrátora o pozvánku.';
+
 function Login({ onLogin }) {
   const [form, setForm] = React.useState({ username: '', password: '', totpCode: '' });
   const [totpRequired, setTotpRequired] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  // Google credential is kept only while the account still owes us a TOTP code,
+  // so the second submit can finish the same Google sign-in.
+  const [googleCredential, setGoogleCredential] = React.useState('');
+  const [googleVisible, setGoogleVisible] = React.useState(true);
+
+  const api = () => window.MolarisAPI || {};
+
+  const applyLoginError = (err) => {
+    if (err && err.requiresTotp) {
+      setTotpRequired(true);
+      setError('Zadajte overovací kód z autentifikačnej aplikácie.');
+      return;
+    }
+    if (err && err.invalidTotp) {
+      setError('Neplatný overovací kód.');
+      return;
+    }
+    const { isGoogleUnknownAccountError, isGoogleUnconfiguredError } = api();
+    if (isGoogleUnknownAccountError && isGoogleUnknownAccountError(err)) {
+      setGoogleCredential('');
+      setError(GOOGLE_UNKNOWN_ACCOUNT_MESSAGE);
+      return;
+    }
+    if (isGoogleUnconfiguredError && isGoogleUnconfiguredError(err)) {
+      setGoogleCredential('');
+      setGoogleVisible(false);
+      setError('Prihlásenie cez Google nie je na tomto serveri nakonfigurované.');
+      return;
+    }
+    setError(err && err.status === 401 ? 'Neplatné prihlasovacie údaje' : 'Backend nie je dostupný.');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (googleCredential) { finishGoogleLogin(googleCredential, form.totpCode); return; }
     if (!form.username || !form.password) { setError('Vyplňte všetky polia.'); return; }
     if (totpRequired && !form.totpCode) { setError('Zadajte overovací kód.'); return; }
     setLoading(true); setError('');
@@ -15,21 +49,35 @@ function Login({ onLogin }) {
       const user = await window.MolarisAPI.login(form.username, form.password, form.totpCode);
       onLogin(user);
     } catch (err) {
-      if (err && err.requiresTotp) {
-        setTotpRequired(true);
-        setError('Zadajte overovací kód z autentifikačnej aplikácie.');
-      } else if (err && err.invalidTotp) {
-        setError('Neplatný overovací kód.');
-      } else {
-        setError(err && err.status === 401 ? 'Neplatné prihlasovacie údaje' : 'Backend nie je dostupný.');
-      }
+      applyLoginError(err);
       setLoading(false);
     }
+  };
+
+  const finishGoogleLogin = async (credential, totpCode) => {
+    if (totpRequired && !totpCode) { setError('Zadajte overovací kód.'); return; }
+    setLoading(true); setError('');
+    try {
+      const user = await window.MolarisAPI.loginWithGoogle(credential, totpCode || '');
+      onLogin(user);
+    } catch (err) {
+      // A 2FA account must still pass the TOTP step — keep the credential so the
+      // user can finish with a code instead of starting over.
+      if (err && err.requiresTotp) setGoogleCredential(credential);
+      applyLoginError(err);
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = (credential) => {
+    setForm({ username: '', password: '', totpCode: '' });
+    finishGoogleLogin(credential, '');
   };
 
   const resetCredentials = () => {
     setTotpRequired(false);
     setError('');
+    setGoogleCredential('');
     setForm({ username: '', password: '', totpCode: '' });
   };
 
@@ -59,10 +107,24 @@ function Login({ onLogin }) {
         React.createElement('p', { style: { fontSize: 13, color: '#8a9490', marginTop: 6, marginBottom: 0 } }, 'Prihláste sa do svojho účtu')
       ),
 
+      googleVisible && React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+        React.createElement(GoogleSignInButton, {
+          onCredential: handleGoogleCredential,
+          onUnavailable: () => setGoogleVisible(false),
+          disabled: loading,
+          text: 'signin_with',
+        }),
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+          React.createElement('span', { style: { flex: 1, height: 1, background: '#ece7dc' } }),
+          React.createElement('span', { style: { fontSize: 11, color: '#b0bdb9', textTransform: 'uppercase', letterSpacing: '0.12em' } }, 'alebo'),
+          React.createElement('span', { style: { flex: 1, height: 1, background: '#ece7dc' } })
+        )
+      ),
+
       React.createElement('form', { onSubmit: handleSubmit, noValidate: true, style: { display: 'flex', flexDirection: 'column', gap: 14 } },
         error && React.createElement('div', { style: { background: '#fde8e6', border: '1px solid #f5c0bb', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#c0392b', textAlign: 'center' } }, error),
 
-        React.createElement('div', null,
+        !googleCredential && React.createElement('div', null,
           React.createElement('label', { style: { display: 'block', fontSize: 13, fontWeight: 500, color: '#1a2320', marginBottom: 6 } }, 'Používateľské meno'),
           React.createElement('div', { style: { position: 'relative' } },
             React.createElement('span', { style: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#b0bdb9', display: 'flex' } },
@@ -72,7 +134,7 @@ function Login({ onLogin }) {
           )
         ),
 
-        React.createElement('div', null,
+        !googleCredential && React.createElement('div', null,
           React.createElement('label', { style: { display: 'block', fontSize: 13, fontWeight: 500, color: '#1a2320', marginBottom: 6 } }, 'Heslo'),
           React.createElement('div', { style: { position: 'relative' } },
             React.createElement('span', { style: { position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#b0bdb9', display: 'flex' } },
@@ -100,7 +162,7 @@ function Login({ onLogin }) {
         totpRequired && React.createElement('button', {
           type: 'button', onClick: resetCredentials, disabled: loading,
           style: { width: '100%', height: 36, background: 'transparent', color: '#0d7c6b', border: '1px solid #cfe4df', borderRadius: 8, fontSize: 13, fontWeight: 600, fontFamily: 'Manrope,sans-serif', cursor: loading ? 'not-allowed' : 'pointer' }
-        }, 'Použiť iné meno alebo heslo'),
+        }, googleCredential ? 'Prihlásiť sa iným spôsobom' : 'Použiť iné meno alebo heslo'),
 
         React.createElement('p', { style: { textAlign: 'center', fontSize: 11, color: '#b0bdb9', margin: 0 } },
           'Demo: ', React.createElement('strong', null, 'admin'), ' / ', React.createElement('strong', null, 'admin')

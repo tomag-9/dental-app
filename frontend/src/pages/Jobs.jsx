@@ -1,6 +1,6 @@
 // Jobs.jsx — Molaris Jobs list (refreshed with SVG icons, row click → detail)
 
-function Jobs({ onNavigate, onOpenJob, onNewJob }) {
+function Jobs({ onOpenJob, onNewJob }) {
   const [search, setSearch] = React.useState('');
   const [tab, setTab] = React.useState('all');
   const [jobToDelete, setJobToDelete] = React.useState(null);
@@ -189,10 +189,11 @@ function Jobs({ onNavigate, onOpenJob, onNewJob }) {
                           detail: {
                             patient: {
                               name: r.patient,
-                              workId: String(r.id),
+                              workId: `#${r.id}`,
                             },
-                            fdi: 26,
-                            items: (r.raw && r.raw.items) || [],
+                            // The chart derives everything from the job payload
+                            // (tooth maps + items) — see buildToothChartState.
+                            job: r.raw || null,
                             readonly: true,
                           }
                         }))

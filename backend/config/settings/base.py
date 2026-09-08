@@ -140,7 +140,13 @@ REST_FRAMEWORK = {
         "apps.core.cookie_auth.JWTCookieAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+        # Read-only lock for labs whose subscription lapsed (issue #104).
+        # Views that override permission_classes pull it in via
+        # apps.core.access.AUTHENTICATED instead.
+        "apps.core.access.SubscriptionWriteAllowed",
+    ),
     "DEFAULT_PAGINATION_CLASS": "config.pagination.OptionalPageNumberPagination",
     "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
     "DEFAULT_THROTTLE_RATES": {
@@ -215,6 +221,44 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "0") == "1"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@dentallab.sk")
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
+
+# Sign in with Google (#107). Unset by default: the endpoint then answers 503 and
+# the UI hides the button, so dev and CI never depend on Google.
+GOOGLE_OAUTH_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
+# ---------------------------------------------------------------------------
+# Stripe billing
+#
+# Every value defaults to empty. With no secret key configured the whole
+# billing module reports itself as disabled (see
+# ``apps.finance.stripe_service.stripe_enabled``) and the checkout/portal/
+# webhook endpoints answer 503 instead of reaching out to the network, so dev
+# environments and CI never depend on Stripe being reachable or configured.
+# ---------------------------------------------------------------------------
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_PRO = os.environ.get("STRIPE_PRICE_PRO", "")
+STRIPE_PRICE_ENTERPRISE = os.environ.get("STRIPE_PRICE_ENTERPRISE", "")
+# Redirect targets. An env var present but empty falls back to the default —
+# a blank success_url would make Stripe reject the session.
+STRIPE_CHECKOUT_SUCCESS_URL = (
+    os.environ.get("STRIPE_CHECKOUT_SUCCESS_URL", "")
+    or f"{FRONTEND_BASE_URL}/settings/billing?checkout=success"
+)
+STRIPE_CHECKOUT_CANCEL_URL = (
+    os.environ.get("STRIPE_CHECKOUT_CANCEL_URL", "")
+    or f"{FRONTEND_BASE_URL}/settings/billing?checkout=cancelled"
+)
+STRIPE_PORTAL_RETURN_URL = (
+    os.environ.get("STRIPE_PORTAL_RETURN_URL", "") or f"{FRONTEND_BASE_URL}/settings/billing"
+)
+
+# Days a lab keeps full write access after a failed payment before the
+# read-only lock engages (issue #104).
+SUBSCRIPTION_GRACE_DAYS = int(os.environ.get("SUBSCRIPTION_GRACE_DAYS") or 14)
+# Where a locked-out lab is sent to pay. Surfaced in the 402 body.
+SUBSCRIPTION_BILLING_URL = (
+    os.environ.get("SUBSCRIPTION_BILLING_URL", "") or f"{FRONTEND_BASE_URL}/settings/billing"
+)
 
 
 class DefaultingJsonFormatter(jsonlogger.JsonFormatter):

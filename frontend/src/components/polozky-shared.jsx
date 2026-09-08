@@ -1,8 +1,7 @@
-// polozky-shared.jsx — Shared data + helpers for the 3 "Položky" tooth-chart variants.
+// polozky-shared.jsx — Shared data + helpers for the tooth chart (variant-detail.jsx).
 //   - FDI ↔ Universal ↔ Palmer notation conversion
 //   - Procedure catalog (crown / bridge / inlay / implant / etc.) with mini SVG glyphs
 //   - Tooth metadata (type per FDI code)
-//   - Demo state (which teeth carry which procedures) so all 3 artboards look "filled in"
 
 // ── FDI rows, in display order (patient-facing — patient's right is on the LEFT) ────
 const FDI_UPPER = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -186,53 +185,9 @@ function NotationToggle({ value, onChange }) {
   );
 }
 
-// ── Demo state — pre-filled procedures so every artboard looks "in progress" ──────
-// Each tooth maps to a list of procedure codes; `bridge` is a separate list of [start, end] FDI ranges.
-const DEMO_STATE = {
-  // upper right
-  procedures: {
-    14: ['INL-KER'],
-    15: ['KOR-ZIR', 'LEP-001'],
-    16: ['IMP-ABU', 'IMP-KOR', 'STL-001'],   // implant + crown
-    25: ['KOR-KER'],
-    26: ['KOR-ZIR', 'KOR-KER', 'LEP-001', 'STL-001'],  // selected — 4 procedures
-    36: ['ONL-KER'],
-    46: ['VEN-KER'],
-    47: ['MOS-3Z'], 46: ['MOS-3Z'], 45: ['MOS-3Z'],   // bridge spans 45-46-47 (overwritten — see bridges below)
-  },
-  missing: [18, 28, 38, 48, 31],   // wisdom teeth + one incisor extracted
-  implants: [16],                  // tooth 16 is an implant
-  temporary: [25],                 // tooth 25 has a temporary
-  bridges: [{ from: 45, to: 47, code: 'MOS-3Z' }],  // 3-unit bridge
-  selected: 26,
-};
-// fix the override above
-DEMO_STATE.procedures = {
-  14: ['INL-KER'],
-  15: ['KOR-ZIR', 'LEP-001'],
-  16: ['IMP-ABU', 'IMP-KOR', 'STL-001'],
-  25: ['KOR-KER'],
-  26: ['KOR-ZIR', 'KOR-KER', 'LEP-001', 'STL-001'],
-  36: ['ONL-KER'],
-  41: ['VEN-KER'],
-  45: ['MOS-3Z'],
-  46: ['MOS-3Z'],
-  47: ['MOS-3Z'],
-};
-
-// All catalog procedures grouped by category for the catalog sidebar
-const CATALOG_GROUPED = (() => {
-  const out = {};
-  for (const p of PROC_CATALOG) {
-    (out[p.cat] = out[p.cat] || []).push(p);
-  }
-  return out;
-})();
-
 Object.assign(window, {
   FDI_UPPER, FDI_LOWER, toothType, isUpper, quadrant,
   FDI_TO_UNIVERSAL, fdiToPalmer, fdiLabel,
   PROC_CATS, PROC_CATALOG, PROC_BY_CODE, PROC_GLYPHS, ProcGlyph,
   ToothShape, NotationToggle,
-  DEMO_STATE, CATALOG_GROUPED,
 });

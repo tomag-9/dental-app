@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
 
 # ---------------------------------------------------------------------------
 # Permission registry — the single source of truth for the action vocabulary.
@@ -319,3 +319,142 @@ class IsReadOnlyOrAdminOrSuperadminPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return _view_write_allowed(request, view)
+
+
+# ---------------------------------------------------------------------------
+# Subscription read-only lock (issue #104)
+#
+# When a lab's subscription lapses the tenant is *not* cut off from its data:
+# it keeps reading and exporting patient records and MDR traceability, which
+# it is legally obliged to retain for a decade and entitled to take with it
+# under GDPR art. 20. Only writes are refused, with 402 Payment Required and a
+# link to the billing page — a bare 403 would say "you may not", when the real
+# answer is "pay and you may".
+# ---------------------------------------------------------------------------
+
+#: Subscription statuses in which writes are refused.
+READ_ONLY_SUBSCRIPTION_STATUSES = frozenset({"read_only", "cancelled"})
+
+#: URL names (``request.resolver_match.url_name``) that stay writable while a
+#: lab is locked. Keep every exemption here — scattering them across viewsets
+#: is how a lab ends up unable to pay its way out of the lock.
+SUBSCRIPTION_LOCK_EXEMPT_URL_NAMES = frozenset(
+    {
+        # Authentication — a locked-out user must still be able to log out.
+        "session-login",
+        "logout",
+        "token_obtain_pair",
+        "token_refresh",
+        "csrf",
+        "2fa",
+        # Billing itself.
+        "stripe-webhook",
+    }
+)
+
+#: Path fragments that mark a request as billing-related or as an export.
+#: Exports are reads even when they are POSTs (a report body is a filter, not
+#: a mutation), so they stay available to a read-only lab.
+SUBSCRIPTION_LOCK_EXEMPT_PATH_FRAGMENTS = (
+    # Billing — checkout, portal, `my`, Stripe callbacks.
+    "/finance/subscriptions/",
+    "/finance/stripe/",
+    # Account security and session handling. These are not business writes, and
+    # locking a user out of logging out, rotating a password or revoking a
+    # stolen session would trade a billing problem for a security one.
+    "/auth/",
+    "/2fa/",
+    "/sessions/",
+    "/csrf/",
+    "me/password",
+    # Exports and printable documents. Some are POSTs whose body is a filter,
+    # not a mutation — they are reads, and a lapsed lab keeps its right to take
+    # its data with it.
+    "/export",
+    "/pdf",
+    "-pdf",
+    "/qr",
+    "/download",
+)
+
+
+def _is_subscription_lock_exempt(request):
+    """Single decision point for "this write survives the read-only lock"."""
+    match = getattr(request, "resolver_match", None)
+    url_name = getattr(match, "url_name", None)
+    if url_name and url_name in SUBSCRIPTION_LOCK_EXEMPT_URL_NAMES:
+        return True
+    path = (request.path or "").lower()
+    return any(fragment in path for fragment in SUBSCRIPTION_LOCK_EXEMPT_PATH_FRAGMENTS)
+
+
+def subscription_lock_state(user):
+    """Return ``(locked, subscription)`` for the user's lab.
+
+    A lab with no ``Subscription`` row at all is *not* locked: absence of a
+    billing record means billing was never set up for that tenant, which is
+    not the same as a lapsed one.
+    """
+    lab_id = getattr(user, "lab_id", None)
+    if not lab_id:
+        return False, None
+
+    from apps.finance.models import Subscription
+
+    subscription = Subscription.objects.filter(lab_id=lab_id).only("id", "status", "plan").first()
+    if subscription is None:
+        return False, None
+    return subscription.status in READ_ONLY_SUBSCRIPTION_STATUSES, subscription
+
+
+class PaymentRequired(APIException):
+    """402 — the tenant may read, but must settle billing before writing."""
+
+    status_code = 402
+    default_detail = (
+        "Predplatné laboratória nie je aktívne. Dáta zostávajú čitateľné a exportovateľné, zápisy sú pozastavené."
+    )
+    default_code = "subscription_read_only"
+
+
+class SubscriptionWriteAllowed(permissions.BasePermission):
+    """Block writes when the lab's subscription has lapsed.
+
+    Wired into ``DEFAULT_PERMISSION_CLASSES`` and into the explicit
+    ``permission_classes`` of the views that override the defaults. Raising
+    (rather than returning ``False``) is deliberate: DRF turns a ``False`` into
+    a generic 403, and the caller needs the 402 plus the payment link.
+    """
+
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            # Authentication is another permission's job; don't mask a 401.
+            return True
+        if is_superadmin(user):
+            return True
+        if _is_subscription_lock_exempt(request):
+            return True
+
+        locked, subscription = subscription_lock_state(user)
+        if not locked:
+            return True
+
+        from django.conf import settings
+
+        raise PaymentRequired(
+            {
+                "detail": PaymentRequired.default_detail,
+                "code": PaymentRequired.default_code,
+                "subscription_status": subscription.status,
+                "billing_url": getattr(settings, "SUBSCRIPTION_BILLING_URL", ""),
+            }
+        )
+
+
+#: Drop-in replacement for ``[permissions.IsAuthenticated]`` that also honours
+#: the subscription read-only lock. Views overriding ``permission_classes`` use
+#: this so they don't silently opt out of DEFAULT_PERMISSION_CLASSES.
+AUTHENTICATED = [permissions.IsAuthenticated, SubscriptionWriteAllowed]

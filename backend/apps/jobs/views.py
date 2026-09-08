@@ -1,5 +1,6 @@
 import csv
 from io import BytesIO, StringIO
+from urllib.parse import quote
 
 import openpyxl
 from django.db import transaction
@@ -7,6 +8,8 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -14,7 +17,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_admin_or_superadmin,
     is_superadmin,
@@ -30,7 +35,7 @@ from apps.core.models import AuditLog
 from apps.crm.models import Clinic, Patient
 from apps.crm.serializers import PatientSerializer
 
-from . import job_service
+from . import job_service, prosthetic_label
 from . import services as job_services
 from .models import (
     CalendarEvent,
@@ -51,6 +56,18 @@ from .serializers import (
 
 STATUS_LABELS = job_service.STATUS_LABELS
 
+#: Upper bound for the bulk label export — one A4 page per job.
+MAX_BULK_LABELS = 100
+
+
+def _label_pdf_response(content, filename):
+    response = HttpResponse(content, content_type="application/pdf")
+    # RFC 5987 — the Slovak filename must survive a Latin-1 header.
+    ascii_name = filename.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    quoted = quote(filename)
+    response["Content-Disposition"] = f"inline; filename=\"{ascii_name}\"; filename*=UTF-8''{quoted}"
+    return response
+
 
 class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Technician.objects.all()
@@ -58,6 +75,7 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -75,6 +93,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
     allowed_transitions = job_service.ALLOWED_TRANSITIONS
 
@@ -197,6 +216,11 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
                         pass
                     elif new_status not in self.allowed_transitions.get(job.status, set()):
                         skip_reason = f"Invalid transition {job.status}→{new_status}"
+                    else:
+                        try:
+                            job_service.assert_material_usage_recorded(job, new_status)
+                        except ValidationError:
+                            skip_reason = job_service.MATERIAL_USAGE_REQUIRED_MESSAGE
                 if skip_reason:
                     skipped.append({"id": job.id, "reason": skip_reason})
                     continue
@@ -252,6 +276,92 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         note = serializer.validated_data.get("note")
         job = job_services.transition_job_status(user=request.user, job=job, new_status=new_status, note=note)
         return Response(self.get_serializer(job).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "format",
+                OpenApiTypes.STR,
+                description="Pass 'json' for the label data snapshot; PDF is returned otherwise.",
+            )
+        ],
+        responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+        description=(
+            "Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json)."
+        ),
+    )
+    @action(detail=True, methods=["get"], url_path="prosthetic-label")
+    def prosthetic_label(self, request, pk=None):
+        """
+        Issue and render the prosthetic label for a single job (#98).
+
+        The label number is assigned here for the first time; re-requesting the
+        label reuses the existing number.
+        """
+        job = self.get_object()
+        try:
+            context = prosthetic_label.issue_prosthetic_label(request.user, job)
+        except prosthetic_label.LabelDataIncomplete as exc:
+            return Response(exc.as_dict(), status=status.HTTP_400_BAD_REQUEST)
+
+        if request.query_params.get("format") == "json":
+            return Response(context)
+        return _label_pdf_response(
+            prosthetic_label.render_label_pdf(context),
+            f"protetický_štítok_{context['job']['label_number'] or job.id}.pdf",
+        )
+
+    @extend_schema(
+        parameters=[OpenApiParameter("ids", OpenApiTypes.STR, description="Comma-separated job ids.")],
+        responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+        description="Bulk prosthetic label export — one job per page, in one PDF.",
+    )
+    @action(detail=False, methods=["get"], url_path="prosthetic-labels")
+    def prosthetic_labels(self, request):
+        """Bulk export: one PDF, one job per page (#98)."""
+        raw_ids = request.query_params.get("ids", "")
+        try:
+            ids = [int(value) for value in raw_ids.split(",") if value.strip()]
+        except ValueError:
+            return Response(
+                {"detail": "Parameter ids musí byť zoznam celých čísel oddelených čiarkou."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not ids:
+            return Response(
+                {"detail": "Zadajte aspoň jednu prácu v parametri ids."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(ids) > MAX_BULK_LABELS:
+            return Response(
+                {"detail": f"Naraz je možné vyexportovať najviac {MAX_BULK_LABELS} štítkov."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # get_queryset() is tenant-scoped, so foreign-lab ids simply do not appear.
+        jobs = list(self.get_queryset().filter(id__in=ids))
+        found = {job.id for job in jobs}
+        unknown = [job_id for job_id in ids if job_id not in found]
+        if unknown:
+            return Response(
+                {"detail": f"Práce neexistujú v tomto laboratóriu: {unknown}"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Preserve the caller's order.
+        by_id = {job.id: job for job in jobs}
+        ordered = [by_id[job_id] for job_id in ids]
+
+        try:
+            contexts = prosthetic_label.build_label_contexts(request.user, ordered)
+        except prosthetic_label.LabelDataIncomplete as exc:
+            return Response(exc.as_dict(), status=status.HTTP_400_BAD_REQUEST)
+
+        if request.query_params.get("format") == "json":
+            return Response({"labels": contexts})
+        return _label_pdf_response(
+            prosthetic_label.render_labels_pdf(contexts),
+            f"protetické_štítky_{len(contexts)}.pdf",
+        )
 
     @action(detail=True, methods=["get"], url_path="work_order")
     def work_order(self, request, pk=None):
@@ -585,6 +695,7 @@ class VacationViewSet(viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -612,6 +723,7 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
     ]
 
     def get_queryset(self):
@@ -644,7 +756,7 @@ def _calendar_window(request):
 
 
 class CalendarView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def _tenant_filter(self, model):
         user = self.request.user

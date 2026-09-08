@@ -1,12 +1,18 @@
-// variant-detail.jsx — Variant A reused as a DETAIL VIEW (modal/overlay content).
-//   Shows just the dental cross (no catalog, no table) — bigger, read-only by default,
-//   with an "Upraviť" toggle. Used by:
-//     · the LupaButton in Variant C (Položky step)
-//     · the patient detail page (history view of the patient's chart)
+// variant-detail.jsx — the dental cross (zubný kríž) shown as a detail overlay.
+//   Read-only by default, with an "Upraviť" toggle that writes back to the job.
+//   Mounted once from App.jsx as <ToothDetailModal> and opened by dispatching a
+//   window CustomEvent 'open-tooth-detail'.
 //
-// Mounted inside <ToothDetailModal>. The modal is opened by dispatching a window
-// CustomEvent 'open-tooth-detail' with { detail: { fdi, patient, items } } — Variant C
-// uses this to hand off state. If detail isn't passed, the modal falls back to DEMO_STATE.
+// Data (#116) — the chart is derived from the API payload, never from fixtures:
+//   · Job.input_tooth_procedures   — chrup na vstupe
+//   · Job.output_tooth_procedures  — výsledná práca (prekrýva vstup)
+//   · Patient.tooth_procedures     — kumulatívna mapa pacienta (PatientDetail)
+//   · JobItem.tooth / tooth_scope / tooth_state / bridge_span
+// `buildToothChartState()` below is the single pure derivation; it is exposed on
+// window so the tooth-chart smoke check can exercise it without a DOM.
+//
+// Notation: FDI (18–48) is canonical everywhere, matching apps/jobs/dental.py.
+// Palmer/Universal are display-only conversions done in polozky-shared.jsx.
 
 // ── Region-scope procedures ────────────────────────────────────────────────────────
 // These are procedures that were performed on a WHOLE region (full mouth, jaw, side,
@@ -49,74 +55,209 @@ const REGION_PROC_DEFS = {
   'FLU-001': { name: 'Fluoridácia',                   cat: 'tech',    glyph: 'drop' },
 };
 
-// Demo: which region-scoped procedures were performed and on which scope.
-const REGION_PROCEDURES = [
-  { id: 1, scope: 'all',   code: 'RTG-PAN', date: '12.3.2025', note: 'Vstupné vyšetrenie' },
-  { id: 2, scope: 'all',   code: 'DSH-001', date: '12.3.2025' },
-  { id: 3, scope: 'upper', code: 'BIE-001', date: '20.3.2025', note: '3 sedenia' },
-  { id: 4, scope: 'q2',    code: 'ANE-LOC', date: '20.3.2025' },
-  { id: 5, scope: 'q1',    code: 'ANE-LOC', date: '12.3.2025' },
-  { id: 6, scope: 'lower', code: 'PSR-001', date: '12.3.2025' },
-  { id: 7, scope: 'q3',    code: 'SCA-001', date: '02.4.2025' },
-  { id: 8, scope: 'all',   code: 'FLU-001', date: '02.4.2025' },
-];
+// ── Chart derivation ──────────────────────────────────────────────────────────────
+// Pure: turns the API payload into everything the cross needs to draw. Kept free of
+// React so it can be unit-checked (scripts/tooth-chart-smoke.mjs).
+//
+//   job              — a Job as returned by /api/jobs/jobs/ (raw, not normalised)
+//   items            — JobItem list; defaults to job.items
+//   toothProcedures  — a bare tooth map (Patient.tooth_procedures) used when there
+//                      is no job, e.g. the patient's cumulative chart
+//
+// Tooth map values may be a single value ("crown") or a list (["ONL-KER","LEP-001"]),
+// which is what the backend's JSONField allows today.
+const TOOTH_STATE_KEYWORDS = { missing: 'missing', implant: 'implants', temporary: 'temporary' };
+const FDI_ALL = new Set([...FDI_UPPER, ...FDI_LOWER]);
 
-function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly = true, patient, onClose, items = [] }) {
-  const [notation, setNotation] = React.useState(initialNotation || 'fdi');
-  const [selected, setSelected] = React.useState(initialSelected || 11);
-  const [isEditing, setIsEditing] = React.useState(!readonly);
-  const [regionScope, setRegionScope] = React.useState('all');
-  const [highlightRegion, setHighlightRegion] = React.useState(false);
-  const hasLiveItems = Array.isArray(items) && items.length > 0;
-  const liveProcs = {};
-  const liveRegionProcs = [];
-  for (const item of items || []) {
-    const tooth = String(item.tooth || '');
-    const code = item.code || item.price_list_code;
-    const scope = String(item.tooth_scope || item.scope || '').toUpperCase();
-    if (scope && code) {
-      liveRegionProcs.push({
-        id: `live-${liveRegionProcs.length}`,
-        scope: REGION_SCOPE_ALIASES[scope] || String(scope).toLowerCase(),
-        code,
-        date: item.created_at ? new Date(item.created_at).toLocaleDateString('sk-SK') : '',
-        note: item.name || item.description || '',
-      });
-    }
-    if (!tooth || !code) continue;
-    (liveProcs[tooth] = liveProcs[tooth] || []).push(code);
-  }
-  const procs = liveProcs;
-  const missing = new Set(Object.entries(liveProcs).filter(([, codes]) => codes.includes('EXT-001')).map(([tooth]) => Number(tooth)));
-  const implants = new Set(Object.entries(liveProcs).filter(([, codes]) => codes.some((code) => String(code).startsWith('IMP'))).map(([tooth]) => Number(tooth)));
+function buildToothChartState({ job = null, items = null, toothProcedures = null } = {}) {
+  const procs = {};
+  const missing = new Set();
+  const implants = new Set();
   const temporary = new Set();
   const bridges = [];
+  const regionProcedures = [];
+  const sets = { missing, implants, temporary };
 
-  // Procedures grouped per tooth for the detail panel
-  const allProcs = [];
-  for (const [t, codes] of Object.entries(procs)) {
-    for (const c of codes) {
-      const p = PROC_BY_CODE[c] || (hasLiveItems ? { code: c, name: c, price: 0, cat: 'tech' } : null);
-      if (!p) continue;
-      if (p.cat === 'bridge') {
-        const b = bridges.find(b => String(b.from) === t);
-        if (!b) continue;
-        allProcs.push({ tooth: `${b.from}–${b.to}`, code: c, p });
-      } else {
-        allProcs.push({ tooth: t, code: c, p });
+  const addCode = (tooth, code) => {
+    const key = String(tooth || '').trim();
+    if (!key || !code) return;
+    const list = (procs[key] = procs[key] || []);
+    if (!list.includes(code)) list.push(code);
+  };
+  const markState = (tooth, state) => {
+    const bucket = sets[TOOTH_STATE_KEYWORDS[String(state || '').toLowerCase()]];
+    if (bucket && Number(tooth)) bucket.add(Number(tooth));
+  };
+
+  // Tooth maps, weakest first: patient cumulative → job input → job output.
+  const maps = [
+    toothProcedures,
+    job && job.input_tooth_procedures,
+    job && job.output_tooth_procedures,
+  ];
+  for (const map of maps) {
+    if (!map || typeof map !== 'object') continue;
+    for (const [tooth, value] of Object.entries(map)) {
+      const codes = Array.isArray(value) ? value : [value];
+      for (const code of codes) {
+        if (code == null || code === '') continue;
+        addCode(tooth, String(code));
+        markState(tooth, code);
       }
     }
   }
-  if (hasLiveItems) {
-    allProcs.length = 0;
-    for (const item of items || []) {
-      const code = item.code || item.price_list_code;
-      const p = PROC_BY_CODE[code] || { code, name: item.name || code, price: Number(item.price || 0), cat: 'tech' };
-      allProcs.push({ tooth: String(item.tooth || '—'), code, p, qty: Number(item.qty || item.quantity || 1) || 1 });
+
+  // Job items — the authoritative per-tooth work.
+  const list = Array.isArray(items) ? items : (job && Array.isArray(job.items) ? job.items : []);
+  for (const item of list) {
+    const code = item.code || item.price_list_code;
+    if (!code) continue;
+    const scope = normalizeRegionScope(item.tooth_scope || item.scope);
+    if (scope) {
+      regionProcedures.push({
+        id: item.id != null ? `item-${item.id}` : `item-${regionProcedures.length}`,
+        scope,
+        code,
+        date: item.created_at ? new Date(item.created_at).toLocaleDateString('sk-SK') : '',
+        note: item.description || item.name || '',
+      });
+      continue;  // region work is listed separately, never drawn on the cross
     }
+
+    const span = expandFdiSpan(item.bridge_span);
+    if (span.length >= 2) {
+      // `teeth` is the span in display order; from/to are the numeric ends, which is
+      // what the label (#98) and the FDI notation expect.
+      const from = Math.min(...span);
+      const to = Math.max(...span);
+      if (!bridges.some((b) => b.from === from && b.to === to && b.code === code)) {
+        bridges.push({ from, to, code, teeth: span });
+      }
+      for (const tooth of span) addCode(tooth, code);
+    }
+
+    const teeth = expandFdiSpan(item.tooth);
+    for (const tooth of teeth) {
+      addCode(tooth, code);
+      markState(tooth, item.tooth_state);
+    }
+    if (teeth.length === 0 && span.length >= 2) markState(span[0], item.tooth_state);
   }
-  const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
+
+  return { procs, missing, implants, temporary, bridges, regionProcedures, items: list };
+}
+
+// '45-47' → [45, 46, 47]; '26' → [26]; anything unknown → []. Mirrors
+// apps/jobs/dental.py:expand_fdi_range, including the en/em-dash spellings.
+function expandFdiSpan(value) {
+  const raw = String(value == null ? '' : value).trim().replace(/[–—]/g, '-');
+  if (!raw) return [];
+  if (!raw.includes('-')) {
+    const fdi = Number(raw);
+    return FDI_ALL.has(fdi) ? [fdi] : [];
+  }
+  const [startRaw, endRaw] = raw.split('-');
+  const start = Number(String(startRaw).trim());
+  const end = Number(String(endRaw).trim());
+  const arch = FDI_UPPER.includes(start) && FDI_UPPER.includes(end)
+    ? FDI_UPPER
+    : (FDI_LOWER.includes(start) && FDI_LOWER.includes(end) ? FDI_LOWER : null);
+  if (!arch) return [];
+  const [lo, hi] = [arch.indexOf(start), arch.indexOf(end)].sort((a, b) => a - b);
+  return arch.slice(lo, hi + 1);
+}
+
+// Backend scope codes (A/U/L/Q1..Q4) → the panel's scope ids.
+function normalizeRegionScope(value) {
+  const raw = String(value == null ? '' : value).trim().toUpperCase();
+  if (!raw) return '';
+  if (REGION_SCOPE_ALIASES[raw]) return REGION_SCOPE_ALIASES[raw];
+  const lower = raw.toLowerCase();
+  return REGION_BY_ID[lower] ? lower : '';
+}
+
+function ToothCrossDetail({
+  initialSelected, notation: initialNotation, readonly = true,
+  patient, onClose, job = null, items = null, toothProcedures = null, onSaved = null,
+}) {
+  // Derived first: the initially focused tooth is the first one that actually
+  // carries work, so the chart opens on data rather than on a fixed FDI code.
+  const base = buildToothChartState({ job, items, toothProcedures });
+  const firstWorkedTooth = [...FDI_UPPER, ...FDI_LOWER].find((fdi) => (base.procs[String(fdi)] || []).length > 0);
+
+  const [notation, setNotation] = React.useState(initialNotation || 'fdi');
+  const [selected, setSelected] = React.useState(initialSelected || firstWorkedTooth || 11);
+  const [isEditing, setIsEditing] = React.useState(!readonly);
+  const [regionScope, setRegionScope] = React.useState('all');
+  const [highlightRegion, setHighlightRegion] = React.useState(false);
+  // Local overrides while editing. `null` = nothing edited yet, so the chart shows
+  // exactly what the API returned.
+  const [draft, setDraft] = React.useState(null);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState('');
+
+  // While editing, the draft map IS the whole chart — feeding `job` back in would
+  // re-merge input_tooth_procedures and resurrect teeth the user just cleared.
+  // Items stay in, because a billed item is not something the chart may delete.
+  const chart = draft ? buildToothChartState({ toothProcedures: draft.procedures, items: draft.items }) : base;
+  const { procs, missing, implants, temporary, bridges, regionProcedures } = chart;
+  const chartItems = chart.items;
+  const canEdit = Boolean(job && job.id);
+
+  // Toggling a tooth in edit mode writes into `draft.procedures`, which is the exact
+  // shape of Job.output_tooth_procedures — so saving is a plain PATCH of that field.
+  const currentMap = () => {
+    if (draft) return { ...draft.procedures };
+    const out = {};
+    for (const [tooth, codes] of Object.entries(base.procs)) out[tooth] = [...codes];
+    return out;
+  };
+  const setToothCodes = (fdi, codes) => {
+    const next = currentMap();
+    if (codes && codes.length) next[String(fdi)] = codes;
+    else delete next[String(fdi)];
+    setDraft({ procedures: next, items: chartItems });
+    setSaveError('');
+  };
+  const toggleMissing = (fdi) => {
+    const codes = (currentMap()[String(fdi)] || []).filter((c) => c !== 'missing');
+    setToothCodes(fdi, missing.has(fdi) ? codes : [...codes, 'missing']);
+  };
+  const save = async () => {
+    if (!draft || !canEdit) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const updated = await window.MolarisAPI.updateJob(job.id, { output_tooth_procedures: draft.procedures });
+      setDraft(null);
+      setIsEditing(false);
+      if (onSaved) onSaved(updated);
+    } catch (err) {
+      setSaveError((err && err.message) || 'Uloženie zubného kríža zlyhalo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Work items behind the chart, for the summary list under the cross.
+  const allProcs = chartItems.map((item, i) => {
+    const code = item.code || item.price_list_code;
+    const p = PROC_BY_CODE[code] || {
+      code,
+      name: item.description || item.name || code,
+      price: Number(item.unit_price != null ? item.unit_price : item.price) || 0,
+      cat: item.procedure_category || 'tech',
+    };
+    return {
+      key: item.id != null ? item.id : i,
+      tooth: String(item.bridge_span || item.tooth || item.tooth_scope || '—'),
+      code,
+      p,
+      qty: Number(item.quantity != null ? item.quantity : item.qty) || 1,
+    };
+  });
   const total = allProcs.reduce((s, x) => s + (Number(x.p.price) || 0) * (Number(x.qty) || 1), 0);
+  const fmt = n => n.toFixed(2).replace('.', ',') + ' €';
 
   // Highlight the teeth that fall in the currently-selected region scope (when the
   // user has turned the highlight on). This is purely visual context — region
@@ -137,12 +278,12 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
         React.createElement('div', null,
           React.createElement('div', { style: { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 16, fontWeight: 700, color: '#1a2320', letterSpacing: '-.015em' } }, 'Zubný kríž — detail'),
           React.createElement('div', { style: { fontSize: 11, color: '#8a9490', marginTop: 1 } },
-            (patient && patient.name) || 'Bezáková Gabriela',
+            (patient && patient.name) || 'Pacient nezadaný',
             React.createElement('span', { style: { color: '#b0bdb9', margin: '0 6px' } }, '·'),
             patient && patient.age && patient.age !== '—' ? `${patient.age} r.` : 'vek nezadaný',
             React.createElement('span', { style: { color: '#b0bdb9', margin: '0 6px' } }, '·'),
             'práca ',
-        React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', color: '#0d7c6b', fontWeight: 600 } }, (patient && patient.workId) || '—')
+        React.createElement('span', { style: { fontFamily: 'ui-monospace,monospace', color: '#0d7c6b', fontWeight: 600 } }, (patient && patient.workId) || (job && job.id ? `#${job.id}` : '—'))
           )
         )
       ),
@@ -150,8 +291,9 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
         React.createElement('span', { style: { fontSize: 11, color: '#8a9490' } }, 'Notácia:'),
         React.createElement(NotationToggle, { value: notation, onChange: setNotation }),
         React.createElement('div', { style: { width: 1, height: 26, background: '#e4ded4', margin: '0 4px' } }),
-        React.createElement('button', {
-          onClick: () => setIsEditing(e => !e),
+        canEdit && React.createElement('button', {
+          onClick: () => { setIsEditing(e => !e); setSaveError(''); },
+          title: 'Upraviť stav chrupu na tejto práci',
           style: {
             padding: '7px 14px', borderRadius: 6, border: '1px solid #e4ded4',
             background: isEditing ? '#d4f0eb' : '#fff', color: isEditing ? '#085c4e' : '#1a2320',
@@ -165,6 +307,17 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
           ),
           isEditing ? 'Hotovo' : 'Upraviť'
         ),
+        canEdit && isEditing && React.createElement('button', {
+          onClick: save,
+          disabled: saving || !draft,
+          title: draft ? 'Uložiť zmeny do práce' : 'Žiadne zmeny na uloženie',
+          style: {
+            padding: '7px 14px', borderRadius: 6, border: 'none',
+            background: draft && !saving ? '#0d7c6b' : '#cfd8d5', color: '#fff',
+            fontSize: 12, fontWeight: 700, fontFamily: 'Manrope,sans-serif',
+            cursor: draft && !saving ? 'pointer' : 'default',
+          }
+        }, saving ? 'Ukladám…' : 'Uložiť'),
         onClose && React.createElement('button', {
           onClick: onClose,
           style: { width: 32, height: 32, padding: 0, borderRadius: 6, border: 'none', background: 'transparent', color: '#5a6b66', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
@@ -189,14 +342,15 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
             React.createElement(LegendItem, { color: '#c0392b', label: 'Chýba' }),
             React.createElement(LegendItem, { color: '#d97706', label: 'Dočasná' }),
           ),
-          React.createElement('div', { style: { fontSize: 11, color: '#8a9490' } }, isEditing ? 'Klik = vybrať · pravý-klik = chýba' : 'Iba zobrazenie (read-only)')
+          React.createElement('div', { style: { fontSize: 11, color: saveError ? '#c0392b' : '#8a9490' } },
+            saveError || (isEditing ? 'Klik = vybrať · pravý-klik = prepnúť „chýba“' : 'Iba zobrazenie (read-only)'))
         ),
         // Labels — patient orientation
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', padding: '4px 38px 2px', fontSize: 10, fontWeight: 700, color: '#8a9490', letterSpacing: '.08em' } },
           React.createElement('span', null, 'PRAVÁ'), React.createElement('span', null, 'ĽAVÁ')
         ),
         // Upper row
-        React.createElement(DetailToothRow, { teeth: FDI_UPPER, notation, selected, onSelect: setSelected, procs, missing, implants, temporary, bridges, upper: true, big: true, highlightSet: regionHighlightSet }),
+        React.createElement(DetailToothRow, { teeth: FDI_UPPER, notation, selected, onSelect: setSelected, onToggleMissing: isEditing ? toggleMissing : null, procs, missing, implants, temporary, bridges, upper: true, big: true, highlightSet: regionHighlightSet }),
         // Midline
         React.createElement('div', { style: { display: 'flex', alignItems: 'center', padding: '6px 0', gap: 8 } },
           React.createElement('div', { style: { flex: 1, height: 1, background: 'repeating-linear-gradient(to right, #c8c0b4 0 6px, transparent 6px 12px)' } }),
@@ -204,38 +358,42 @@ function ToothCrossDetail({ initialSelected, notation: initialNotation, readonly
           React.createElement('div', { style: { flex: 1, height: 1, background: 'repeating-linear-gradient(to right, #c8c0b4 0 6px, transparent 6px 12px)' } }),
         ),
         // Lower row
-        React.createElement(DetailToothRow, { teeth: FDI_LOWER, notation, selected, onSelect: setSelected, procs, missing, implants, temporary, bridges, upper: false, big: true, highlightSet: regionHighlightSet }),
+        React.createElement(DetailToothRow, { teeth: FDI_LOWER, notation, selected, onSelect: setSelected, onToggleMissing: isEditing ? toggleMissing : null, procs, missing, implants, temporary, bridges, upper: false, big: true, highlightSet: regionHighlightSet }),
         React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', padding: '2px 38px 0', fontSize: 10, fontWeight: 700, color: '#8a9490', letterSpacing: '.08em' } },
           React.createElement('span', null, 'PRAVÁ'), React.createElement('span', null, 'ĽAVÁ')
         ),
       ),
 
       // BELOW the cross: selected-tooth info as a wide horizontal card
-      React.createElement(FocusedToothBar, { fdi: selected, notation, codes: procs[selected] || [], missing: missing.has(selected), implant: implants.has(selected), temporary: temporary.has(selected), fmt }),
+      React.createElement(FocusedToothBar, { fdi: selected, notation, codes: procs[selected] || [], missing: missing.has(selected), implant: implants.has(selected), temporary: temporary.has(selected) }),
+
+      // Work items behind the chart (prices live here, not on the cross)
+      allProcs.length > 0 && React.createElement(ProcSummaryPanel, { items: allProcs, total, fmt, selected }),
 
       // Region-scoped procedures (not drawn on the cross): full mouth / jaw / side / quadrant
       React.createElement(RegionProceduresPanel, {
-        notation,
         scope: regionScope, onScopeChange: setRegionScope,
         highlight: highlightRegion, onHighlightChange: setHighlightRegion,
-        items: hasLiveItems ? liveRegionProcs : REGION_PROCEDURES,
+        items: regionProcedures,
       })
     )
   );
 }
 
 // Larger version of a tooth row — same structure as Variant A but bigger.
-function DetailToothRow({ teeth, notation, selected, onSelect, procs, missing, implants, temporary, bridges, upper, big, highlightSet }) {
+function DetailToothRow({ teeth, notation, selected, onSelect, onToggleMissing, procs, missing, implants, temporary, bridges, upper, big, highlightSet }) {
   return React.createElement('div', { style: { display: 'flex', justifyContent: 'center', gap: 3 } },
     ...teeth.map((fdi, i) => {
       const codes = procs[fdi] || [];
-      const bridge = bridges.find(b => fdi >= b.from && fdi <= b.to);
+      const bridge = bridges.find(b => (b.teeth || []).includes(fdi));
       const isMidlineEnd = i === 7;
       return React.createElement(DetailToothCell, {
         key: fdi, fdi, notation,
-        selected: selected === fdi, onSelect,
+        selected: selected === fdi, onSelect, onToggleMissing,
         codes, missing: missing.has(fdi), implant: implants.has(fdi), temporary: temporary.has(fdi),
-        bridge, bridgeStart: bridge && fdi === bridge.from, bridgeEnd: bridge && fdi === bridge.to,
+        bridge,
+        bridgeStart: bridge && fdi === bridge.teeth[0],
+        bridgeEnd: bridge && fdi === bridge.teeth[bridge.teeth.length - 1],
         upper, big,
         marginRight: isMidlineEnd ? 18 : 0,
         regionHighlighted: highlightSet && highlightSet.has(fdi),
@@ -244,7 +402,7 @@ function DetailToothRow({ teeth, notation, selected, onSelect, procs, missing, i
   );
 }
 
-function DetailToothCell({ fdi, notation, selected, onSelect, codes, missing, implant, temporary, bridge, bridgeStart, bridgeEnd, upper, big, marginRight, regionHighlighted }) {
+function DetailToothCell({ fdi, notation, selected, onSelect, onToggleMissing, codes, missing, implant, temporary, bridge, bridgeStart, bridgeEnd, upper, big, marginRight, regionHighlighted }) {
   const counted = {};
   for (const c of codes) counted[c] = (counted[c] || 0) + 1;
   const items = Object.entries(counted);
@@ -285,6 +443,7 @@ function DetailToothCell({ fdi, notation, selected, onSelect, codes, missing, im
 
   return React.createElement('div', {
     onClick: () => onSelect(fdi),
+    onContextMenu: onToggleMissing ? (e) => { e.preventDefault(); onToggleMissing(fdi); } : undefined,
     style: {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       cursor: 'pointer', userSelect: 'none', position: 'relative',
@@ -326,7 +485,7 @@ function LegendItem({ color, label }) {
 // Wide horizontal info bar placed BELOW the cross: tooth glyph + name + flags on the
 // left, the per-tooth procedures laid out horizontally as chips on the right.
 // NOTE: no prices here — pricing belongs to the work-items table, not to the chart.
-function FocusedToothBar({ fdi, notation, codes, missing, implant, temporary, fmt }) {
+function FocusedToothBar({ fdi, notation, codes, missing, implant, temporary }) {
   const type = toothType(fdi);
   const typeLabel = { incisor: 'Rezák', canine: 'Očný zub', premolar: 'Predstoličkov', molar: 'Stolička' }[type];
   return React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 } },
@@ -413,7 +572,7 @@ function ProcSummaryPanel({ items, total, fmt, selected }) {
             React.createElement('span', { style: { fontSize: 10.5, color: '#8a9490' } }, `${group.length} výkon(ov)`)
           ),
           ...group.map((it, i) => {
-            const cat = PROC_CATS[it.p.cat];
+            const cat = PROC_CATS[it.p.cat] || PROC_CATS.tech;
             return React.createElement('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0 2px 8px' } },
               React.createElement('div', { style: { width: 14, height: 14, borderRadius: 3, background: cat.bg, color: cat.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } },
                 React.createElement(ProcGlyph, { code: it.code, size: 9 })
@@ -436,10 +595,10 @@ function ProcSummaryPanel({ items, total, fmt, selected }) {
 // Listens to window 'open-tooth-detail' events and shows the detail in an overlay.
 function ToothDetailModal() {
   const [open, setOpen] = React.useState(false);
-  const [props, setProps] = React.useState({ initialSelected: 26 });
+  const [props, setProps] = React.useState({ initialSelected: 11 });
 
   React.useEffect(() => {
-    const onOpen = (e) => { setProps(e.detail || {}); setOpen(true); };
+    const onOpen = (e) => { setProps({ ...(e.detail || {}), __openedAt: Date.now() }); setOpen(true); };
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('open-tooth-detail', onOpen);
     window.addEventListener('keydown', onKey);
@@ -471,11 +630,17 @@ function ToothDetailModal() {
       }
     },
       React.createElement(ToothCrossDetail, {
+        // Remount on every open so the chart re-derives from the payload it was
+        // handed instead of keeping the previous job's draft.
+        key: props.__openedAt || 0,
         initialSelected: props.fdi || props.initialSelected,
         notation: props.notation,
         readonly: props.readonly !== false,
         patient: props.patient,
-        items: props.items || [],
+        job: props.job || null,
+        items: props.items || null,
+        toothProcedures: props.toothProcedures || null,
+        onSaved: props.onSaved || null,
         onClose: () => setOpen(false),
       })
     )
@@ -485,7 +650,7 @@ function ToothDetailModal() {
 // ─── Region procedures panel ──────────────────────────────────────────────────────
 // Shows procedures performed on a WHOLE region (full mouth / jaw / side / quadrant).
 // These aren't drawn on the dental cross — they live in their own table here.
-function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightChange, items, notation }) {
+function RegionProceduresPanel({ scope, onScopeChange, highlight, onHighlightChange, items }) {
   const visible = scope === 'all' ? items : items.filter(it => it.scope === scope);
   const region = REGION_BY_ID[scope] || REGION_BY_ID.all;
   const counts = {};
@@ -655,4 +820,4 @@ function RegionGlyph({ glyph, size = 14 }) {
   });
 }
 
-Object.assign(window, { ToothCrossDetail, ToothDetailModal });
+Object.assign(window, { ToothCrossDetail, ToothDetailModal, buildToothChartState, expandFdiSpan });

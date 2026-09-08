@@ -1,6 +1,6 @@
 // Settings.jsx — Molaris Settings (Nastavenia)
 
-function Settings({ onNavigate, user }) {
+function Settings({ user }) {
   const [tab, setTab] = React.useState('profile');
   const [me, setMe] = React.useState(user || null);
   const [lab, setLab] = React.useState((user && user.lab) || null);
@@ -683,6 +683,97 @@ function TwoFactorSection() {
   );
 }
 
+function GoogleAccountSection() {
+  const [linked, setLinked] = React.useState(false);
+  const [hasPassword, setHasPassword] = React.useState(true);
+  const [loading, setLoading] = React.useState(true);
+  const [available, setAvailable] = React.useState(true);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [message, setMessage] = React.useState('');
+
+  const load = React.useCallback(async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.fetchMe) { setLoading(false); return; }
+    try {
+      const me = await window.MolarisAPI.fetchMe();
+      setLinked(!!(me && me.google_linked));
+      setHasPassword(me ? me.has_password !== false : true);
+      setError('');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Stav prepojenia s Google sa nepodarilo načítať.'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  const link = async (credential) => {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const data = await window.MolarisAPI.linkGoogleAccount(credential);
+      setLinked(!!(data && data.google_linked));
+      if (data && typeof data.has_password === 'boolean') setHasPassword(data.has_password);
+      setMessage('Google účet bol prepojený.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Prepojenie s Google účtom zlyhalo.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const unlink = async () => {
+    setBusy(true); setError(''); setMessage('');
+    try {
+      await window.MolarisAPI.unlinkGoogleAccount();
+      setLinked(false);
+      setMessage('Google účet bol odpojený.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Odpojenie Google účtu zlyhalo.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!available && !linked) return null;
+
+  return React.createElement('div', { style: { borderTop: '1px solid #f0ede5', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 } },
+    React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
+      React.createElement('div', null,
+        React.createElement('h3', { style: sectionTitleStyle },
+          'Google účet',
+          !loading && linked && React.createElement('span', { style: { marginLeft: 8, fontSize: 11, fontWeight: 700, color: '#0d7c6b', background: '#d4f0eb', borderRadius: 999, padding: '2px 8px' } }, 'Prepojené')
+        ),
+        React.createElement('p', { style: mutedTextStyle }, linked
+          ? 'Do aplikácie sa môžete prihlásiť tlačidlom „Prihlásiť sa cez Google“.'
+          : 'Prepojte si Google účet a prihlasujte sa jedným kliknutím. E-mail Google účtu sa musí zhodovať s e-mailom vášho účtu.')
+      ),
+      loading
+        ? React.createElement('span', { style: { fontSize: 12, color: '#8a9490' } }, 'Načítavam…')
+        : (linked
+          ? React.createElement(Button, {
+            variant: 'outline',
+            size: 'sm',
+            disabled: busy || !hasPassword,
+            title: hasPassword ? '' : 'Najprv si nastavte heslo.',
+            onClick: unlink,
+          }, busy ? 'Pracujem…' : 'Odpojiť')
+          : React.createElement(GoogleSignInButton, {
+            text: 'continue_with',
+            disabled: busy,
+            onCredential: link,
+            onUnavailable: () => setAvailable(false),
+          }))
+    ),
+
+    !loading && linked && !hasPassword && React.createElement('p', { style: { fontSize: 12, color: '#7a5c14', background: '#fff8e6', border: '1px solid #f0e2bb', borderRadius: 8, padding: '8px 10px', margin: 0 } },
+      'Odpojenie nie je možné: účet nemá nastavené heslo, takže by ste stratili prístup. Najprv si nastavte heslo.'),
+
+    error && React.createElement('p', { style: { fontSize: 12, color: '#c0392b', margin: 0 } }, error),
+    message && !error && React.createElement('p', { style: { fontSize: 12, color: '#0d7c6b', margin: 0 } }, message)
+  );
+}
+
 function SessionsSection() {
   const [sessions, setSessions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -841,6 +932,7 @@ function SecurityPanel({ form, onChange, onSave, status }) {
         )
       ),
       React.createElement(TwoFactorSection, null),
+      React.createElement(GoogleAccountSection, null),
       React.createElement(SessionsSection, null),
       React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
         React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490', alignSelf: 'center' } }, status || ''),

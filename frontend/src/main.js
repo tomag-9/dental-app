@@ -12,6 +12,7 @@ const appModules = [
   () => import('./components/Icon.jsx'),
   () => import('./components/Logo.jsx'),
   () => import('./components/Shared.jsx'),
+  () => import('./components/GoogleSignIn.jsx'),
   () => import('./components/QRCode.jsx'),
   () => import('./components/JobDetailSections.jsx'),
   () => import('./components/invoice-pdf.jsx'),

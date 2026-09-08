@@ -86,9 +86,7 @@ function App() {
     case 'sa_users':
     case 'sa_audit':
     case 'sa_system':
-    case 'sa_security':
     case 'sa_billing':
-    case 'sa_integrations':
                             pageEl = React.createElement(Superadmin,    { onNavigate: navigate, currentPage: page }); break;
     case 'superadmin':      pageEl = React.createElement(Superadmin,    { onNavigate: navigate, currentPage: 'sa_overview' }); break;
     default:                pageEl = user.role === 'superadmin'
@@ -118,8 +116,6 @@ function App() {
         onNewJob: () => setNewJobOpen(true),
         onNewPatient: () => setCreateType('patient'),
         onNewInvoice: () => setCreateType('invoice'),
-        onCreateClinic: () => setCreateType('clinic'),
-        onCreateDoctor: () => setCreateType('doctor'),
       }),
       React.createElement('main', {
         className: 'molaris-main',
@@ -136,10 +132,18 @@ function App() {
 const __molarisRoot = ReactDOM.createRoot(document.getElementById('root'));
 __molarisRoot.render(React.createElement(App));
 
+// Superadmin pages that actually exist. `sa_security` and `sa_integrations`
+// were removed in #109 (no backend behind them); any stale reference to them
+// now falls back to the overview instead of rendering a blank tab.
+const SUPERADMIN_PAGES = new Set([
+  'sa_overview', 'sa_tenants', 'sa_users', 'sa_audit', 'sa_system', 'sa_billing',
+]);
+
 function normalizePageForRole(page, role) {
   const pageId = String(page || '');
   if (role === 'superadmin') {
-    return pageId.startsWith('sa_') || pageId === 'settings' ? pageId : 'sa_overview';
+    if (pageId === 'settings' || SUPERADMIN_PAGES.has(pageId)) return pageId;
+    return 'sa_overview';
   }
   if (pageId.startsWith('sa_') || pageId === 'superadmin') return 'dashboard';
   const adminOnly = new Set(['finance', 'invoices', 'pricelist', 'inventory', 'materials', 'clinics', 'doctors', 'technicians', 'permissions', 'settings']);

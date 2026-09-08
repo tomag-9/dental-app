@@ -351,4 +351,7 @@ class InvoiceListSerializer(InvoiceSerializer):
 class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = "__all__"
+        # Stripe identifiers are deliberately excluded: the browser only ever
+        # receives redirect URLs minted server-side, never a customer or
+        # subscription id it could replay against Stripe.
+        exclude = ("stripe_customer_id", "stripe_subscription_id", "stripe_state_updated_at")

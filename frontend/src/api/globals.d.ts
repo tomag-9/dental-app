@@ -11,6 +11,16 @@ declare global {
     React: typeof import('react');
     ReactDOM: typeof import('react-dom/client');
     MolarisAPI: Record<string, unknown>;
+    /** Google Identity Services, injected by the accounts.google.com script (#108) */
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: Record<string, unknown>) => void;
+          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
+          cancel: () => void;
+        };
+      };
+    };
   }
 
   /** React is set as a global by main.js (`window.React = React`) */
