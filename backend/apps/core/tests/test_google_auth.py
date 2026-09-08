@@ -387,3 +387,17 @@ class GoogleAccountLinkTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertFalse(resp.data["google_linked"])
         self.assertTrue(resp.data["has_password"])
+
+
+class GoogleIdentityServicesCspTests(APITestCase):
+    """The GIS script comes from accounts.google.com — the CSP must not block it (#108)."""
+
+    def test_csp_allows_google_identity_services(self):
+        resp = self.client.get("/api/health/")
+        csp = resp["Content-Security-Policy"]
+        script_src = next(part for part in csp.split(";") if part.strip().startswith("script-src"))
+        frame_src = next(part for part in csp.split(";") if part.strip().startswith("frame-src"))
+        connect_src = next(part for part in csp.split(";") if part.strip().startswith("connect-src"))
+        self.assertIn("https://accounts.google.com", script_src)
+        self.assertIn("https://accounts.google.com", frame_src)
+        self.assertIn("https://accounts.google.com", connect_src)
