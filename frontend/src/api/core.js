@@ -95,6 +95,29 @@ export async function downloadBlob(path, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * Fetch a binary response (PDF) as an object URL, without triggering a download.
+ * Used for "Tlačiť" flows that open the file in a new tab for the browser's own
+ * print dialog, as opposed to `downloadBlob` which always saves to disk.
+ * @param {string} path
+ * @returns {Promise<string>} an object URL — caller is responsible for revoking it.
+ */
+export async function fetchBlobUrl(path) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    credentials: 'include',
+    headers: { Accept: '*/*' },
+  });
+  if (!response.ok) {
+    const data = await readJson(response);
+    const error = /** @type {ApiError} */ (new Error(data && data.detail ? data.detail : 'Request failed'));
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 function _refreshWorkspace() {
   window.__MOLARIS_WORKSPACE = null;
   window.dispatchEvent(new CustomEvent('molaris-workspace-refresh'));
