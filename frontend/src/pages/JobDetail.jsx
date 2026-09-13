@@ -1,13 +1,13 @@
 // JobDetail.jsx — Molaris Job Detail (full-page detail view)
 
-function JobDetail({ jobId, onBack }) {
+function JobDetail({ jobId, onBack, onNavigate, onOpenPatient }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const [actionError, setActionError] = React.useState('');
   const [changingStatus, setChangingStatus] = React.useState(false);
   const [pendingStatus, setPendingStatus] = React.useState(null);
   const [editMode, setEditMode] = React.useState(false);
   const [savingEdit, setSavingEdit] = React.useState(false);
-  const [editFields, setEditFields] = React.useState({ description: '', due_date: '', priority: 'normal', technician: '' });
+  const [editFields, setEditFields] = React.useState({ description: '', due_date: '', priority: 'normal', technician: '', diagnosis_code: '', health_note: '' });
   const workspaceJob = workspace.jobs && workspace.jobs.find((item) => String(item.id) === String(jobId));
   const rawJob = workspaceJob && workspaceJob.raw;
 
@@ -30,6 +30,8 @@ function JobDetail({ jobId, onBack }) {
       due_date: rawJob.due_date || '',
       priority: rawJob.priority || 'normal',
       technician: rawJob.technician ? String(rawJob.technician) : '',
+      diagnosis_code: rawJob.diagnosis_code || '',
+      health_note: rawJob.health_note || '',
     });
   }, [rawJob && rawJob.id]);
 
@@ -93,6 +95,8 @@ function JobDetail({ jobId, onBack }) {
         due_date: editFields.due_date || null,
         priority: editFields.priority || 'normal',
         technician: editFields.technician ? Number(editFields.technician) : null,
+        diagnosis_code: editFields.diagnosis_code || '',
+        health_note: editFields.health_note || '',
       });
       setEditMode(false);
     } catch (err) {
@@ -156,6 +160,7 @@ function JobDetail({ jobId, onBack }) {
           onSave: saveEdit,
         }),
         React.createElement(JobItemsTable, { rawJob }),
+        React.createElement(JobLabelSection, { rawJob, onNavigate, onOpenPatient }),
         React.createElement(JobAttachments, { rawJob })
       ),
       React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } },

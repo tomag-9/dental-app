@@ -15,6 +15,7 @@ const appModules = [
   () => import('./components/GoogleSignIn.jsx'),
   () => import('./components/QRCode.jsx'),
   () => import('./components/JobDetailSections.jsx'),
+  () => import('./components/JobLabelSection.jsx'),
   () => import('./components/invoice-pdf.jsx'),
   () => import('./components/InvoicePrintOverlay.jsx'),
   () => import('./components/InvoiceSections.jsx'),
