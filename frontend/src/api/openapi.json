@@ -358,13 +358,14 @@
         "type": "string"
       },
       "EventEnum": {
-        "description": "* `created` - Created\n* `updated` - Updated\n* `status_changed` - Status changed\n* `assigned` - Assigned\n* `deleted` - Deleted",
+        "description": "* `created` - Created\n* `updated` - Updated\n* `status_changed` - Status changed\n* `assigned` - Assigned\n* `deleted` - Deleted\n* `label_issued` - Prosthetic label issued",
         "enum": [
           "created",
           "updated",
           "status_changed",
           "assigned",
-          "deleted"
+          "deleted",
+          "label_issued"
         ],
         "type": "string"
       },
@@ -722,9 +723,8 @@
             "type": "string"
           },
           "quantity": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "unit_price": {
@@ -1018,6 +1018,9 @@
             "nullable": true,
             "type": "string"
           },
+          "contains_medicinal_substance": {
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "readOnly": true,
@@ -1088,8 +1091,24 @@
             "readOnly": true,
             "type": "string"
           },
+          "label_missing_fields": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
           "label_number": {
             "readOnly": true,
+            "type": "string"
+          },
+          "material_usage_missing": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "medicinal_substance_note": {
+            "maxLength": 255,
             "type": "string"
           },
           "output_tooth_procedures": {
@@ -1128,6 +1147,9 @@
           "received_at": {
             "format": "date",
             "nullable": true,
+            "type": "string"
+          },
+          "safety_performance_deviations": {
             "type": "string"
           },
           "seated_at": {
@@ -1187,7 +1209,9 @@
           "insurance_total",
           "lab",
           "label_issued_at",
+          "label_missing_fields",
           "label_number",
+          "material_usage_missing",
           "patient",
           "patient_details",
           "patient_total",
@@ -1260,8 +1284,7 @@
             ]
           },
           "quantity": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -1391,6 +1414,10 @@
             "nullable": true,
             "type": "string"
           },
+          "authorized_representative": {
+            "maxLength": 255,
+            "type": "string"
+          },
           "bank_account": {
             "maxLength": 50,
             "nullable": true,
@@ -1451,8 +1478,7 @@
             "type": "string"
           },
           "invoice_due_days": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -1463,19 +1489,24 @@
           "is_vat_payer": {
             "type": "boolean"
           },
+          "label_patient_identifier_mode": {
+            "$ref": "#/components/schemas/LabelPatientIdentifierModeEnum"
+          },
           "label_prefix": {
             "maxLength": 20,
             "type": "string"
           },
           "label_start_number": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
           "logo_url": {
             "maxLength": 500,
             "nullable": true,
+            "type": "string"
+          },
+          "mdr_declaration_text": {
             "type": "string"
           },
           "name": {
@@ -1495,6 +1526,12 @@
             "maxLength": 20,
             "nullable": true,
             "type": "string"
+          },
+          "production_sites": {
+            "type": "string"
+          },
+          "require_material_usage": {
+            "type": "boolean"
           },
           "slug": {
             "oneOf": [
@@ -1551,6 +1588,14 @@
           "updated_at"
         ],
         "type": "object"
+      },
+      "LabelPatientIdentifierModeEnum": {
+        "description": "* `name` - Meno pacienta\n* `code` - Kód pacienta",
+        "enum": [
+          "name",
+          "code"
+        ],
+        "type": "string"
       },
       "Manufacturer": {
         "properties": {
@@ -3127,6 +3172,9 @@
             "nullable": true,
             "type": "string"
           },
+          "contains_medicinal_substance": {
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "readOnly": true,
@@ -3197,8 +3245,24 @@
             "readOnly": true,
             "type": "string"
           },
+          "label_missing_fields": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
           "label_number": {
             "readOnly": true,
+            "type": "string"
+          },
+          "material_usage_missing": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "medicinal_substance_note": {
+            "maxLength": 255,
             "type": "string"
           },
           "output_tooth_procedures": {
@@ -3237,6 +3301,9 @@
           "received_at": {
             "format": "date",
             "nullable": true,
+            "type": "string"
+          },
+          "safety_performance_deviations": {
             "type": "string"
           },
           "seated_at": {
@@ -3294,6 +3361,10 @@
           "address": {
             "maxLength": 255,
             "nullable": true,
+            "type": "string"
+          },
+          "authorized_representative": {
+            "maxLength": 255,
             "type": "string"
           },
           "bank_account": {
@@ -3356,8 +3427,7 @@
             "type": "string"
           },
           "invoice_due_days": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -3368,19 +3438,24 @@
           "is_vat_payer": {
             "type": "boolean"
           },
+          "label_patient_identifier_mode": {
+            "$ref": "#/components/schemas/LabelPatientIdentifierModeEnum"
+          },
           "label_prefix": {
             "maxLength": 20,
             "type": "string"
           },
           "label_start_number": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
           "logo_url": {
             "maxLength": 500,
             "nullable": true,
+            "type": "string"
+          },
+          "mdr_declaration_text": {
             "type": "string"
           },
           "name": {
@@ -3400,6 +3475,12 @@
             "maxLength": 20,
             "nullable": true,
             "type": "string"
+          },
+          "production_sites": {
+            "type": "string"
+          },
+          "require_material_usage": {
+            "type": "boolean"
           },
           "slug": {
             "oneOf": [
@@ -3934,13 +4015,17 @@
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
+          "past_due_since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "plan": {
             "$ref": "#/components/schemas/PlanEnum"
           },
           "seats": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "status": {
@@ -4595,13 +4680,17 @@
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
+          "past_due_since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "plan": {
             "$ref": "#/components/schemas/PlanEnum"
           },
           "seats": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "status": {
@@ -4627,12 +4716,14 @@
         "type": "object"
       },
       "SubscriptionStatusEnum": {
-        "description": "* `active` - Aktívne\n* `past_due` - Po splatnosti\n* `cancelled` - Zrušené\n* `inactive` - Neaktívne",
+        "description": "* `active` - Aktívne\n* `trialing` - Skúšobná doba\n* `past_due` - Po splatnosti\n* `cancelled` - Zrušené\n* `inactive` - Neaktívne\n* `read_only` - Iba na čítanie",
         "enum": [
           "active",
+          "trialing",
           "past_due",
           "cancelled",
-          "inactive"
+          "inactive",
+          "read_only"
         ],
         "type": "string"
       },
@@ -9526,6 +9617,23 @@
         ]
       }
     },
+    "/api/finance/stripe/webhook/": {
+      "post": {
+        "description": "Stripe's authoritative channel for subscription lifecycle changes.\n\nThree deliberate exemptions, each of which would otherwise break delivery:\n\n* ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces\n  CSRF on cookie-authenticated requests, and Stripe carries no cookie and\n  no CSRF token. Dropping authentication also drops that check; the view is\n  additionally ``csrf_exempt`` so nothing re-adds it.\n* ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.\n  A burst of deliveries throttled to 429 is a burst of events lost after\n  Stripe exhausts its retries.\n* ``permission_classes = [AllowAny]`` — the signature *is* the\n  authentication. Nothing is processed before it verifies.",
+        "operationId": "finance_stripe_webhook_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
     "/api/finance/subscriptions/": {
       "get": {
         "operationId": "finance_subscriptions_list",
@@ -9614,9 +9722,99 @@
         ]
       }
     },
+    "/api/finance/subscriptions/checkout/": {
+      "post": {
+        "operationId": "finance_subscriptions_checkout_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
     "/api/finance/subscriptions/my/": {
       "get": {
         "operationId": "finance_subscriptions_my_retrieve",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
+    "/api/finance/subscriptions/portal/": {
+      "post": {
+        "operationId": "finance_subscriptions_portal_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -11237,6 +11435,43 @@
         ]
       }
     },
+    "/api/jobs/jobs/prosthetic-labels/": {
+      "get": {
+        "description": "Bulk prosthetic label export — one job per page, in one PDF.",
+        "operationId": "jobs_jobs_prosthetic_labels_retrieve",
+        "parameters": [
+          {
+            "description": "Comma-separated job ids.",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
     "/api/jobs/jobs/quick-create/": {
       "post": {
         "description": "Atomically create a patient (if needed) and a job in one request.\n\nExpected payload:\n  {\n    \"patient\": {\"first_name\": \"...\", \"last_name\": \"...\", \"birth_number\": \"...\", ...},\n    \"clinic_id\": <int>,           # required\n    \"job\": {\"description\": \"...\", \"due_date\": \"...\", ...}\n  }\nPatient is matched by birth_number if provided and already exists; otherwise created.",
@@ -11552,6 +11787,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/jobs/jobs/{id}/prosthetic-label/": {
+      "get": {
+        "description": "Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json).",
+        "operationId": "jobs_jobs_prosthetic_label_retrieve",
+        "parameters": [
+          {
+            "description": "Pass 'json' for the label data snapshot; PDF is returned otherwise.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A unique integer value identifying this job.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
                 }
               }
             },
@@ -19503,6 +19784,23 @@
         ]
       }
     },
+    "/api/v1/finance/stripe/webhook/": {
+      "post": {
+        "description": "Stripe's authoritative channel for subscription lifecycle changes.\n\nThree deliberate exemptions, each of which would otherwise break delivery:\n\n* ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces\n  CSRF on cookie-authenticated requests, and Stripe carries no cookie and\n  no CSRF token. Dropping authentication also drops that check; the view is\n  additionally ``csrf_exempt`` so nothing re-adds it.\n* ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.\n  A burst of deliveries throttled to 429 is a burst of events lost after\n  Stripe exhausts its retries.\n* ``permission_classes = [AllowAny]`` — the signature *is* the\n  authentication. Nothing is processed before it verifies.",
+        "operationId": "v1_finance_stripe_webhook_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/finance/subscriptions/": {
       "get": {
         "operationId": "v1_finance_subscriptions_list",
@@ -19591,9 +19889,99 @@
         ]
       }
     },
+    "/api/v1/finance/subscriptions/checkout/": {
+      "post": {
+        "operationId": "v1_finance_subscriptions_checkout_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/finance/subscriptions/my/": {
       "get": {
         "operationId": "v1_finance_subscriptions_my_retrieve",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/finance/subscriptions/portal/": {
+      "post": {
+        "operationId": "v1_finance_subscriptions_portal_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20667,6 +21055,43 @@
         ]
       }
     },
+    "/api/v1/jobs/jobs/prosthetic-labels/": {
+      "get": {
+        "description": "Bulk prosthetic label export — one job per page, in one PDF.",
+        "operationId": "v1_jobs_jobs_prosthetic_labels_retrieve",
+        "parameters": [
+          {
+            "description": "Comma-separated job ids.",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/jobs/jobs/quick-create/": {
       "post": {
         "description": "Atomically create a patient (if needed) and a job in one request.\n\nExpected payload:\n  {\n    \"patient\": {\"first_name\": \"...\", \"last_name\": \"...\", \"birth_number\": \"...\", ...},\n    \"clinic_id\": <int>,           # required\n    \"job\": {\"description\": \"...\", \"due_date\": \"...\", ...}\n  }\nPatient is matched by birth_number if provided and already exists; otherwise created.",
@@ -20982,6 +21407,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/jobs/jobs/{id}/prosthetic-label/": {
+      "get": {
+        "description": "Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json).",
+        "operationId": "v1_jobs_jobs_prosthetic_label_retrieve",
+        "parameters": [
+          {
+            "description": "Pass 'json' for the label data snapshot; PDF is returned otherwise.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A unique integer value identifying this job.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
                 }
               }
             },

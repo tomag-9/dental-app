@@ -1658,6 +1658,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/stripe/webhook/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Stripe's authoritative channel for subscription lifecycle changes.
+         *
+         *     Three deliberate exemptions, each of which would otherwise break delivery:
+         *
+         *     * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+         *       CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+         *       no CSRF token. Dropping authentication also drops that check; the view is
+         *       additionally ``csrf_exempt`` so nothing re-adds it.
+         *     * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+         *       A burst of deliveries throttled to 429 is a burst of events lost after
+         *       Stripe exhausts its retries.
+         *     * ``permission_classes = [AllowAny]`` — the signature *is* the
+         *       authentication. Nothing is processed before it verifies.
+         */
+        post: operations["finance_stripe_webhook_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/subscriptions/": {
         parameters: {
             query?: never;
@@ -1674,6 +1705,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/subscriptions/checkout/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["finance_subscriptions_checkout_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -1684,6 +1731,22 @@ export interface paths {
         get: operations["finance_subscriptions_my_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/subscriptions/portal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["finance_subscriptions_portal_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2082,6 +2145,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/jobs/prosthetic-labels/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bulk prosthetic label export — one job per page, in one PDF. */
+        get: operations["jobs_jobs_prosthetic_labels_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/jobs/quick-create/": {
         parameters: {
             query?: never;
@@ -2151,6 +2231,23 @@ export interface paths {
         get: operations["jobs_jobs_attachments_retrieve"];
         put?: never;
         post: operations["jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/prosthetic-label/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json). */
+        get: operations["jobs_jobs_prosthetic_label_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4540,6 +4637,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/stripe/webhook/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Stripe's authoritative channel for subscription lifecycle changes.
+         *
+         *     Three deliberate exemptions, each of which would otherwise break delivery:
+         *
+         *     * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+         *       CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+         *       no CSRF token. Dropping authentication also drops that check; the view is
+         *       additionally ``csrf_exempt`` so nothing re-adds it.
+         *     * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+         *       A burst of deliveries throttled to 429 is a burst of events lost after
+         *       Stripe exhausts its retries.
+         *     * ``permission_classes = [AllowAny]`` — the signature *is* the
+         *       authentication. Nothing is processed before it verifies.
+         */
+        post: operations["v1_finance_stripe_webhook_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/subscriptions/": {
         parameters: {
             query?: never;
@@ -4556,6 +4684,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/subscriptions/checkout/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_finance_subscriptions_checkout_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -4566,6 +4710,22 @@ export interface paths {
         get: operations["v1_finance_subscriptions_my_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/subscriptions/portal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_finance_subscriptions_portal_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4818,6 +4978,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/jobs/prosthetic-labels/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bulk prosthetic label export — one job per page, in one PDF. */
+        get: operations["v1_jobs_jobs_prosthetic_labels_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/jobs/quick-create/": {
         parameters: {
             query?: never;
@@ -4887,6 +5064,23 @@ export interface paths {
         get: operations["v1_jobs_jobs_attachments_retrieve"];
         put?: never;
         post: operations["v1_jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/jobs/{id}/prosthetic-label/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json). */
+        get: operations["v1_jobs_jobs_prosthetic_label_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5580,9 +5774,10 @@ export interface components {
          *     * `status_changed` - Status changed
          *     * `assigned` - Assigned
          *     * `deleted` - Deleted
+         *     * `label_issued` - Prosthetic label issued
          * @enum {string}
          */
-        EventEnum: "created" | "updated" | "status_changed" | "assigned" | "deleted";
+        EventEnum: "created" | "updated" | "status_changed" | "assigned" | "deleted" | "label_issued";
         /**
          * @description * `meeting` - Stretnutie
          *     * `pickup` - Vyzdvihnutie
@@ -5683,7 +5878,6 @@ export interface components {
             job?: number | null;
             /** Format: decimal */
             line_total?: string;
-            /** Format: int64 */
             quantity?: number;
             /** Format: decimal */
             unit_price?: string;
@@ -5763,6 +5957,7 @@ export interface components {
             readonly clinic_details: components["schemas"]["Clinic"];
             /** Format: date */
             completed_at?: string | null;
+            contains_medicinal_substance?: boolean;
             /** Format: date-time */
             readonly created_at: string;
             description?: string | null;
@@ -5783,7 +5978,12 @@ export interface components {
             readonly lab: number;
             /** Format: date-time */
             readonly label_issued_at: string | null;
+            readonly label_missing_fields: {
+                [key: string]: unknown;
+            }[];
             readonly label_number: string;
+            readonly material_usage_missing: boolean;
+            medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient: number;
             readonly patient_details: components["schemas"]["Patient"];
@@ -5795,6 +5995,7 @@ export interface components {
             procedure_quantities?: unknown;
             /** Format: date */
             received_at?: string | null;
+            safety_performance_deviations?: string;
             /** Format: date */
             seated_at?: string | null;
             /** Format: date */
@@ -5824,7 +6025,6 @@ export interface components {
             patient_amount?: string;
             price_list_code: string;
             procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            /** Format: int64 */
             quantity?: number;
             tooth?: string | null;
             tooth_scope?: (components["schemas"]["ToothScopeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -5859,6 +6059,7 @@ export interface components {
         };
         Lab: {
             address?: string | null;
+            authorized_representative?: string;
             bank_account?: string | null;
             bank_bic?: string | null;
             city?: string | null;
@@ -5872,18 +6073,20 @@ export interface components {
             garant_registration_number?: string;
             readonly id: number;
             invoice_default_note?: string;
-            /** Format: int64 */
             invoice_due_days?: number;
             invoice_prefix?: string;
             is_vat_payer?: boolean;
+            label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
             label_prefix?: string;
-            /** Format: int64 */
             label_start_number?: number;
             logo_url?: string | null;
+            mdr_declaration_text?: string;
             name: string;
             payment_method?: string;
             phone?: string | null;
             postal_code?: string | null;
+            production_sites?: string;
+            require_material_usage?: boolean;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
@@ -5893,6 +6096,12 @@ export interface components {
             vat_rate?: string;
             website?: (string) | null;
         };
+        /**
+         * @description * `name` - Meno pacienta
+         *     * `code` - Kód pacienta
+         * @enum {string}
+         */
+        LabelPatientIdentifierModeEnum: "name" | "code";
         Manufacturer: {
             country?: string;
             /** Format: date-time */
@@ -6464,6 +6673,7 @@ export interface components {
             readonly clinic_details?: components["schemas"]["Clinic"];
             /** Format: date */
             completed_at?: string | null;
+            contains_medicinal_substance?: boolean;
             /** Format: date-time */
             readonly created_at?: string;
             description?: string | null;
@@ -6484,7 +6694,12 @@ export interface components {
             readonly lab?: number;
             /** Format: date-time */
             readonly label_issued_at?: string | null;
+            readonly label_missing_fields?: {
+                [key: string]: unknown;
+            }[];
             readonly label_number?: string;
+            readonly material_usage_missing?: boolean;
+            medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient?: number;
             readonly patient_details?: components["schemas"]["Patient"];
@@ -6496,6 +6711,7 @@ export interface components {
             procedure_quantities?: unknown;
             /** Format: date */
             received_at?: string | null;
+            safety_performance_deviations?: string;
             /** Format: date */
             seated_at?: string | null;
             /** Format: date */
@@ -6512,6 +6728,7 @@ export interface components {
         };
         PatchedLab: {
             address?: string | null;
+            authorized_representative?: string;
             bank_account?: string | null;
             bank_bic?: string | null;
             city?: string | null;
@@ -6525,18 +6742,20 @@ export interface components {
             garant_registration_number?: string;
             readonly id?: number;
             invoice_default_note?: string;
-            /** Format: int64 */
             invoice_due_days?: number;
             invoice_prefix?: string;
             is_vat_payer?: boolean;
+            label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
             label_prefix?: string;
-            /** Format: int64 */
             label_start_number?: number;
             logo_url?: string | null;
+            mdr_declaration_text?: string;
             name?: string;
             payment_method?: string;
             phone?: string | null;
             postal_code?: string | null;
+            production_sites?: string;
+            require_material_usage?: boolean;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
@@ -6682,8 +6901,9 @@ export interface components {
             lab?: number;
             /** Format: decimal */
             mrr?: string | null;
+            /** Format: date-time */
+            past_due_since?: string | null;
             plan?: components["schemas"]["PlanEnum"];
-            /** Format: int64 */
             seats?: number;
             status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
@@ -6894,8 +7114,9 @@ export interface components {
             lab: number;
             /** Format: decimal */
             mrr?: string | null;
+            /** Format: date-time */
+            past_due_since?: string | null;
             plan?: components["schemas"]["PlanEnum"];
-            /** Format: int64 */
             seats?: number;
             status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
@@ -6905,12 +7126,14 @@ export interface components {
         };
         /**
          * @description * `active` - Aktívne
+         *     * `trialing` - Skúšobná doba
          *     * `past_due` - Po splatnosti
          *     * `cancelled` - Zrušené
          *     * `inactive` - Neaktívne
+         *     * `read_only` - Iba na čítanie
          * @enum {string}
          */
-        SubscriptionStatusEnum: "active" | "past_due" | "cancelled" | "inactive";
+        SubscriptionStatusEnum: "active" | "trialing" | "past_due" | "cancelled" | "inactive" | "read_only";
         TeamInvitation: {
             /** Format: date-time */
             readonly accepted_at: string | null;
@@ -9804,6 +10027,24 @@ export interface operations {
             };
         };
     };
+    finance_stripe_webhook_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     finance_subscriptions_list: {
         parameters: {
             query?: {
@@ -9853,6 +10094,31 @@ export interface operations {
             };
         };
     };
+    finance_subscriptions_checkout_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
     finance_subscriptions_my_retrieve: {
         parameters: {
             query?: never;
@@ -9861,6 +10127,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    finance_subscriptions_portal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -10811,6 +11102,28 @@ export interface operations {
             };
         };
     };
+    jobs_jobs_prosthetic_labels_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated job ids. */
+                ids?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     jobs_jobs_quick_create_create: {
         parameters: {
             query?: never;
@@ -11000,6 +11313,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_prosthetic_label_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Pass 'json' for the label data snapshot; PDF is returned otherwise. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this job. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };
@@ -15768,6 +16106,24 @@ export interface operations {
             };
         };
     };
+    v1_finance_stripe_webhook_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_finance_subscriptions_list: {
         parameters: {
             query?: {
@@ -15817,6 +16173,31 @@ export interface operations {
             };
         };
     };
+    v1_finance_subscriptions_checkout_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
     v1_finance_subscriptions_my_retrieve: {
         parameters: {
             query?: never;
@@ -15825,6 +16206,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    v1_finance_subscriptions_portal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -16455,6 +16861,28 @@ export interface operations {
             };
         };
     };
+    v1_jobs_jobs_prosthetic_labels_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated job ids. */
+                ids?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     v1_jobs_jobs_quick_create_create: {
         parameters: {
             query?: never;
@@ -16644,6 +17072,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_prosthetic_label_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Pass 'json' for the label data snapshot; PDF is returned otherwise. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this job. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };
