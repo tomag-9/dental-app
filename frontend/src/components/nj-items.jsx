@@ -3,6 +3,35 @@
 
 const NJ_SCOPE_LABELS = { A: 'Celý chrup', U: 'Horná čeľusť', L: 'Dolná čeľusť', Q1: 'Kvadrant 1', Q2: 'Kvadrant 2', Q3: 'Kvadrant 3', Q4: 'Kvadrant 4' };
 const NJ_SCOPE_OPTIONS = [{ value: '', label: '—' }, ...Object.keys(NJ_SCOPE_LABELS).map(value => ({ value, label: NJ_SCOPE_LABELS[value] }))];
+const NJ_ITEM_ROW_COLUMNS = 'minmax(180px,1fr) 60px 110px 56px 84px 96px 96px 96px 32px';
+
+// #96 — the protetický štítok invariant, confirmed by the client 2026-08-15:
+//   cena v ZT (total) = úhrada poisťovňou (insurance) + doplatok pacienta (patient)
+// Mirrors `apps.jobs.job_service.resolve_payment_split`: give one side and the
+// other is derived as the remainder so the invariant can never silently break
+// when the price changes; give neither and the split is left for the server
+// to default (from the price list, or the whole amount on the patient).
+function njRound2(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function resolvePaymentSplit(total, { insurance, patient } = {}) {
+  const t = njRound2(Number(total) || 0);
+  const hasInsurance = insurance !== '' && insurance != null && !Number.isNaN(Number(insurance));
+  const hasPatient = patient !== '' && patient != null && !Number.isNaN(Number(patient));
+  if (hasInsurance && !hasPatient) {
+    const ins = njRound2(Number(insurance));
+    return { insurance: ins, patient: njRound2(t - ins) };
+  }
+  if (hasPatient && !hasInsurance) {
+    const pat = njRound2(Number(patient));
+    return { insurance: njRound2(t - pat), patient: pat };
+  }
+  if (hasInsurance && hasPatient) {
+    return { insurance: njRound2(Number(insurance)), patient: njRound2(Number(patient)) };
+  }
+  return { insurance: null, patient: null };
+}
 
 function NJItems({ catalog = [], items = [], onItemsChange }) {
   const [selectedTooth, setSelectedTooth] = React.useState('');
@@ -30,10 +59,35 @@ function NJItems({ catalog = [], items = [], onItemsChange }) {
       tooth: selectedTooth,
       toothScope: '',
       qty: 1,
+      ipzpCode: '',
+      // #96 — neither side of the payment split is pre-filled; the backend
+      // defaults from the price list (or the whole amount on the patient)
+      // when both stay empty. splitEdited tracks which side the technician
+      // last typed into, so a later price/quantity change recomputes the
+      // *other* side instead of clobbering what was just typed.
+      insuranceAmount: '',
+      patientAmount: '',
+      splitEdited: null,
     }]);
     setSelectedCode('');
   };
-  const updateItem = (index, patch) => replaceItems(items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  // Applies `patch`, then re-derives the payment split from the invariant
+  // `insurance + patient == total` — same rule as job_service.resolve_payment_split.
+  const updateItem = (index, patch) => replaceItems(items.map((item, itemIndex) => {
+    if (itemIndex !== index) return item;
+    const next = { ...item, ...patch };
+    if ('insuranceAmount' in patch) next.splitEdited = 'insurance';
+    if ('patientAmount' in patch) next.splitEdited = 'patient';
+    const total = (Number(next.qty) || 0) * (Number(next.price) || 0);
+    if (next.splitEdited === 'insurance') {
+      const split = resolvePaymentSplit(total, { insurance: next.insuranceAmount });
+      next.patientAmount = split.patient == null ? '' : String(split.patient);
+    } else if (next.splitEdited === 'patient') {
+      const split = resolvePaymentSplit(total, { patient: next.patientAmount });
+      next.insuranceAmount = split.insurance == null ? '' : String(split.insurance);
+    }
+    return next;
+  }));
   const removeItem = index => replaceItems(items.filter((_, itemIndex) => itemIndex !== index));
   const selectProcedureForRow = (index, code) => {
     const procedure = normalizedCatalog.find(item => item.code === code);
@@ -81,18 +135,26 @@ function NJItems({ catalog = [], items = [], onItemsChange }) {
             items.length === 0
               ? React.createElement('div', { style: { padding: 24, color: '#8a9490', fontSize: 12.5, textAlign: 'center' } }, 'Zatiaľ nie je pridaný žiadny výkon.')
               : React.createElement('div', { style: { overflowX: 'auto' } },
-                  React.createElement('div', { style: { minWidth: 780 } },
-                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'minmax(180px,1fr) 60px 110px 64px 104px 32px', gap: 8, padding: '8px 12px', background: '#f0ede5', color: '#5a6b66', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' } },
+                  React.createElement('div', { style: { minWidth: 1180 } },
+                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: NJ_ITEM_ROW_COLUMNS, gap: 8, padding: '8px 12px', background: '#f0ede5', color: '#5a6b66', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase' } },
                       React.createElement('span', null, 'Výkon'),
                       React.createElement('span', null, 'Zub'),
                       React.createElement('span', null, 'Rozsah'),
                       React.createElement('span', { style: { textAlign: 'center' } }, 'Ks'),
                       React.createElement('span', { style: { textAlign: 'right' } }, 'Cena'),
+                      React.createElement('span', { title: 'Kód IPZP z číselníka zdravotnej poisťovne (napr. PFR91)' }, 'IPZP kód'),
+                      React.createElement('span', { style: { textAlign: 'right' }, title: 'Celková úhrada zdravotnou poisťovňou za túto položku' }, 'Poisťovňa'),
+                      React.createElement('span', { style: { textAlign: 'right' }, title: 'Celková úhrada pacientom za túto položku' }, 'Doplatok'),
                       React.createElement('span', null)
                     ),
                     ...items.map((item, index) => {
                       const toothInvalid = Boolean(item.tooth) && !item.toothScope && !/^\d{2}$/.test(item.tooth);
-                      return React.createElement('div', { key: item.id || `${item.code}-${index}`, style: { display: 'grid', gridTemplateColumns: 'minmax(180px,1fr) 60px 110px 64px 104px 32px', gap: 8, alignItems: 'center', padding: '9px 12px', borderTop: index ? '1px solid #f0ede5' : 'none' } },
+                      const itemTotal = (Number(item.qty) || 0) * (Number(item.price) || 0);
+                      const splitSum = njRound2((Number(item.insuranceAmount) || 0) + (Number(item.patientAmount) || 0));
+                      const splitMismatch = (item.insuranceAmount !== '' && item.insuranceAmount != null)
+                        && (item.patientAmount !== '' && item.patientAmount != null)
+                        && Math.abs(splitSum - itemTotal) > 0.01;
+                      return React.createElement('div', { key: item.id || `${item.code}-${index}`, style: { display: 'grid', gridTemplateColumns: NJ_ITEM_ROW_COLUMNS, gap: 8, alignItems: 'center', padding: '9px 12px', borderTop: index ? '1px solid #f0ede5' : 'none' } },
                       React.createElement(Select, {
                         size: 'sm', value: item.code,
                         onChange: option => selectProcedureForRow(index, option.value),
@@ -114,6 +176,28 @@ function NJItems({ catalog = [], items = [], onItemsChange }) {
                       }),
                       React.createElement('input', { type: 'number', min: 1, step: 1, value: item.qty, onChange: event => updateItem(index, { qty: Math.max(1, Number(event.target.value) || 1) }), style: { ...njItemInput, textAlign: 'center' } }),
                       React.createElement('div', { style: { textAlign: 'right', fontSize: 12.5, fontWeight: 600, color: '#1a2320' } }, fmtEur(item.price)),
+                      React.createElement('input', {
+                        value: item.ipzpCode || '',
+                        onChange: event => updateItem(index, { ipzpCode: event.target.value.toUpperCase() }),
+                        placeholder: 'napr. PFR91',
+                        style: njItemInput,
+                      }),
+                      React.createElement('input', {
+                        type: 'number', min: 0, step: 0.01,
+                        value: item.insuranceAmount == null ? '' : item.insuranceAmount,
+                        onChange: event => updateItem(index, { insuranceAmount: event.target.value }),
+                        placeholder: '0,00',
+                        title: 'Doplatok pacienta sa dopočíta automaticky ako zvyšok z ceny.',
+                        style: { ...njItemInput, textAlign: 'right', ...(splitMismatch ? { border: '1px solid #c0392b', background: '#fde8e6' } : {}) },
+                      }),
+                      React.createElement('input', {
+                        type: 'number', min: 0, step: 0.01,
+                        value: item.patientAmount == null ? '' : item.patientAmount,
+                        onChange: event => updateItem(index, { patientAmount: event.target.value }),
+                        placeholder: '0,00',
+                        title: 'Úhrada poisťovňou sa dopočíta automaticky ako zvyšok z ceny.',
+                        style: { ...njItemInput, textAlign: 'right', ...(splitMismatch ? { border: '1px solid #c0392b', background: '#fde8e6' } : {}) },
+                      }),
                       React.createElement(IconButton, { name: 'trash', title: 'Odstrániť položku', destructive: true, size: 28, onClick: () => removeItem(index) })
                     );
                     })
@@ -152,4 +236,4 @@ const njItemInput = {
   borderRadius: 6, background: '#fff', color: '#1a2320', fontFamily: 'Manrope,sans-serif', fontSize: 12,
 };
 
-Object.assign(window, { NJItems, NJ_SCOPE_LABELS });
+Object.assign(window, { NJItems, NJ_SCOPE_LABELS, resolvePaymentSplit });
