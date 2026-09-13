@@ -66,7 +66,7 @@ function App() {
   switch (page) {
     case 'dashboard':       pageEl = React.createElement(Dashboard,     { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
     case 'jobs':            pageEl = React.createElement(Jobs,          { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
-    case 'job_detail':      pageEl = React.createElement(JobDetail,     { jobId, onBack: () => navigate('jobs') }); break;
+    case 'job_detail':      pageEl = React.createElement(JobDetail,     { jobId, onBack: () => navigate('jobs'), onNavigate: navigate, onOpenPatient: openPatient }); break;
     case 'patients':        pageEl = React.createElement(Patients,      { onNavigate: navigate, onOpenPatient: openPatient, onCreate: () => setCreateType('patient') }); break;
     case 'patient_detail':  pageEl = React.createElement(PatientDetail, { patientId, onBack: () => navigate('patients'), onOpenJob: openJob }); break;
     case 'finance':         pageEl = React.createElement(Finance,       { onNavigate: navigate }); break;

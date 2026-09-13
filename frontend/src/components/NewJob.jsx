@@ -54,6 +54,10 @@ function NewJobDrawer({ open, onClose, initialPatient }) {
   const [data, setData] = React.useState({
     patient: initialPatient ? njPatientFromApi(initialPatient) : null, clinic: null, doctor: null, technician: null,
     received: njTodaySk(), due: '', priority: 'normal', note: '', toothColor: '', items: [],
+    // #94 — kept apart from `note` (Job.description, "Poznámka pre technika"):
+    // the label carries the clinical diagnosis and health-state note, which
+    // must stay machine-readable and not be mixed with the technician's memo.
+    diagnosisCode: '', healthNote: '',
   });
 
   const set = (k, v) => setData(d => ({ ...d, [k]: v }));
@@ -62,7 +66,7 @@ function NewJobDrawer({ open, onClose, initialPatient }) {
   const reset = () => {
     setStep(0);
     setError('');
-    setData({ patient: null, clinic: null, doctor: null, technician: null, received: njTodaySk(), due: '', priority: 'normal', note: '', toothColor: '', items: [] });
+    setData({ patient: null, clinic: null, doctor: null, technician: null, received: njTodaySk(), due: '', priority: 'normal', note: '', toothColor: '', items: [], diagnosisCode: '', healthNote: '' });
   };
   const close = () => { onClose(); reset(); };
   React.useEffect(() => {
@@ -113,12 +117,17 @@ function NewJobDrawer({ open, onClose, initialPatient }) {
         priority: data.priority,
         tooth_color: data.toothColor || null,
         description: data.note || data.items.map(item => item.name).filter(Boolean).join(', ') || (firstItem && firstItem.name) || 'Nová práca',
+        diagnosis_code: data.diagnosisCode || '',
+        health_note: data.healthNote || '',
         items: data.items.map(item => ({
           price_list_code: item.code,
           tooth: item.toothScope ? null : (/^\d{2}$/.test(String(item.tooth || '')) ? String(item.tooth) : null),
           tooth_scope: item.toothScope || null,
           quantity: Number(item.qty) || 1,
           procedure_category: NJ_PROCEDURE_CATEGORIES.has(item.cat) ? item.cat : null,
+          ipzp_code: item.ipzpCode || '',
+          insurance_amount: item.insuranceAmount === '' || item.insuranceAmount == null ? null : Number(item.insuranceAmount),
+          patient_amount: item.patientAmount === '' || item.patientAmount == null ? null : Number(item.patientAmount),
         })),
       });
       window.showToast && window.showToast('Práca bola vytvorená', { tone: 'success' });
@@ -339,6 +348,34 @@ function StepSchedule({ data, set }) {
           style: { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #e4ded4', borderRadius: 7, background: '#fff', color: '#1a2320', fontFamily: 'Manrope,sans-serif', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 84 }
         })
       )
+    ),
+    // #94 — deliberately its own group, visually separated from "Poznámka pre
+    // technika" above: the diagnosis and health-state note go on the
+    // protetický štítok and must stay machine-readable (MKCH-10 shape), never
+    // mixed with the free-form technician memo.
+    React.createElement('div', null,
+      React.createElement(GroupLabel, null, 'Údaje pre protetický štítok'),
+      React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 } },
+        React.createElement(Field, {
+          label: 'Diagnóza (MKCH-10)',
+          help: 'Tvar podľa MKCH-10, napr. K08.9.',
+          error: data.diagnosisCode && !/^[A-Z]\d{2}(\.\d)?$/.test(data.diagnosisCode.toUpperCase()) ? 'Zadajte kód v tvare A00 alebo A00.0.' : '',
+        },
+          React.createElement('input', {
+            value: data.diagnosisCode || '',
+            onChange: e => set('diagnosisCode', e.target.value.toUpperCase()),
+            placeholder: 'napr. K08.9',
+            style: dateStyle,
+          })
+        ),
+        React.createElement(Field, { label: 'Poznámka k zdravotnému stavu' },
+          React.createElement('textarea', {
+            value: data.healthNote || '', onChange: e => set('healthNote', e.target.value), rows: 2,
+            placeholder: 'Zdravotný stav pacienta relevantný pre pomôcku…',
+            style: { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #e4ded4', borderRadius: 7, background: '#fff', color: '#1a2320', fontFamily: 'Manrope,sans-serif', fontSize: 13, outline: 'none', resize: 'vertical', minHeight: 46 }
+          })
+        )
+      )
     )
   );
 }
@@ -381,8 +418,14 @@ function StepSummary({ data, fmt, total, items }) {
         React.createElement('span', { style: { fontSize: 16 } }, fmt(total)))
     ),
     data.note && React.createElement('div', null,
-      React.createElement(GroupLabel, null, 'Poznámka'),
-      React.createElement('div', { style: { padding: 12, background: '#fef9c3', borderLeft: '3px solid #d97706', borderRadius: 6, fontSize: 12.5, color: '#713f12', lineHeight: 1.5 } }, data.note))
+      React.createElement(GroupLabel, null, 'Poznámka pre technika'),
+      React.createElement('div', { style: { padding: 12, background: '#fef9c3', borderLeft: '3px solid #d97706', borderRadius: 6, fontSize: 12.5, color: '#713f12', lineHeight: 1.5 } }, data.note)),
+    (data.diagnosisCode || data.healthNote) && React.createElement('div', null,
+      React.createElement(GroupLabel, null, 'Údaje pre protetický štítok'),
+      React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+        data.diagnosisCode && React.createElement(NJSummaryRow, { label: 'Diagnóza (MKCH-10)', value: data.diagnosisCode }),
+        data.healthNote && React.createElement('div', { style: { padding: 12, background: '#eef7f4', borderLeft: '3px solid #0d7c6b', borderRadius: 6, fontSize: 12.5, color: '#085c4e', lineHeight: 1.5 } }, data.healthNote)
+      ))
   );
 }
 

@@ -191,12 +191,33 @@ function JobHeader({ rawJob, workspaceJob, editMode, editFields, technicians, sa
         }),
         React.createElement('div', { style: { marginTop: 12 } },
           React.createElement(FormField, {
-            label: 'Poznámka / popis',
+            label: 'Poznámka pre technika',
             type: 'textarea',
             rows: 4,
             value: editFields.description,
             onChange: e => onFieldChange('description', e.target.value),
           })
+        ),
+        // #94 — kept in its own group, apart from "Poznámka pre technika" above:
+        // the diagnosis and health-state note feed the protetický štítok and
+        // must stay machine-readable, not mixed into the technician's memo.
+        React.createElement('div', { style: { marginTop: 16, paddingTop: 12, borderTop: '1px solid #ece7dc' } },
+          React.createElement('div', { style: { fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 } }, 'Údaje pre protetický štítok'),
+          React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 } },
+            React.createElement(FormField, {
+              label: 'Diagnóza (MKCH-10)',
+              placeholder: 'napr. K08.9',
+              value: editFields.diagnosis_code,
+              onChange: e => onFieldChange('diagnosis_code', e.target.value.toUpperCase()),
+            }),
+            React.createElement(FormField, {
+              label: 'Poznámka k zdravotnému stavu',
+              type: 'textarea',
+              rows: 2,
+              value: editFields.health_note,
+              onChange: e => onFieldChange('health_note', e.target.value),
+            })
+          )
         ),
         React.createElement('div', { style: { marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
           React.createElement(Button, { variant: 'outline', onClick: onCancel, disabled: savingEdit }, 'Zrušiť'),

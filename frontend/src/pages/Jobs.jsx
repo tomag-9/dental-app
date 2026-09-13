@@ -12,6 +12,9 @@ function Jobs({ onOpenJob, onNewJob }) {
   const [exporting, setExporting] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [error, setError] = React.useState('');
+  // #100 — hromadná tlač protetických štítkov zo zoznamu prác.
+  const [selectedJobIds, setSelectedJobIds] = React.useState([]);
+  const [printingLabels, setPrintingLabels] = React.useState(false);
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
   // 'completed' groups 4 backend statuses; the server can only filter on one, so fetch
@@ -89,6 +92,22 @@ function Jobs({ onOpenJob, onNewJob }) {
           }
         },
       }, React.createElement(Icon, { name: 'download', size: 14 }), exporting ? 'Exportujem…' : 'CSV export'),
+      selectedJobIds.length > 0 && React.createElement(Button, {
+        key: 'labels',
+        variant: 'outline',
+        disabled: printingLabels,
+        onClick: async () => {
+          setPrintingLabels(true);
+          setError('');
+          try {
+            await window.MolarisAPI.downloadProstheticLabelsBulk(selectedJobIds);
+          } catch (err) {
+            setError((err && err.data && err.data.detail) || (err && err.message) || 'Štítky sa nepodarilo vyexportovať.');
+          } finally {
+            setPrintingLabels(false);
+          }
+        },
+      }, React.createElement(Icon, { name: 'printer', size: 14 }), printingLabels ? 'Exportujem štítky…' : `Vytlačiť štítky (${selectedJobIds.length})`),
     ]
   });
 
@@ -171,6 +190,17 @@ function Jobs({ onOpenJob, onNewJob }) {
           : React.createElement(DataTable, {
               onRowClick: (r) => onOpenJob && onOpenJob(r.id),
               columns: [
+                { key: 'select', label: React.createElement('input', {
+                    type: 'checkbox',
+                    title: 'Vybrať všetky zobrazené práce',
+                    checked: filtered.length > 0 && selectedJobIds.length === filtered.length,
+                    onChange: () => setSelectedJobIds(selectedJobIds.length === filtered.length ? [] : filtered.map(j => j.id)),
+                  }), width: 34, render: r => React.createElement('input', {
+                    type: 'checkbox',
+                    checked: selectedJobIds.includes(r.id),
+                    onClick: e => e.stopPropagation(),
+                    onChange: () => setSelectedJobIds(current => current.includes(r.id) ? current.filter(id => id !== r.id) : [...current, r.id]),
+                  }) },
                 { key: 'id', label: 'ID', width: 70, render: r => React.createElement('span', { style: { fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: '#0d7c6b' } }, `#${r.id}`) },
                 { key: 'patient', label: 'Pacient', render: r => React.createElement('div', null,
                     React.createElement('div', { style: { fontWeight: 600 } }, r.patient),
