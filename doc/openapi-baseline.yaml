@@ -3026,6 +3026,30 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/finance/stripe/webhook/:
+    post:
+      operationId: finance_stripe_webhook_create
+      description: |-
+        Stripe's authoritative channel for subscription lifecycle changes.
+
+        Three deliberate exemptions, each of which would otherwise break delivery:
+
+        * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+          CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+          no CSRF token. Dropping authentication also drops that check; the view is
+          additionally ``csrf_exempt`` so nothing re-adds it.
+        * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+          A burst of deliveries throttled to 429 is a burst of events lost after
+          Stripe exhausts its retries.
+        * ``permission_classes = [AllowAny]`` — the signature *is* the
+          authentication. Nothing is processed before it verifies.
+      tags:
+      - finance
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/finance/subscriptions/:
     get:
       operationId: finance_subscriptions_list
@@ -3178,11 +3202,63 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/finance/subscriptions/checkout/:
+    post:
+      operationId: finance_subscriptions_checkout_create
+      tags:
+      - finance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
   /api/finance/subscriptions/my/:
     get:
       operationId: finance_subscriptions_my_retrieve
       tags:
       - finance
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+  /api/finance/subscriptions/portal/:
+    post:
+      operationId: finance_subscriptions_portal_create
+      tags:
+      - finance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -4152,6 +4228,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/jobs/jobs/{id}/prosthetic-label/:
+    get:
+      operationId: jobs_jobs_prosthetic_label_retrieve
+      description: Issue the prosthetic label for the job and return it as PDF (or
+        as its data snapshot with ?format=json).
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+        description: Pass 'json' for the label data snapshot; PDF is returned otherwise.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this job.
+        required: true
+      tags:
+      - jobs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/jobs/jobs/{id}/transition-status/:
     post:
       operationId: jobs_jobs_transition_status_create
@@ -4250,6 +4355,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+          description: ''
+  /api/jobs/jobs/prosthetic-labels/:
+    get:
+      operationId: jobs_jobs_prosthetic_labels_retrieve
+      description: Bulk prosthetic label export — one job per page, in one PDF.
+      parameters:
+      - in: query
+        name: ids
+        schema:
+          type: string
+        description: Comma-separated job ids.
+      tags:
+      - jobs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/jobs/jobs/quick-create/:
     post:
@@ -9307,6 +9434,30 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/finance/stripe/webhook/:
+    post:
+      operationId: v1_finance_stripe_webhook_create
+      description: |-
+        Stripe's authoritative channel for subscription lifecycle changes.
+
+        Three deliberate exemptions, each of which would otherwise break delivery:
+
+        * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+          CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+          no CSRF token. Dropping authentication also drops that check; the view is
+          additionally ``csrf_exempt`` so nothing re-adds it.
+        * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+          A burst of deliveries throttled to 429 is a burst of events lost after
+          Stripe exhausts its retries.
+        * ``permission_classes = [AllowAny]`` — the signature *is* the
+          authentication. Nothing is processed before it verifies.
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/finance/subscriptions/:
     get:
       operationId: v1_finance_subscriptions_list
@@ -9459,11 +9610,63 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/finance/subscriptions/checkout/:
+    post:
+      operationId: v1_finance_subscriptions_checkout_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
   /api/v1/finance/subscriptions/my/:
     get:
       operationId: v1_finance_subscriptions_my_retrieve
       tags:
       - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+  /api/v1/finance/subscriptions/portal/:
+    post:
+      operationId: v1_finance_subscriptions_portal_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Subscription'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -10111,6 +10314,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/v1/jobs/jobs/{id}/prosthetic-label/:
+    get:
+      operationId: v1_jobs_jobs_prosthetic_label_retrieve
+      description: Issue the prosthetic label for the job and return it as PDF (or
+        as its data snapshot with ?format=json).
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+        description: Pass 'json' for the label data snapshot; PDF is returned otherwise.
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this job.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/jobs/jobs/{id}/transition-status/:
     post:
       operationId: v1_jobs_jobs_transition_status_create
@@ -10209,6 +10441,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/jobs/jobs/prosthetic-labels/:
+    get:
+      operationId: v1_jobs_jobs_prosthetic_labels_retrieve
+      description: Bulk prosthetic label export — one job per page, in one PDF.
+      parameters:
+      - in: query
+        name: ids
+        schema:
+          type: string
+        description: Comma-separated job ids.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/v1/jobs/jobs/quick-create/:
     post:
@@ -12147,6 +12401,7 @@ components:
       - status_changed
       - assigned
       - deleted
+      - label_issued
       type: string
       description: |-
         * `created` - Created
@@ -12154,6 +12409,7 @@ components:
         * `status_changed` - Status changed
         * `assigned` - Assigned
         * `deleted` - Deleted
+        * `label_issued` - Prosthetic label issued
     EventTypeEnum:
       enum:
       - meeting
@@ -12672,6 +12928,15 @@ components:
         patient_total:
           type: string
           readOnly: true
+        material_usage_missing:
+          type: boolean
+          readOnly: true
+        label_missing_fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -12713,6 +12978,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        safety_performance_deviations:
+          type: string
+        contains_medicinal_substance:
+          type: boolean
+        medicinal_substance_note:
+          type: string
+          maxLength: 255
         start_date:
           type: string
           format: date
@@ -12775,7 +13047,9 @@ components:
       - insurance_total
       - lab
       - label_issued_at
+      - label_missing_fields
       - label_number
+      - material_usage_missing
       - patient
       - patient_details
       - patient_total
@@ -13030,6 +13304,17 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        mdr_declaration_text:
+          type: string
+        production_sites:
+          type: string
+        authorized_representative:
+          type: string
+          maxLength: 255
+        label_patient_identifier_mode:
+          $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
+        require_material_usage:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -13043,6 +13328,14 @@ components:
       - id
       - name
       - updated_at
+    LabelPatientIdentifierModeEnum:
+      enum:
+      - name
+      - code
+      type: string
+      description: |-
+        * `name` - Meno pacienta
+        * `code` - Kód pacienta
     Manufacturer:
       type: object
       properties:
@@ -14249,6 +14542,15 @@ components:
         patient_total:
           type: string
           readOnly: true
+        material_usage_missing:
+          type: boolean
+          readOnly: true
+        label_missing_fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
         price:
           type: string
           format: decimal
@@ -14290,6 +14592,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        safety_performance_deviations:
+          type: string
+        contains_medicinal_substance:
+          type: boolean
+        medicinal_substance_note:
+          type: string
+          maxLength: 255
         start_date:
           type: string
           format: date
@@ -14449,6 +14758,17 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        mdr_declaration_text:
+          type: string
+        production_sites:
+          type: string
+        authorized_representative:
+          type: string
+          maxLength: 255
+        label_patient_identifier_mode:
+          $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
+        require_material_usage:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -14807,6 +15127,10 @@ components:
         current_period_end:
           type: string
           format: date
+          nullable: true
+        past_due_since:
+          type: string
+          format: date-time
           nullable: true
         created_at:
           type: string
@@ -15322,6 +15646,10 @@ components:
           type: string
           format: date
           nullable: true
+        past_due_since:
+          type: string
+          format: date-time
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -15340,15 +15668,19 @@ components:
     SubscriptionStatusEnum:
       enum:
       - active
+      - trialing
       - past_due
       - cancelled
       - inactive
+      - read_only
       type: string
       description: |-
         * `active` - Aktívne
+        * `trialing` - Skúšobná doba
         * `past_due` - Po splatnosti
         * `cancelled` - Zrušené
         * `inactive` - Neaktívne
+        * `read_only` - Iba na čítanie
     TeamInvitation:
       type: object
       properties:
