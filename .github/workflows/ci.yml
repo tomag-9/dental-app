@@ -162,6 +162,10 @@ jobs:
     # DEMO_STATE fixtures (#116).
     - name: Run tooth-chart data smoke check
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:tooth-chart
+    # Verifies the prosthetic-label section, IPZP payment split and diagnosis
+    # fields talk to the API and honour the backend invariant (#94, #96, #100).
+    - name: Run job-label data smoke check
+      run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run smoke:job-label
     - name: Run frontend unit tests
       run: docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml run --rm --no-deps frontend npm run test:unit
     - name: Cleanup
