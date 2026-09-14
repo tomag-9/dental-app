@@ -28,6 +28,7 @@ from rest_framework.views import APIView
 from apps.core.access import (
     AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    LabActiveRequired,
     SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     assert_lab_permission,
@@ -82,6 +83,7 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):
@@ -164,6 +166,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_serializer_class(self):

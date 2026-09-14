@@ -22,6 +22,7 @@ from rest_framework.views import APIView
 from apps.core.access import (
     AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    LabActiveRequired,
     SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_superadmin,
@@ -55,6 +56,7 @@ class MaterialTenantViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def perform_create(self, serializer):
@@ -319,6 +321,7 @@ class MaterialUsageViewSet(TenantScopedQuerysetMixin, viewsets.ReadOnlyModelView
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):

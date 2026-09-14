@@ -6,7 +6,7 @@ and reused without going through the HTTP layer.
 """
 
 from copy import deepcopy
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings as django_settings
 from django.core.mail import EmailMessage
@@ -302,7 +302,9 @@ def create_invoice(
     if getattr(lab, "skonto_enabled", False) and lab.skonto_percent > 0 and lab.skonto_days > 0:
         invoice.skonto_percent = lab.skonto_percent
         invoice.skonto_deadline = now.date() + timezone.timedelta(days=lab.skonto_days)
-        invoice.skonto_amount = (invoice.total_amount * lab.skonto_percent / Decimal("100")).quantize(Decimal("0.01"))
+        invoice.skonto_amount = (invoice.total_amount * lab.skonto_percent / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
     invoice.save(
         update_fields=[

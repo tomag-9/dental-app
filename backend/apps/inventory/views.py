@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 from apps.core.access import (
     IsReadOnlyOrAdminOrSuperadminPermission,
+    LabActiveRequired,
     SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_superadmin,
@@ -64,6 +65,7 @@ class WarehouseItemViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):

@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from apps.core.access import (
     AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    LabActiveRequired,
     SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     is_admin_or_superadmin,
@@ -76,6 +77,7 @@ class TechnicianViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):
@@ -94,6 +96,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
     allowed_transitions = job_service.ALLOWED_TRANSITIONS
 
@@ -696,6 +699,7 @@ class VacationViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):
@@ -724,6 +728,7 @@ class CalendarEventViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
         SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):

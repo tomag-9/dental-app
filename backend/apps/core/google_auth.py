@@ -204,6 +204,12 @@ class GoogleLoginView(APIView):
                     "account_inactive",
                     status.HTTP_403_FORBIDDEN,
                 )
+            if user.lab_id and user.lab is not None and not user.lab.is_active:
+                raise GoogleAuthError(
+                    "Laboratórium bolo pozastavené superadministrátorom.",
+                    "lab_inactive",
+                    status.HTTP_403_FORBIDDEN,
+                )
             _enforce_totp(user, data)
         except GoogleAuthError as exc:
             return exc.as_response()
