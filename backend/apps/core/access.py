@@ -454,7 +454,50 @@ class SubscriptionWriteAllowed(permissions.BasePermission):
         )
 
 
+# ---------------------------------------------------------------------------
+# Suspended-lab lock (issue #111)
+#
+# A superadmin can suspend a lab (``Lab.is_active = False``) — a non-paying or
+# abusive tenant. Unlike the subscription read-only lock, a suspended lab
+# loses *all* access, not just writes: it is an administrative action against
+# the tenant, not a billing grace period with a data-portability duty.
+# ---------------------------------------------------------------------------
+
+
+class LabInactive(APIException):
+    """403 — the tenant's lab has been suspended by a superadmin."""
+
+    status_code = 403
+    default_detail = "Laboratórium bolo pozastavené superadministrátorom. Kontaktujte podporu."
+    default_code = "lab_inactive"
+
+
+class LabActiveRequired(permissions.BasePermission):
+    """Block every request once a lab has been suspended.
+
+    Superadmins always pass (they must be able to reactivate the lab), and the
+    same exemptions as the subscription lock apply (auth/logout/2fa/sessions)
+    so a suspended user can still sign out.
+    """
+
+    def has_permission(self, request, view):
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            # Authentication is another permission's job; don't mask a 401.
+            return True
+        if is_superadmin(user):
+            return True
+        if _is_subscription_lock_exempt(request):
+            return True
+
+        lab = getattr(user, "lab", None)
+        if lab is not None and not lab.is_active:
+            raise LabInactive()
+        return True
+
+
 #: Drop-in replacement for ``[permissions.IsAuthenticated]`` that also honours
-#: the subscription read-only lock. Views overriding ``permission_classes`` use
-#: this so they don't silently opt out of DEFAULT_PERMISSION_CLASSES.
-AUTHENTICATED = [permissions.IsAuthenticated, SubscriptionWriteAllowed]
+#: the subscription read-only lock and the suspended-lab lock. Views
+#: overriding ``permission_classes`` use this so they don't silently opt out
+#: of DEFAULT_PERMISSION_CLASSES.
+AUTHENTICATED = [permissions.IsAuthenticated, SubscriptionWriteAllowed, LabActiveRequired]

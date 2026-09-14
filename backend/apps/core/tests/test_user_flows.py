@@ -367,7 +367,11 @@ class CoreUserFlowsApiTests(APITestCase):
 
     def test_impersonation_audit_log_records_actor_lab_and_target(self):
         self.client.force_authenticate(user=self.superadmin)
-        response = self.client.post(f"/api/core/users/superadmin/{self.user_a.id}/impersonate/")
+        response = self.client.post(
+            f"/api/core/users/superadmin/{self.user_a.id}/impersonate/",
+            {"reason": "Investigating support ticket"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         log = AuditLog.objects.filter(action="user.impersonated").latest("created_at")

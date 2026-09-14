@@ -85,6 +85,11 @@ def _write_audit_log(
     )
 
 
+#: Impersonation tokens are deliberately much shorter-lived than a normal
+#: login (issue #111) — accessing another lab's data must be time-boxed.
+IMPERSONATION_TOKEN_LIFETIME = timedelta(minutes=30)
+
+
 def _send_invitation_email(invitation):
     from django.conf import settings as django_settings
     from django.core.mail import send_mail
@@ -776,6 +781,12 @@ class LabViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         if not is_superadmin(request.user):
             raise PermissionDenied("Only superadmin can delete labs")
+        instance = self.get_object()
+        confirm_name = (request.data.get("confirm_name") or "").strip()
+        if confirm_name != instance.name:
+            raise ValidationError(
+                {"confirm_name": "Na potvrdenie zmazania zadajte presný názov laboratória."}
+            )
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -835,6 +846,43 @@ class LabViewSet(viewsets.ModelViewSet):
                 }
             )
         return Response(result)
+
+    @action(detail=True, methods=["post"], url_path="suspend")
+    def suspend(self, request, pk=None):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Iba superadministrátor môže pozastaviť laboratórium")
+        lab = self.get_object()
+        if lab.is_active:
+            lab.is_active = False
+            lab.save(update_fields=["is_active"])
+        _write_audit_log(
+            request,
+            action="lab.suspended",
+            entity_type="lab",
+            entity_id=lab.id,
+            lab=lab,
+            description=f"Lab {lab.name} suspended",
+            metadata={"reason": request.data.get("reason", "")},
+        )
+        return Response(self.get_serializer(lab).data)
+
+    @action(detail=True, methods=["post"], url_path="activate")
+    def activate(self, request, pk=None):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Iba superadministrátor môže obnoviť laboratórium")
+        lab = self.get_object()
+        if not lab.is_active:
+            lab.is_active = True
+            lab.save(update_fields=["is_active"])
+        _write_audit_log(
+            request,
+            action="lab.activated",
+            entity_type="lab",
+            entity_id=lab.id,
+            lab=lab,
+            description=f"Lab {lab.name} activated",
+        )
+        return Response(self.get_serializer(lab).data)
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1081,6 +1129,33 @@ class NotificationViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="unread-count")
     def unread_count(self, request):
         return Response({"unread_count": self.get_queryset().filter(read_at__isnull=True).count()})
+
+    @action(detail=False, methods=["post"], url_path="broadcast")
+    def broadcast(self, request):
+        if not is_superadmin(request.user):
+            raise PermissionDenied("Superadmin only endpoint")
+
+        title = (request.data.get("title") or "").strip()
+        if not title:
+            raise ValidationError({"title": "Title is required"})
+        message = (request.data.get("message") or "").strip()
+        notif_type = request.data.get("type") or "system"
+
+        recipients = User.objects.filter(is_active=True).exclude(role="superadmin")
+        notifications = [
+            Notification(lab=user.lab, recipient=user, type=notif_type, title=title, message=message)
+            for user in recipients
+        ]
+        created = Notification.objects.bulk_create(notifications)
+
+        _write_audit_log(
+            request,
+            action="notification.broadcast",
+            entity_type="notification",
+            description=f"Broadcast to all tenants: {title}",
+            metadata={"title": title, "recipients": len(created)},
+        )
+        return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -1420,12 +1495,28 @@ class UserViewSet(viewsets.ModelViewSet):
         if not is_superadmin(request.user):
             raise PermissionDenied("Superadmin only endpoint")
 
+        reason = (request.data.get("reason") or "").strip()
+        if not reason:
+            raise ValidationError({"reason": "Uveďte dôvod prihlásenia za používateľa."})
+
         try:
             target = User.objects.select_related("lab").get(id=target_user_id)
         except User.DoesNotExist:
             return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Impersonation is access to another lab's health-records-adjacent data,
+        # so the token is deliberately short-lived (unlike a normal login) and
+        # carries claims the frontend uses to render an unmistakable banner.
         refresh = RefreshToken.for_user(target)
+        refresh.set_exp(lifetime=IMPERSONATION_TOKEN_LIFETIME)
+        refresh["impersonation"] = True
+        refresh["impersonated_by"] = request.user.id
+        access = refresh.access_token
+        access.set_exp(lifetime=IMPERSONATION_TOKEN_LIFETIME)
+        access["impersonation"] = True
+        access["impersonated_by"] = request.user.id
+        access["impersonated_by_username"] = request.user.username
+
         _write_audit_log(
             request,
             action="user.impersonated",
@@ -1433,12 +1524,29 @@ class UserViewSet(viewsets.ModelViewSet):
             entity_id=target.id,
             lab=target.lab,
             description=f"Superadmin {request.user.username} impersonated {target.username}",
-            metadata={"impersonated_by": request.user.id},
+            metadata={"impersonated_by": request.user.id, "reason": reason},
         )
+
+        if target.lab_id:
+            recipients = list(User.objects.filter(lab_id=target.lab_id, role="admin"))
+            if not recipients and target.role != "superadmin":
+                recipients = [target]
+            for recipient in recipients:
+                Notification.objects.create(
+                    lab=target.lab,
+                    recipient=recipient,
+                    type="system",
+                    title="Superadmin sa prihlásil za používateľa vo vašom laboratóriu",
+                    message=(
+                        f"Superadministrátor {request.user.username} sa prihlásil ako "
+                        f"{target.username}. Dôvod: {reason}"
+                    ),
+                )
+
         return Response(
             {
                 "user": UserSerializer(target).data,
-                "access_token": str(refresh.access_token),
+                "access_token": str(access),
                 "refresh_token": str(refresh),
             }
         )
