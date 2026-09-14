@@ -32,20 +32,45 @@
 - Superadmin users (`role == "superadmin"`) bypass lab filters and see all data.
 - Job status flow: `new` → `in_progress` → `completed` / `cancelled`. When invoiced, finance views additionally set `finished_factured`, `finished_unfactured`, or `closed` (see `apps/finance/views.py:_sync_jobs_for_invoice_status`).
 
+## Frontend architecture — read this before touching `frontend/src`
+
+There is **no bundler-visible module graph**. `frontend/src/main.js` loads every
+`.jsx` file with a hand-ordered list of dynamic `import()` calls
+(`appModules`); each module registers itself on `window` (`window.MolarisAPI`,
+`Object.assign(window, {...})`) instead of exporting, and the next module in
+the list reads it off `window`. There is no JSX syntax anywhere — every
+element is `React.createElement(...)`.
+
+Practical consequences:
+- **A new component file does nothing until it is added to `appModules` in
+  `main.js`**, in the right position (after every module whose `window`
+  global it reads). CI guards against silently-orphaned files with
+  `npm run smoke:orphan-modules` (#115) — run it locally before you're done.
+- Reordering or removing an entry can break a *different* module at runtime
+  with no build-time warning, since nothing here is statically checked.
+- `frontend/scripts/*-smoke.mjs` are the closest thing to type-checking these
+  wiring points; see `package.json`'s `smoke:*` scripts for the full list and
+  what each one actually guards.
+
+Migrating this to real ES modules with a build-time dependency graph is
+tracked in #124 — a large, deliberately separate piece of work, not something
+to fold into an unrelated change.
+
+## Testing
+
+- Backend: `docker compose -f compose/docker-compose.ci.yml run --rm backend python manage.py test apps` (see `.github/workflows/ci.yml` for the exact CI invocation, including coverage flags and the `makemigrations --check` / OpenAPI baseline gates below).
+- Frontend: `npm run lint && npm run build && npm run typecheck && npm run test:unit`, plus the `smoke:*` scripts (`no-prod-mocks`, `orphan-modules`, `tooth-chart`, `job-label`, `subscription`) — all wired into CI's `frontend-check` job.
+- **E2E (Playwright)**: runs against a real docker-compose stack, not a mocked one. CI's `e2e` job in `.github/workflows/ci.yml` is the reference: it builds both images, starts `compose/docker-compose.ci.yml` + `compose/docker-compose.e2e.yml`, waits for `/api/health/`, seeds demo data with `python manage.py seed_users` (the canonical seeder — `manage.py runscript` is **not** available, `django-extensions` isn't installed), then runs `npx playwright test --workers=1`. To run it locally, reproduce those steps rather than `npx playwright test` against nothing.
+- **`./refresh-openapi-baseline.sh`** — run this after touching any serializer, view, or URL. CI's "Check OpenAPI schema baseline" step has gone red three separate times from a deferred regeneration that got forgotten at merge time; the script makes it a single command with a clean "no drift" exit when nothing changed.
+
 ## Known incomplete areas (open issues)
 
-| # | Area | Status |
-|---|---|---|
-| #34 | Job status mismatch in finance views | **Fixed** — migration `0004_add_billing_job_statuses` added |
-| #35 | LabSettings save was a placeholder | **Fixed** — now calls `PATCH /api/labs/<id>/` |
-| #36 | Password change in ProfileSettings | **Fixed** — now calls `PUT /api/users/me/` |
-| #37 | Finance dashboard is a stub | **Fixed** — `/api/finance/stats/`, aging and procedure catalog are implemented |
-| #38 | Dashboard loads all data for 4 stats | **Fixed** — `/api/dashboard/stats/` and chart-data are implemented |
-| #39 | Inventory CSV import is sequential | **Fixed** — atomic JSON and CSV bulk import endpoints are implemented |
-| #40 | Mixed Slovak/English UI | Open — language decision needed |
-| #41 | Wrong repo URL in root package.json | **Fixed** |
-| #42 | Stale branches on GitHub | Open — delete manually |
-| #43 | Missing CLAUDE.md | **Fixed** (this file) |
+Tracked as GitHub issues, not duplicated here — a table like this one drifted
+out of sync with reality for months before a 2026-08 audit caught it (issues
+#92–#128, milestones "MDR a protetický štítok", "Stripe a predplatné",
+"Autentifikácia", "Technický dlh z auditu"). Check `gh issue list --label
+source:audit` for current status rather than trusting a table that isn't
+enforced against the code.
 
 ## MDR materials API
 
@@ -121,10 +146,10 @@ python manage.py enforce_subscription_grace
 ## Documentation
 
 The `doc/` directory contains:
-- `requirements.md` — original Slovak requirements spec
-- `testing.md` — testing strategy
-- `test_coverage.md` — test coverage summary
-- `github_actions_fix.md` — notes on CI pipeline
+- `openapi-baseline.yaml` — the CI-enforced API contract snapshot; regenerate with `./refresh-openapi-baseline.sh`, never edit by hand
+- `BACKENDTODOANDCOMPETITIVEANALYSIS.md`, `improvement_ideas.md`, `modular_monolith_roadmap.md` — planning notes, not current-state documentation
+- `qa/` — visual QA artifacts
+- `actions/` — draft GitHub Actions workflows kept as local reference material, not deployed as-is (gitignored)
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
