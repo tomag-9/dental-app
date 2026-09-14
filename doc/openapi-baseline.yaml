@@ -12835,6 +12835,24 @@ components:
           type: string
           format: date
           nullable: true
+        skonto_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+        skonto_deadline:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        skonto_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_with_skonto:
+          type: boolean
+          readOnly: true
         items:
           type: array
           items:
@@ -12878,9 +12896,13 @@ components:
       - items
       - lab
       - number
+      - paid_with_skonto
       - patient_names
       - patient_summaries
       - related_jobs
+      - skonto_amount
+      - skonto_deadline
+      - skonto_percent
       - subtotal_amount
       - taxable_amount
       - vat_amount
@@ -13060,6 +13082,24 @@ components:
           type: string
           format: date
           nullable: true
+        skonto_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+        skonto_deadline:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        skonto_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_with_skonto:
+          type: boolean
+          readOnly: true
         items:
           type: array
           items:
@@ -13086,8 +13126,12 @@ components:
       - items
       - lab
       - number
+      - paid_with_skonto
       - patient_names
       - related_jobs
+      - skonto_amount
+      - skonto_deadline
+      - skonto_percent
       - subtotal_amount
       - taxable_amount
       - vat_amount
@@ -13593,6 +13637,16 @@ components:
           type: boolean
         is_active:
           type: boolean
+        skonto_enabled:
+          type: boolean
+        skonto_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        skonto_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         created_at:
           type: string
           format: date-time
@@ -14757,6 +14811,24 @@ components:
           type: string
           format: date
           nullable: true
+        skonto_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+        skonto_deadline:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        skonto_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        paid_with_skonto:
+          type: boolean
+          readOnly: true
         items:
           type: array
           items:
@@ -15049,6 +15121,16 @@ components:
           type: boolean
         is_active:
           type: boolean
+        skonto_enabled:
+          type: boolean
+        skonto_percent:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+        skonto_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
         created_at:
           type: string
           format: date-time

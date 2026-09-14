@@ -547,6 +547,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -564,6 +568,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -608,9 +630,13 @@
           "items",
           "lab",
           "number",
+          "paid_with_skonto",
           "patient_names",
           "patient_summaries",
           "related_jobs",
+          "skonto_amount",
+          "skonto_deadline",
+          "skonto_percent",
           "subtotal_amount",
           "taxable_amount",
           "vat_amount"
@@ -830,6 +856,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -840,6 +870,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -882,8 +930,12 @@
           "items",
           "lab",
           "number",
+          "paid_with_skonto",
           "patient_names",
           "related_jobs",
+          "skonto_amount",
+          "skonto_deadline",
+          "skonto_percent",
           "subtotal_amount",
           "taxable_amount",
           "vat_amount"
@@ -1535,6 +1587,19 @@
           },
           "require_material_usage": {
             "type": "boolean"
+          },
+          "skonto_days": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skonto_enabled": {
+            "type": "boolean"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "type": "string"
           },
           "slug": {
             "oneOf": [
@@ -3106,6 +3171,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -3123,6 +3192,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -3487,6 +3574,19 @@
           },
           "require_material_usage": {
             "type": "boolean"
+          },
+          "skonto_days": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skonto_enabled": {
+            "type": "boolean"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "type": "string"
           },
           "slug": {
             "oneOf": [

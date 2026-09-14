@@ -5980,10 +5980,17 @@ export interface components {
             number: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto: boolean;
             readonly patient_names: string;
             readonly patient_summaries: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount: string;
+            /** Format: date */
+            readonly skonto_deadline: string | null;
+            /** Format: decimal */
+            readonly skonto_percent: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount: string;
             readonly taxable_amount: string;
@@ -6054,9 +6061,16 @@ export interface components {
             number: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto: boolean;
             readonly patient_names: string;
             readonly related_jobs: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount: string;
+            /** Format: date */
+            readonly skonto_deadline: string | null;
+            /** Format: decimal */
+            readonly skonto_percent: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount: string;
             readonly taxable_amount: string;
@@ -6232,6 +6246,10 @@ export interface components {
             postal_code?: string | null;
             production_sites?: string;
             require_material_usage?: boolean;
+            skonto_days?: number;
+            skonto_enabled?: boolean;
+            /** Format: decimal */
+            skonto_percent?: string;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
@@ -6798,10 +6816,17 @@ export interface components {
             number?: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto?: boolean;
             readonly patient_names?: string;
             readonly patient_summaries?: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs?: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount?: string;
+            /** Format: date */
+            readonly skonto_deadline?: string | null;
+            /** Format: decimal */
+            readonly skonto_percent?: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount?: string;
             readonly taxable_amount?: string;
@@ -6902,6 +6927,10 @@ export interface components {
             postal_code?: string | null;
             production_sites?: string;
             require_material_usage?: boolean;
+            skonto_days?: number;
+            skonto_enabled?: boolean;
+            /** Format: decimal */
+            skonto_percent?: string;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
