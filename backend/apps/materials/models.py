@@ -228,6 +228,15 @@ class MaterialUsageLine(models.Model):
         ]
 
     def save(self, *args, **kwargs):
+        # Known limitation (#128): this guard lives in save()/delete() only,
+        # so it protects against well-behaved callers, not against the
+        # database. `MaterialUsageLine.objects.update()` / `.filter().delete()`
+        # bypass instance methods entirely — that is true of every Django
+        # model, not something specific to this guard — so a queryset-level
+        # write can still rewrite or remove a "frozen" snapshot line. Making
+        # that impossible would need a DB trigger or a row-version
+        # CheckConstraint, which is disproportionate here; documenting it is
+        # the deliberate trade-off instead of adding either.
         if self.pk:
             raise ValidationError(_("MDR snapshot riadok je nemenný."))
         super().save(*args, **kwargs)

@@ -47,7 +47,7 @@ from .serializers import (
     MaterialRecipeSerializer,
     MaterialUsageSerializer,
 )
-from .services import available_lots, create_usage
+from .services import assert_lot_deletable, available_lots, create_usage
 
 
 class MaterialTenantViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -189,6 +189,11 @@ class MaterialLotViewSet(MaterialTenantViewSet):
         elif expiry_state == "none":
             queryset = queryset.filter(expiry__isnull=True)
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        lot = self.get_object()
+        assert_lot_deletable(lot)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=["post"], url_path="import")
     def bulk_import(self, request):
