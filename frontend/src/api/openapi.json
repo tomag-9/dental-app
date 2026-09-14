@@ -1300,6 +1300,7 @@
           },
           "insurance_amount": {
             "format": "decimal",
+            "nullable": true,
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
@@ -1314,6 +1315,7 @@
           },
           "patient_amount": {
             "format": "decimal",
+            "nullable": true,
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },

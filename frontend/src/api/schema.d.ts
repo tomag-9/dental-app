@@ -6176,11 +6176,11 @@ export interface components {
             readonly description: string;
             readonly id: number;
             /** Format: decimal */
-            insurance_amount?: string;
+            insurance_amount?: string | null;
             ipzp_code?: string;
             material?: string | null;
             /** Format: decimal */
-            patient_amount?: string;
+            patient_amount?: string | null;
             price_list_code: string;
             procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
             quantity?: number;
