@@ -17,6 +17,21 @@ from .models import (
 )
 
 
+def assert_lot_deletable(lot):
+    """
+    Refuse to delete a lot that has recorded MDR usage (#128).
+
+    `MaterialUsageLine.source_lot_id` is a plain integer, not a `ForeignKey`,
+    so nothing at the database level stops this delete — the snapshot line
+    would simply keep its own denormalised copy of the lot's data (see
+    ``apps.materials.tests.test_snapshot_immutability`` for the design
+    rationale). This is a soft, API-level check only: it does not change the
+    data model, and a lot without recorded usage can always be deleted.
+    """
+    if MaterialUsageLine.objects.filter(source_lot_id=lot.id).exists():
+        raise ValidationError({"detail": "Šaržu so zaevidovanou spotrebou materiálu nie je možné vymazať."})
+
+
 def available_lots(catalog, *, lock=False):
     queryset = MaterialLot.objects.filter(
         catalog=catalog,

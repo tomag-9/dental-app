@@ -55,6 +55,12 @@ class Lab(models.Model):
     # Superadmin tenant management (#111): a suspended lab keeps its data but
     # loses all access — enforced at login and via LabActiveRequired.
     is_active = models.BooleanField(default=True)
+    # Skonto (#126) — early-payment discount default. Snapshotted onto each
+    # Invoice at issue time (see apps.finance.models.Invoice), so this is only
+    # the lab-wide default for newly issued invoices.
+    skonto_enabled = models.BooleanField(default=False)
+    skonto_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    skonto_days = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

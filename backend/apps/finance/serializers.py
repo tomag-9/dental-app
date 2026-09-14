@@ -211,12 +211,24 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "issued_at",
             "paid_at",
             "due_date",
+            "skonto_percent",
+            "skonto_deadline",
+            "skonto_amount",
+            "paid_with_skonto",
             "items",
             "patient_names",
             "patient_summaries",
             "appendix_rows",
             "related_jobs",
             "audit_log",
+        )
+        # Skonto is computed and snapshotted server-side only (create_invoice /
+        # update_invoice_status) — never accepted directly from a client.
+        read_only_fields = (
+            "skonto_percent",
+            "skonto_deadline",
+            "skonto_amount",
+            "paid_with_skonto",
         )
 
     def get_patient_names(self, obj):
