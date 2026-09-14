@@ -97,6 +97,15 @@ class Invoice(models.Model):
     custom_description = models.TextField(blank=True, default="")
     show_patient_list = models.BooleanField(default=True)
     breakdown_snapshot = models.JSONField(blank=True, default=list)
+    # Skonto (#126) — early-payment discount, snapshotted at issue time from
+    # Lab.skonto_* so a later change to the lab's default setting cannot alter
+    # an already-issued invoice — the same principle breakdown_snapshot uses
+    # for line items.
+    skonto_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    skonto_deadline = models.DateField(null=True, blank=True)
+    skonto_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    #: Set when the invoice was marked paid on or before ``skonto_deadline``.
+    paid_with_skonto = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     issued_at = models.DateTimeField(null=True, blank=True)

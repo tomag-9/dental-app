@@ -52,6 +52,12 @@ class Lab(models.Model):
     )
     # MDR traceability (#101): block finishing a job with no recorded material usage.
     require_material_usage = models.BooleanField(default=False)
+    # Skonto (#126) — early-payment discount default. Snapshotted onto each
+    # Invoice at issue time (see apps.finance.models.Invoice), so this is only
+    # the lab-wide default for newly issued invoices.
+    skonto_enabled = models.BooleanField(default=False)
+    skonto_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    skonto_days = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
