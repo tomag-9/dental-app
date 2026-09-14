@@ -101,6 +101,21 @@ check(
   /function MatModal/.test(materialsSource) && /Escape/.test(materialsSource.slice(materialsSource.indexOf('function MatModal'))),
 );
 
+// ── 6. Responsive: the permissions matrix scrolls instead of being clipped ──
+console.log('localization-qa smoke: permissions matrix is horizontally scrollable, not clipped, on narrow screens');
+
+const permissionsSource = read('pages/Permissions.jsx');
+check(
+  'permissions matrix wrapper uses overflowX: auto (min matrix width ~630px, must scroll on mobile)',
+  /overflowX:\s*'auto'/.test(permissionsSource) && !/overflow:\s*'hidden'/.test(permissionsSource),
+);
+
+const calendarSource = read('pages/Calendar.jsx');
+check(
+  "Calendar's 2-column layout (grid + side panel) collapses to 1 column on mobile like the app shell (.content-grid)",
+  /className:\s*'content-grid',\s*style:\s*{\s*display:\s*'grid',\s*gridTemplateColumns:\s*'3fr 1fr'/.test(calendarSource),
+);
+
 // ── Summary ──────────────────────────────────────────────────────────────
 if (failures.length) {
   console.error(`\nlocalization-qa smoke: ${failures.length} check(s) failed:`);
