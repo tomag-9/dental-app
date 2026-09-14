@@ -1,7 +1,7 @@
 // Settings.jsx — Molaris Settings (Nastavenia)
 
-function Settings({ user }) {
-  const [tab, setTab] = React.useState('profile');
+function Settings({ user, initialTab, checkoutReturn }) {
+  const [tab, setTab] = React.useState(initialTab || 'profile');
   const [me, setMe] = React.useState(user || null);
   const [lab, setLab] = React.useState((user && user.lab) || null);
   const [loading, setLoading] = React.useState(false);
@@ -35,6 +35,7 @@ function Settings({ user }) {
     { value: 'team',        label: 'Tím',        icon: 'users' },
     { value: 'notifications',label: 'Notifikácie',icon: 'bell' },
     { value: 'billing',     label: 'Fakturácia', icon: 'receipt' },
+    { value: 'subscription',label: 'Predplatné', icon: 'creditCard' },
     { value: 'security',    label: 'Bezpečnosť', icon: 'shield' },
   ];
 
@@ -256,6 +257,9 @@ function Settings({ user }) {
         onChange: setLabForm,
         onSave: handleBillingSave,
         status: billingStatus,
+      }),
+      tab === 'subscription' && React.createElement(SubscriptionPanel, {
+        checkoutReturn,
       }),
       tab === 'security' && React.createElement(SecurityPanel, {
         form: securityForm,
@@ -512,6 +516,206 @@ function BillingPanel({ form, onChange, onSave, status }) {
 
 const sectionTitleStyle = { fontFamily: 'Plus Jakarta Sans,sans-serif', fontSize: 13, fontWeight: 700, color: '#1a2320', margin: '0 0 4px' };
 const mutedTextStyle = { fontSize: 12, color: '#8a9490', margin: 0, maxWidth: 420, lineHeight: 1.5 };
+
+// SaaS subscription (#105) — the lab's own Molaris plan, billed via Stripe.
+// Deliberately separate from BillingPanel above, which configures how *this*
+// lab invoices its clinics (invoice prefix, VAT, due days) — a different
+// concept that happens to share the Slovak word "fakturácia".
+const SUBSCRIPTION_PLAN_LABELS = { free: 'Bezplatný', pro: 'Pro', enterprise: 'Enterprise' };
+const SUBSCRIPTION_STATUS_LABELS = {
+  active: 'Aktívne',
+  trialing: 'Skúšobná doba',
+  past_due: 'Po splatnosti',
+  cancelled: 'Zrušené',
+  inactive: 'Neaktívne',
+  read_only: 'Iba na čítanie',
+};
+const SUBSCRIPTION_PLAN_ORDER = ['free', 'pro', 'enterprise'];
+
+function fmtDateOnly(value) {
+  if (!value) return '—';
+  const date = new Date(`${value}T00:00:00`);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function daysUntil(value) {
+  if (!value) return null;
+  const target = new Date(`${value}T00:00:00`);
+  if (isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+function SubscriptionPanel({ checkoutReturn }) {
+  const [data, setData] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState('');
+  const [busyPlan, setBusyPlan] = React.useState('');
+  const [portalBusy, setPortalBusy] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.fetchMySubscription) { setLoading(false); return; }
+    try {
+      const result = await window.MolarisAPI.fetchMySubscription();
+      setData(result);
+      setError('');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Predplatné sa nepodarilo načítať.'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => { load(); }, [load]);
+
+  // Checkout succeeded, but activation depends on the async Stripe webhook —
+  // poll a few times instead of assuming the plan is already active.
+  React.useEffect(() => {
+    if (checkoutReturn !== 'success') return undefined;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      if (attempts > 10) { clearInterval(interval); return; }
+      load();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [checkoutReturn, load]);
+
+  const startCheckout = async (plan) => {
+    if (!window.MolarisAPI || !window.MolarisAPI.createSubscriptionCheckout) return;
+    setBusyPlan(plan); setError('');
+    try {
+      const result = await window.MolarisAPI.createSubscriptionCheckout(plan);
+      if (result && result.url) { window.location.href = result.url; return; }
+      setError('Server nevrátil adresu platobnej relácie.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Presmerovanie na platbu zlyhalo.'));
+    } finally {
+      setBusyPlan('');
+    }
+  };
+
+  const openPortal = async () => {
+    if (!window.MolarisAPI || !window.MolarisAPI.createSubscriptionPortalSession) return;
+    setPortalBusy(true); setError('');
+    try {
+      const result = await window.MolarisAPI.createSubscriptionPortalSession();
+      if (result && result.url) { window.location.href = result.url; return; }
+      setError('Server nevrátil adresu platobného portálu.');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Presmerovanie na portál zlyhalo.'));
+    } finally {
+      setPortalBusy(false);
+    }
+  };
+
+  const billing = (data && data.billing) || {};
+  const plan = data && data.plan;
+  const status = data && data.status;
+  const trialDaysLeft = data && data.trial_ends_at ? daysUntil(data.trial_ends_at) : null;
+  const graceDaysLeft = billing.grace_ends_at ? daysUntil(billing.grace_ends_at) : null;
+  const trialEndingSoon = status === 'trialing' && trialDaysLeft !== null && trialDaysLeft <= 7;
+  const atRisk = !!billing.read_only || status === 'past_due' || trialEndingSoon;
+  const seatsUsed = billing.seats_used;
+  const seatLimit = billing.seat_limit;
+  const seatRatio = seatLimit ? Math.min(1, (seatsUsed || 0) / seatLimit) : 0;
+
+  return React.createElement(Card, null,
+    React.createElement(PanelHeader, {
+      title: 'Predplatné',
+      desc: 'Plán, fakturácia a platba za používanie Molaris — nezamieňať s fakturáciou vašim klinikám.',
+    }),
+    React.createElement(PanelBody, null,
+      loading && React.createElement('div', { style: { fontSize: 12.5, color: '#8a9490' } }, 'Načítavam predplatné…'),
+      error && React.createElement('div', { style: { background: '#fde8e6', border: '1px solid #f5c0bb', borderRadius: 8, padding: '10px 14px', fontSize: 12.5, color: '#c0392b' } }, error),
+
+      !loading && data && checkoutReturn === 'success' && React.createElement('div', {
+        style: { background: '#eaf6f3', border: '1px solid #b8e2d8', borderRadius: 8, padding: '12px 14px', fontSize: 12.5, color: '#085c4e', display: 'flex', flexDirection: 'column', gap: 6 }
+      },
+        React.createElement('strong', null, 'Platba prijatá — čakáme na potvrdenie od Stripe.'),
+        React.createElement('span', null, 'Aktivácia plánu príde asynchrónne cez webhook, zvyčajne do pár sekúnd. Stránka sa priebežne obnoví sama.')
+      ),
+      !loading && checkoutReturn === 'cancelled' && React.createElement('div', {
+        style: { background: '#fbfaf6', border: '1px solid #e4ded4', borderRadius: 8, padding: '12px 14px', fontSize: 12.5, color: '#5a6b66' }
+      }, 'Platba bola zrušená. Predplatné zostáva bez zmeny.'),
+
+      !loading && data && atRisk && React.createElement('div', {
+        style: { background: '#fdf3e3', border: '1px solid #f0d9a8', borderRadius: 8, padding: '12px 14px', fontSize: 12.5, color: '#8a5a00', display: 'flex', flexDirection: 'column', gap: 4 }
+      },
+        React.createElement('strong', null,
+          billing.read_only ? 'Predplatné je iba na čítanie.'
+            : status === 'past_due' ? 'Platba zlyhala — predplatné je po splatnosti.'
+              : 'Skúšobná doba čoskoro končí.'
+        ),
+        React.createElement('span', null,
+          billing.read_only
+            ? 'Dáta zostávajú čitateľné a exportovateľné, zápisy sú pozastavené, kým sa platba nevyrieši.'
+            : status === 'past_due' && graceDaysLeft !== null
+              ? `Máte ešte ${graceDaysLeft} ${graceDaysLeft === 1 ? 'deň' : 'dní'} na vyriešenie platby, kým sa zápisy pozastavia.`
+              : trialEndingSoon
+                ? `Skúšobná doba končí o ${trialDaysLeft} ${trialDaysLeft === 1 ? 'deň' : 'dní'}. Vyberte si plán, aby ste neprišli o zápisy.`
+                : ''
+        )
+      ),
+
+      !loading && data && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 } },
+        React.createElement('div', null,
+          React.createElement('h3', { style: { ...sectionTitleStyle, margin: '0 0 8px' } }, 'Aktuálny plán'),
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+            React.createElement('div', { style: { fontSize: 20, fontWeight: 700, fontFamily: 'Plus Jakarta Sans,sans-serif', color: '#1a2320' } }, SUBSCRIPTION_PLAN_LABELS[plan] || plan || '—'),
+            React.createElement(Badge, { color: billing.read_only ? 'cancelled' : status === 'past_due' ? 'new' : status === 'active' ? 'done' : 'outline' }, SUBSCRIPTION_STATUS_LABELS[status] || status || '—'),
+            data.mrr != null && React.createElement('p', { style: mutedTextStyle }, `Cena: ${data.mrr} € / mesiac`),
+            data.current_period_end && React.createElement('p', { style: mutedTextStyle }, `Obnovenie: ${fmtDateOnly(data.current_period_end)}`),
+            status === 'trialing' && data.trial_ends_at && React.createElement('p', { style: mutedTextStyle }, `Skúšobná doba do: ${fmtDateOnly(data.trial_ends_at)}`),
+          )
+        ),
+        React.createElement('div', null,
+          React.createElement('h3', { style: { ...sectionTitleStyle, margin: '0 0 8px' } }, 'Využitie'),
+          React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+            React.createElement('p', { style: { fontSize: 13, color: '#1a2320', margin: 0 } }, `${seatsUsed != null ? seatsUsed : '—'} / ${seatLimit != null ? seatLimit : '—'} používateľov`),
+            React.createElement('div', { style: { height: 6, borderRadius: 3, background: '#eeecea', overflow: 'hidden' } },
+              React.createElement('div', { style: { height: '100%', width: `${Math.round(seatRatio * 100)}%`, background: seatRatio >= 1 ? '#c0392b' : '#0d7c6b' } })
+            ),
+            seatRatio >= 0.8 && React.createElement('p', { style: { ...mutedTextStyle, color: '#8a5a00' } }, 'Blížite sa k limitu miest.')
+          )
+        )
+      ),
+
+      !loading && data && React.createElement('div', null,
+        React.createElement('h3', { style: { ...sectionTitleStyle, margin: '0 0 8px' } }, 'Porovnanie plánov'),
+        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 } },
+          ...SUBSCRIPTION_PLAN_ORDER.map((p) => {
+            const isCurrent = p === plan;
+            const isUpgrade = p !== 'free' && SUBSCRIPTION_PLAN_ORDER.indexOf(p) > SUBSCRIPTION_PLAN_ORDER.indexOf(plan || 'free');
+            return React.createElement('div', {
+              key: p,
+              style: { border: isCurrent ? '2px solid #0d7c6b' : '1px solid #e4ded4', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 8, background: isCurrent ? '#f0faf8' : '#fff' }
+            },
+              React.createElement('div', { style: { fontWeight: 700, fontSize: 14, color: '#1a2320' } }, SUBSCRIPTION_PLAN_LABELS[p]),
+              isCurrent && React.createElement(Badge, { color: 'done' }, 'Aktuálny plán'),
+              !isCurrent && isUpgrade && React.createElement(Button, {
+                size: 'sm',
+                disabled: !!busyPlan || !billing.stripe_enabled,
+                onClick: () => startCheckout(p),
+                title: !billing.stripe_enabled ? 'Platby cez Stripe nie sú na tomto serveri nakonfigurované.' : undefined,
+              }, busyPlan === p ? 'Presmerúvam…' : `Prejsť na ${SUBSCRIPTION_PLAN_LABELS[p]}`),
+            );
+          })
+        )
+      )
+    ),
+    !loading && data && React.createElement(PanelFooter, null,
+      React.createElement('span', { style: { marginRight: 'auto', fontSize: 11.5, color: '#8a9490' } },
+        billing.has_payment_account ? 'Platobná metóda je uložená v Stripe.' : 'Zatiaľ nemáte uloženú platobnú metódu.'
+      ),
+      React.createElement(Button, { variant: 'outline', disabled: portalBusy || !billing.stripe_enabled, onClick: openPortal },
+        portalBusy ? 'Presmerúvam…' : 'Spravovať platbu'
+      )
+    )
+  );
+}
 
 function apiErrorMessage(error, fallback) {
   const detail = error && error.data && error.data.detail;
