@@ -1,6 +1,6 @@
 // Doctors.jsx — Molaris Doctors (Lekári)
 
-function Doctors({ onNavigate, onCreate }) {
+function Doctors({ onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;

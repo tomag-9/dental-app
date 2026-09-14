@@ -292,6 +292,22 @@ class PaymentSplitTests(LabelTestMixin, APITestCase):
         self.assertEqual(item.insurance_amount, Decimal("120.00"))
         self.assertEqual(item.patient_amount, Decimal("80.00"))
 
+    def test_explicit_null_split_is_treated_as_omitted(self):
+        # frontend/src/components/NewJob.jsx sends `insurance_amount: null` /
+        # `patient_amount: null` (not an omitted key) when the user hasn't
+        # touched those fields — the e2e "new-job flow" spec caught this
+        # exact payload shape failing with "This field may not be null."
+        response = self.client.post(
+            self.url,
+            self._payload({"insurance_amount": None, "patient_amount": None}),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        item = JobItem.objects.get(job_id=response.data["id"])
+        self.assertEqual(item.insurance_amount, Decimal("60.00"))
+        self.assertEqual(item.patient_amount, Decimal("40.00"))
+
     def test_matching_explicit_split_is_accepted(self):
         response = self.client.post(
             self.url,

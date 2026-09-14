@@ -5,6 +5,7 @@ import * as jobs from './jobs.js';
 import * as finance from './finance.js';
 import * as inventory from './inventory.js';
 import * as materials from './materials.js';
+import * as superadmin from './superadmin.js';
 import { loadWorkspace, useWorkspace } from './workspace.js';
 
 setUnauthorizedHandler(auth.logout);
@@ -16,11 +17,18 @@ window.MolarisAPI = {
   finance,
   inventory,
   materials,
+  superadmin,
 
   // Flat backward-compatible API — all pages still use these directly
   API_BASE,
   request,
   login: auth.login,
+  loginWithGoogle: auth.loginWithGoogle,
+  fetchGoogleAuthConfig: auth.fetchGoogleAuthConfig,
+  linkGoogleAccount: auth.linkGoogleAccount,
+  unlinkGoogleAccount: auth.unlinkGoogleAccount,
+  isGoogleUnknownAccountError: auth.isGoogleUnknownAccountError,
+  isGoogleUnconfiguredError: auth.isGoogleUnconfiguredError,
   logout: auth.logout,
   savedUser: auth.savedUser,
   isAuthenticated: auth.isAuthenticated,
@@ -57,13 +65,27 @@ window.MolarisAPI = {
   fetchPatientToothMap: crm.fetchPatientToothMap,
   createRecord: crm.createRecord,
   transitionJobStatus: jobs.transitionJobStatus,
+  fetchProstheticLabelPreview: jobs.fetchProstheticLabelPreview,
+  downloadProstheticLabelPdf: jobs.downloadProstheticLabelPdf,
+  fetchProstheticLabelPdfUrl: jobs.fetchProstheticLabelPdfUrl,
+  downloadProstheticLabelsBulk: jobs.downloadProstheticLabelsBulk,
   updateInvoiceStatus: finance.updateInvoiceStatus,
   deleteInvoice: finance.deleteInvoice,
   fetchInvoiceDetail: finance.fetchInvoiceDetail,
   sendInvoiceEmail: finance.sendInvoiceEmail,
   downloadInvoicePdf: finance.downloadInvoicePdf,
   downloadInvoicesExport: finance.downloadInvoicesExport,
+  fetchMySubscription: finance.fetchMySubscription,
+  createSubscriptionCheckout: finance.createSubscriptionCheckout,
+  createSubscriptionPortalSession: finance.createSubscriptionPortalSession,
+  signup: auth.signup,
   fetchCurrentLab: auth.fetchCurrentLab,
+  fetchSuperadminMetrics: superadmin.fetchSuperadminMetrics,
+  fetchAllLabs: superadmin.fetchAllLabs,
+  fetchAllUsers: superadmin.fetchAllUsers,
+  fetchSubscriptions: superadmin.fetchSubscriptions,
+  fetchSystemHealth: superadmin.fetchSystemHealth,
+  fetchAuditLogs: superadmin.fetchAuditLogs,
   loadWorkspace,
   useWorkspace,
 };

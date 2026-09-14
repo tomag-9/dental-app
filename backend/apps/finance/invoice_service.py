@@ -6,7 +6,7 @@ and reused without going through the HTTP layer.
 """
 
 from copy import deepcopy
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings as django_settings
 from django.core.mail import EmailMessage
@@ -294,7 +294,27 @@ def create_invoice(
     amounts = calculate_invoice_amounts(subtotal, invoice.vat_rate, invoice.discount_percent)
     invoice.total_amount = amounts["total_amount"]
     invoice.breakdown_snapshot = _serialize_invoice_breakdown(build_invoice_breakdown(invoice, force_dynamic=True))
-    invoice.save(update_fields=["total_amount", "breakdown_snapshot"])
+
+    # Skonto (#126) is snapshotted from the lab's default at issue time — a
+    # later change to Lab.skonto_* must not alter an already-issued invoice,
+    # the same principle breakdown_snapshot already applies to line items.
+    lab = clinic.lab
+    if getattr(lab, "skonto_enabled", False) and lab.skonto_percent > 0 and lab.skonto_days > 0:
+        invoice.skonto_percent = lab.skonto_percent
+        invoice.skonto_deadline = now.date() + timezone.timedelta(days=lab.skonto_days)
+        invoice.skonto_amount = (invoice.total_amount * lab.skonto_percent / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+    invoice.save(
+        update_fields=[
+            "total_amount",
+            "breakdown_snapshot",
+            "skonto_percent",
+            "skonto_deadline",
+            "skonto_amount",
+        ]
+    )
 
     sync_jobs_for_invoice_status(invoice, "issued")
 
@@ -313,7 +333,9 @@ def update_invoice_status(actor, invoice, new_status):
         invoice.issued_at = timezone.now()
     if new_status == "paid" and not invoice.paid_at:
         invoice.paid_at = timezone.now()
-    invoice.save(update_fields=["status", "issued_at", "paid_at"])
+    if new_status == "paid":
+        invoice.paid_with_skonto = bool(invoice.skonto_deadline and invoice.paid_at.date() <= invoice.skonto_deadline)
+    invoice.save(update_fields=["status", "issued_at", "paid_at", "paid_with_skonto"])
 
     sync_jobs_for_invoice_status(invoice, new_status)
     write_invoice_audit(

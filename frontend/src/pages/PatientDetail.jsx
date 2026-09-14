@@ -166,7 +166,22 @@ function PatientDetail({ patientId, onBack, onOpenJob }) {
 
         // Cumulative tooth map
         toothMapEntries.length > 0 && React.createElement(Card, null,
-          React.createElement(CardHeader, null, React.createElement(CardTitle, null, 'Zubný kríž – vykonané výkony')),
+          React.createElement(CardHeader, { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 } },
+            React.createElement(CardTitle, null, 'Zubný kríž – vykonané výkony'),
+            React.createElement(Button, {
+              variant: 'outline',
+              onClick: () => window.dispatchEvent(new CustomEvent('open-tooth-detail', {
+                detail: {
+                  patient: { name: `${p.first} ${p.last}`, age: p.age },
+                  // Patient.tooth_procedures — cumulative across closed jobs.
+                  toothProcedures: toothMap,
+                  readonly: true,
+                },
+              })),
+            },
+              React.createElement(Icon, { name: 'search', size: 14 }), 'Zobraziť diagram'
+            )
+          ),
           React.createElement(CardContent, null,
             React.createElement('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
               toothMapEntries.map(([tooth, procedure]) =>

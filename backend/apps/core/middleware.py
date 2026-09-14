@@ -90,13 +90,19 @@ class ContentSecurityPolicyMiddleware:
     """
 
     # cdn.jsdelivr.net is required by drf-spectacular's Swagger UI for its JS/CSS/fonts.
+    # accounts.google.com / gstatic.com are required by Google Identity Services
+    # (#108): the gsi/client script, its stylesheet, the One Tap iframe and the
+    # token endpoint it calls. lh3.googleusercontent.com serves account avatars.
     CSP = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-        "img-src 'self' data: blob: https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net "
+        "https://accounts.google.com https://www.gstatic.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com; "
+        "img-src 'self' data: blob: https://cdn.jsdelivr.net "
+        "https://lh3.googleusercontent.com https://accounts.google.com; "
         "font-src 'self' https://cdn.jsdelivr.net; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://accounts.google.com; "
+        "frame-src https://accounts.google.com; "
         "frame-ancestors 'none';"
     )
 

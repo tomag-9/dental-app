@@ -62,6 +62,7 @@ const ICON_PATHS = {
   activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
   truck: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
   toothPlaceholder: '<path d="M12 5.5c-2 0-3-1.5-5-1.5S3 5.5 3 9c0 2 .5 4 1.5 6S6 19 7 19s1.5-1 2-3 1-3 3-3 2.5 1 3 3 1 3 2 3 1.5-1 2.5-4S21 11 21 9c0-3.5-2-5-4-5s-3 1.5-5 1.5z"/>',
+  creditCard: '<rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
 };
 
 function Icon({ name, size = 16, color = 'currentColor', strokeWidth = 2, style: extraStyle = {} }) {

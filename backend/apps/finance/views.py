@@ -13,21 +13,23 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-from reportlab.graphics import renderPDF, renderSVG
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from reportlab.graphics import renderSVG
 from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.utils import simpleSplit
-from reportlab.pdfgen import canvas
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.access import (
+    AUTHENTICATED,
     IsReadOnlyOrAdminOrSuperadminPermission,
+    LabActiveRequired,
+    SubscriptionWriteAllowed,
     TenantScopedQuerysetMixin,
     assert_lab_permission,
     is_superadmin,
@@ -38,12 +40,13 @@ from apps.core.localization import (
     format_sk_currency,
     format_sk_date,
 )
+from apps.core.models import User
 
-from . import invoice_service
+from . import invoice_service, stripe_service
 from . import services as finance_services
-from .calculations import calculate_invoice_amounts, reverse_invoice_subtotal
 from .models import Invoice, PriceList, Subscription
 from .pay_by_square import PayBySquareError
+from .pdf import build_invoice_context, render_invoice_pdf
 from .selectors import invoices_for_user, price_list_for_user
 from .serializers import (
     InvoiceCreateSerializer,
@@ -79,6 +82,8 @@ class PriceListViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_queryset(self):
@@ -160,6 +165,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticated,
         IsReadOnlyOrAdminOrSuperadminPermission,
+        SubscriptionWriteAllowed,
+        LabActiveRequired,
     ]
 
     def get_serializer_class(self):
@@ -256,10 +263,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="pdf")
     def pdf(self, request, pk=None):
         invoice = self.get_object()
-        buffer = BytesIO()
-        self._render_invoice_pdf(invoice, buffer)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+        pdf_bytes = render_invoice_pdf(build_invoice_context(invoice))
         response = HttpResponse(pdf_bytes, content_type="application/pdf")
         response["Content-Disposition"] = f'inline; filename="faktura_{invoice.number}.pdf"'
         return response
@@ -282,10 +286,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        buffer = BytesIO()
-        self._render_invoice_pdf(invoice, buffer)
-        pdf_bytes = buffer.getvalue()
-        buffer.close()
+        pdf_bytes = render_invoice_pdf(build_invoice_context(invoice))
 
         try:
             invoice_service.send_invoice_email(request.user, invoice, pdf_bytes, recipient)
@@ -296,317 +297,6 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         return Response({"sent_to": recipient, "invoice": invoice.number})
-
-    def _render_invoice_pdf(self, invoice, buffer):
-        """Render the invoice PDF into buffer (shared by pdf action and send_email)."""
-        items = list(invoice.items.select_related("job__patient").all())
-        breakdown = invoice_service.build_invoice_breakdown(invoice)
-        patient_summaries = invoice_service.build_invoice_patient_summaries(invoice, breakdown)
-        lab = invoice.lab
-        clinic = invoice.clinic
-
-        pdf = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-        L = 15 * mm
-        R = width - 15 * mm
-
-        def hline(y, x1=None, x2=None):
-            pdf.setLineWidth(0.3)
-            pdf.line(x1 or L, y, x2 or R, y)
-
-        def wrapped_lines(value, font_name, font_size, max_width):
-            return simpleSplit(str(value or ""), font_name, font_size, max_width) or [""]
-
-        def invoice_continuation_page():
-            pdf.showPage()
-            pdf.setFont("Helvetica-Bold", 14)
-            pdf.drawString(L, height - 18 * mm, doc_label)
-            pdf.setFont("Helvetica", 9)
-            pdf.drawString(L, height - 24 * mm, f"Číslo: {invoice.number} — pokračovanie")
-            hline(height - 30 * mm)
-            page_y = height - 38 * mm
-            pdf.setFont("Helvetica-Bold", 9)
-            pdf.drawString(L, page_y, "Pacient")
-            pdf.drawRightString(R, page_y, "Spolu")
-            hline(page_y - 2 * mm)
-            return page_y - 8 * mm
-
-        # Only a valid Pay by Square code goes on the invoice. If the lab has QR
-        # payments disabled or its banking data is unusable we print no QR at
-        # all rather than a code no banking app can read (issue #125).
-        try:
-            payload = finance_services.build_invoice_payment_payload(invoice)
-        except PayBySquareError as exc:
-            logger.info("Skipping payment QR for invoice %s: %s", invoice.number, exc)
-        else:
-            _, qr_drawing = self._build_qr_svg(payload, size=72)
-            renderPDF.draw(qr_drawing, pdf, width - 47 * mm, height - 47 * mm)
-
-        doc_label = "FAKTÚRA" if invoice.document_type == "invoice" else "PROFORMA FAKTÚRA"
-        pdf.setFont("Helvetica-Bold", 18)
-        pdf.drawString(L, height - 18 * mm, doc_label)
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(L, height - 25 * mm, f"Číslo: {invoice.number}")
-        issued_at = invoice.issued_at or timezone.now()
-        pdf.drawString(L, height - 31 * mm, f"Dátum vystavenia: {issued_at.strftime('%d.%m.%Y')}")
-        if invoice.due_date:
-            pdf.drawString(
-                L,
-                height - 37 * mm,
-                f"Dátum splatnosti: {invoice.due_date.strftime('%d.%m.%Y')}",
-            )
-
-        hline(height - 42 * mm)
-
-        y = height - 49 * mm
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(L, y, "Dodávateľ")
-        y -= 5 * mm
-        pdf.setFont("Helvetica", 9)
-        pdf.drawString(L, y, lab.name or "")
-        if lab.address:
-            y -= 4 * mm
-            pdf.drawString(L, y, lab.address)
-        if lab.city or lab.postal_code:
-            y -= 4 * mm
-            pdf.drawString(L, y, " ".join(filter(None, [lab.postal_code, lab.city])))
-        if lab.tax_id:
-            y -= 4 * mm
-            pdf.drawString(L, y, f"IČO: {lab.tax_id}")
-        if lab.vat_id:
-            y -= 4 * mm
-            pdf.drawString(L, y, f"IČ DPH: {lab.vat_id}")
-        if lab.bank_account:
-            y -= 4 * mm
-            pdf.drawString(L, y, f"IBAN: {lab.bank_account}")
-        if lab.bank_bic:
-            y -= 4 * mm
-            pdf.drawString(L, y, f"BIC: {lab.bank_bic}")
-
-        col2 = width / 2 + 5 * mm
-        yc = height - 49 * mm
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(col2, yc, "Odberateľ")
-        yc -= 5 * mm
-        pdf.setFont("Helvetica", 9)
-        pdf.drawString(col2, yc, clinic.name if clinic else "")
-        if clinic and clinic.address:
-            yc -= 4 * mm
-            pdf.drawString(col2, yc, clinic.address)
-        if clinic and getattr(clinic, "ico", None):
-            yc -= 4 * mm
-            pdf.drawString(col2, yc, f"IČO: {clinic.ico}")
-
-        table_top = min(y, yc) - 8 * mm
-        hline(table_top)
-        th = table_top - 6 * mm
-        if invoice.description_mode == "custom":
-            pdf.setFont("Helvetica-Bold", 9)
-            pdf.drawString(L, th, "Popis")
-            pdf.drawRightString(R, th, "Spolu")
-            hline(th - 2 * mm)
-
-            ty = th - 8 * mm
-            pdf.setFont("Helvetica", 9)
-            description_lines = wrapped_lines(
-                invoice.custom_description or "Protetické práce",
-                "Helvetica",
-                9,
-                145 * mm,
-            )
-            for line_index, line in enumerate(description_lines):
-                pdf.drawString(L, ty, line)
-                if line_index == 0:
-                    pdf.drawRightString(
-                        R,
-                        ty,
-                        format_sk_currency(sum((item.line_total for item in items), Decimal())),
-                    )
-                ty -= 4.5 * mm
-            ty -= 1.5 * mm
-        else:
-            pdf.setFont("Helvetica-Bold", 9)
-            pdf.drawString(L, th, "Pacient")
-            pdf.drawRightString(R, th, "Spolu")
-            hline(th - 2 * mm)
-
-            ty = th - 8 * mm
-            for summary in patient_summaries:
-                name_lines = wrapped_lines(
-                    summary["patient_name"],
-                    "Helvetica",
-                    9,
-                    145 * mm,
-                )
-                row_height = max(5, len(name_lines) * 4.5) * mm
-                if ty - row_height < 55 * mm:
-                    ty = invoice_continuation_page()
-                pdf.setFont("Helvetica", 9)
-                for line_index, line in enumerate(name_lines):
-                    pdf.drawString(L, ty - line_index * 4.5 * mm, line)
-                pdf.drawRightString(R, ty, format_sk_currency(summary["total"]))
-                ty -= row_height
-
-        hline(ty)
-        vat_rate = Decimal(str(invoice.vat_rate or 0))
-        discount = Decimal(str(invoice.discount_percent or 0))
-        total = Decimal(str(invoice.total_amount or 0))
-        line_totals = [Decimal(str(item.line_total or 0)) for item in items]
-        if line_totals:
-            subtotal = sum(line_totals, Decimal("0.00"))
-        else:
-            subtotal = reverse_invoice_subtotal(total, vat_rate, discount)
-        amounts = calculate_invoice_amounts(subtotal, vat_rate, discount)
-        vat_amount = amounts["vat_amount"]
-
-        if ty < 52 * mm:
-            ty = invoice_continuation_page()
-            hline(ty)
-
-        ty -= 6 * mm
-        pdf.setFont("Helvetica", 9)
-        pdf.drawRightString(160 * mm, ty, "Medzisúčet:")
-        pdf.drawRightString(R, ty, format_sk_currency(subtotal))
-        if discount > 0:
-            ty -= 5 * mm
-            pdf.drawRightString(160 * mm, ty, f"Zľava ({discount:.0f}%):")
-            pdf.drawRightString(
-                R,
-                ty,
-                f"-{format_sk_currency(amounts['discount_amount'])}",
-            )
-            ty -= 5 * mm
-            pdf.drawRightString(160 * mm, ty, "Základ DPH:")
-            pdf.drawRightString(R, ty, format_sk_currency(amounts["taxable_amount"]))
-        ty -= 5 * mm
-        pdf.drawRightString(160 * mm, ty, f"DPH ({vat_rate:.0f}%):")
-        pdf.drawRightString(R, ty, format_sk_currency(vat_amount))
-        ty -= 7 * mm
-        pdf.setFont("Helvetica-Bold", 11)
-        pdf.drawRightString(160 * mm, ty, "CELKOM:")
-        pdf.drawRightString(R, ty, format_sk_currency(total))
-
-        if lab.payment_method:
-            ty -= 8 * mm
-            pdf.setFont("Helvetica", 8)
-            pm_label = {
-                "bank_transfer": "Bankový prevod",
-                "cash": "Hotovosť",
-                "card": "Karta",
-            }.get(lab.payment_method, lab.payment_method)
-            pdf.drawString(L, ty, f"Spôsob úhrady: {pm_label}")
-        if lab.invoice_default_note:
-            ty -= 6 * mm
-            pdf.setFont("Helvetica", 8)
-            for note_line in wrapped_lines(
-                lab.invoice_default_note,
-                "Helvetica",
-                8,
-                R - L,
-            ):
-                pdf.drawString(L, ty, note_line)
-                ty -= 4 * mm
-
-        if invoice.show_patient_list:
-
-            def appendix_page():
-                pdf.showPage()
-                pdf.setFont("Helvetica-Bold", 14)
-                pdf.drawString(L, height - 18 * mm, "Príloha k faktúre")
-                pdf.setFont("Helvetica", 10)
-                pdf.drawString(L, height - 25 * mm, f"Faktúra: {invoice.number}")
-                hline(height - 31 * mm)
-                page_y = height - 40 * mm
-                pdf.setFont("Helvetica-Bold", 8)
-                pdf.drawString(L, page_y, "Pacient")
-                pdf.drawString(58 * mm, page_y, "Úkon / recept")
-                pdf.drawRightString(148 * mm, page_y, "Množstvo")
-                pdf.drawRightString(R, page_y, "Spolu")
-                hline(page_y - 2 * mm)
-                return page_y - 7 * mm
-
-            py = appendix_page()
-            for row in breakdown:
-                first_procedure = True
-                for procedure in row["procedures"]:
-                    patient_lines = wrapped_lines(
-                        row["patient_name"] if first_procedure else "",
-                        "Helvetica",
-                        8,
-                        38 * mm,
-                    )
-                    procedure_lines = wrapped_lines(
-                        procedure["description"],
-                        "Helvetica",
-                        8,
-                        82 * mm,
-                    )
-                    line_count = max(len(patient_lines), len(procedure_lines))
-                    row_height = max(5, line_count * 4) * mm
-                    if py - row_height < 20 * mm:
-                        py = appendix_page()
-                    pdf.setFont("Helvetica", 8)
-                    for line_index, line in enumerate(patient_lines):
-                        pdf.drawString(L, py - line_index * 4 * mm, line)
-                    for line_index, line in enumerate(procedure_lines):
-                        pdf.drawString(58 * mm, py - line_index * 4 * mm, line)
-                    pdf.drawRightString(148 * mm, py, str(procedure["quantity"]))
-                    pdf.drawRightString(R, py, format_sk_currency(procedure["line_total"]))
-                    py -= row_height
-                    first_procedure = False
-
-                for recipe in row["recipes"]:
-                    recipe_date = recipe["date"]
-                    if hasattr(recipe_date, "strftime"):
-                        recipe_date = recipe_date.strftime("%d.%m.%Y")
-                    recipe_lines = wrapped_lines(
-                        f"Recept: {recipe['name']}" + (f" ({recipe_date})" if recipe_date else ""),
-                        "Helvetica-Bold",
-                        7.5,
-                        120 * mm,
-                    )
-                    recipe_height = len(recipe_lines) * 4 * mm
-                    if py - recipe_height < 20 * mm:
-                        py = appendix_page()
-                    pdf.setFont("Helvetica-Bold", 7.5)
-                    for line in recipe_lines:
-                        pdf.drawString(62 * mm, py, line)
-                        py -= 4 * mm
-                    pdf.setFont("Helvetica", 7)
-                    for material in recipe["materials"]:
-                        material_text = " · ".join(
-                            filter(
-                                None,
-                                [
-                                    material["name"],
-                                    material["code"],
-                                    f"LOT {material['lot']}" if material["lot"] else "",
-                                    material["manufacturer"],
-                                ],
-                            )
-                        )
-                        material_lines = wrapped_lines(
-                            material_text,
-                            "Helvetica",
-                            7,
-                            72 * mm,
-                        )
-                        material_height = max(4, len(material_lines) * 3.5) * mm
-                        if py - material_height < 18 * mm:
-                            py = appendix_page()
-                            pdf.setFont("Helvetica", 7)
-                        for line_index, line in enumerate(material_lines):
-                            pdf.drawString(66 * mm, py - line_index * 3.5 * mm, line)
-                        pdf.drawRightString(
-                            148 * mm,
-                            py,
-                            f"{material['quantity']} {material['unit']}",
-                        )
-                        py -= material_height
-                py -= 2 * mm
-
-        pdf.showPage()
-        pdf.save()
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
@@ -636,10 +326,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 failed.append({"invoice": invoice.number, "reason": "Chýba e-mail príjemcu"})
                 continue
 
-            buffer = BytesIO()
-            self._render_invoice_pdf(invoice, buffer)
-            pdf_bytes = buffer.getvalue()
-            buffer.close()
+            pdf_bytes = render_invoice_pdf(build_invoice_context(invoice))
 
             days_overdue = (today - invoice.due_date).days
             lab = invoice.lab
@@ -739,7 +426,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 class SubscriptionViewSet(viewsets.ModelViewSet):
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def _assert_superadmin(self, user):
         # "manage_platform" is a platform-scoped action: no per-lab override
@@ -791,7 +478,123 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response(SubscriptionSerializer(subscription).data)
+        data = SubscriptionSerializer(subscription).data
+        # Billing state the UI needs *before* a user runs into a 402.
+        grace_ends_at = subscription.grace_ends_at()
+        data["billing"] = {
+            "read_only": subscription.is_read_only,
+            "grace_ends_at": grace_ends_at.isoformat() if grace_ends_at else None,
+            "billing_url": getattr(django_settings, "SUBSCRIPTION_BILLING_URL", ""),
+            "stripe_enabled": stripe_service.stripe_enabled(),
+            "has_payment_account": bool(subscription.stripe_customer_id),
+            "seat_limit": subscription.seats,
+            "seats_used": User.objects.filter(lab_id=user.lab_id, is_active=True).count(),
+        }
+        return Response(data)
+
+    def _lab_admin_or_403(self, request):
+        """Checkout and portal are billing actions — lab admins only.
+
+        The lab always comes from ``request.user``; a lab admin can never name
+        another tenant, so there is no way to open a session against a
+        different lab's Stripe customer.
+        """
+        assert_lab_permission(
+            request.user,
+            "lab:write",
+            "Predplatné môže spravovať iba administrátor laboratória.",
+        )
+        lab = getattr(request.user, "lab", None)
+        if lab is None:
+            raise ValidationError("Používateľ nemá priradené laboratórium.")
+        return lab
+
+    @action(detail=False, methods=["post"], url_path="checkout")
+    def checkout(self, request):
+        lab = self._lab_admin_or_403(request)
+        # The plan name is the only client input; the price behind it is
+        # resolved from settings, never from the request.
+        plan = str(request.data.get("plan") or "").strip()
+        try:
+            url = stripe_service.create_checkout_session(lab, plan)
+        except stripe_service.StripeNotConfigured as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except stripe_service.StripeServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"url": url})
+
+    @action(detail=False, methods=["post"], url_path="portal")
+    def portal(self, request):
+        lab = self._lab_admin_or_403(request)
+        try:
+            url = stripe_service.create_portal_session(lab)
+        except stripe_service.StripeNotConfigured as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except stripe_service.StripeServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"url": url})
+
+
+class StripeWebhookView(APIView):
+    """Stripe's authoritative channel for subscription lifecycle changes.
+
+    Three deliberate exemptions, each of which would otherwise break delivery:
+
+    * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+      CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+      no CSRF token. Dropping authentication also drops that check; the view is
+      additionally ``csrf_exempt`` so nothing re-adds it.
+    * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+      A burst of deliveries throttled to 429 is a burst of events lost after
+      Stripe exhausts its retries.
+    * ``permission_classes = [AllowAny]`` — the signature *is* the
+      authentication. Nothing is processed before it verifies.
+    """
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = []
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        if not stripe_service.webhook_enabled():
+            # Not configured: nothing can be verified, so nothing is trusted.
+            return Response(
+                {"detail": "Stripe webhook nie je nakonfigurovaný."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+        try:
+            event = stripe_service.construct_event(request.body, signature)
+        except stripe_service.StripeNotConfigured:
+            return Response(
+                {"detail": "Stripe webhook nie je nakonfigurovaný."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception:
+            # Invalid or missing signature — 400 so Stripe surfaces it in the
+            # dashboard, and so a forged payload never reaches a handler.
+            logger.warning("Rejected Stripe webhook with invalid signature")
+            return Response(
+                {"detail": "Neplatný podpis webhooku."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            handled, note = stripe_service.process_event(event)
+        except Exception:
+            # A handler bug must not turn into an infinite Stripe retry loop
+            # against an endpoint that will keep failing the same way.
+            logger.exception("Stripe webhook handler failed")
+            return Response({"received": True, "handled": False}, status=status.HTTP_200_OK)
+
+        # Always 200 — including unknown types and duplicates. 4xx/5xx here
+        # starts a retry cycle that we cannot stop.
+        return Response({"received": True, "handled": handled, "note": note}, status=status.HTTP_200_OK)
 
 
 def _month_window(dt):
@@ -811,7 +614,7 @@ def _months_ago(n):
 
 
 class FinanceStatsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user
@@ -927,7 +730,7 @@ class FinanceStatsView(APIView):
 class ProcedureCatalogView(APIView):
     """Returns PriceList items grouped by category for the current lab."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user
@@ -983,7 +786,7 @@ class ProcedureCatalogView(APIView):
 class InvoiceAgingView(APIView):
     """Buckets overdue issued invoices by age: 0-30, 31-60, 61-90, 90+ days."""
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = AUTHENTICATED
 
     def get(self, request):
         user = request.user

@@ -1,6 +1,6 @@
 // Patients.jsx — Molaris Patients list (refreshed)
 
-function Patients({ onNavigate, onOpenPatient, onCreate }) {
+function Patients({ onOpenPatient, onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;

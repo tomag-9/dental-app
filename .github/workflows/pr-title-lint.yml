@@ -1,0 +1,83 @@
+name: PR Title Lint
+
+# Enforces Conventional Commits on the PR title, because release-please.yml
+# reads commit history since the last tag to decide the next version and
+# build CHANGELOG.md — CLAUDE.md requires squash-merges to develop, so the PR
+# title *is* the commit message that lands in history.
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  commitlint:
+    name: Lint PR Title
+    runs-on: [self-hosted]
+    steps:
+      # Every other job in ci.yml does this before checkout: the workspace is
+      # shared across jobs/branches on this runner, and root-owned files left
+      # behind by a docker-mounted build defeat actions/checkout's default
+      # `git clean` (runs as a normal user) with a silent permission-denied
+      # that surfaces as checkout itself failing. Without this step the
+      # failure looks like a bad PR title (the "Comment on failure" step
+      # below fires on ANY step failure) when it's actually infra.
+      - name: Prepare workspace
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE"
+          docker run --rm -v "$GITHUB_WORKSPACE:/workspace" alpine:3.20 sh -c 'find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +'
+
+      - uses: actions/checkout@v4
+        id: checkout
+        with:
+          sparse-checkout: |
+            .commitlintrc.json
+          sparse-checkout-cone-mode: false
+
+      - name: Validate PR title
+        id: validate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "$PR_TITLE" | docker run --rm -i -v "$PWD/.commitlintrc.json:/.commitlintrc.json:ro" \
+            node:20-alpine sh -c "npm install --silent -g @commitlint/cli@19 @commitlint/config-conventional@19 && commitlint --config /.commitlintrc.json"
+
+      - name: Comment on failure
+        # Only comment when the title itself was actually invalid, not when
+        # an earlier infra step (checkout, docker) failed for an unrelated
+        # reason — that used to post the "fix your PR title" message even
+        # when the title was fine.
+        if: failure() && steps.validate.conclusion == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `## ❌ PR Title Validation Failed
+
+            Your PR title does not follow [Conventional Commits](https://www.conventionalcommits.org/).
+            Since PRs are squash-merged to \`develop\`, this title becomes the commit
+            message release-please reads to build the changelog.
+
+            ### Expected format
+            \`\`\`
+            <type>(<scope>): <subject>
+            \`\`\`
+
+            ### Examples
+            - \`feat(materials): add FEFO lot selection\`
+            - \`fix(finance): correct MRR aggregation\`
+            - \`docs: update CLAUDE.md\`
+
+            ### Valid types
+            \`feat\`, \`fix\`, \`docs\`, \`style\`, \`refactor\`, \`test\`, \`chore\`, \`perf\`, \`ci\`, \`build\`, \`revert\`
+
+            Scope is free-form and optional. Please edit the PR title (not a commit) and re-run.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });

@@ -1,0 +1,70 @@
+name: Release Please
+
+# Runs on every push to main (a develop → main release PR, merged as a
+# regular merge per CLAUDE.md's merge strategy). release-please reads
+# Conventional Commits since the last tag and either:
+#   - opens/updates a "chore(main): release X.Y.Z" PR bumping VERSION,
+#     frontend/package.json and CHANGELOG.md, or
+#   - (once that PR is merged) tags the release and publishes a GitHub Release.
+#
+# Auto-merge below merges the release PR immediately so the tag appears
+# right after the triggering push, without a manual click.
+#
+# Requires secrets.RELEASE_PLEASE_TOKEN — a PAT (repo scope, or fine-grained
+# with Contents: read/write + Pull requests: read/write on this repo). The
+# default GITHUB_TOKEN is intentionally NOT used: pushes authored by
+# GITHUB_TOKEN do not re-trigger workflows on push, so the auto-merge commit
+# would never cause the second run that cuts the tag.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: [self-hosted]
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - name: Auto-merge release PR
+        if: steps.release.outputs.pr != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          # Passed via env, not interpolated into the script body: the PR JSON
+          # (title/body carry the changelog) contains quotes/parens/newlines
+          # that would break bash if spliced in with ${{ }} directly.
+          RELEASE_PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          PR_NUMBER=$(python3 -c "import json, os; print(json.loads(os.environ['RELEASE_PR_JSON'])['number'])")
+          echo "Merging release-please PR #$PR_NUMBER"
+          http_code=$(curl -sS -o /tmp/merge_response.json -w "%{http_code}" -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/merge" \
+            -d '{"merge_method":"merge"}')
+          cat /tmp/merge_response.json
+          if [ "$http_code" -ge 300 ]; then
+            echo "Merge failed with HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log cut release
+        if: steps.release.outputs.release_created == 'true'
+        run: |
+          echo "Released v${{ steps.release.outputs.version }} (tag ${{ steps.release.outputs.tag_name }})"

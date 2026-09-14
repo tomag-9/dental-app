@@ -1,6 +1,6 @@
 // Clinics.jsx — Molaris Clinics (Kliniky)
 
-function Clinics({ onNavigate, onCreate }) {
+function Clinics({ onCreate }) {
   const [search, setSearch] = React.useState('');
   const workspace = window.MolarisAPI.useWorkspace();
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;

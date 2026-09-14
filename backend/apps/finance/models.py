@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 
 from apps.core.models import Lab
@@ -95,6 +97,15 @@ class Invoice(models.Model):
     custom_description = models.TextField(blank=True, default="")
     show_patient_list = models.BooleanField(default=True)
     breakdown_snapshot = models.JSONField(blank=True, default=list)
+    # Skonto (#126) — early-payment discount, snapshotted at issue time from
+    # Lab.skonto_* so a later change to the lab's default setting cannot alter
+    # an already-issued invoice — the same principle breakdown_snapshot uses
+    # for line items.
+    skonto_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    skonto_deadline = models.DateField(null=True, blank=True)
+    skonto_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    #: Set when the invoice was marked paid on or before ``skonto_deadline``.
+    paid_with_skonto = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     issued_at = models.DateTimeField(null=True, blank=True)
@@ -145,11 +156,26 @@ class InvoiceSequence(models.Model):
 
 
 class Subscription(models.Model):
+    #: Statuses in which the lab may still write. Everything outside this set is
+    #: read-only (see ``apps.core.access.SubscriptionWriteAllowed``).
+    STATUS_ACTIVE = "active"
+    STATUS_TRIALING = "trialing"
+    STATUS_PAST_DUE = "past_due"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_INACTIVE = "inactive"
+    STATUS_READ_ONLY = "read_only"
+
     STATUS_CHOICES = (
-        ("active", "Aktívne"),
-        ("past_due", "Po splatnosti"),
-        ("cancelled", "Zrušené"),
-        ("inactive", "Neaktívne"),
+        (STATUS_ACTIVE, "Aktívne"),
+        # ``trial_ends_at`` existed long before this status did; a subscription
+        # inside its Stripe trial now carries a status that says so.
+        (STATUS_TRIALING, "Skúšobná doba"),
+        (STATUS_PAST_DUE, "Po splatnosti"),
+        (STATUS_CANCELLED, "Zrušené"),
+        (STATUS_INACTIVE, "Neaktívne"),
+        # Terminal state of the grace period: data stays readable and
+        # exportable, writes are refused with 402.
+        (STATUS_READ_ONLY, "Iba na čítanie"),
     )
     PLAN_CHOICES = (
         ("free", "Bezplatný"),
@@ -167,5 +193,64 @@ class Subscription(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     current_period_start = models.DateField(null=True, blank=True)
     current_period_end = models.DateField(null=True, blank=True)
+    # Stripe linkage. Never serialised to API clients — the browser only ever
+    # receives a redirect URL minted server-side.
+    stripe_customer_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    stripe_subscription_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    #: When the subscription first went ``past_due``; drives the grace window.
+    past_due_since = models.DateTimeField(null=True, blank=True)
+    #: ``created`` of the newest Stripe event already applied to this row, so a
+    #: late out-of-order delivery cannot roll the state backwards.
+    stripe_state_updated_at = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.lab_id}: {self.plan}/{self.status}"
+
+    @property
+    def is_read_only(self):
+        """True when the lab has lost write access (payment lapsed)."""
+        from apps.core.access import READ_ONLY_SUBSCRIPTION_STATUSES
+
+        return self.status in READ_ONLY_SUBSCRIPTION_STATUSES
+
+    def grace_ends_at(self):
+        """End of the grace window for a ``past_due`` subscription, else None."""
+        from django.conf import settings
+
+        if self.status != self.STATUS_PAST_DUE or not self.past_due_since:
+            return None
+        days = getattr(settings, "SUBSCRIPTION_GRACE_DAYS", 14)
+        return self.past_due_since + timedelta(days=days)
+
+
+class StripeEvent(models.Model):
+    """Ledger of Stripe webhook deliveries, used purely for idempotency.
+
+    Stripe redelivers events (at-least-once) and does not guarantee ordering.
+    The unique ``event_id`` turns a redelivery into a cheap 200, while
+    ``created`` lets a handler drop a delivery that is older than the state
+    already stored on the subscription.
+    """
+
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    #: Stripe's own ``created`` timestamp (unix seconds).
+    created = models.BigIntegerField(default=0)
+    lab = models.ForeignKey(
+        Lab,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="stripe_events",
+    )
+    handled = models.BooleanField(default=False)
+    note = models.TextField(blank=True, default="")
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at", "-id"]
+
+    def __str__(self):
+        return f"{self.event_type} {self.event_id}"

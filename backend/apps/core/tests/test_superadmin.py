@@ -150,7 +150,11 @@ class ImpersonationTests(APITestCase):
 
     def test_superadmin_can_impersonate(self):
         self.client.force_authenticate(user=self.superadmin)
-        resp = self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
+        resp = self.client.post(
+            f"/api/core/users/superadmin/{self.target.id}/impersonate/",
+            {"reason": "Support ticket #1"},
+            format="json",
+        )
         self.assertEqual(resp.status_code, 200)
         self.assertIn("access_token", resp.data)
         self.assertIn("refresh_token", resp.data)
@@ -159,7 +163,11 @@ class ImpersonationTests(APITestCase):
     def test_impersonation_writes_audit_log(self):
         self.client.force_authenticate(user=self.superadmin)
         before = AuditLog.objects.filter(action="user.impersonated").count()
-        self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
+        self.client.post(
+            f"/api/core/users/superadmin/{self.target.id}/impersonate/",
+            {"reason": "Support ticket #1"},
+            format="json",
+        )
         self.assertEqual(AuditLog.objects.filter(action="user.impersonated").count(), before + 1)
 
     def test_regular_user_cannot_impersonate(self):
@@ -171,12 +179,25 @@ class ImpersonationTests(APITestCase):
             lab=self.lab,
         )
         self.client.force_authenticate(user=regular)
-        resp = self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
+        resp = self.client.post(
+            f"/api/core/users/superadmin/{self.target.id}/impersonate/",
+            {"reason": "trying anyway"},
+            format="json",
+        )
         self.assertEqual(resp.status_code, 403)
+
+    def test_impersonate_without_reason_returns_400(self):
+        self.client.force_authenticate(user=self.superadmin)
+        resp = self.client.post(f"/api/core/users/superadmin/{self.target.id}/impersonate/")
+        self.assertEqual(resp.status_code, 400)
 
     def test_impersonate_nonexistent_user_returns_404(self):
         self.client.force_authenticate(user=self.superadmin)
-        resp = self.client.post("/api/core/users/superadmin/99999/impersonate/")
+        resp = self.client.post(
+            "/api/core/users/superadmin/99999/impersonate/",
+            {"reason": "Support ticket #1"},
+            format="json",
+        )
         self.assertEqual(resp.status_code, 404)
 
 

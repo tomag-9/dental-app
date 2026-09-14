@@ -1,3 +1,7 @@
+from datetime import timedelta
+
+from django.core import mail
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -63,6 +67,41 @@ class CoreUserFlowsApiTests(APITestCase):
         self.assertEqual(created_user.role, "admin")
         self.assertEqual(created_user.lab_id, lab.id)
         self.assertTrue(Subscription.objects.filter(lab=lab).exists())
+
+    def test_signup_creates_trialing_subscription_with_14_day_trial(self):
+        payload = {
+            "lab_name": "Trial Lab",
+            "email": "owner@triallab.test",
+            "nickname": "trialowner",
+            "password": "password123",
+        }
+
+        response = self.client.post("/api/core/users/signup/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        lab = Lab.objects.get(name="Trial Lab")
+        subscription = Subscription.objects.get(lab=lab)
+        self.assertEqual(subscription.status, "trialing")
+        self.assertEqual(subscription.plan, "free")
+        self.assertIsNotNone(subscription.trial_ends_at)
+        expected_trial_end = timezone.now().date() + timedelta(days=14)
+        self.assertEqual(subscription.trial_ends_at, expected_trial_end)
+        # A read-only lock must never apply during the trial.
+        self.assertFalse(subscription.is_read_only)
+
+    def test_signup_sends_welcome_email(self):
+        payload = {
+            "lab_name": "Welcome Lab",
+            "email": "owner@welcomelab.test",
+            "nickname": "welcomeowner",
+            "password": "password123",
+        }
+
+        with override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
+            response = self.client.post("/api/core/users/signup/", payload, format="json")
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertEqual(len(mail.outbox), 1)
+            self.assertIn("owner@welcomelab.test", mail.outbox[0].to)
 
     def test_me_get_and_put(self):
         self.client.force_authenticate(user=self.admin_a)
@@ -367,7 +406,11 @@ class CoreUserFlowsApiTests(APITestCase):
 
     def test_impersonation_audit_log_records_actor_lab_and_target(self):
         self.client.force_authenticate(user=self.superadmin)
-        response = self.client.post(f"/api/core/users/superadmin/{self.user_a.id}/impersonate/")
+        response = self.client.post(
+            f"/api/core/users/superadmin/{self.user_a.id}/impersonate/",
+            {"reason": "Investigating support ticket"},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         log = AuditLog.objects.filter(action="user.impersonated").latest("created_at")

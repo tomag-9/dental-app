@@ -42,31 +42,22 @@ const PATTERNS = [
 //
 // `patterns` scopes the exception: anything matching a pattern NOT listed here
 // still fails, even in an excepted file.
-const EXCEPTIONS = [
-  {
-    // Design-prototype tooth-chart components. Still rendered from a static
-    // DEMO_STATE object instead of the workspace API. Removing them is tracked
-    // separately; failing CI on them here would just block every pipeline.
-    file: 'components/polozky-shared.jsx',
-    patterns: ['DEMO_*'],
-    issue: '#115',
-  },
-  { file: 'components/variant-anatomical.jsx', patterns: ['DEMO_*', 'demo literal'], issue: '#115' },
-  { file: 'components/variant-arch.jsx', patterns: ['DEMO_*', 'demo literal'], issue: '#115' },
-  { file: 'components/variant-detail.jsx', patterns: ['DEMO_*'], issue: '#116' },
-  { file: 'components/variant-grid.jsx', patterns: ['DEMO_*'], issue: '#116' },
-];
+// Empty on purpose: the tooth-chart prototypes that used to live here are gone.
+// The three losing design variants (variant-grid / variant-arch /
+// variant-anatomical) were deleted with #115 and `variant-detail.jsx` now derives
+// its state from the job payload (#116, see scripts/tooth-chart-smoke.mjs), so
+// `DEMO_STATE` no longer exists anywhere in src/.
+/** @type {{ file: string, patterns: string[], issue: string }[]} */
+const EXCEPTIONS = [];
 
 // ── Additional structural check: pages that must talk to the API ──────────
 // A page whose whole content is hardcoded is a mock even without a `fallback`
-// identifier. Superadmin.jsx is exactly that case today (#109), so it is listed
-// as a known exception rather than a hard failure.
+// identifier. Superadmin.jsx used to be exactly that case; it now reads live
+// data (#109), so the exception is gone and a regression fails the build.
 const API_BACKED_PAGES = [
   'pages/Superadmin.jsx',
 ];
-const API_BACKED_EXCEPTIONS = {
-  'pages/Superadmin.jsx': '#109',
-};
+const API_BACKED_EXCEPTIONS = {};
 const API_CALL_RE = /\b(MolarisAPI|useWorkspace|loadWorkspace|request\()/;
 
 const patternIndex = new Map(PATTERNS.map((p) => [p.name, p]));

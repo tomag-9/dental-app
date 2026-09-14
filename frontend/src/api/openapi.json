@@ -358,13 +358,14 @@
         "type": "string"
       },
       "EventEnum": {
-        "description": "* `created` - Created\n* `updated` - Updated\n* `status_changed` - Status changed\n* `assigned` - Assigned\n* `deleted` - Deleted",
+        "description": "* `created` - Created\n* `updated` - Updated\n* `status_changed` - Status changed\n* `assigned` - Assigned\n* `deleted` - Deleted\n* `label_issued` - Prosthetic label issued",
         "enum": [
           "created",
           "updated",
           "status_changed",
           "assigned",
-          "deleted"
+          "deleted",
+          "label_issued"
         ],
         "type": "string"
       },
@@ -546,6 +547,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -563,6 +568,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -607,9 +630,13 @@
           "items",
           "lab",
           "number",
+          "paid_with_skonto",
           "patient_names",
           "patient_summaries",
           "related_jobs",
+          "skonto_amount",
+          "skonto_deadline",
+          "skonto_percent",
           "subtotal_amount",
           "taxable_amount",
           "vat_amount"
@@ -722,9 +749,8 @@
             "type": "string"
           },
           "quantity": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "unit_price": {
@@ -830,6 +856,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -840,6 +870,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -882,8 +930,12 @@
           "items",
           "lab",
           "number",
+          "paid_with_skonto",
           "patient_names",
           "related_jobs",
+          "skonto_amount",
+          "skonto_deadline",
+          "skonto_percent",
           "subtotal_amount",
           "taxable_amount",
           "vat_amount"
@@ -997,6 +1049,11 @@
       },
       "Job": {
         "properties": {
+          "assigned_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
           "clinic": {
             "type": "integer"
           },
@@ -1008,6 +1065,14 @@
             ],
             "readOnly": true
           },
+          "completed_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "contains_medicinal_substance": {
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "readOnly": true,
@@ -1015,6 +1080,10 @@
           },
           "description": {
             "nullable": true,
+            "type": "string"
+          },
+          "diagnosis_code": {
+            "maxLength": 10,
             "type": "string"
           },
           "doctor": {
@@ -1039,12 +1108,24 @@
             "nullable": true,
             "type": "string"
           },
+          "handover_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "health_note": {
+            "type": "string"
+          },
           "id": {
             "readOnly": true,
             "type": "integer"
           },
           "input_tooth_procedures": {
             "nullable": true
+          },
+          "insurance_total": {
+            "readOnly": true,
+            "type": "string"
           },
           "items": {
             "items": {
@@ -1055,6 +1136,32 @@
           "lab": {
             "readOnly": true,
             "type": "integer"
+          },
+          "label_issued_at": {
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "label_missing_fields": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
+          "label_number": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "material_usage_missing": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "medicinal_substance_note": {
+            "maxLength": 255,
+            "type": "string"
           },
           "output_tooth_procedures": {
             "nullable": true
@@ -1070,6 +1177,10 @@
             ],
             "readOnly": true
           },
+          "patient_total": {
+            "readOnly": true,
+            "type": "string"
+          },
           "price": {
             "format": "decimal",
             "nullable": true,
@@ -1084,6 +1195,19 @@
           },
           "procedure_quantities": {
             "nullable": true
+          },
+          "received_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "safety_performance_deviations": {
+            "type": "string"
+          },
+          "seated_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
           },
           "start_date": {
             "format": "date",
@@ -1134,9 +1258,15 @@
           "created_at",
           "doctor_details",
           "id",
+          "insurance_total",
           "lab",
+          "label_issued_at",
+          "label_missing_fields",
+          "label_number",
+          "material_usage_missing",
           "patient",
           "patient_details",
+          "patient_total",
           "technician_details",
           "timeline",
           "updated_at"
@@ -1168,9 +1298,25 @@
             "readOnly": true,
             "type": "integer"
           },
+          "insurance_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "type": "string"
+          },
+          "ipzp_code": {
+            "maxLength": 20,
+            "type": "string"
+          },
           "material": {
             "maxLength": 100,
             "nullable": true,
+            "type": "string"
+          },
+          "patient_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
           "price_list_code": {
@@ -1192,8 +1338,7 @@
             ]
           },
           "quantity": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -1323,6 +1468,10 @@
             "nullable": true,
             "type": "string"
           },
+          "authorized_representative": {
+            "maxLength": 255,
+            "type": "string"
+          },
           "bank_account": {
             "maxLength": 50,
             "nullable": true,
@@ -1383,8 +1532,7 @@
             "type": "string"
           },
           "invoice_due_days": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -1392,12 +1540,30 @@
             "maxLength": 20,
             "type": "string"
           },
+          "is_active": {
+            "type": "boolean"
+          },
           "is_vat_payer": {
             "type": "boolean"
+          },
+          "label_patient_identifier_mode": {
+            "$ref": "#/components/schemas/LabelPatientIdentifierModeEnum"
+          },
+          "label_prefix": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "label_start_number": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
           },
           "logo_url": {
             "maxLength": 500,
             "nullable": true,
+            "type": "string"
+          },
+          "mdr_declaration_text": {
             "type": "string"
           },
           "name": {
@@ -1416,6 +1582,25 @@
           "postal_code": {
             "maxLength": 20,
             "nullable": true,
+            "type": "string"
+          },
+          "production_sites": {
+            "type": "string"
+          },
+          "require_material_usage": {
+            "type": "boolean"
+          },
+          "skonto_days": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skonto_enabled": {
+            "type": "boolean"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
           "slug": {
@@ -1473,6 +1658,14 @@
           "updated_at"
         ],
         "type": "object"
+      },
+      "LabelPatientIdentifierModeEnum": {
+        "description": "* `name` - Meno pacienta\n* `code` - Kód pacienta",
+        "enum": [
+          "name",
+          "code"
+        ],
+        "type": "string"
       },
       "Manufacturer": {
         "properties": {
@@ -2980,6 +3173,10 @@
             "nullable": true,
             "type": "string"
           },
+          "paid_with_skonto": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "patient_names": {
             "readOnly": true,
             "type": "string"
@@ -2997,6 +3194,24 @@
           },
           "show_patient_list": {
             "type": "boolean"
+          },
+          "skonto_amount": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_deadline": {
+            "format": "date",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
+            "readOnly": true,
+            "type": "string"
           },
           "status": {
             "$ref": "#/components/schemas/Status12cEnum"
@@ -3028,6 +3243,11 @@
       },
       "PatchedJob": {
         "properties": {
+          "assigned_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
           "clinic": {
             "type": "integer"
           },
@@ -3039,6 +3259,14 @@
             ],
             "readOnly": true
           },
+          "completed_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "contains_medicinal_substance": {
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "readOnly": true,
@@ -3046,6 +3274,10 @@
           },
           "description": {
             "nullable": true,
+            "type": "string"
+          },
+          "diagnosis_code": {
+            "maxLength": 10,
             "type": "string"
           },
           "doctor": {
@@ -3070,12 +3302,24 @@
             "nullable": true,
             "type": "string"
           },
+          "handover_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "health_note": {
+            "type": "string"
+          },
           "id": {
             "readOnly": true,
             "type": "integer"
           },
           "input_tooth_procedures": {
             "nullable": true
+          },
+          "insurance_total": {
+            "readOnly": true,
+            "type": "string"
           },
           "items": {
             "items": {
@@ -3086,6 +3330,32 @@
           "lab": {
             "readOnly": true,
             "type": "integer"
+          },
+          "label_issued_at": {
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "label_missing_fields": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "readOnly": true,
+            "type": "array"
+          },
+          "label_number": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "material_usage_missing": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "medicinal_substance_note": {
+            "maxLength": 255,
+            "type": "string"
           },
           "output_tooth_procedures": {
             "nullable": true
@@ -3101,6 +3371,10 @@
             ],
             "readOnly": true
           },
+          "patient_total": {
+            "readOnly": true,
+            "type": "string"
+          },
           "price": {
             "format": "decimal",
             "nullable": true,
@@ -3115,6 +3389,19 @@
           },
           "procedure_quantities": {
             "nullable": true
+          },
+          "received_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
+          },
+          "safety_performance_deviations": {
+            "type": "string"
+          },
+          "seated_at": {
+            "format": "date",
+            "nullable": true,
+            "type": "string"
           },
           "start_date": {
             "format": "date",
@@ -3166,6 +3453,10 @@
           "address": {
             "maxLength": 255,
             "nullable": true,
+            "type": "string"
+          },
+          "authorized_representative": {
+            "maxLength": 255,
             "type": "string"
           },
           "bank_account": {
@@ -3228,8 +3519,7 @@
             "type": "string"
           },
           "invoice_due_days": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
+            "maximum": 2147483647,
             "minimum": 0,
             "type": "integer"
           },
@@ -3237,12 +3527,30 @@
             "maxLength": 20,
             "type": "string"
           },
+          "is_active": {
+            "type": "boolean"
+          },
           "is_vat_payer": {
             "type": "boolean"
+          },
+          "label_patient_identifier_mode": {
+            "$ref": "#/components/schemas/LabelPatientIdentifierModeEnum"
+          },
+          "label_prefix": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "label_start_number": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
           },
           "logo_url": {
             "maxLength": 500,
             "nullable": true,
+            "type": "string"
+          },
+          "mdr_declaration_text": {
             "type": "string"
           },
           "name": {
@@ -3261,6 +3569,25 @@
           "postal_code": {
             "maxLength": 20,
             "nullable": true,
+            "type": "string"
+          },
+          "production_sites": {
+            "type": "string"
+          },
+          "require_material_usage": {
+            "type": "boolean"
+          },
+          "skonto_days": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "skonto_enabled": {
+            "type": "boolean"
+          },
+          "skonto_percent": {
+            "format": "decimal",
+            "pattern": "^-?\\d{0,3}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
           "slug": {
@@ -3701,6 +4028,18 @@
             "readOnly": true,
             "type": "string"
           },
+          "default_insurance_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "type": "string"
+          },
+          "default_patient_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "type": "string"
+          },
           "description": {
             "maxLength": 255,
             "type": "string"
@@ -3708,6 +4047,10 @@
           "id": {
             "readOnly": true,
             "type": "integer"
+          },
+          "ipzp_code": {
+            "maxLength": 20,
+            "type": "string"
           },
           "lab": {
             "readOnly": true,
@@ -3780,13 +4123,17 @@
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
+          "past_due_since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "plan": {
             "$ref": "#/components/schemas/PlanEnum"
           },
           "seats": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "status": {
@@ -3960,6 +4307,14 @@
           "first_name": {
             "maxLength": 150,
             "type": "string"
+          },
+          "google_linked": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "has_password": {
+            "readOnly": true,
+            "type": "boolean"
           },
           "id": {
             "readOnly": true,
@@ -4243,6 +4598,18 @@
             "readOnly": true,
             "type": "string"
           },
+          "default_insurance_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "type": "string"
+          },
+          "default_patient_amount": {
+            "format": "decimal",
+            "nullable": true,
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
+            "type": "string"
+          },
           "description": {
             "maxLength": 255,
             "type": "string"
@@ -4250,6 +4617,10 @@
           "id": {
             "readOnly": true,
             "type": "integer"
+          },
+          "ipzp_code": {
+            "maxLength": 20,
+            "type": "string"
           },
           "lab": {
             "readOnly": true,
@@ -4417,13 +4788,17 @@
             "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$",
             "type": "string"
           },
+          "past_due_since": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
           "plan": {
             "$ref": "#/components/schemas/PlanEnum"
           },
           "seats": {
-            "format": "int64",
-            "maximum": 9223372036854775807,
-            "minimum": -9223372036854775808,
+            "maximum": 2147483647,
+            "minimum": -2147483648,
             "type": "integer"
           },
           "status": {
@@ -4449,12 +4824,14 @@
         "type": "object"
       },
       "SubscriptionStatusEnum": {
-        "description": "* `active` - Aktívne\n* `past_due` - Po splatnosti\n* `cancelled` - Zrušené\n* `inactive` - Neaktívne",
+        "description": "* `active` - Aktívne\n* `trialing` - Skúšobná doba\n* `past_due` - Po splatnosti\n* `cancelled` - Zrušené\n* `inactive` - Neaktívne\n* `read_only` - Iba na čítanie",
         "enum": [
           "active",
+          "trialing",
           "past_due",
           "cancelled",
-          "inactive"
+          "inactive",
+          "read_only"
         ],
         "type": "string"
       },
@@ -4685,6 +5062,14 @@
             "maxLength": 150,
             "type": "string"
           },
+          "google_linked": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "has_password": {
+            "readOnly": true,
+            "type": "boolean"
+          },
           "id": {
             "readOnly": true,
             "type": "integer"
@@ -4732,6 +5117,8 @@
         },
         "required": [
           "date_joined",
+          "google_linked",
+          "has_password",
           "id",
           "lab_details",
           "username"
@@ -5409,6 +5796,74 @@
         ]
       }
     },
+    "/api/core/auth/google/": {
+      "get": {
+        "description": "``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies.",
+        "operationId": "core_auth_google_retrieve",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "core"
+        ]
+      },
+      "post": {
+        "description": "``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies.",
+        "operationId": "core_auth_google_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/core/auth/google/link/": {
+      "delete": {
+        "description": "Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account.",
+        "operationId": "core_auth_google_link_destroy",
+        "responses": {
+          "204": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "core"
+        ]
+      },
+      "post": {
+        "description": "Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account.",
+        "operationId": "core_auth_google_link_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "core"
+        ]
+      }
+    },
     "/api/core/auth/login/": {
       "post": {
         "description": "JWT login that also persists a UserSession record.",
@@ -5767,6 +6222,118 @@
         ]
       }
     },
+    "/api/core/labs/{id}/activate/": {
+      "post": {
+        "operationId": "core_labs_activate_create",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/core/labs/{id}/suspend/": {
+      "post": {
+        "operationId": "core_labs_suspend_create",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "core"
+        ]
+      }
+    },
     "/api/core/labs/{lab_pk}/permissions/": {
       "get": {
         "description": "Manage per-lab role permission metadata overrides. Admin-only.",
@@ -5928,6 +6495,51 @@
         },
         "responses": {
           "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "core"
+        ]
+      }
+    },
+    "/api/core/notifications/broadcast/": {
+      "post": {
+        "operationId": "core_notifications_broadcast_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6264,7 +6876,7 @@
     },
     "/api/core/permissions/matrix/": {
       "get": {
-        "description": "Return the full role → allowed actions matrix.",
+        "description": "Return the full role → allowed actions matrix.\n\n``matrix`` lists the *defaults* per role; ``current_permissions`` is the\ncaller's effective set with per-lab overrides already applied.",
         "operationId": "core_permissions_matrix_retrieve",
         "responses": {
           "200": {
@@ -7372,6 +7984,7 @@
     },
     "/api/crm/clinics/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_list",
         "parameters": [
           {
@@ -7415,6 +8028,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_create",
         "requestBody": {
           "content": {
@@ -7460,6 +8074,7 @@
     },
     "/api/crm/clinics/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_export_retrieve",
         "responses": {
           "200": {
@@ -7485,6 +8100,7 @@
     },
     "/api/crm/clinics/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_destroy",
         "parameters": [
           {
@@ -7512,6 +8128,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_retrieve",
         "parameters": [
           {
@@ -7546,6 +8163,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_partial_update",
         "parameters": [
           {
@@ -7599,6 +8217,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_clinics_update",
         "parameters": [
           {
@@ -7655,6 +8274,7 @@
     },
     "/api/crm/doctors/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_list",
         "parameters": [
           {
@@ -7698,6 +8318,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_create",
         "requestBody": {
           "content": {
@@ -7743,6 +8364,7 @@
     },
     "/api/crm/doctors/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_export_retrieve",
         "responses": {
           "200": {
@@ -7768,6 +8390,7 @@
     },
     "/api/crm/doctors/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_destroy",
         "parameters": [
           {
@@ -7795,6 +8418,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_retrieve",
         "parameters": [
           {
@@ -7829,6 +8453,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_partial_update",
         "parameters": [
           {
@@ -7882,6 +8507,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_doctors_update",
         "parameters": [
           {
@@ -8004,6 +8630,7 @@
     },
     "/api/crm/patients/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_list",
         "parameters": [
           {
@@ -8047,6 +8674,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_create",
         "requestBody": {
           "content": {
@@ -8092,6 +8720,7 @@
     },
     "/api/crm/patients/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_export_retrieve",
         "responses": {
           "200": {
@@ -8117,6 +8746,7 @@
     },
     "/api/crm/patients/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_destroy",
         "parameters": [
           {
@@ -8144,6 +8774,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_retrieve",
         "parameters": [
           {
@@ -8178,6 +8809,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_partial_update",
         "parameters": [
           {
@@ -8231,6 +8863,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_update",
         "parameters": [
           {
@@ -8287,6 +8920,7 @@
     },
     "/api/crm/patients/{id}/cumulative_tooth_map/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "crm_patients_cumulative_tooth_map_retrieve",
         "parameters": [
           {
@@ -9248,6 +9882,23 @@
         ]
       }
     },
+    "/api/finance/stripe/webhook/": {
+      "post": {
+        "description": "Stripe's authoritative channel for subscription lifecycle changes.\n\nThree deliberate exemptions, each of which would otherwise break delivery:\n\n* ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces\n  CSRF on cookie-authenticated requests, and Stripe carries no cookie and\n  no CSRF token. Dropping authentication also drops that check; the view is\n  additionally ``csrf_exempt`` so nothing re-adds it.\n* ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.\n  A burst of deliveries throttled to 429 is a burst of events lost after\n  Stripe exhausts its retries.\n* ``permission_classes = [AllowAny]`` — the signature *is* the\n  authentication. Nothing is processed before it verifies.",
+        "operationId": "finance_stripe_webhook_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
     "/api/finance/subscriptions/": {
       "get": {
         "operationId": "finance_subscriptions_list",
@@ -9336,9 +9987,99 @@
         ]
       }
     },
+    "/api/finance/subscriptions/checkout/": {
+      "post": {
+        "operationId": "finance_subscriptions_checkout_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
     "/api/finance/subscriptions/my/": {
       "get": {
         "operationId": "finance_subscriptions_my_retrieve",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "finance"
+        ]
+      }
+    },
+    "/api/finance/subscriptions/portal/": {
+      "post": {
+        "operationId": "finance_subscriptions_portal_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -10959,6 +11700,43 @@
         ]
       }
     },
+    "/api/jobs/jobs/prosthetic-labels/": {
+      "get": {
+        "description": "Bulk prosthetic label export — one job per page, in one PDF.",
+        "operationId": "jobs_jobs_prosthetic_labels_retrieve",
+        "parameters": [
+          {
+            "description": "Comma-separated job ids.",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
     "/api/jobs/jobs/quick-create/": {
       "post": {
         "description": "Atomically create a patient (if needed) and a job in one request.\n\nExpected payload:\n  {\n    \"patient\": {\"first_name\": \"...\", \"last_name\": \"...\", \"birth_number\": \"...\", ...},\n    \"clinic_id\": <int>,           # required\n    \"job\": {\"description\": \"...\", \"due_date\": \"...\", ...}\n  }\nPatient is matched by birth_number if provided and already exists; otherwise created.",
@@ -11274,6 +12052,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/jobs/jobs/{id}/prosthetic-label/": {
+      "get": {
+        "description": "Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json).",
+        "operationId": "jobs_jobs_prosthetic_label_retrieve",
+        "parameters": [
+          {
+            "description": "Pass 'json' for the label data snapshot; PDF is returned otherwise.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A unique integer value identifying this job.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
                 }
               }
             },
@@ -12128,6 +12952,118 @@
       },
       "put": {
         "operationId": "labs_update",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "labs"
+        ]
+      }
+    },
+    "/api/labs/{id}/activate/": {
+      "post": {
+        "operationId": "labs_activate_create",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "labs"
+        ]
+      }
+    },
+    "/api/labs/{id}/suspend/": {
+      "post": {
+        "operationId": "labs_suspend_create",
         "parameters": [
           {
             "description": "A unique integer value identifying this lab.",
@@ -13671,6 +14607,51 @@
         },
         "responses": {
           "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/broadcast/": {
+      "post": {
+        "operationId": "notifications_broadcast_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -15296,6 +16277,74 @@
         ]
       }
     },
+    "/api/v1/core/auth/google/": {
+      "get": {
+        "description": "``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies.",
+        "operationId": "v1_core_auth_google_retrieve",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "v1"
+        ]
+      },
+      "post": {
+        "description": "``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies.",
+        "operationId": "v1_core_auth_google_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/core/auth/google/link/": {
+      "delete": {
+        "description": "Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account.",
+        "operationId": "v1_core_auth_google_link_destroy",
+        "responses": {
+          "204": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      },
+      "post": {
+        "description": "Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account.",
+        "operationId": "v1_core_auth_google_link_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/core/auth/login/": {
       "post": {
         "description": "JWT login that also persists a UserSession record.",
@@ -15654,6 +16703,118 @@
         ]
       }
     },
+    "/api/v1/core/labs/{id}/activate/": {
+      "post": {
+        "operationId": "v1_core_labs_activate_create",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/core/labs/{id}/suspend/": {
+      "post": {
+        "operationId": "v1_core_labs_suspend_create",
+        "parameters": [
+          {
+            "description": "A unique integer value identifying this lab.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Lab"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lab"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/core/labs/{lab_pk}/permissions/": {
       "get": {
         "description": "Manage per-lab role permission metadata overrides. Admin-only.",
@@ -15815,6 +16976,51 @@
         },
         "responses": {
           "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Notification"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/core/notifications/broadcast/": {
+      "post": {
+        "operationId": "v1_core_notifications_broadcast_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Notification"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
@@ -16151,7 +17357,7 @@
     },
     "/api/v1/core/permissions/matrix/": {
       "get": {
-        "description": "Return the full role → allowed actions matrix.",
+        "description": "Return the full role → allowed actions matrix.\n\n``matrix`` lists the *defaults* per role; ``current_permissions`` is the\ncaller's effective set with per-lab overrides already applied.",
         "operationId": "v1_core_permissions_matrix_retrieve",
         "responses": {
           "200": {
@@ -17259,6 +18465,7 @@
     },
     "/api/v1/crm/clinics/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_list",
         "parameters": [
           {
@@ -17302,6 +18509,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_create",
         "requestBody": {
           "content": {
@@ -17347,6 +18555,7 @@
     },
     "/api/v1/crm/clinics/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_export_retrieve",
         "responses": {
           "200": {
@@ -17372,6 +18581,7 @@
     },
     "/api/v1/crm/clinics/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_destroy",
         "parameters": [
           {
@@ -17399,6 +18609,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_retrieve",
         "parameters": [
           {
@@ -17433,6 +18644,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_partial_update",
         "parameters": [
           {
@@ -17486,6 +18698,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_clinics_update",
         "parameters": [
           {
@@ -17542,6 +18755,7 @@
     },
     "/api/v1/crm/doctors/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_list",
         "parameters": [
           {
@@ -17585,6 +18799,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_create",
         "requestBody": {
           "content": {
@@ -17630,6 +18845,7 @@
     },
     "/api/v1/crm/doctors/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_export_retrieve",
         "responses": {
           "200": {
@@ -17655,6 +18871,7 @@
     },
     "/api/v1/crm/doctors/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_destroy",
         "parameters": [
           {
@@ -17682,6 +18899,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_retrieve",
         "parameters": [
           {
@@ -17716,6 +18934,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_partial_update",
         "parameters": [
           {
@@ -17769,6 +18988,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_doctors_update",
         "parameters": [
           {
@@ -17891,6 +19111,7 @@
     },
     "/api/v1/crm/patients/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_list",
         "parameters": [
           {
@@ -17934,6 +19155,7 @@
         ]
       },
       "post": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_create",
         "requestBody": {
           "content": {
@@ -17979,6 +19201,7 @@
     },
     "/api/v1/crm/patients/export/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_export_retrieve",
         "responses": {
           "200": {
@@ -18004,6 +19227,7 @@
     },
     "/api/v1/crm/patients/{id}/": {
       "delete": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_destroy",
         "parameters": [
           {
@@ -18031,6 +19255,7 @@
         ]
       },
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_retrieve",
         "parameters": [
           {
@@ -18065,6 +19290,7 @@
         ]
       },
       "patch": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_partial_update",
         "parameters": [
           {
@@ -18118,6 +19344,7 @@
         ]
       },
       "put": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_update",
         "parameters": [
           {
@@ -18174,6 +19401,7 @@
     },
     "/api/v1/crm/patients/{id}/cumulative_tooth_map/": {
       "get": {
+        "description": "Check lab-scoped actions before the view body runs.\n\nDRF evaluates permissions in ``initial()``, i.e. *before* serializer\nvalidation. Guarding only in ``perform_create``/``perform_update`` means an\ninvalid payload from a forbidden user answers 400 (\"your data is wrong\")\ninstead of 403 (\"you may not do this\") — which both leaks whether the\npayload was well-formed and confuses the caller.\n\nViews map their DRF action name to a permission action::\n\n    lab_permission_actions = {\n        \"create\": \"patient:write\",\n        \"destroy\": \"patient:write\",\n    }\n\n``self.action`` is set by ``ViewSetMixin.initialize_request`` before\n``initial()`` runs, so it is available here.",
         "operationId": "v1_crm_patients_cumulative_tooth_map_retrieve",
         "parameters": [
           {
@@ -19135,6 +20363,23 @@
         ]
       }
     },
+    "/api/v1/finance/stripe/webhook/": {
+      "post": {
+        "description": "Stripe's authoritative channel for subscription lifecycle changes.\n\nThree deliberate exemptions, each of which would otherwise break delivery:\n\n* ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces\n  CSRF on cookie-authenticated requests, and Stripe carries no cookie and\n  no CSRF token. Dropping authentication also drops that check; the view is\n  additionally ``csrf_exempt`` so nothing re-adds it.\n* ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.\n  A burst of deliveries throttled to 429 is a burst of events lost after\n  Stripe exhausts its retries.\n* ``permission_classes = [AllowAny]`` — the signature *is* the\n  authentication. Nothing is processed before it verifies.",
+        "operationId": "v1_finance_stripe_webhook_create",
+        "responses": {
+          "200": {
+            "description": "No response body"
+          }
+        },
+        "security": [
+          {}
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/finance/subscriptions/": {
       "get": {
         "operationId": "v1_finance_subscriptions_list",
@@ -19223,9 +20468,99 @@
         ]
       }
     },
+    "/api/v1/finance/subscriptions/checkout/": {
+      "post": {
+        "operationId": "v1_finance_subscriptions_checkout_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/finance/subscriptions/my/": {
       "get": {
         "operationId": "v1_finance_subscriptions_my_retrieve",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/finance/subscriptions/portal/": {
+      "post": {
+        "operationId": "v1_finance_subscriptions_portal_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Subscription"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20299,6 +21634,43 @@
         ]
       }
     },
+    "/api/v1/jobs/jobs/prosthetic-labels/": {
+      "get": {
+        "description": "Bulk prosthetic label export — one job per page, in one PDF.",
+        "operationId": "v1_jobs_jobs_prosthetic_labels_retrieve",
+        "parameters": [
+          {
+            "description": "Comma-separated job ids.",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
     "/api/v1/jobs/jobs/quick-create/": {
       "post": {
         "description": "Atomically create a patient (if needed) and a job in one request.\n\nExpected payload:\n  {\n    \"patient\": {\"first_name\": \"...\", \"last_name\": \"...\", \"birth_number\": \"...\", ...},\n    \"clinic_id\": <int>,           # required\n    \"job\": {\"description\": \"...\", \"due_date\": \"...\", ...}\n  }\nPatient is matched by birth_number if provided and already exists; otherwise created.",
@@ -20614,6 +21986,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          }
+        ],
+        "tags": [
+          "v1"
+        ]
+      }
+    },
+    "/api/v1/jobs/jobs/{id}/prosthetic-label/": {
+      "get": {
+        "description": "Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json).",
+        "operationId": "v1_jobs_jobs_prosthetic_label_retrieve",
+        "parameters": [
+          {
+            "description": "Pass 'json' for the label data snapshot; PDF is returned otherwise.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "A unique integer value identifying this job.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
                 }
               }
             },

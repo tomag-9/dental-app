@@ -2,10 +2,12 @@
 Unit tests for apps.finance.invoice_service — business logic only, no HTTP layer.
 """
 
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.core.models import AuditLog, Lab, User
 from apps.crm.models import Clinic, Patient
@@ -132,6 +134,41 @@ class CreateInvoiceTests(InvoiceServiceSetupMixin, TestCase):
         invoice = invoice_service.create_invoice(self.admin, self.clinic, [self.job])
         self.assertGreater(invoice.total_amount, Decimal("0"))
 
+    def test_no_skonto_when_lab_has_it_disabled(self):
+        invoice = invoice_service.create_invoice(self.admin, self.clinic, [self.job])
+        self.assertEqual(invoice.skonto_percent, Decimal("0"))
+        self.assertIsNone(invoice.skonto_deadline)
+        self.assertEqual(invoice.skonto_amount, Decimal("0"))
+
+    def test_skonto_is_snapshotted_from_lab_settings(self):
+        self.lab.skonto_enabled = True
+        self.lab.skonto_percent = Decimal("2.00")
+        self.lab.skonto_days = 5
+        self.lab.save(update_fields=["skonto_enabled", "skonto_percent", "skonto_days"])
+
+        invoice = invoice_service.create_invoice(self.admin, self.clinic, [self.job])
+
+        self.assertEqual(invoice.skonto_percent, Decimal("2.00"))
+        self.assertEqual(invoice.skonto_deadline, invoice.issued_at.date() + timedelta(days=5))
+        expected_amount = (invoice.total_amount * Decimal("2.00") / Decimal("100")).quantize(Decimal("0.01"))
+        self.assertEqual(invoice.skonto_amount, expected_amount)
+
+    def test_skonto_snapshot_is_independent_of_later_lab_changes(self):
+        self.lab.skonto_enabled = True
+        self.lab.skonto_percent = Decimal("3.00")
+        self.lab.skonto_days = 10
+        self.lab.save(update_fields=["skonto_enabled", "skonto_percent", "skonto_days"])
+
+        invoice = invoice_service.create_invoice(self.admin, self.clinic, [self.job])
+
+        self.lab.skonto_percent = Decimal("15.00")
+        self.lab.skonto_days = 1
+        self.lab.save(update_fields=["skonto_percent", "skonto_days"])
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.skonto_percent, Decimal("3.00"))
+        self.assertEqual(invoice.skonto_deadline, invoice.issued_at.date() + timedelta(days=10))
+
 
 class UpdateInvoiceStatusTests(InvoiceServiceSetupMixin, TestCase):
     def setUp(self):
@@ -177,6 +214,34 @@ class UpdateInvoiceStatusTests(InvoiceServiceSetupMixin, TestCase):
         invoice_service.update_invoice_status(self.admin, self.invoice, "draft")
         self.job.refresh_from_db()
         self.assertEqual(self.job.status, "finished_unfactured")
+
+    def test_payment_within_skonto_deadline_is_flagged(self):
+        self.invoice.skonto_percent = Decimal("2.00")
+        self.invoice.skonto_deadline = timezone.localdate() + timedelta(days=1)
+        self.invoice.skonto_amount = Decimal("2.40")
+        self.invoice.save(update_fields=["skonto_percent", "skonto_deadline", "skonto_amount"])
+
+        invoice_service.update_invoice_status(self.admin, self.invoice, "paid")
+        self.invoice.refresh_from_db()
+
+        self.assertTrue(self.invoice.paid_with_skonto)
+
+    def test_payment_after_skonto_deadline_is_not_flagged(self):
+        self.invoice.skonto_percent = Decimal("2.00")
+        self.invoice.skonto_deadline = timezone.localdate() - timedelta(days=1)
+        self.invoice.skonto_amount = Decimal("2.40")
+        self.invoice.save(update_fields=["skonto_percent", "skonto_deadline", "skonto_amount"])
+
+        invoice_service.update_invoice_status(self.admin, self.invoice, "paid")
+        self.invoice.refresh_from_db()
+
+        self.assertFalse(self.invoice.paid_with_skonto)
+
+    def test_no_skonto_deadline_means_never_flagged(self):
+        invoice_service.update_invoice_status(self.admin, self.invoice, "paid")
+        self.invoice.refresh_from_db()
+
+        self.assertFalse(self.invoice.paid_with_skonto)
 
 
 class DeleteInvoiceTests(InvoiceServiceSetupMixin, TestCase):

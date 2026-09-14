@@ -128,9 +128,23 @@ class SnapshotImmutabilityTests(MaterialsFixtureMixin, APITestCase):
 class SnapshotReferentialIntegrityTests(MaterialsFixtureMixin, APITestCase):
     """`source_lot_id`/`source_catalog_id` are plain integers, not foreign keys.
 
-    Nothing at the database level therefore stops a consumed lot (or its catalog
-    entry) from being deleted, which orphans the MDR traceability chain: the
-    snapshot line still names the LOT but the lot record is gone.
+    This is deliberate, not an oversight (#128): `MaterialUsageLine` is a
+    self-sufficient snapshot that carries its own copy of name, manufacturer,
+    LOT number and expiry, so MDR traceability survives independently of
+    whether the source lot or catalog entry still exists. A real `PROTECT` FK
+    here would eventually make the catalog unclean-uppable, which is exactly
+    what the snapshot is meant to avoid. `PROTECT` is used where it matters —
+    `MaterialUsage.lab`/`.job` and `MaterialUsageLine.usage` — so the MDR
+    record itself can never be deleted.
+
+    The three tests below therefore assert today's actual (and intended)
+    model-level behaviour: deleting a consumed lot or an orphaned catalog
+    entry succeeds, and the snapshot line is unaffected (see
+    `test_snapshot_survives_lot_deletion_with_its_own_data`). The one place a
+    decision was made to add friction is the API: `DELETE /lots/<id>/` now
+    refuses to delete a lot that has recorded usage, so an operator does not
+    lose a lot from the catalog view without being told it is part of an
+    audit trail.
     """
 
     def setUp(self):
@@ -145,31 +159,45 @@ class SnapshotReferentialIntegrityTests(MaterialsFixtureMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.line = MaterialUsageLine.objects.get()
 
-    @unittest.expectedFailure
-    def test_lot_with_recorded_usage_is_protected_from_deletion(self):
-        """FINDING: a consumed lot can be deleted, orphaning the MDR snapshot.
+    def test_lot_with_recorded_usage_can_be_deleted_at_model_level(self):
+        """Design decision (#128): no model-level `PROTECT` blocks this.
 
-        `MaterialUsageLine.source_lot_id` is a `PositiveBigIntegerField`, so the
-        `PROTECT` semantics the MDR chain relies on do not exist. Fixing this
-        needs a real FK plus a migration, so it is tracked separately.
+        `source_lot_id` is a plain integer specifically so the catalog can be
+        cleaned up without losing the MDR audit trail, which lives in the
+        snapshot's own denormalised columns, not in a live FK relationship.
         """
-        with self.assertRaises(ProtectedError):
-            self.lot.delete()
-
-    @unittest.expectedFailure
-    def test_lot_deletion_through_the_api_is_refused(self):
-        """FINDING: DELETE /lots/<id>/ succeeds even after the lot was consumed."""
-        response = self.client.delete(f"/api/v1/materials/lots/{self.lot.id}/")
-
-        self.assertNotEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-
-    @unittest.expectedFailure
-    def test_catalog_referenced_only_by_a_snapshot_is_protected(self):
-        """FINDING: same root cause — `source_catalog_id` is not a foreign key."""
         self.lot.delete()
 
-        with self.assertRaises(ProtectedError):
-            self.catalog.delete()
+        self.assertFalse(MaterialLot.objects.filter(pk=self.lot.pk).exists())
+
+    def test_lot_deletion_through_the_api_is_refused_after_consumption(self):
+        """#128: soft check in `MaterialLotViewSet.destroy` — a consumed lot
+        is part of the audit trail, so the API refuses to delete it even
+        though the model layer would allow it."""
+        response = self.client.delete(f"/api/v1/materials/lots/{self.lot.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("spotreb", response.data["detail"].lower())
+        self.assertTrue(MaterialLot.objects.filter(pk=self.lot.pk).exists())
+
+    def test_lot_without_usage_can_still_be_deleted_through_the_api(self):
+        """The soft check must not block ordinary catalog cleanup."""
+        unused_lot = self.make_lot(short_code="M-3", lot="LOT-C", qty="1.000")
+
+        response = self.client.delete(f"/api/v1/materials/lots/{unused_lot.id}/")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(MaterialLot.objects.filter(pk=unused_lot.pk).exists())
+
+    def test_catalog_referenced_only_by_a_snapshot_can_be_deleted_at_model_level(self):
+        """Same root cause as above: `source_catalog_id` is not a foreign key,
+        by design, so a catalog entry that only a snapshot still names can be
+        removed once its lots are gone."""
+        self.lot.delete()
+
+        self.catalog.delete()
+
+        self.assertFalse(MaterialCatalog.objects.filter(pk=self.catalog.pk).exists())
 
     def test_snapshot_survives_lot_deletion_with_its_own_data(self):
         """Documented consequence: only the denormalised copy remains."""

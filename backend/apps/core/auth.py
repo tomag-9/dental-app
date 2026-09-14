@@ -53,6 +53,12 @@ class MolarisTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
 
+        if self.user.lab_id and self.user.lab is not None and not self.user.lab.is_active:
+            raise AuthenticationFailed(
+                "Laboratórium bolo pozastavené superadministrátorom.",
+                code="lab_inactive",
+            )
+
         if self.user.totp_enabled:
             code = (
                 self.initial_data.get("totp_code")

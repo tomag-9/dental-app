@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.core.access import is_superadmin
@@ -72,6 +73,14 @@ class TechnicianSerializer(serializers.ModelSerializer):
 
 
 class JobItemSerializer(serializers.ModelSerializer):
+    # The model default (Decimal("0.00")) only applies when the key is
+    # omitted entirely. NewJob.jsx sends an explicit `null` for a split the
+    # user hasn't touched — allow_null so that reaches resolve_payment_split
+    # (which treats None as "not given") instead of failing DRF's field
+    # validation before the split logic ever runs.
+    insurance_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    patient_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+
     class Meta:
         model = JobItem
         fields = (
@@ -170,6 +179,9 @@ class JobSerializer(serializers.ModelSerializer):
     timeline = JobTimelineEventSerializer(many=True, read_only=True)
     insurance_total = serializers.SerializerMethodField()
     patient_total = serializers.SerializerMethodField()
+    # #101 — warn on the job detail before the technician tries to close the job.
+    material_usage_missing = serializers.SerializerMethodField()
+    label_missing_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -184,6 +196,18 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_patient_total(self, obj):
         return str(obj.patient_total)
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_material_usage_missing(self, obj):
+        """True when the lab requires MDR material usage and the job has none yet."""
+        return job_service.material_usage_missing(obj)
+
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
+    def get_label_missing_fields(self, obj):
+        """Mandatory prosthetic-label data the job is still missing (#98)."""
+        from apps.jobs import prosthetic_label
+
+        return prosthetic_label.collect_missing_fields(obj)
 
     def validate_diagnosis_code(self, value):
         if not value:

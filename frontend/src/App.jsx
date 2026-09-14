@@ -6,9 +6,20 @@
 // script loads. That decides which sidebar, landing page, and user identity the
 // app starts with.
 
+// Stripe redirects here after Checkout/Portal (STRIPE_CHECKOUT_SUCCESS_URL /
+// STRIPE_CHECKOUT_CANCEL_URL), e.g. `/settings/billing?checkout=success` —
+// read once on boot, then the URL is cleared so a refresh doesn't replay it.
+function readCheckoutReturn() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const checkout = params.get('checkout');
+  return checkout === 'success' || checkout === 'cancelled' ? checkout : null;
+}
+
 function App() {
   const initialRole = (typeof window !== 'undefined' && window.__INITIAL_ROLE) || 'admin';
-  const initialPage = initialRole === 'superadmin' ? 'sa_overview' : 'dashboard';
+  const [checkoutReturn] = React.useState(readCheckoutReturn);
+  const initialPage = checkoutReturn ? 'settings' : (initialRole === 'superadmin' ? 'sa_overview' : 'dashboard');
 
   const [user, setUser] = React.useState(() => window.MolarisAPI.savedUser());
   const [page, setPage] = React.useState(initialPage);
@@ -16,6 +27,12 @@ function App() {
   const [patientId, setPatientId] = React.useState(null);
   const [newJobOpen, setNewJobOpen] = React.useState(false);
   const [createType, setCreateType] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!checkoutReturn) return;
+    const cleanPath = window.location.pathname === '/settings/billing' ? '/' : window.location.pathname;
+    window.history.replaceState(null, '', cleanPath);
+  }, [checkoutReturn]);
 
   React.useEffect(() => {
     const onUserUpdate = (event) => {
@@ -66,7 +83,7 @@ function App() {
   switch (page) {
     case 'dashboard':       pageEl = React.createElement(Dashboard,     { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
     case 'jobs':            pageEl = React.createElement(Jobs,          { onNavigate: navigate, onOpenJob: openJob, onNewJob: () => setNewJobOpen(true) }); break;
-    case 'job_detail':      pageEl = React.createElement(JobDetail,     { jobId, onBack: () => navigate('jobs') }); break;
+    case 'job_detail':      pageEl = React.createElement(JobDetail,     { jobId, onBack: () => navigate('jobs'), onNavigate: navigate, onOpenPatient: openPatient }); break;
     case 'patients':        pageEl = React.createElement(Patients,      { onNavigate: navigate, onOpenPatient: openPatient, onCreate: () => setCreateType('patient') }); break;
     case 'patient_detail':  pageEl = React.createElement(PatientDetail, { patientId, onBack: () => navigate('patients'), onOpenJob: openJob }); break;
     case 'finance':         pageEl = React.createElement(Finance,       { onNavigate: navigate }); break;
@@ -78,7 +95,7 @@ function App() {
     case 'clinics':         pageEl = React.createElement(Clinics,       { onNavigate: navigate, onCreate: () => setCreateType('clinic') }); break;
     case 'doctors':         pageEl = React.createElement(Doctors,       { onNavigate: navigate, onCreate: () => setCreateType('doctor') }); break;
     case 'technicians':     pageEl = React.createElement(Technicians,   { onNavigate: navigate, onCreate: () => setCreateType('technician') }); break;
-    case 'settings':        pageEl = React.createElement(Settings,      { onNavigate: navigate, user }); break;
+    case 'settings':        pageEl = React.createElement(Settings,      { onNavigate: navigate, user, initialTab: checkoutReturn ? 'subscription' : undefined, checkoutReturn }); break;
     case 'permissions':     pageEl = React.createElement(Permissions,   { onNavigate: navigate, user }); break;
     // Superadmin pages — all resolve to <Superadmin currentPage=… />
     case 'sa_overview':
@@ -86,9 +103,7 @@ function App() {
     case 'sa_users':
     case 'sa_audit':
     case 'sa_system':
-    case 'sa_security':
     case 'sa_billing':
-    case 'sa_integrations':
                             pageEl = React.createElement(Superadmin,    { onNavigate: navigate, currentPage: page }); break;
     case 'superadmin':      pageEl = React.createElement(Superadmin,    { onNavigate: navigate, currentPage: 'sa_overview' }); break;
     default:                pageEl = user.role === 'superadmin'
@@ -118,8 +133,6 @@ function App() {
         onNewJob: () => setNewJobOpen(true),
         onNewPatient: () => setCreateType('patient'),
         onNewInvoice: () => setCreateType('invoice'),
-        onCreateClinic: () => setCreateType('clinic'),
-        onCreateDoctor: () => setCreateType('doctor'),
       }),
       React.createElement('main', {
         className: 'molaris-main',
@@ -136,10 +149,18 @@ function App() {
 const __molarisRoot = ReactDOM.createRoot(document.getElementById('root'));
 __molarisRoot.render(React.createElement(App));
 
+// Superadmin pages that actually exist. `sa_security` and `sa_integrations`
+// were removed in #109 (no backend behind them); any stale reference to them
+// now falls back to the overview instead of rendering a blank tab.
+const SUPERADMIN_PAGES = new Set([
+  'sa_overview', 'sa_tenants', 'sa_users', 'sa_audit', 'sa_system', 'sa_billing',
+]);
+
 function normalizePageForRole(page, role) {
   const pageId = String(page || '');
   if (role === 'superadmin') {
-    return pageId.startsWith('sa_') || pageId === 'settings' ? pageId : 'sa_overview';
+    if (pageId === 'settings' || SUPERADMIN_PAGES.has(pageId)) return pageId;
+    return 'sa_overview';
   }
   if (pageId.startsWith('sa_') || pageId === 'superadmin') return 'dashboard';
   const adminOnly = new Set(['finance', 'invoices', 'pricelist', 'inventory', 'materials', 'clinics', 'doctors', 'technicians', 'permissions', 'settings']);

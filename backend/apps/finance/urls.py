@@ -7,6 +7,7 @@ from .views import (
     InvoiceViewSet,
     PriceListViewSet,
     ProcedureCatalogView,
+    StripeWebhookView,
     SubscriptionViewSet,
 )
 
@@ -20,5 +21,6 @@ urlpatterns = [
     path("invoices/aging/", InvoiceAgingView.as_view(), name="invoice-aging"),
     path("stats/", FinanceStatsView.as_view(), name="finance-stats"),
     path("procedure-catalog/", ProcedureCatalogView.as_view(), name="procedure-catalog"),
+    path("stripe/webhook/", StripeWebhookView.as_view(), name="stripe-webhook"),
     path("", include(router.urls)),
 ]

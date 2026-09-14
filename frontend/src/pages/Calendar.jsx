@@ -1,6 +1,6 @@
 // Calendar.jsx — Molaris Calendar (Kalendár) — week view + agenda
 
-function Calendar({ onNavigate }) {
+function Calendar() {
   const [view, setView] = React.useState('week'); // 'week' | 'month'
   const [weekOffset, setWeekOffset] = React.useState(0);
   const workspace = window.MolarisAPI.useWorkspace();

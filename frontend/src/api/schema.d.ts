@@ -174,6 +174,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/core/auth/google/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        get: operations["core_auth_google_retrieve"];
+        put?: never;
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        post: operations["core_auth_google_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/auth/google/link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        post: operations["core_auth_google_link_create"];
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        delete: operations["core_auth_google_link_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/core/auth/login/": {
         parameters: {
             query?: never;
@@ -289,6 +325,38 @@ export interface paths {
         patch: operations["core_labs_partial_update"];
         trace?: never;
     };
+    "/api/core/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -334,6 +402,22 @@ export interface paths {
         get: operations["core_notifications_list"];
         put?: never;
         post: operations["core_notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -427,7 +511,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Return the full role → allowed actions matrix. */
+        /**
+         * @description Return the full role → allowed actions matrix.
+         *
+         *     ``matrix`` lists the *defaults* per role; ``current_permissions`` is the
+         *     caller's effective set with per-lab overrides already applied.
+         */
         get: operations["core_permissions_matrix_retrieve"];
         put?: never;
         post?: never;
@@ -752,8 +841,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_clinics_create"];
         delete?: never;
         options?: never;
@@ -768,6 +895,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_export_retrieve"];
         put?: never;
         post?: never;
@@ -784,12 +930,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_clinics_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_clinics_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_clinics_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_clinics_partial_update"];
         trace?: never;
     };
@@ -800,8 +1022,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_doctors_create"];
         delete?: never;
         options?: never;
@@ -816,6 +1076,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_export_retrieve"];
         put?: never;
         post?: never;
@@ -832,12 +1111,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_doctors_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_doctors_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_doctors_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_doctors_partial_update"];
         trace?: never;
     };
@@ -882,8 +1237,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["crm_patients_create"];
         delete?: never;
         options?: never;
@@ -898,6 +1291,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_export_retrieve"];
         put?: never;
         post?: never;
@@ -914,12 +1326,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["crm_patients_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["crm_patients_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["crm_patients_partial_update"];
         trace?: never;
     };
@@ -930,6 +1418,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["crm_patients_cumulative_tooth_map_retrieve"];
         put?: never;
         post?: never;
@@ -1199,6 +1706,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/stripe/webhook/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Stripe's authoritative channel for subscription lifecycle changes.
+         *
+         *     Three deliberate exemptions, each of which would otherwise break delivery:
+         *
+         *     * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+         *       CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+         *       no CSRF token. Dropping authentication also drops that check; the view is
+         *       additionally ``csrf_exempt`` so nothing re-adds it.
+         *     * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+         *       A burst of deliveries throttled to 429 is a burst of events lost after
+         *       Stripe exhausts its retries.
+         *     * ``permission_classes = [AllowAny]`` — the signature *is* the
+         *       authentication. Nothing is processed before it verifies.
+         */
+        post: operations["finance_stripe_webhook_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/subscriptions/": {
         parameters: {
             query?: never;
@@ -1215,6 +1753,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/finance/subscriptions/checkout/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["finance_subscriptions_checkout_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -1225,6 +1779,22 @@ export interface paths {
         get: operations["finance_subscriptions_my_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/finance/subscriptions/portal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["finance_subscriptions_portal_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1623,6 +2193,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/jobs/prosthetic-labels/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bulk prosthetic label export — one job per page, in one PDF. */
+        get: operations["jobs_jobs_prosthetic_labels_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/jobs/jobs/quick-create/": {
         parameters: {
             query?: never;
@@ -1692,6 +2279,23 @@ export interface paths {
         get: operations["jobs_jobs_attachments_retrieve"];
         put?: never;
         post: operations["jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/jobs/{id}/prosthetic-label/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json). */
+        get: operations["jobs_jobs_prosthetic_label_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1840,6 +2444,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["labs_partial_update"];
+        trace?: never;
+    };
+    "/api/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/materials/catalog/": {
@@ -2125,6 +2761,22 @@ export interface paths {
         get: operations["notifications_list"];
         put?: never;
         post: operations["notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2597,6 +3249,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/core/auth/google/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        get: operations["v1_core_auth_google_retrieve"];
+        put?: never;
+        /** @description ``GET`` reports the public config; ``POST`` exchanges an ID token for JWT cookies. */
+        post: operations["v1_core_auth_google_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/auth/google/link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        post: operations["v1_core_auth_google_link_create"];
+        /** @description Link (``POST``) or unlink (``DELETE``) the signed-in user's Google account. */
+        delete: operations["v1_core_auth_google_link_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/core/auth/login/": {
         parameters: {
             query?: never;
@@ -2712,6 +3400,38 @@ export interface paths {
         patch: operations["v1_core_labs_partial_update"];
         trace?: never;
     };
+    "/api/v1/core/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -2757,6 +3477,22 @@ export interface paths {
         get: operations["v1_core_notifications_list"];
         put?: never;
         post: operations["v1_core_notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2850,7 +3586,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Return the full role → allowed actions matrix. */
+        /**
+         * @description Return the full role → allowed actions matrix.
+         *
+         *     ``matrix`` lists the *defaults* per role; ``current_permissions`` is the
+         *     caller's effective set with per-lab overrides already applied.
+         */
         get: operations["v1_core_permissions_matrix_retrieve"];
         put?: never;
         post?: never;
@@ -3175,8 +3916,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_clinics_create"];
         delete?: never;
         options?: never;
@@ -3191,6 +3970,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_export_retrieve"];
         put?: never;
         post?: never;
@@ -3207,12 +4005,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_clinics_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_clinics_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_clinics_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_clinics_partial_update"];
         trace?: never;
     };
@@ -3223,8 +4097,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_doctors_create"];
         delete?: never;
         options?: never;
@@ -3239,6 +4151,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_export_retrieve"];
         put?: never;
         post?: never;
@@ -3255,12 +4186,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_doctors_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_doctors_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_doctors_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_doctors_partial_update"];
         trace?: never;
     };
@@ -3305,8 +4312,46 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_list"];
         put?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         post: operations["v1_crm_patients_create"];
         delete?: never;
         options?: never;
@@ -3321,6 +4366,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_export_retrieve"];
         put?: never;
         post?: never;
@@ -3337,12 +4401,88 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_retrieve"];
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         put: operations["v1_crm_patients_update"];
         post?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         delete: operations["v1_crm_patients_destroy"];
         options?: never;
         head?: never;
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         patch: operations["v1_crm_patients_partial_update"];
         trace?: never;
     };
@@ -3353,6 +4493,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @description Check lab-scoped actions before the view body runs.
+         *
+         *     DRF evaluates permissions in ``initial()``, i.e. *before* serializer
+         *     validation. Guarding only in ``perform_create``/``perform_update`` means an
+         *     invalid payload from a forbidden user answers 400 ("your data is wrong")
+         *     instead of 403 ("you may not do this") — which both leaks whether the
+         *     payload was well-formed and confuses the caller.
+         *
+         *     Views map their DRF action name to a permission action::
+         *
+         *         lab_permission_actions = {
+         *             "create": "patient:write",
+         *             "destroy": "patient:write",
+         *         }
+         *
+         *     ``self.action`` is set by ``ViewSetMixin.initialize_request`` before
+         *     ``initial()`` runs, so it is available here.
+         */
         get: operations["v1_crm_patients_cumulative_tooth_map_retrieve"];
         put?: never;
         post?: never;
@@ -3622,6 +4781,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/stripe/webhook/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Stripe's authoritative channel for subscription lifecycle changes.
+         *
+         *     Three deliberate exemptions, each of which would otherwise break delivery:
+         *
+         *     * ``authentication_classes = []`` — ``JWTCookieAuthentication`` enforces
+         *       CSRF on cookie-authenticated requests, and Stripe carries no cookie and
+         *       no CSRF token. Dropping authentication also drops that check; the view is
+         *       additionally ``csrf_exempt`` so nothing re-adds it.
+         *     * ``throttle_classes = []`` — ``ScopedRateThrottle`` is the project default.
+         *       A burst of deliveries throttled to 429 is a burst of events lost after
+         *       Stripe exhausts its retries.
+         *     * ``permission_classes = [AllowAny]`` — the signature *is* the
+         *       authentication. Nothing is processed before it verifies.
+         */
+        post: operations["v1_finance_stripe_webhook_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/subscriptions/": {
         parameters: {
             query?: never;
@@ -3638,6 +4828,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/subscriptions/checkout/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_finance_subscriptions_checkout_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/subscriptions/my/": {
         parameters: {
             query?: never;
@@ -3648,6 +4854,22 @@ export interface paths {
         get: operations["v1_finance_subscriptions_my_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/subscriptions/portal/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_finance_subscriptions_portal_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3900,6 +5122,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/jobs/prosthetic-labels/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Bulk prosthetic label export — one job per page, in one PDF. */
+        get: operations["v1_jobs_jobs_prosthetic_labels_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/jobs/quick-create/": {
         parameters: {
             query?: never;
@@ -3969,6 +5208,23 @@ export interface paths {
         get: operations["v1_jobs_jobs_attachments_retrieve"];
         put?: never;
         post: operations["v1_jobs_jobs_attachments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/jobs/{id}/prosthetic-label/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Issue the prosthetic label for the job and return it as PDF (or as its data snapshot with ?format=json). */
+        get: operations["v1_jobs_jobs_prosthetic_label_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4662,9 +5918,10 @@ export interface components {
          *     * `status_changed` - Status changed
          *     * `assigned` - Assigned
          *     * `deleted` - Deleted
+         *     * `label_issued` - Prosthetic label issued
          * @enum {string}
          */
-        EventEnum: "created" | "updated" | "status_changed" | "assigned" | "deleted";
+        EventEnum: "created" | "updated" | "status_changed" | "assigned" | "deleted" | "label_issued";
         /**
          * @description * `meeting` - Stretnutie
          *     * `pickup` - Vyzdvihnutie
@@ -4723,10 +5980,17 @@ export interface components {
             number: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto: boolean;
             readonly patient_names: string;
             readonly patient_summaries: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount: string;
+            /** Format: date */
+            readonly skonto_deadline: string | null;
+            /** Format: decimal */
+            readonly skonto_percent: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount: string;
             readonly taxable_amount: string;
@@ -4765,7 +6029,6 @@ export interface components {
             job?: number | null;
             /** Format: decimal */
             line_total?: string;
-            /** Format: int64 */
             quantity?: number;
             /** Format: decimal */
             unit_price?: string;
@@ -4798,9 +6061,16 @@ export interface components {
             number: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto: boolean;
             readonly patient_names: string;
             readonly related_jobs: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount: string;
+            /** Format: date */
+            readonly skonto_deadline: string | null;
+            /** Format: decimal */
+            readonly skonto_percent: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount: string;
             readonly taxable_amount: string;
@@ -4839,29 +6109,53 @@ export interface components {
             name: string;
         };
         Job: {
+            /** Format: date */
+            assigned_at?: string | null;
             clinic: number;
             readonly clinic_details: components["schemas"]["Clinic"];
+            /** Format: date */
+            completed_at?: string | null;
+            contains_medicinal_substance?: boolean;
             /** Format: date-time */
             readonly created_at: string;
             description?: string | null;
+            diagnosis_code?: string;
             doctor?: number | null;
             readonly doctor_details: components["schemas"]["Doctor"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
             end_date?: string | null;
+            /** Format: date */
+            handover_at?: string | null;
+            health_note?: string;
             readonly id: number;
             input_tooth_procedures?: unknown;
+            readonly insurance_total: string;
             items?: components["schemas"]["JobItem"][];
             readonly lab: number;
+            /** Format: date-time */
+            readonly label_issued_at: string | null;
+            readonly label_missing_fields: {
+                [key: string]: unknown;
+            }[];
+            readonly label_number: string;
+            readonly material_usage_missing: boolean;
+            medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient: number;
             readonly patient_details: components["schemas"]["Patient"];
+            readonly patient_total: string;
             /** Format: decimal */
             price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
+            /** Format: date */
+            received_at?: string | null;
+            safety_performance_deviations?: string;
+            /** Format: date */
+            seated_at?: string | null;
             /** Format: date */
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
@@ -4881,10 +6175,14 @@ export interface components {
             readonly created_at: string;
             readonly description: string;
             readonly id: number;
+            /** Format: decimal */
+            insurance_amount?: string | null;
+            ipzp_code?: string;
             material?: string | null;
+            /** Format: decimal */
+            patient_amount?: string | null;
             price_list_code: string;
             procedure_category?: (components["schemas"]["ProcedureCategoryEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
-            /** Format: int64 */
             quantity?: number;
             tooth?: string | null;
             tooth_scope?: (components["schemas"]["ToothScopeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
@@ -4919,6 +6217,7 @@ export interface components {
         };
         Lab: {
             address?: string | null;
+            authorized_representative?: string;
             bank_account?: string | null;
             bank_bic?: string | null;
             city?: string | null;
@@ -4932,15 +6231,25 @@ export interface components {
             garant_registration_number?: string;
             readonly id: number;
             invoice_default_note?: string;
-            /** Format: int64 */
             invoice_due_days?: number;
             invoice_prefix?: string;
+            is_active?: boolean;
             is_vat_payer?: boolean;
+            label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
+            label_prefix?: string;
+            label_start_number?: number;
             logo_url?: string | null;
+            mdr_declaration_text?: string;
             name: string;
             payment_method?: string;
             phone?: string | null;
             postal_code?: string | null;
+            production_sites?: string;
+            require_material_usage?: boolean;
+            skonto_days?: number;
+            skonto_enabled?: boolean;
+            /** Format: decimal */
+            skonto_percent?: string;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
@@ -4950,6 +6259,12 @@ export interface components {
             vat_rate?: string;
             website?: (string) | null;
         };
+        /**
+         * @description * `name` - Meno pacienta
+         *     * `code` - Kód pacienta
+         * @enum {string}
+         */
+        LabelPatientIdentifierModeEnum: "name" | "code";
         Manufacturer: {
             country?: string;
             /** Format: date-time */
@@ -5501,10 +6816,17 @@ export interface components {
             number?: string;
             /** Format: date-time */
             paid_at?: string | null;
+            readonly paid_with_skonto?: boolean;
             readonly patient_names?: string;
             readonly patient_summaries?: components["schemas"]["InvoicePatientSummary"][];
             readonly related_jobs?: string;
             show_patient_list?: boolean;
+            /** Format: decimal */
+            readonly skonto_amount?: string;
+            /** Format: date */
+            readonly skonto_deadline?: string | null;
+            /** Format: decimal */
+            readonly skonto_percent?: string;
             status?: components["schemas"]["Status12cEnum"];
             readonly subtotal_amount?: string;
             readonly taxable_amount?: string;
@@ -5515,29 +6837,53 @@ export interface components {
             vat_rate?: string;
         };
         PatchedJob: {
+            /** Format: date */
+            assigned_at?: string | null;
             clinic?: number;
             readonly clinic_details?: components["schemas"]["Clinic"];
+            /** Format: date */
+            completed_at?: string | null;
+            contains_medicinal_substance?: boolean;
             /** Format: date-time */
             readonly created_at?: string;
             description?: string | null;
+            diagnosis_code?: string;
             doctor?: number | null;
             readonly doctor_details?: components["schemas"]["Doctor"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
             end_date?: string | null;
+            /** Format: date */
+            handover_at?: string | null;
+            health_note?: string;
             readonly id?: number;
             input_tooth_procedures?: unknown;
+            readonly insurance_total?: string;
             items?: components["schemas"]["JobItem"][];
             readonly lab?: number;
+            /** Format: date-time */
+            readonly label_issued_at?: string | null;
+            readonly label_missing_fields?: {
+                [key: string]: unknown;
+            }[];
+            readonly label_number?: string;
+            readonly material_usage_missing?: boolean;
+            medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient?: number;
             readonly patient_details?: components["schemas"]["Patient"];
+            readonly patient_total?: string;
             /** Format: decimal */
             price?: string | null;
             priority?: components["schemas"]["PriorityEnum"];
             procedure_codes?: unknown;
             procedure_quantities?: unknown;
+            /** Format: date */
+            received_at?: string | null;
+            safety_performance_deviations?: string;
+            /** Format: date */
+            seated_at?: string | null;
             /** Format: date */
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
@@ -5552,6 +6898,7 @@ export interface components {
         };
         PatchedLab: {
             address?: string | null;
+            authorized_representative?: string;
             bank_account?: string | null;
             bank_bic?: string | null;
             city?: string | null;
@@ -5565,15 +6912,25 @@ export interface components {
             garant_registration_number?: string;
             readonly id?: number;
             invoice_default_note?: string;
-            /** Format: int64 */
             invoice_due_days?: number;
             invoice_prefix?: string;
+            is_active?: boolean;
             is_vat_payer?: boolean;
+            label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
+            label_prefix?: string;
+            label_start_number?: number;
             logo_url?: string | null;
+            mdr_declaration_text?: string;
             name?: string;
             payment_method?: string;
             phone?: string | null;
             postal_code?: string | null;
+            production_sites?: string;
+            require_material_usage?: boolean;
+            skonto_days?: number;
+            skonto_enabled?: boolean;
+            /** Format: decimal */
+            skonto_percent?: string;
             slug?: string;
             tax_id?: string | null;
             /** Format: date-time */
@@ -5690,8 +7047,13 @@ export interface components {
             code?: string;
             /** Format: date-time */
             readonly created_at?: string;
+            /** Format: decimal */
+            default_insurance_amount?: string | null;
+            /** Format: decimal */
+            default_patient_amount?: string | null;
             description?: string;
             readonly id?: number;
+            ipzp_code?: string;
             readonly lab?: number;
             /** Format: decimal */
             price?: string;
@@ -5714,8 +7076,9 @@ export interface components {
             lab?: number;
             /** Format: decimal */
             mrr?: string | null;
+            /** Format: date-time */
+            past_due_since?: string | null;
             plan?: components["schemas"]["PlanEnum"];
-            /** Format: int64 */
             seats?: number;
             status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
@@ -5765,6 +7128,8 @@ export interface components {
             /** Format: email */
             email?: string | null;
             first_name?: string;
+            readonly google_linked?: boolean;
+            readonly has_password?: boolean;
             readonly id?: number;
             /**
              * Active
@@ -5844,8 +7209,13 @@ export interface components {
             code: string;
             /** Format: date-time */
             readonly created_at: string;
+            /** Format: decimal */
+            default_insurance_amount?: string | null;
+            /** Format: decimal */
+            default_patient_amount?: string | null;
             description: string;
             readonly id: number;
+            ipzp_code?: string;
             readonly lab: number;
             /** Format: decimal */
             price: string;
@@ -5919,8 +7289,9 @@ export interface components {
             lab: number;
             /** Format: decimal */
             mrr?: string | null;
+            /** Format: date-time */
+            past_due_since?: string | null;
             plan?: components["schemas"]["PlanEnum"];
-            /** Format: int64 */
             seats?: number;
             status?: components["schemas"]["SubscriptionStatusEnum"];
             /** Format: date */
@@ -5930,12 +7301,14 @@ export interface components {
         };
         /**
          * @description * `active` - Aktívne
+         *     * `trialing` - Skúšobná doba
          *     * `past_due` - Po splatnosti
          *     * `cancelled` - Zrušené
          *     * `inactive` - Neaktívne
+         *     * `read_only` - Iba na čítanie
          * @enum {string}
          */
-        SubscriptionStatusEnum: "active" | "past_due" | "cancelled" | "inactive";
+        SubscriptionStatusEnum: "active" | "trialing" | "past_due" | "cancelled" | "inactive" | "read_only";
         TeamInvitation: {
             /** Format: date-time */
             readonly accepted_at: string | null;
@@ -6015,6 +7388,8 @@ export interface components {
             /** Format: email */
             email?: string | null;
             first_name?: string;
+            readonly google_linked: boolean;
+            readonly has_password: boolean;
             readonly id: number;
             /**
              * Active
@@ -6422,6 +7797,78 @@ export interface operations {
             };
         };
     };
+    core_auth_google_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    core_auth_google_link_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     core_auth_login_create: {
         parameters: {
             query?: never;
@@ -6661,6 +8108,62 @@ export interface operations {
             };
         };
     };
+    core_labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    core_labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -6762,6 +8265,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    core_notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8755,6 +10283,24 @@ export interface operations {
             };
         };
     };
+    finance_stripe_webhook_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     finance_subscriptions_list: {
         parameters: {
             query?: {
@@ -8804,6 +10350,31 @@ export interface operations {
             };
         };
     };
+    finance_subscriptions_checkout_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
     finance_subscriptions_my_retrieve: {
         parameters: {
             query?: never;
@@ -8812,6 +10383,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    finance_subscriptions_portal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -9762,6 +11358,28 @@ export interface operations {
             };
         };
     };
+    jobs_jobs_prosthetic_labels_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated job ids. */
+                ids?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     jobs_jobs_quick_create_create: {
         parameters: {
             query?: never;
@@ -9951,6 +11569,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    jobs_jobs_prosthetic_label_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Pass 'json' for the label data snapshot; PDF is returned otherwise. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this job. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };
@@ -10455,6 +12098,62 @@ export interface operations {
                 "application/json": components["schemas"]["PatchedLab"];
                 "application/x-www-form-urlencoded": components["schemas"]["PatchedLab"];
                 "multipart/form-data": components["schemas"]["PatchedLab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
             };
         };
         responses: {
@@ -11330,6 +13029,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12314,6 +14038,78 @@ export interface operations {
             };
         };
     };
+    v1_core_auth_google_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_link_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    v1_core_auth_google_link_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_core_auth_login_create: {
         parameters: {
             query?: never;
@@ -12553,6 +14349,62 @@ export interface operations {
             };
         };
     };
+    v1_core_labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    v1_core_labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     v1_core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -12654,6 +14506,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    v1_core_notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14647,6 +16524,24 @@ export interface operations {
             };
         };
     };
+    v1_finance_stripe_webhook_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     v1_finance_subscriptions_list: {
         parameters: {
             query?: {
@@ -14696,6 +16591,31 @@ export interface operations {
             };
         };
     };
+    v1_finance_subscriptions_checkout_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
     v1_finance_subscriptions_my_retrieve: {
         parameters: {
             query?: never;
@@ -14704,6 +16624,31 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+        };
+    };
+    v1_finance_subscriptions_portal_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Subscription"];
+                "application/x-www-form-urlencoded": components["schemas"]["Subscription"];
+                "multipart/form-data": components["schemas"]["Subscription"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -15334,6 +17279,28 @@ export interface operations {
             };
         };
     };
+    v1_jobs_jobs_prosthetic_labels_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated job ids. */
+                ids?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+        };
+    };
     v1_jobs_jobs_quick_create_create: {
         parameters: {
             query?: never;
@@ -15523,6 +17490,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    v1_jobs_jobs_prosthetic_label_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Pass 'json' for the label data snapshot; PDF is returned otherwise. */
+                format?: string;
+            };
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this job. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };
