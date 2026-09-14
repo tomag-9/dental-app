@@ -455,7 +455,27 @@ function FefoDrawer({ open, data, onClose, mutate }) {
     loading ? React.createElement(LoadingState, { message: 'Hľadám FEFO šarže…' }) : React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } }, ...lineCards)));
 }
 
-function MatModal({ open, onClose, title, subtitle, children, footer, width = 560 }) { if (!open) return null; return React.createElement('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,35,32,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } }, React.createElement('div', { role: 'dialog', 'aria-modal': 'true', onClick: e => e.stopPropagation(), style: { width, maxWidth: '100%', maxHeight: '90vh', background: '#fff', borderRadius: 14, boxShadow: '0 24px 70px rgba(0,0,0,.25)', display: 'flex', flexDirection: 'column' } }, React.createElement('div', { style: { padding: '16px 22px', borderBottom: `1px solid ${MAT_COLORS.line}`, display: 'flex', justifyContent: 'space-between' } }, React.createElement('div', null, React.createElement('h2', { style: { margin: 0, font: '700 17px Plus Jakarta Sans' } }, title), subtitle && React.createElement('p', { style: { fontSize: 12, color: MAT_COLORS.muted, margin: '3px 0 0' } }, subtitle)), React.createElement(IconButton, { name: 'x', title: 'Zatvoriť', onClick: onClose })), React.createElement('div', { style: { overflowY: 'auto', padding: 22 } }, children), footer && React.createElement('div', { style: { padding: '14px 22px', borderTop: `1px solid ${MAT_COLORS.line}`, display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#f7f6f2' } }, footer))); }
+function MatModal({ open, onClose, title, subtitle, children, footer, width = 560 }) {
+  const dialogRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.activeElement;
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose && onClose();
+      else if (window.trapFocus) window.trapFocus(event, dialogRef);
+    };
+    window.addEventListener('keydown', onKey);
+    window.setTimeout(() => {
+      const firstControl = dialogRef.current && dialogRef.current.querySelector('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+      if (firstControl) firstControl.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (previous && previous.focus) previous.focus();
+    };
+  }, [open, onClose]);
+  if (!open) return null;
+  return React.createElement('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(26,35,32,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } }, React.createElement('div', { ref: dialogRef, role: 'dialog', 'aria-modal': 'true', onClick: e => e.stopPropagation(), style: { width, maxWidth: '100%', maxHeight: '90vh', background: '#fff', borderRadius: 14, boxShadow: '0 24px 70px rgba(0,0,0,.25)', display: 'flex', flexDirection: 'column' } }, React.createElement('div', { style: { padding: '16px 22px', borderBottom: `1px solid ${MAT_COLORS.line}`, display: 'flex', justifyContent: 'space-between' } }, React.createElement('div', null, React.createElement('h2', { style: { margin: 0, font: '700 17px Plus Jakarta Sans' } }, title), subtitle && React.createElement('p', { style: { fontSize: 12, color: MAT_COLORS.muted, margin: '3px 0 0' } }, subtitle)), React.createElement(IconButton, { name: 'x', title: 'Zatvoriť', onClick: onClose })), React.createElement('div', { style: { overflowY: 'auto', padding: 22 } }, children), footer && React.createElement('div', { style: { padding: '14px 22px', borderTop: `1px solid ${MAT_COLORS.line}`, display: 'flex', justifyContent: 'flex-end', gap: 8, background: '#f7f6f2' } }, footer))); }
 function CodeGlyph({ seed, size = 78 }) { const cells = 7; const rects = []; for (let row = 0; row < cells; row += 1) for (let col = 0; col < cells; col += 1) { let hash = 0; const text = `${seed}${row * cells + col}`; for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) & 0xffff; if (hash % 2) rects.push(React.createElement('rect', { key: `${row}-${col}`, x: col * size / cells, y: row * size / cells, width: size / cells, height: size / cells, fill: MAT_COLORS.ink })); } return React.createElement('svg', { width: size, height: size, viewBox: `0 0 ${size} ${size}`, style: { border: `1px solid ${MAT_COLORS.line}`, borderRadius: 4 } }, ...rects); }
 function LotLabelModal({ lot, catalog, onClose }) {
   if (!lot) return null;
