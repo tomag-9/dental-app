@@ -320,7 +320,7 @@ function LabPanel({ form, onChange, onSave, status, loading }) {
   return React.createElement(Card, null,
     React.createElement(PanelHeader, { title: 'Laboratórium', desc: 'Identifikačné a fakturačné údaje laboratória.' }),
     React.createElement(PanelBody, null,
-      React.createElement(FormField, { label: 'Názov laboratória', value: form.name, onChange: (e) => onChange({ ...form, name: e.target.value }) }),
+      React.createElement(FormField, { label: 'Názov laboratória', value: form.name, onChange: (e) => onChange({ ...form, name: e.target.value }), required: true }),
       React.createElement(FormRow, null,
         React.createElement(FormField, { label: 'IČO', value: form.tax_id, onChange: (e) => onChange({ ...form, tax_id: e.target.value }) }),
         React.createElement(FormField, { label: 'DIČ', value: form.vat_id, onChange: (e) => onChange({ ...form, vat_id: e.target.value }) })
@@ -536,7 +536,7 @@ function fmtDateOnly(value) {
   if (!value) return '—';
   const date = new Date(`${value}T00:00:00`);
   if (isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString('sk-SK');
 }
 
 function daysUntil(value) {
@@ -720,7 +720,7 @@ function SubscriptionPanel({ checkoutReturn }) {
 function apiErrorMessage(error, fallback) {
   const detail = error && error.data && error.data.detail;
   if (typeof detail === 'string' && detail) return detail;
-  if (error && typeof error.message === 'string' && error.message && error.message !== 'API request failed') return error.message;
+  if (error && typeof error.message === 'string' && error.message && error.message !== 'Požiadavka na server zlyhala.') return error.message;
   return fallback;
 }
 
@@ -747,7 +747,7 @@ function fmtDateTime(value) {
   if (!value) return '—';
   const date = new Date(value);
   if (isNaN(date.getTime())) return '—';
-  return date.toLocaleString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString('sk-SK');
 }
 
 function TwoFactorSection() {
@@ -1130,9 +1130,9 @@ function SecurityPanel({ form, onChange, onSave, status }) {
       React.createElement('div', null,
         React.createElement('h3', { style: { ...sectionTitleStyle, margin: '0 0 8px' } }, 'Zmena hesla'),
         React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 360 } },
-          React.createElement(FormField, { label: 'Súčasné heslo', type: 'password', value: form.current, onChange: (e) => onChange({ ...form, current: e.target.value }) }),
-          React.createElement(FormField, { label: 'Nové heslo', type: 'password', value: form.next, onChange: (e) => onChange({ ...form, next: e.target.value }) }),
-          React.createElement(FormField, { label: 'Potvrdiť heslo', type: 'password', value: form.confirm, onChange: (e) => onChange({ ...form, confirm: e.target.value }) })
+          React.createElement(FormField, { label: 'Súčasné heslo', type: 'password', value: form.current, onChange: (e) => onChange({ ...form, current: e.target.value }), required: true }),
+          React.createElement(FormField, { label: 'Nové heslo', type: 'password', value: form.next, onChange: (e) => onChange({ ...form, next: e.target.value }), required: true }),
+          React.createElement(FormField, { label: 'Potvrdiť heslo', type: 'password', value: form.confirm, onChange: (e) => onChange({ ...form, confirm: e.target.value }), required: true })
         )
       ),
       React.createElement(TwoFactorSection, null),

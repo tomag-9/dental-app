@@ -293,7 +293,7 @@ function StepSchedule({ data, set }) {
     { value: 'low',    label: 'Nízka',    desc: 'Štandardná fronta',    color: '#8a9490', bg: '#f0ede5' },
     { value: 'normal', label: 'Normálna', desc: 'Štandardný termín',    color: '#0d7c6b', bg: '#d4f0eb' },
     { value: 'high',   label: 'Vysoká',   desc: 'Urgentné — prioritne', color: '#d97706', bg: '#fef3c7' },
-    { value: 'urgent', label: 'Urgent',   desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
+    { value: 'urgent', label: 'Urgentná', desc: 'Pacient v ordinácii',  color: '#c0392b', bg: '#fee2e2' },
   ];
   const receivedDate = njParseSkDate(data.received);
   const dueDate = njParseSkDate(data.due);
@@ -381,7 +381,7 @@ function StepSchedule({ data, set }) {
 }
 
 function StepSummary({ data, fmt, total, items }) {
-  const priMap = { low: { l: 'Nízka', c: '#8a9490', bg: '#f0ede5' }, normal: { l: 'Normálna', c: '#0d7c6b', bg: '#d4f0eb' }, high: { l: 'Vysoká', c: '#d97706', bg: '#fef3c7' }, urgent: { l: 'Urgent', c: '#c0392b', bg: '#fee2e2' } };
+  const priMap = { low: { l: 'Nízka', c: '#8a9490', bg: '#f0ede5' }, normal: { l: 'Normálna', c: '#0d7c6b', bg: '#d4f0eb' }, high: { l: 'Vysoká', c: '#d97706', bg: '#fef3c7' }, urgent: { l: 'Urgentná', c: '#c0392b', bg: '#fee2e2' } };
   const pri = priMap[data.priority];
   const p = data.patient;
   const rc = p ? parseRC(p.birth) : null;

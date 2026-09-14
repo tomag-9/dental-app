@@ -16,6 +16,7 @@
     "smoke:job-label": "node scripts/job-label-smoke.mjs",
     "smoke:subscription": "node scripts/subscription-smoke.mjs",
     "smoke:visual": "node scripts/visual-smoke.mjs",
+    "smoke:localization-qa": "node scripts/localization-qa-smoke.mjs",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:e2e": "playwright test"
   },

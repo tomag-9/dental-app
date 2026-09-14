@@ -63,7 +63,7 @@ export async function request(path, options = {}) {
       if (_onUnauthorized) _onUnauthorized();
       window.dispatchEvent(new CustomEvent('molaris-auth-expired'));
     }
-    const error = /** @type {ApiError} */ (new Error(data && data.detail ? data.detail : 'API request failed'));
+    const error = /** @type {ApiError} */ (new Error(data && data.detail ? data.detail : 'Požiadavka na server zlyhala.'));
     error.status = response.status;
     error.data = data;
     throw error;
