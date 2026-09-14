@@ -73,6 +73,14 @@ class TechnicianSerializer(serializers.ModelSerializer):
 
 
 class JobItemSerializer(serializers.ModelSerializer):
+    # The model default (Decimal("0.00")) only applies when the key is
+    # omitted entirely. NewJob.jsx sends an explicit `null` for a split the
+    # user hasn't touched — allow_null so that reaches resolve_payment_split
+    # (which treats None as "not given") instead of failing DRF's field
+    # validation before the split logic ever runs.
+    insurance_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    patient_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+
     class Meta:
         model = JobItem
         fields = (
