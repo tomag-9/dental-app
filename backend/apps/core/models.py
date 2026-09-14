@@ -52,6 +52,9 @@ class Lab(models.Model):
     )
     # MDR traceability (#101): block finishing a job with no recorded material usage.
     require_material_usage = models.BooleanField(default=False)
+    # Superadmin tenant management (#111): a suspended lab keeps its data but
+    # loses all access — enforced at login and via LabActiveRequired.
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

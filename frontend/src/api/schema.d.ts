@@ -325,6 +325,38 @@ export interface paths {
         patch: operations["core_labs_partial_update"];
         trace?: never;
     };
+    "/api/core/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -370,6 +402,22 @@ export interface paths {
         get: operations["core_notifications_list"];
         put?: never;
         post: operations["core_notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/core/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["core_notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2398,6 +2446,38 @@ export interface paths {
         patch: operations["labs_partial_update"];
         trace?: never;
     };
+    "/api/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/materials/catalog/": {
         parameters: {
             query?: never;
@@ -2681,6 +2761,22 @@ export interface paths {
         get: operations["notifications_list"];
         put?: never;
         post: operations["notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3304,6 +3400,38 @@ export interface paths {
         patch: operations["v1_core_labs_partial_update"];
         trace?: never;
     };
+    "/api/v1/core/labs/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_labs_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/labs/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_labs_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/core/labs/{lab_pk}/permissions/": {
         parameters: {
             query?: never;
@@ -3349,6 +3477,22 @@ export interface paths {
         get: operations["v1_core_notifications_list"];
         put?: never;
         post: operations["v1_core_notifications_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/core/notifications/broadcast/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_core_notifications_broadcast_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6075,6 +6219,7 @@ export interface components {
             invoice_default_note?: string;
             invoice_due_days?: number;
             invoice_prefix?: string;
+            is_active?: boolean;
             is_vat_payer?: boolean;
             label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
             label_prefix?: string;
@@ -6744,6 +6889,7 @@ export interface components {
             invoice_default_note?: string;
             invoice_due_days?: number;
             invoice_prefix?: string;
+            is_active?: boolean;
             is_vat_payer?: boolean;
             label_patient_identifier_mode?: components["schemas"]["LabelPatientIdentifierModeEnum"];
             label_prefix?: string;
@@ -7933,6 +8079,62 @@ export interface operations {
             };
         };
     };
+    core_labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    core_labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -8034,6 +8236,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    core_notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11855,6 +12082,62 @@ export interface operations {
             };
         };
     };
+    labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     materials_catalog_list: {
         parameters: {
             query?: {
@@ -12717,6 +13000,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14012,6 +14320,62 @@ export interface operations {
             };
         };
     };
+    v1_core_labs_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
+    v1_core_labs_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lab. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lab"];
+                "application/x-www-form-urlencoded": components["schemas"]["Lab"];
+                "multipart/form-data": components["schemas"]["Lab"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lab"];
+                };
+            };
+        };
+    };
     v1_core_labs_permissions_retrieve: {
         parameters: {
             query?: never;
@@ -14113,6 +14477,31 @@ export interface operations {
         };
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    v1_core_notifications_broadcast_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Notification"];
+                "application/x-www-form-urlencoded": components["schemas"]["Notification"];
+                "multipart/form-data": components["schemas"]["Notification"];
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

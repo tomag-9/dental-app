@@ -146,6 +146,8 @@ REST_FRAMEWORK = {
         # Views that override permission_classes pull it in via
         # apps.core.access.AUTHENTICATED instead.
         "apps.core.access.SubscriptionWriteAllowed",
+        # Full access lock for labs a superadmin suspended (issue #111).
+        "apps.core.access.LabActiveRequired",
     ),
     "DEFAULT_PAGINATION_CLASS": "config.pagination.OptionalPageNumberPagination",
     "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),

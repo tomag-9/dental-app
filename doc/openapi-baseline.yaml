@@ -628,6 +628,72 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/core/labs/{id}/activate/:
+    post:
+      operationId: core_labs_activate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - core
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/core/labs/{id}/suspend/:
+    post:
+      operationId: core_labs_suspend_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - core
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
   /api/core/labs/superadmin/all/:
     get:
       operationId: core_labs_superadmin_all_retrieve
@@ -804,6 +870,32 @@ paths:
           type: integer
         description: A unique integer value identifying this notification.
         required: true
+      tags:
+      - core
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/core/notifications/broadcast/:
+    post:
+      operationId: core_notifications_broadcast_create
       tags:
       - core
       requestBody:
@@ -4884,6 +4976,72 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/labs/{id}/activate/:
+    post:
+      operationId: labs_activate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - labs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/labs/{id}/suspend/:
+    post:
+      operationId: labs_suspend_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - labs
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
   /api/labs/superadmin/all/:
     get:
       operationId: labs_superadmin_all_retrieve
@@ -5895,6 +6053,32 @@ paths:
           type: integer
         description: A unique integer value identifying this notification.
         required: true
+      tags:
+      - notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/notifications/broadcast/:
+    post:
+      operationId: notifications_broadcast_create
       tags:
       - notifications
       requestBody:
@@ -7036,6 +7220,72 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/core/labs/{id}/activate/:
+    post:
+      operationId: v1_core_labs_activate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
+  /api/v1/core/labs/{id}/suspend/:
+    post:
+      operationId: v1_core_labs_suspend_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lab.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Lab'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Lab'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+          description: ''
   /api/v1/core/labs/superadmin/all/:
     get:
       operationId: v1_core_labs_superadmin_all_retrieve
@@ -7212,6 +7462,32 @@ paths:
           type: integer
         description: A unique integer value identifying this notification.
         required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Notification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/core/notifications/broadcast/:
+    post:
+      operationId: v1_core_notifications_broadcast_create
       tags:
       - v1
       requestBody:
@@ -13315,6 +13591,8 @@ components:
           $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
         require_material_usage:
           type: boolean
+        is_active:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -14768,6 +15046,8 @@ components:
         label_patient_identifier_mode:
           $ref: '#/components/schemas/LabelPatientIdentifierModeEnum'
         require_material_usage:
+          type: boolean
+        is_active:
           type: boolean
         created_at:
           type: string
