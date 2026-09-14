@@ -1,5 +1,25 @@
 // Shared.jsx — Molaris UI Kit primitives (Option A: Deep Teal palette)
 
+// ── Focus trap helper for modal dialogs/drawers ─────────────────────────────
+// Keeps Tab/Shift+Tab cycling inside the dialog instead of leaking focus to
+// the (visually hidden) page behind the overlay.
+const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+function trapFocus(event, containerRef) {
+  if (event.key !== 'Tab' || !containerRef.current) return;
+  const nodes = Array.from(containerRef.current.querySelectorAll(focusableSelector))
+    .filter((el) => el.offsetParent !== null || el === document.activeElement);
+  if (!nodes.length) return;
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function Button({ children, variant = 'primary', size = 'md', className = '', disabled, onClick, type = 'button', title, style: extraStyle = {}, ariaLabel }) {
   const base = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -107,6 +127,7 @@ function ConfirmDialog({ open, title, message, confirmText = 'Potvrdiť', cancel
     const previous = document.activeElement;
     const onKey = (event) => {
       if (event.key === 'Escape') onCancel && onCancel();
+      else trapFocus(event, dialogRef);
     };
     window.addEventListener('keydown', onKey);
     window.setTimeout(() => {
@@ -394,10 +415,11 @@ function Drawer({ open, onClose, title, subtitle, children, width = 480, footer 
     const previous = document.activeElement;
     const onKey = (event) => {
       if (event.key === 'Escape') onClose && onClose();
+      else trapFocus(event, drawerRef);
     };
     window.addEventListener('keydown', onKey);
     window.setTimeout(() => {
-      const firstControl = drawerRef.current && drawerRef.current.querySelector('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const firstControl = drawerRef.current && drawerRef.current.querySelector(focusableSelector);
       if (firstControl) firstControl.focus();
     }, 0);
     return () => {
@@ -466,5 +488,5 @@ Object.assign(window, {
   EmptyState, LoadingState, ErrorState, PermissionDeniedState, ScreenStatePanel, isPermissionDeniedError,
   getCurrentUser, canCreateRecords,
   PageHeader, StatCard, Tabs, SearchInput, IconButton, DataTable, Drawer, Section, InfoCell,
-  fmtEur, fmtDate,
+  fmtEur, fmtDate, trapFocus, focusableSelector,
 });

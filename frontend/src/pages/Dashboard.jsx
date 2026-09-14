@@ -3,6 +3,7 @@
 function Dashboard({ onNavigate, onOpenJob, onNewJob }) {
   const workspace = window.MolarisAPI.useWorkspace();
   const apiStats = workspace.stats;
+  const refresh = () => window.dispatchEvent(new CustomEvent('molaris-workspace-refresh'));
   const savedUser = window.MolarisAPI.savedUser && window.MolarisAPI.savedUser();
   const role = (savedUser && savedUser.role) || 'admin';
   const canCreate = window.canCreateRecords ? window.canCreateRecords() : false;
@@ -204,12 +205,19 @@ function Dashboard({ onNavigate, onOpenJob, onNewJob }) {
     );
   };
 
+  if (workspace.loading && !apiStats) {
+    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
+      React.createElement(PageHeader, { title: greetingTitle, subtitle: todaySubtitle }),
+      React.createElement(Card, null, React.createElement(CardContent, null, React.createElement(LoadingState, { message: 'Načítavam prehľad…' })))
+    );
+  }
+
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     React.createElement(PageHeader, {
       title: greetingTitle,
       subtitle: todaySubtitle,
       actions: [
-        React.createElement(Button, { key: 'r', variant: 'outline' }, React.createElement(Icon, { name: 'refreshCw', size: 13 }), 'Obnoviť'),
+        React.createElement(Button, { key: 'r', variant: 'outline', onClick: refresh }, React.createElement(Icon, { name: 'refreshCw', size: 13 }), 'Obnoviť'),
         React.createElement(Button, {
           key: 'n',
           onClick: canCreate ? onNewJob : undefined,
@@ -217,6 +225,12 @@ function Dashboard({ onNavigate, onOpenJob, onNewJob }) {
           title: canCreate ? undefined : 'Novú prácu môže vytvoriť iba administrátor laboratória.',
         }, React.createElement(Icon, { name: 'plus', size: 14 }), 'Nová práca'),
       ]
+    }),
+
+    workspace.error && React.createElement(ErrorState, {
+      title: 'Prehľad sa nepodarilo úplne načítať',
+      message: workspace.error,
+      onRetry: refresh,
     }),
 
     React.createElement('div', { className: 'stat-grid', style: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 } },

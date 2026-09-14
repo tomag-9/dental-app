@@ -86,7 +86,7 @@ function Calendar() {
   return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
     pageHeader,
 
-    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 16, alignItems: 'flex-start' } },
+    React.createElement('div', { className: 'content-grid', style: { display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 16, alignItems: 'flex-start' } },
       // Calendar grid
       React.createElement(Card, null,
         React.createElement(CardHeader, { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },

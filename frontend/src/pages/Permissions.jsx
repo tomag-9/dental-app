@@ -248,7 +248,7 @@ function Permissions({ user }) {
       React.createElement('div', { style: { fontSize: 11.5, color: '#8a9490' } }, `${overrides.length} uložených override záznamov`)
     ),
 
-    React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 12, overflow: 'hidden' } },
+    React.createElement('div', { style: { background: '#fff', border: '1px solid #ece7dc', borderRadius: 12, overflowX: 'auto', overflowY: 'hidden' } },
       React.createElement('div', { style: { display: 'grid', gridTemplateColumns: `minmax(240px, 1.6fr) repeat(${PERM_ROLE_DEFS.length}, minmax(130px, 1fr))`, background: '#fbfaf6', borderBottom: '1px solid #ece7dc' } },
         React.createElement('div', { style: { padding: '12px 16px', fontSize: 10.5, fontWeight: 700, color: '#8a9490', textTransform: 'uppercase', letterSpacing: '.06em' } }, 'Modul'),
         ...PERM_ROLE_DEFS.map(role => React.createElement('div', { key: role.id, style: { padding: '12px 10px', borderLeft: '1px solid #ece7dc', textAlign: 'center' } },
