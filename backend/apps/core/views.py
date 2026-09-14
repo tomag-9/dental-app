@@ -784,9 +784,7 @@ class LabViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         confirm_name = (request.data.get("confirm_name") or "").strip()
         if confirm_name != instance.name:
-            raise ValidationError(
-                {"confirm_name": "Na potvrdenie zmazania zadajte presný názov laboratória."}
-            )
+            raise ValidationError({"confirm_name": "Na potvrdenie zmazania zadajte presný názov laboratória."})
         return super().destroy(request, *args, **kwargs)
 
     def perform_create(self, serializer):
