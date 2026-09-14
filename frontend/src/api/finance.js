@@ -60,4 +60,26 @@ export async function downloadInvoicesExport(format = 'csv') {
   return downloadBlob(`/invoices/export/${suffix}`, format === 'xlsx' ? 'faktury.xlsx' : 'faktury.csv');
 }
 
+// --- SaaS subscription / Stripe billing (#105, #106) -----------------------
+// Not to be confused with `fetchPriceList` above (the lab's own price list for
+// clinics) — this is the lab's own Molaris subscription.
+
+/** Own lab subscription + billing block (read-only flag, grace end, seat usage). */
+export async function fetchMySubscription() {
+  return request('/v1/finance/subscriptions/my/');
+}
+
+/** @param {'pro'|'enterprise'} plan @returns {Promise<{url: string}>} */
+export async function createSubscriptionCheckout(plan) {
+  return request('/v1/finance/subscriptions/checkout/', {
+    method: 'POST',
+    body: JSON.stringify({ plan }),
+  });
+}
+
+/** @returns {Promise<{url: string}>} */
+export async function createSubscriptionPortalSession() {
+  return request('/v1/finance/subscriptions/portal/', { method: 'POST' });
+}
+
 export { normalizeInvoice, normalizePriceItem };

@@ -22,6 +22,78 @@ const COLOR_BY_TYPE = {
   system: '#6b7280',
 };
 
+// A trial ending within this many days gets the same persistent warning as a
+// lapsed payment (#105) — the lab should see it coming, not just on the day.
+const SUBSCRIPTION_TRIAL_WARNING_DAYS = 7;
+
+function daysUntilDate(value) {
+  if (!value) return null;
+  const target = new Date(`${value}T00:00:00`);
+  if (isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+function SubscriptionBanner({ onNavigate }) {
+  const [subscription, setSubscription] = React.useState(null);
+
+  React.useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      if (!window.MolarisAPI || !window.MolarisAPI.fetchMySubscription) return;
+      try {
+        const data = await window.MolarisAPI.fetchMySubscription();
+        if (alive) setSubscription(data);
+      } catch {
+        if (alive) setSubscription(null);
+      }
+    };
+    load();
+    // Cheap periodic refresh so the banner clears itself once payment is
+    // fixed, without requiring a full page reload.
+    const interval = setInterval(load, 5 * 60 * 1000);
+    return () => { alive = false; clearInterval(interval); };
+  }, []);
+
+  if (!subscription) return null;
+  const billing = subscription.billing || {};
+  const trialDaysLeft = subscription.status === 'trialing' && subscription.trial_ends_at
+    ? daysUntilDate(subscription.trial_ends_at)
+    : null;
+  const trialEndingSoon = trialDaysLeft !== null && trialDaysLeft <= SUBSCRIPTION_TRIAL_WARNING_DAYS;
+  const pastDue = subscription.status === 'past_due';
+  const readOnly = !!billing.read_only;
+  if (!readOnly && !pastDue && !trialEndingSoon) return null;
+
+  const graceDaysLeft = pastDue && billing.grace_ends_at ? daysUntilDate(billing.grace_ends_at) : null;
+  const message = readOnly
+    ? 'Predplatné je iba na čítanie — zápisy sú pozastavené, kým sa platba nevyrieši.'
+    : pastDue
+      ? (graceDaysLeft !== null
+          ? `Platba za predplatné zlyhala — ostáva ${graceDaysLeft} ${graceDaysLeft === 1 ? 'deň' : 'dní'} do pozastavenia zápisov.`
+          : 'Platba za predplatné zlyhala — vyriešte ju, aby zápisy neboli pozastavené.')
+      : `Skúšobná doba končí o ${trialDaysLeft} ${trialDaysLeft === 1 ? 'deň' : 'dní'} — vyberte si plán.`;
+
+  return React.createElement('div', {
+    role: 'alert',
+    style: {
+      display: 'flex', alignItems: 'center', gap: 10, padding: '7px 32px',
+      background: readOnly || pastDue ? '#fde8e6' : '#fdf3e3',
+      color: readOnly || pastDue ? '#c0392b' : '#8a5a00',
+      fontSize: 12.5, fontFamily: 'Manrope,sans-serif', flexShrink: 0,
+      borderBottom: `1px solid ${readOnly || pastDue ? '#f5c0bb' : '#f0d9a8'}`,
+    }
+  },
+    React.createElement(Icon, { name: 'alertTriangle', size: 14 }),
+    React.createElement('span', { style: { flex: 1 } }, message),
+    React.createElement('button', {
+      onClick: () => onNavigate && onNavigate('settings'),
+      style: { background: 'transparent', border: 'none', color: 'inherit', fontWeight: 700, cursor: 'pointer', fontSize: 12.5, textDecoration: 'underline', fontFamily: 'Manrope,sans-serif' }
+    }, 'Spravovať predplatné')
+  );
+}
+
 function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice }) {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [notifOpen, setNotifOpen] = React.useState(false);
@@ -216,6 +288,7 @@ function Topbar({ onNavigate, onOpenJob, onNewJob, onNewPatient, onNewInvoice })
   const stopAll = e => { e.stopPropagation(); if (e.nativeEvent) e.nativeEvent.stopPropagation(); };
 
   return React.createElement(React.Fragment, null,
+    React.createElement(SubscriptionBanner, { onNavigate }),
     React.createElement('header', {
       className: 'molaris-topbar',
       style: {

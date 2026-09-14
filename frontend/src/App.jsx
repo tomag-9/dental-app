@@ -6,9 +6,20 @@
 // script loads. That decides which sidebar, landing page, and user identity the
 // app starts with.
 
+// Stripe redirects here after Checkout/Portal (STRIPE_CHECKOUT_SUCCESS_URL /
+// STRIPE_CHECKOUT_CANCEL_URL), e.g. `/settings/billing?checkout=success` —
+// read once on boot, then the URL is cleared so a refresh doesn't replay it.
+function readCheckoutReturn() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const checkout = params.get('checkout');
+  return checkout === 'success' || checkout === 'cancelled' ? checkout : null;
+}
+
 function App() {
   const initialRole = (typeof window !== 'undefined' && window.__INITIAL_ROLE) || 'admin';
-  const initialPage = initialRole === 'superadmin' ? 'sa_overview' : 'dashboard';
+  const [checkoutReturn] = React.useState(readCheckoutReturn);
+  const initialPage = checkoutReturn ? 'settings' : (initialRole === 'superadmin' ? 'sa_overview' : 'dashboard');
 
   const [user, setUser] = React.useState(() => window.MolarisAPI.savedUser());
   const [page, setPage] = React.useState(initialPage);
@@ -16,6 +27,12 @@ function App() {
   const [patientId, setPatientId] = React.useState(null);
   const [newJobOpen, setNewJobOpen] = React.useState(false);
   const [createType, setCreateType] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!checkoutReturn) return;
+    const cleanPath = window.location.pathname === '/settings/billing' ? '/' : window.location.pathname;
+    window.history.replaceState(null, '', cleanPath);
+  }, [checkoutReturn]);
 
   React.useEffect(() => {
     const onUserUpdate = (event) => {
@@ -78,7 +95,7 @@ function App() {
     case 'clinics':         pageEl = React.createElement(Clinics,       { onNavigate: navigate, onCreate: () => setCreateType('clinic') }); break;
     case 'doctors':         pageEl = React.createElement(Doctors,       { onNavigate: navigate, onCreate: () => setCreateType('doctor') }); break;
     case 'technicians':     pageEl = React.createElement(Technicians,   { onNavigate: navigate, onCreate: () => setCreateType('technician') }); break;
-    case 'settings':        pageEl = React.createElement(Settings,      { onNavigate: navigate, user }); break;
+    case 'settings':        pageEl = React.createElement(Settings,      { onNavigate: navigate, user, initialTab: checkoutReturn ? 'subscription' : undefined, checkoutReturn }); break;
     case 'permissions':     pageEl = React.createElement(Permissions,   { onNavigate: navigate, user }); break;
     // Superadmin pages — all resolve to <Superadmin currentPage=… />
     case 'sa_overview':

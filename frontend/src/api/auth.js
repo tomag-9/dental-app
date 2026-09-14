@@ -43,6 +43,26 @@ export async function login(username, password, totpCode = '') {
   return storeCurrentUser();
 }
 
+/**
+ * Register a new lab + admin user (#106). The signup endpoint itself returns
+ * raw tokens rather than setting the httpOnly JWT cookies, so once it
+ * succeeds we log in with the freshly created username to establish the same
+ * cookie session `login()` would — reusing the already-tested code path
+ * instead of duplicating cookie handling here.
+ * @param {{ labName: string, name?: string, email: string, password: string }} payload
+ */
+export async function signup(payload) {
+  const body = {
+    lab_name: payload.labName,
+    nickname: payload.name || '',
+    email: payload.email,
+    password: payload.password,
+  };
+  const result = await request('/core/users/signup/', { method: 'POST', body: JSON.stringify(body), headers: {} });
+  const username = result && result.user && result.user.username;
+  return login(username, payload.password);
+}
+
 /** Load /users/me/ after a successful token exchange and cache the session user. */
 async function storeCurrentUser() {
   const me = await request('/core/users/me/');

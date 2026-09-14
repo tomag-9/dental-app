@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import timedelta
 from decimal import Decimal
@@ -15,6 +16,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.finance import stripe_service
 from apps.finance.models import Subscription
 from apps.jobs.models import CalendarEvent, Vacation
 
@@ -54,6 +56,11 @@ from .serializers import (
     TeamInvitationSerializer,
     UserSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+#: Length of the free trial a new signup starts with (#106).
+SUBSCRIPTION_TRIAL_DAYS = 14
 
 
 def _client_ip(request):
@@ -115,6 +122,33 @@ def _send_invitation_email(invitation):
         )
     except Exception:
         pass
+
+
+def _send_welcome_email(lab, user):
+    """Best-effort welcome email for a freshly signed-up lab admin (#106)."""
+    from django.conf import settings as django_settings
+    from django.core.mail import send_mail
+
+    if not user.email:
+        return
+    subject = f"Vitajte v Molaris, {lab.name}!"
+    message = (
+        f"Ahoj{f' {user.first_name}' if user.first_name else ''},\n\n"
+        f"váš účet pre laboratórium {lab.name} bol úspešne vytvorený.\n"
+        f"Máte {SUBSCRIPTION_TRIAL_DAYS} dní skúšobnej doby na vyskúšanie všetkých funkcií zadarmo.\n\n"
+        f"Prihláste sa a doplňte údaje laboratória, aby ste mohli vystavovať faktúry a protetické štítky.\n\n"
+        f"Tím Molaris"
+    )
+    try:
+        send_mail(
+            subject,
+            message,
+            django_settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=True,
+        )
+    except Exception:
+        logger.exception("Welcome email failed to send for lab %s", lab.id)
 
 
 def _build_unique_username(base_value):
@@ -1331,11 +1365,21 @@ class UserViewSet(viewsets.ModelViewSet):
             Subscription.objects.create(
                 lab=lab,
                 plan="free",
-                status="active",
+                status=Subscription.STATUS_TRIALING,
                 seats=5,
-                current_period_start=timezone.now().date(),
-                current_period_end=(timezone.now() + timedelta(days=30)).date(),
+                trial_ends_at=(timezone.now() + timedelta(days=SUBSCRIPTION_TRIAL_DAYS)).date(),
             )
+
+        # Stripe customer creation is best-effort: with STRIPE_SECRET_KEY unset
+        # (dev/CI) the module is disabled and this is a no-op, and a network
+        # failure here must never block account creation.
+        if stripe_service.stripe_enabled():
+            try:
+                stripe_service.ensure_customer(lab)
+            except Exception:
+                logger.exception("Stripe customer creation failed during signup for lab %s", lab.id)
+
+        _send_welcome_email(lab, user)
 
         refresh = RefreshToken.for_user(user)
         payload = {
