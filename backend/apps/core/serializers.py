@@ -13,6 +13,11 @@ class LabSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("VAT rate must be between 0 and 100.")
         return value
 
+    def validate_skonto_percent(self, value):
+        if value is not None and not (0 <= value <= 100):
+            raise serializers.ValidationError("Skonto percent must be between 0 and 100.")
+        return value
+
     def validate_invoice_due_days(self, value):
         if value is not None and value < 1:
             raise serializers.ValidationError("Invoice due days must be at least 1.")

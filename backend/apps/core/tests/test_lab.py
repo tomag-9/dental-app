@@ -75,6 +75,35 @@ class LabSettingsValidationTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 200)
 
+    def test_skonto_percent_above_100_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"skonto_percent": "150.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("skonto_percent", resp.data)
+
+    def test_skonto_percent_negative_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"skonto_percent": "-1.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("skonto_percent", resp.data)
+
+    def test_skonto_percent_valid_accepted(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            f"/api/labs/{self.lab.id}/",
+            {"skonto_percent": "2.00"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+
     def test_invoice_due_days_zero_rejected(self):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.patch(
