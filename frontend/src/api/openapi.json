@@ -1060,7 +1060,7 @@
           "clinic_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Clinic"
+                "$ref": "#/components/schemas/JobClinicSummary"
               }
             ],
             "readOnly": true
@@ -1093,7 +1093,7 @@
           "doctor_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Doctor"
+                "$ref": "#/components/schemas/JobDoctorSummary"
               }
             ],
             "readOnly": true
@@ -1172,7 +1172,7 @@
           "patient_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Patient"
+                "$ref": "#/components/schemas/JobPatientSummary"
               }
             ],
             "readOnly": true
@@ -1224,7 +1224,7 @@
           "technician_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Technician"
+                "$ref": "#/components/schemas/JobTechnicianSummary"
               }
             ],
             "readOnly": true
@@ -1270,6 +1270,57 @@
           "technician_details",
           "timeline",
           "updated_at"
+        ],
+        "type": "object"
+      },
+      "JobClinicSummary": {
+        "description": "Lightweight clinic snapshot for embedding in a job — see JobPatientSummarySerializer.",
+        "properties": {
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 255,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "JobDoctorSummary": {
+        "description": "Lightweight doctor snapshot for embedding in a job — see JobPatientSummarySerializer.",
+        "properties": {
+          "first_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "last_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "title_after": {
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          },
+          "title_before": {
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_name",
+          "id",
+          "last_name"
         ],
         "type": "object"
       },
@@ -1387,6 +1438,39 @@
         ],
         "type": "object"
       },
+      "JobPatientSummary": {
+        "description": "Lightweight patient snapshot for embedding in a job.\n\nDeliberately not PatientSerializer: that one carries jobs_count/\nactive_jobs/ytd_revenue/insurer_details, each an extra query with no\ncaching. Nested once per job in a job list, those turned an O(1)\nendpoint into an O(n) one — see test_job_list_performance.py.",
+        "properties": {
+          "birth_number": {
+            "maxLength": 50,
+            "type": "string"
+          },
+          "first_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "last_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "phone": {
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "birth_number",
+          "first_name",
+          "id",
+          "last_name"
+        ],
+        "type": "object"
+      },
       "JobStatusEnum": {
         "description": "* `new` - Nová\n* `in_progress` - V riešení\n* `completed` - Dokončená\n* `cancelled` - Zrušená\n* `finished_factured` - Dokončená/fakturovaná\n* `finished_unfactured` - Dokončená/nevyfakturovaná\n* `closed` - Uzavretá",
         "enum": [
@@ -1399,6 +1483,39 @@
           "closed"
         ],
         "type": "string"
+      },
+      "JobTechnicianSummary": {
+        "description": "Lightweight technician snapshot for embedding in a job — see JobPatientSummarySerializer.",
+        "properties": {
+          "first_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "id": {
+            "readOnly": true,
+            "type": "integer"
+          },
+          "last_name": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "title_after": {
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          },
+          "title_before": {
+            "maxLength": 50,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "first_name",
+          "id",
+          "last_name"
+        ],
+        "type": "object"
       },
       "JobTimelineEvent": {
         "properties": {
@@ -3254,7 +3371,7 @@
           "clinic_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Clinic"
+                "$ref": "#/components/schemas/JobClinicSummary"
               }
             ],
             "readOnly": true
@@ -3287,7 +3404,7 @@
           "doctor_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Doctor"
+                "$ref": "#/components/schemas/JobDoctorSummary"
               }
             ],
             "readOnly": true
@@ -3366,7 +3483,7 @@
           "patient_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Patient"
+                "$ref": "#/components/schemas/JobPatientSummary"
               }
             ],
             "readOnly": true
@@ -3418,7 +3535,7 @@
           "technician_details": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/Technician"
+                "$ref": "#/components/schemas/JobTechnicianSummary"
               }
             ],
             "readOnly": true

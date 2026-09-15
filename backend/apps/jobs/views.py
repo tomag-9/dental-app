@@ -103,7 +103,7 @@ class JobViewSet(TenantScopedQuerysetMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = (
             jobs_for_user(self.request.user)
-            .select_related("patient", "clinic", "doctor", "technician")
+            .select_related("lab", "patient", "patient__insurer", "clinic", "doctor", "technician")
             .prefetch_related("items", "timeline__actor")
             .order_by("-created_at")
         )

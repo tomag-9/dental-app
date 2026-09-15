@@ -6112,7 +6112,7 @@ export interface components {
             /** Format: date */
             assigned_at?: string | null;
             clinic: number;
-            readonly clinic_details: components["schemas"]["Clinic"];
+            readonly clinic_details: components["schemas"]["JobClinicSummary"];
             /** Format: date */
             completed_at?: string | null;
             contains_medicinal_substance?: boolean;
@@ -6121,7 +6121,7 @@ export interface components {
             description?: string | null;
             diagnosis_code?: string;
             doctor?: number | null;
-            readonly doctor_details: components["schemas"]["Doctor"];
+            readonly doctor_details: components["schemas"]["JobDoctorSummary"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
@@ -6144,7 +6144,7 @@ export interface components {
             medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient: number;
-            readonly patient_details: components["schemas"]["Patient"];
+            readonly patient_details: components["schemas"]["JobPatientSummary"];
             readonly patient_total: string;
             /** Format: decimal */
             price?: string | null;
@@ -6160,13 +6160,26 @@ export interface components {
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
             technician?: number | null;
-            readonly technician_details: components["schemas"]["Technician"];
+            readonly technician_details: components["schemas"]["JobTechnicianSummary"];
             readonly timeline: components["schemas"]["JobTimelineEvent"][];
             tooth_color?: string | null;
             /** Format: date */
             try_in_date?: string | null;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description Lightweight clinic snapshot for embedding in a job — see JobPatientSummarySerializer. */
+        JobClinicSummary: {
+            readonly id: number;
+            name: string;
+        };
+        /** @description Lightweight doctor snapshot for embedding in a job — see JobPatientSummarySerializer. */
+        JobDoctorSummary: {
+            first_name: string;
+            readonly id: number;
+            last_name: string;
+            title_after?: string | null;
+            title_before?: string | null;
         };
         JobItem: {
             bridge_span?: string | null;
@@ -6193,6 +6206,21 @@ export interface components {
             readonly unit_price: string;
         };
         /**
+         * @description Lightweight patient snapshot for embedding in a job.
+         *
+         *     Deliberately not PatientSerializer: that one carries jobs_count/
+         *     active_jobs/ytd_revenue/insurer_details, each an extra query with no
+         *     caching. Nested once per job in a job list, those turned an O(1)
+         *     endpoint into an O(n) one — see test_job_list_performance.py.
+         */
+        JobPatientSummary: {
+            birth_number: string;
+            first_name: string;
+            readonly id: number;
+            last_name: string;
+            phone?: string | null;
+        };
+        /**
          * @description * `new` - Nová
          *     * `in_progress` - V riešení
          *     * `completed` - Dokončená
@@ -6203,6 +6231,14 @@ export interface components {
          * @enum {string}
          */
         JobStatusEnum: "new" | "in_progress" | "completed" | "cancelled" | "finished_factured" | "finished_unfactured" | "closed";
+        /** @description Lightweight technician snapshot for embedding in a job — see JobPatientSummarySerializer. */
+        JobTechnicianSummary: {
+            first_name: string;
+            readonly id: number;
+            last_name: string;
+            title_after?: string | null;
+            title_before?: string | null;
+        };
         JobTimelineEvent: {
             readonly actor: number | null;
             readonly actor_name: string;
@@ -6840,7 +6876,7 @@ export interface components {
             /** Format: date */
             assigned_at?: string | null;
             clinic?: number;
-            readonly clinic_details?: components["schemas"]["Clinic"];
+            readonly clinic_details?: components["schemas"]["JobClinicSummary"];
             /** Format: date */
             completed_at?: string | null;
             contains_medicinal_substance?: boolean;
@@ -6849,7 +6885,7 @@ export interface components {
             description?: string | null;
             diagnosis_code?: string;
             doctor?: number | null;
-            readonly doctor_details?: components["schemas"]["Doctor"];
+            readonly doctor_details?: components["schemas"]["JobDoctorSummary"];
             /** Format: date */
             due_date?: string | null;
             /** Format: date */
@@ -6872,7 +6908,7 @@ export interface components {
             medicinal_substance_note?: string;
             output_tooth_procedures?: unknown;
             patient?: number;
-            readonly patient_details?: components["schemas"]["Patient"];
+            readonly patient_details?: components["schemas"]["JobPatientSummary"];
             readonly patient_total?: string;
             /** Format: decimal */
             price?: string | null;
@@ -6888,7 +6924,7 @@ export interface components {
             start_date?: string | null;
             status?: components["schemas"]["JobStatusEnum"];
             technician?: number | null;
-            readonly technician_details?: components["schemas"]["Technician"];
+            readonly technician_details?: components["schemas"]["JobTechnicianSummary"];
             readonly timeline?: components["schemas"]["JobTimelineEvent"][];
             tooth_color?: string | null;
             /** Format: date */

@@ -9,7 +9,6 @@ from rest_framework import serializers
 
 from apps.core.access import is_superadmin
 from apps.crm.models import Clinic, Doctor, Patient
-from apps.crm.serializers import ClinicSerializer, DoctorSerializer, PatientSerializer
 from apps.finance.models import PriceList
 
 from . import job_service
@@ -28,6 +27,36 @@ from .models import (
     Technician,
     Vacation,
 )
+
+
+class JobPatientSummarySerializer(serializers.ModelSerializer):
+    """Lightweight patient snapshot for embedding in a job.
+
+    Deliberately not PatientSerializer: that one carries jobs_count/
+    active_jobs/ytd_revenue/insurer_details, each an extra query with no
+    caching. Nested once per job in a job list, those turned an O(1)
+    endpoint into an O(n) one — see test_job_list_performance.py.
+    """
+
+    class Meta:
+        model = Patient
+        fields = ("id", "first_name", "last_name", "birth_number", "phone")
+
+
+class JobClinicSummarySerializer(serializers.ModelSerializer):
+    """Lightweight clinic snapshot for embedding in a job — see JobPatientSummarySerializer."""
+
+    class Meta:
+        model = Clinic
+        fields = ("id", "name")
+
+
+class JobDoctorSummarySerializer(serializers.ModelSerializer):
+    """Lightweight doctor snapshot for embedding in a job — see JobPatientSummarySerializer."""
+
+    class Meta:
+        model = Doctor
+        fields = ("id", "first_name", "last_name", "title_before", "title_after")
 
 
 class TechnicianSerializer(serializers.ModelSerializer):
@@ -70,6 +99,14 @@ class TechnicianSerializer(serializers.ModelSerializer):
             created_at__year=today.year,
             created_at__month=today.month,
         ).count()
+
+
+class JobTechnicianSummarySerializer(serializers.ModelSerializer):
+    """Lightweight technician snapshot for embedding in a job — see JobPatientSummarySerializer."""
+
+    class Meta:
+        model = Technician
+        fields = ("id", "first_name", "last_name", "title_before", "title_after")
 
 
 class JobItemSerializer(serializers.ModelSerializer):
@@ -171,10 +208,10 @@ class JobTimelineEventSerializer(serializers.ModelSerializer):
 
 
 class JobSerializer(serializers.ModelSerializer):
-    patient_details = PatientSerializer(source="patient", read_only=True)
-    clinic_details = ClinicSerializer(source="clinic", read_only=True)
-    doctor_details = DoctorSerializer(source="doctor", read_only=True)
-    technician_details = TechnicianSerializer(source="technician", read_only=True)
+    patient_details = JobPatientSummarySerializer(source="patient", read_only=True)
+    clinic_details = JobClinicSummarySerializer(source="clinic", read_only=True)
+    doctor_details = JobDoctorSummarySerializer(source="doctor", read_only=True)
+    technician_details = JobTechnicianSummarySerializer(source="technician", read_only=True)
     items = JobItemSerializer(many=True, required=False)
     timeline = JobTimelineEventSerializer(many=True, read_only=True)
     insurance_total = serializers.SerializerMethodField()

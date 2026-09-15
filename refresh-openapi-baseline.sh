@@ -10,16 +10,23 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dental-app-openapi-refresh}"
 export BACKEND_CI_IMAGE="${BACKEND_CI_IMAGE:-local/dental-backend-ci:pm-final}"
+# docker-compose.ci.yml declares an explicit top-level `name: dental-app` —
+# the SAME project name docker-compose.yml (the dev stack) uses. That name
+# beats a plain COMPOSE_PROJECT_NAME env var, so without `-p` here, the
+# `down -v` below tears down whatever "dental-app" project happens to be up
+# — including a live dev stack's database. `-p` on the CLI is the only thing
+# that reliably overrides the file's own `name:`. Learned the hard way: this
+# wiped a freshly-seeded dev DB while diagnosing a query-performance issue.
+COMPOSE_PROJECT="dental-app-openapi-refresh"
 
 echo "==> building backend image ($BACKEND_CI_IMAGE)"
 docker build -q -t "$BACKEND_CI_IMAGE" ./backend >/dev/null
 
 echo "==> generating schema on postgres"
-docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
+docker compose -p "$COMPOSE_PROJECT" --env-file env/dev.env.example -f compose/docker-compose.ci.yml \
   run --no-deps --rm backend python manage.py generateschema > /tmp/openapi-refresh.yaml
-docker compose --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v >/dev/null 2>&1 || true
+docker compose -p "$COMPOSE_PROJECT" --env-file env/dev.env.example -f compose/docker-compose.ci.yml down -v >/dev/null 2>&1 || true
 
 if diff -q doc/openapi-baseline.yaml /tmp/openapi-refresh.yaml >/dev/null 2>&1; then
   echo "==> no drift, baseline already up to date"
