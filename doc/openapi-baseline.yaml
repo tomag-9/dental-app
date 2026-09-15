@@ -13219,19 +13219,19 @@ components:
           readOnly: true
         patient_details:
           allOf:
-          - $ref: '#/components/schemas/Patient'
+          - $ref: '#/components/schemas/JobPatientSummary'
           readOnly: true
         clinic_details:
           allOf:
-          - $ref: '#/components/schemas/Clinic'
+          - $ref: '#/components/schemas/JobClinicSummary'
           readOnly: true
         doctor_details:
           allOf:
-          - $ref: '#/components/schemas/Doctor'
+          - $ref: '#/components/schemas/JobDoctorSummary'
           readOnly: true
         technician_details:
           allOf:
-          - $ref: '#/components/schemas/Technician'
+          - $ref: '#/components/schemas/JobTechnicianSummary'
           readOnly: true
         items:
           type: array
@@ -13376,6 +13376,44 @@ components:
       - technician_details
       - timeline
       - updated_at
+    JobClinicSummary:
+      type: object
+      description: Lightweight clinic snapshot for embedding in a job — see JobPatientSummarySerializer.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+      required:
+      - id
+      - name
+    JobDoctorSummary:
+      type: object
+      description: Lightweight doctor snapshot for embedding in a job — see JobPatientSummarySerializer.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        title_before:
+          type: string
+          nullable: true
+          maxLength: 50
+        title_after:
+          type: string
+          nullable: true
+          maxLength: 50
+      required:
+      - first_name
+      - id
+      - last_name
     JobItem:
       type: object
       properties:
@@ -13456,6 +13494,37 @@ components:
       - price_list_code
       - total
       - unit_price
+    JobPatientSummary:
+      type: object
+      description: |-
+        Lightweight patient snapshot for embedding in a job.
+
+        Deliberately not PatientSerializer: that one carries jobs_count/
+        active_jobs/ytd_revenue/insurer_details, each an extra query with no
+        caching. Nested once per job in a job list, those turned an O(1)
+        endpoint into an O(n) one — see test_job_list_performance.py.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        birth_number:
+          type: string
+          maxLength: 50
+        phone:
+          type: string
+          nullable: true
+          maxLength: 50
+      required:
+      - birth_number
+      - first_name
+      - id
+      - last_name
     JobStatusEnum:
       enum:
       - new
@@ -13474,6 +13543,31 @@ components:
         * `finished_factured` - Dokončená/fakturovaná
         * `finished_unfactured` - Dokončená/nevyfakturovaná
         * `closed` - Uzavretá
+    JobTechnicianSummary:
+      type: object
+      description: Lightweight technician snapshot for embedding in a job — see JobPatientSummarySerializer.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          maxLength: 100
+        last_name:
+          type: string
+          maxLength: 100
+        title_before:
+          type: string
+          nullable: true
+          maxLength: 50
+        title_after:
+          type: string
+          nullable: true
+          maxLength: 50
+      required:
+      - first_name
+      - id
+      - last_name
     JobTimelineEvent:
       type: object
       properties:
@@ -14865,19 +14959,19 @@ components:
           readOnly: true
         patient_details:
           allOf:
-          - $ref: '#/components/schemas/Patient'
+          - $ref: '#/components/schemas/JobPatientSummary'
           readOnly: true
         clinic_details:
           allOf:
-          - $ref: '#/components/schemas/Clinic'
+          - $ref: '#/components/schemas/JobClinicSummary'
           readOnly: true
         doctor_details:
           allOf:
-          - $ref: '#/components/schemas/Doctor'
+          - $ref: '#/components/schemas/JobDoctorSummary'
           readOnly: true
         technician_details:
           allOf:
-          - $ref: '#/components/schemas/Technician'
+          - $ref: '#/components/schemas/JobTechnicianSummary'
           readOnly: true
         items:
           type: array
